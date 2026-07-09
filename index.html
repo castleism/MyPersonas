@@ -29,6 +29,8 @@ main{padding:24px;max-width:1160px;margin:0 auto}
 .card{background:var(--panel);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .card h3{color:var(--text);font-size:17px;font-weight:700;margin-bottom:10px}
 .secthead{font-size:20px;font-weight:800;color:var(--text);margin:6px 0 14px}
+.ico{width:17px;height:17px;fill:none;stroke:#1f8bff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:7px;filter:drop-shadow(0 0 2.5px rgba(70,170,255,.55))}
+.chip .ico{width:14px;height:14px;margin-right:2px;vertical-align:-2px}
 .hero{position:relative;padding:0;overflow:hidden;min-height:420px;display:flex;align-items:center;justify-content:flex-end;background:#f4f9ff url('assets/hero.png') left center/cover no-repeat}
 .hero .ht{max-width:480px;padding:48px 56px;text-align:left}
 .hero h2{font-size:38px;font-weight:800;margin-bottom:12px;line-height:1.15;color:#0b2545}
@@ -120,9 +122,31 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-node" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="9" ry="4.5" transform="rotate(-20 12 12)"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="18.5" cy="16" r="2.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.5 13.5a4.7 4.7 0 0 0 6.6 0l3-3a4.7 4.7 0 0 0-6.6-6.6L12 5.4"/><path d="M13.5 10.5a4.7 4.7 0 0 0-6.6 0l-3 3a4.7 4.7 0 0 0 6.6 6.6L12 18.6"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 18h18M4.5 18L3 8l5.5 4L12 5l3.5 7L21 8l-1.5 10"/></symbol>
+  <symbol id="i-live" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></symbol>
+  <symbol id="i-feed" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-album" viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 3h14v14"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.5 12h11L21 8H7"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9L19 19M5 19l2.1-2.1M16.9 7.1L19 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5Z"/></symbol>
+  <symbol id="i-mask" viewBox="0 0 24 24"><path d="M4 5c2.5 1 5 1.5 8 1.5S17.5 6 20 5v6c0 5-3.5 9-8 9s-8-4-8-9Z"/><path d="M8.5 12h1M14.5 12h1"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 1 4 4v3a4 4 0 0 1-8 0v-3a4 4 0 0 1 4-4Z"/><path d="M9 6L8 4M15 6l1-2M8 13H4M20 13h-4M6 19l2.5-2M18 19l-2.5-2"/></symbol>
+</svg>
 <header>
   <h1 onclick="go('')">MyPersonas</h1>
-  <input id="gsearch" placeholder="🔍 find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
+  <input id="gsearch" placeholder="find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
   <nav>
     <button onclick="go('')">Entangle</button>
     <button onclick="go('studio')">Matrix<span id="reqBadge" class="badge" style="display:none"></span></button>
@@ -132,7 +156,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 <main id="app"><div class="empty">Loading…</div></main>
 <div id="toast"></div>
 <button id="bugBtn" onclick="reportError()" title="Report a problem"
-  style="position:fixed;left:14px;bottom:14px;z-index:170;background:#fff;border:1px solid #ccd0d5;border-radius:50px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#65676b;box-shadow:0 1px 4px rgba(0,0,0,.15)">🐞 Report a problem</button>
+  style="position:fixed;left:14px;bottom:14px;z-index:170;background:#fff;border:1px solid #ccd0d5;border-radius:50px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#65676b;box-shadow:0 1px 4px rgba(0,0,0,.15)"><svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg>Report a problem</button>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -168,19 +192,20 @@ async function reportError(){
       message:note,
       context:{page:location.hash,ua:navigator.userAgent.slice(0,200),recent:errBuf.slice(-15)}});
     if(error)throw error;
-    toast("Report sent — thank you 🐞");
+    toast("Report sent — thank you");
   }catch(e){toast("Couldn't send report: "+e.message)}
 }
 function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function go(h){location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
+function ico(n){return `<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`}
 
 // ---------- embeds ----------
 function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
 function mediaHtml(u,handle,kind){
   if(!u)return "";
-  const wm=`<div class="wm-diag"><span>★ ${esc(pageUrl(handle))}</span></div><div class="wm-tag">@${esc(handle)}</div>`;
+  const wm=`<div class="wm-diag"><span>${esc(pageUrl(handle))}</span></div><div class="wm-tag">@${esc(handle)}</div>`;
   const y=ytId(u);const cls="media"+(kind==="reel"?" reel":"");
   const guard=`oncontextmenu="return false"`;
   if(y)return `<div class="${cls}" ${guard}><iframe src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe></div>`;
@@ -196,7 +221,7 @@ function musicHtml(u){
   if(/open\.spotify\.com/.test(u))return `<iframe src="${esc(u.replace("open.spotify.com/","open.spotify.com/embed/"))}" style="height:152px"></iframe>`;
   if(/soundcloud\.com/.test(u))return `<iframe style="height:120px" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%23ff4fa3"></iframe>`;
   if(/\.(mp3|ogg|wav)(\?|$)/i.test(u))return `<audio src="${esc(u)}" controls loop></audio>`;
-  return `<a href="${esc(u)}" target="_blank" rel="noopener">🎵 ${esc(u)}</a>`;
+  return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`;
 }
 function liveHtml(u){
   if(!u)return "";
@@ -206,12 +231,12 @@ function liveHtml(u){
   if(y)return `<iframe src="https://www.youtube.com/embed/${y}?autoplay=0" allowfullscreen></iframe>`;
   let kk=u.match(/kick\.com\/([\w_-]+)/);
   if(kk)return `<iframe src="https://player.kick.com/${kk[1]}" allowfullscreen></iframe>`;
-  return `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔴 Watch live ↗</a>`;
+  return `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Watch live ↗</a>`;
 }
 
 // ---------- init ----------
 if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
-  app.innerHTML=`<div class="card authbox center"><h3>⚙ Almost ready!</h3>
+  app.innerHTML=`<div class="card authbox center"><h3>Almost ready!</h3>
   <p>This app needs its Supabase backend connected. Open <b>index.html</b> and paste your <b>Project URL</b> and <b>anon key</b> into the CONFIG block at the top of the script. See SETUP-GUIDE.md.</p></div>`;
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
@@ -275,7 +300,7 @@ function renderSignin(){
     <label>Or get a magic link by email</label>
     <input id="mlEmail" type="email" placeholder="you@example.com">
     <button class="btn sec" style="width:100%;margin-top:10px" onclick="magicLink()">Email me a sign-in link</button>
-    <p class="muted" style="margin-top:12px">🔐 Your email is used only to sign in. It is never shown on any page, post, or persona.</p>
+    <p class="muted" style="margin-top:12px">Your email is used only to sign in. It is never shown on any page, post, or persona.</p>
   </div>`;
 }
 async function googleSignin(){
@@ -286,14 +311,14 @@ async function magicLink(){
   const email=document.getElementById("mlEmail").value.trim();
   if(!email){toast("Enter your email");return}
   const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-  toast(error?error.message:"Check your email for the link! ✉️");
+  toast(error?error.message:"Check your email for the link!");
 }
 
 // ---------- discover ----------
 function getFilters(){try{const f=JSON.parse(localStorage.getItem("ps_filters"))||{};return{hideNsfw:f.hideNsfw!==false,hideTopics:f.hideTopics||""}}catch(e){return{hideNsfw:true,hideTopics:""}}}
 function settingsCard(){
   const f=getFilters();
-  return `<div class="card" style="margin-top:20px"><h3>⚙️ Account settings</h3>
+  return `<div class="card" style="margin-top:20px"><h3>${ico("gear")}Account settings</h3>
     <p class="muted">Private to you — never shown on any persona page.</p>
     <div class="row">
       <div><label>Account name (for your own reference)</label><input id="setName" value="${esc(myProfile?myProfile.display_name:"")}"></div>
@@ -332,11 +357,11 @@ async function renderDiscover(q){
     recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
   const whatIs=`<h3 class="secthead">What is MyPersonas?</h3>
     <div class="feat3">
-      <div class="card"><h3>🎭 A page for every side of you</h3>
+      <div class="card"><h3>${ico("mask")}A page for every side of you</h3>
         <p class="muted" style="font-size:14px">The artist. The gamer. The reviewer. The creator. The internet let us express our many personas — MyPersonas gives each one its own home page, with its own look, feed, albums, music, and friends.</p></div>
-      <div class="card"><h3>🕶 Anonymous by design</h3>
+      <div class="card"><h3>${ico("shield")}Anonymous by design</h3>
         <p class="muted" style="font-size:14px">Your personas are never linked to your identity or to each other. Share what you choose, where you choose. Private and unlisted pages, blocking, and content filters keep every space one you can find peace in.</p></div>
-      <div class="card"><h3>✨ Bring them to life</h3>
+      <div class="card"><h3>${ico("spark")}Bring them to life</h3>
         <p class="muted" style="font-size:14px">Modern tools take personas beyond a profile: give each one an AI voice that helps it write and plan, link every account it lives on across the web, go live, and connect with the personas of others.</p></div>
     </div>`;
   if(session&&!myPersonas.length&&!q){ // onboarding: no personas yet
@@ -369,7 +394,7 @@ function pCard(p){
   return `<div class="pcard" style="--pc:${esc(p.theme||"#ff4fa3")}" onclick="go('p/${esc(p.handle)}')">
     <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
     <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
-    <b>★ ${esc(p.name)}</b><span class="muted">@${esc(p.handle)}</span> ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">🔴 LIVE</span>':""}
+    <b>${esc(p.name)}</b><span class="muted">@${esc(p.handle)}</span> ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">LIVE</span>':""}
     <div class="muted" style="margin-top:4px">${esc(p.tagline)}</div></div></div>`;
 }
 
@@ -378,11 +403,11 @@ let pageState={};
 async function renderPersonaPage(handle,skipGate){
   app.innerHTML='<div class="empty">Loading…</div>';
   const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
-  if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access. 💔<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
+  if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
     app.innerHTML="";
     const o=document.createElement("div");o.className="overlay";
-    o.innerHTML=`<div class="gate"><h2>🔞 18+ Content</h2><p>This page may contain adult content.<br>You must be 18 or older to continue.</p>
+    o.innerHTML=`<div class="gate"><h2>18+ Content</h2><p>This page may contain adult content.<br>You must be 18 or older to continue.</p>
       <div style="margin-top:16px"><button class="btn" onclick="sessionStorage.setItem('age_ok','1');this.closest('.overlay').remove();renderPersonaPage('${esc(handle)}',true)">I'm 18+, enter</button>
       <button class="btn sec" style="margin-left:8px" onclick="location.hash=''">Take me back</button></div></div>`;
     document.body.appendChild(o);return;
@@ -414,63 +439,63 @@ async function renderPersonaPage(handle,skipGate){
   if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
   const blocked=isHidden(p.id);
   let relBtn="";
-  if(isOwner)relBtn=`<button class="btn sec" onclick="go('edit/${p.id}')">✏️ Edit page</button>`;
-  else if(!session)relBtn=`<button class="btn" onclick="go('signin')">💖 Sign in to connect</button>`;
+  if(isOwner)relBtn=`<button class="btn sec" onclick="go('edit/${p.id}')">Edit page</button>`;
+  else if(!session)relBtn=`<button class="btn" onclick="go('signin')">Sign in to connect</button>`;
   else if(!myPersonas.length)relBtn=`<button class="btn" onclick="go('edit/new')">Create a persona to connect</button>`;
-  else if(rel&&rel.status==="accepted")relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">💔 Remove friend</button>`;
-  else if(rel&&rel.status==="pending"&&myPersonas.some(m=>m.id===rel.follower))relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">⏳ Requested — cancel</button>`;
-  else if(rel&&rel.status==="pending")relBtn=`<button class="btn" onclick="acceptReq('${rel.id}')">✅ Accept friend request</button>`;
-  else relBtn=`<button class="btn" onclick="sendRequest('${p.id}')">💖 Add friend</button>`;
+  else if(rel&&rel.status==="accepted")relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">Remove friend</button>`;
+  else if(rel&&rel.status==="pending"&&myPersonas.some(m=>m.id===rel.follower))relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">Requested — cancel</button>`;
+  else if(rel&&rel.status==="pending")relBtn=`<button class="btn" onclick="acceptReq('${rel.id}')">Accept friend request</button>`;
+  else relBtn=`<button class="btn" onclick="sendRequest('${p.id}')">Add friend</button>`;
   app.innerHTML=`
   <div class="banner" style="--pc:${esc(p.theme)};${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
   <div class="pp-head">
     <div class="pp-av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
     <div style="flex:1;padding-bottom:6px">
-      <div class="pp-name">★ ${esc(p.name)} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">🔴 LIVE</span>':""}</div>
+      <div class="pp-name">${esc(p.name)} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">LIVE</span>':""}</div>
       <div class="muted" style="background:rgba(255,255,255,.8);display:inline-block;padding:2px 8px;border-radius:8px">@${esc(p.handle)} · ${friends.length} friend${friends.length===1?"":"s"} — ${esc(p.tagline)}</div>
     </div>
     <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${relBtn}
-      ${!isOwner&&session?`<button class="btn danger sm" title="They can't friend or interact with you" onclick="blockPersona('${p.id}','block')">🚫 ${blocked?"Blocked":"Block"}</button>
-      <button class="btn sec sm" title="Hide them from your view" onclick="blockPersona('${p.id}','mute')">🔇 Mute</button>`:""}
+      ${!isOwner&&session?`<button class="btn danger sm" title="They can't friend or interact with you" onclick="blockPersona('${p.id}','block')">${blocked?"Blocked":"Block"}</button>
+      <button class="btn sec sm" title="Hide them from your view" onclick="blockPersona('${p.id}','mute')">Mute</button>`:""}
     </div>
   </div>
   <div class="cols">
     <div>
-      ${M("live")&&p.live_url?`<div class="card livebox"><h3>🔴 Live now</h3>${liveHtml(p.live_url)}</div>`:""}
-      ${M("music")&&p.music_url?`<div class="card music"><h3>🎵 Profile song</h3>${musicHtml(p.music_url)}</div>`:""}
-      ${M("about")?`<div class="card"><h3>💫 About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
+      ${M("live")&&p.live_url?`<div class="card livebox"><h3>${ico("live")}Live now</h3>${liveHtml(p.live_url)}</div>`:""}
+      ${M("music")&&p.music_url?`<div class="card music"><h3>${ico("music")}Profile song</h3>${musicHtml(p.music_url)}</div>`:""}
+      ${M("about")?`<div class="card"><h3>${ico("spark")}About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
         ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="pageSearch('${esc(t.trim())}')">${esc(t.trim())}</span>`).join("")}</div>`:""}</div>`:""}
-      ${M("links")&&(links||[]).length?`<div class="card"><h3>🔗 Find me on</h3>${links.map(l=>{
+      ${M("links")&&(links||[]).length?`<div class="card"><h3>${ico("link")}Find me on</h3>${links.map(l=>{
         const pl=PLATS[l.platform]||PLATS.other;
-        return l.url?`<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${pl.icon} ${esc(l.handle||pl.name)}</a>`:`<span class="chip">${pl.icon} ${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
-      ${M("top8")&&top8.length?`<div class="card"><h3>👑 Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>
+        return l.url?`<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
+      ${M("top8")&&top8.length?`<div class="card"><h3>${ico("crown")}Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>
         `<div class="t8" onclick="go('p/${esc(t.handle)}')"><div class="av8" style="${t.avatar_url?`background-image:url('${esc(t.avatar_url)}')`:""}"></div>${esc(t.name)}</div>`).join("")}</div></div>`:""}
     </div>
     <div>
       ${isOwner?composerHtml(p):""}
       ${M("albums")?(albums||[]).filter(a=>(a.items||[]).length||isOwner).map(a=>`
-        <div class="card"><h3>${a.kind==="affiliate"?"🛒":"📸"} ${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3>
+        <div class="card"><h3>${ico(a.kind==="affiliate"?"cart":"album")}${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3>
         <div class="albgrid">${(a.items||[]).map(it=>{
           const inner=`<img src="${esc(it.thumb_url)}" loading="lazy" draggable="false"><span class="cap">${esc(it.caption)||"&nbsp;"}</span>${it.link_url?'<span class="goicon">↗</span>':""}`;
           return it.link_url?`<a class="albitem" href="${esc(it.link_url)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join(""):""}
       ${M("feed")?`<div class="card">
         ${p.feed_img_url?`<img src="${esc(p.feed_img_url)}" style="width:100%;border-radius:12px;margin-bottom:10px" alt="">`:""}
-        <h3>📖 ${esc(p.name)}'s feed</h3>
-        <input id="feedSearch" placeholder="🔍 search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)">
+        <h3>${ico("feed")}${esc(p.name)}'s feed</h3>
+        <input id="feedSearch" placeholder="search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)">
         <div class="feedchips">
-          <span class="chip on" id="fk_all" onclick="setFeedKind('all')">✨ All</span>
-          <span class="chip" id="fk_post" onclick="setFeedKind('post')">📝 Posts</span>
-          <span class="chip" id="fk_reel" onclick="setFeedKind('reel')">📱 Reels</span>
+          <span class="chip on" id="fk_all" onclick="setFeedKind('all')">All</span>
+          <span class="chip" id="fk_post" onclick="setFeedKind('post')">Posts</span>
+          <span class="chip" id="fk_reel" onclick="setFeedKind('reel')">Reels</span>
         </div>
       </div>
-      <div id="feedList">${(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet ✍️</div>'}</div>`:""}
+      <div id="feedList">${(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet</div>'}</div>`:""}
     </div>
   </div>`;
 }
 function postHtml(x,p,owner){
   return `<div class="post" style="--pc:${esc((p&&p.theme)||"#ff4fa3")}">
-    ${p&&p.handle?`<div class="muted" style="margin-bottom:4px;cursor:pointer" onclick="go('p/${esc(p.handle)}')">★ ${esc(p.name)} @${esc(p.handle)} ${x.kind==="reel"?"· 📱 reel":""}</div>`:""}
+    ${p&&p.handle?`<div class="muted" style="margin-bottom:4px;cursor:pointer" onclick="go('p/${esc(p.handle)}')">${esc(p.name)} @${esc(p.handle)} ${x.kind==="reel"?"· reel":""}</div>`:""}
     ${x.title?`<h4>${esc(x.title)}</h4>`:""}
     <p style="white-space:pre-wrap;margin-top:4px">${esc(x.body)}</p>
     ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind):""}
@@ -505,12 +530,12 @@ async function sendRequest(targetId){
   const follower=await pickMine();if(!follower)return;
   const{error}=await sb.from("follows").insert({follower,target:targetId,status:"pending"});
   if(error){toast(error.message.includes("row-level")?"You can't send this request (blocked or not allowed)":error.message);return}
-  toast("Friend request sent! 💌");route();
+  toast("Friend request sent!");route();
 }
 async function acceptReq(id){
   const{error}=await sb.from("follows").update({status:"accepted"}).eq("id",id);
   if(error){toast(error.message);return}
-  toast("Friends! 💖");await loadMine();route();
+  toast("Friends!");await loadMine();route();
 }
 async function declineReq(id){await sb.from("follows").delete().eq("id",id);await loadMine();route()}
 async function unfriend(targetId){
@@ -527,7 +552,7 @@ async function blockPersona(pid,kind){
   const{error}=await sb.from("blocks").insert({blocker:session.user.id,blocked_persona:pid,kind});
   if(error&&!error.message.includes("duplicate")){toast(error.message);return}
   if(kind==="block")await unfriendQuiet(pid);
-  await loadMine();toast(kind==="block"?"Blocked 🚫":"Muted 🔇");go("");
+  await loadMine();toast(kind==="block"?"Blocked":"Muted");go("");
 }
 async function unfriendQuiet(targetId){
   const ids=myPersonas.map(m=>m.id);
@@ -536,7 +561,7 @@ async function unfriendQuiet(targetId){
 
 // ---------- composer ----------
 function composerHtml(p){
-  return `<div class="card"><h3>✍️ New post</h3>
+  return `<div class="card"><h3>${ico("pen")}New post</h3>
     <input id="npTitle" placeholder="Title (e.g. Review: Lenovo Legion 9i)">
     <textarea id="npBody" placeholder="What's on your mind? Reviews, recommendations, thoughts…" style="margin-top:8px"></textarea>
     <div class="row" style="margin-top:8px">
@@ -544,10 +569,10 @@ function composerHtml(p){
       <div><input id="npMedia" placeholder="image / gif / video / YouTube URL"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
-      <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="npReel"> 📱 Reel (vertical video)</label>
-      <button class="btn sm sec" onclick="uploadTo('npMedia',true)">⬆ Upload (auto-watermarked)</button>
-      <button class="btn sm sec" onclick="aiPrompt()">🤖 Copy AI writing prompt</button>
-      <button class="btn sm" style="margin-left:auto" onclick="publishPost()">🚀 Publish</button>
+      <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="npReel"> Reel (vertical video)</label>
+      <button class="btn sm sec" onclick="uploadTo('npMedia',true)">Upload (auto-watermarked)</button>
+      <button class="btn sm sec" onclick="aiPrompt()">Copy AI writing prompt</button>
+      <button class="btn sm" style="margin-left:auto" onclick="publishPost()">Publish</button>
     </div>
     <p class="muted" style="margin-top:6px">Uploaded images get your page URL watermarked into the pixels. (No system can stop screenshots entirely.)</p></div>`;
 }
@@ -560,7 +585,7 @@ async function publishPost(){
   if(!d.title&&!d.body&&!d.media_url){toast("Write or add something first!");return}
   const{error}=await sb.from("posts").insert(d);
   if(error){toast(error.message);return}
-  toast("Posted! 🎉");renderPersonaPage(p.handle,true);
+  toast("Posted!");renderPersonaPage(p.handle,true);
 }
 async function deletePost(id){
   if(!confirm("Delete this post?"))return;
@@ -575,19 +600,19 @@ function aiPrompt(){
 // ---------- studio ----------
 function renderStudio(){
   if(!session){renderSignin();return}
-  const reqHtml=pendingIn.length?`<div class="card"><h3>💌 Friend requests (${pendingIn.length})</h3>
+  const reqHtml=pendingIn.length?`<div class="card"><h3>${ico("mail")}Friend requests (${pendingIn.length})</h3>
     ${pendingIn.map(r=>{const f=r.personas;const mine=myPersonas.find(m=>m.id===r.target);
       return `<div class="t8pick"><img src="${esc(f?f.avatar_url:"")}" onerror="this.style.visibility='hidden'">
-      <b>★ ${esc(f?f.name:"?")}</b><span class="muted">wants to be friends with ${esc(mine?mine.name:"you")}</span>
-      <span style="margin-left:auto"><button class="btn sm" onclick="acceptReq('${r.id}')">✅ Accept</button>
+      <b>${esc(f?f.name:"?")}</b><span class="muted">wants to be friends with ${esc(mine?mine.name:"you")}</span>
+      <span style="margin-left:auto"><button class="btn sm" onclick="acceptReq('${r.id}')">Accept</button>
       <button class="btn danger sm" onclick="declineReq('${r.id}')">✕</button></span></div>`}).join("")}</div>`:"";
-  const blockHtml=myBlocks.length?`<div class="card"><h3>🚫 Blocked &amp; muted</h3>
-    ${myBlocks.map(b=>`<span class="chip">${b.kind==="block"?"🚫":"🔇"} ${esc(b.blocked_persona.slice(0,8))}…
+  const blockHtml=myBlocks.length?`<div class="card"><h3>${ico("shield")}Blocked &amp; muted</h3>
+    ${myBlocks.map(b=>`<span class="chip">${b.kind==="block"?"blocked":"muted"} · ${esc(b.blocked_persona.slice(0,8))}…
     <button class="btn danger sm" onclick="removeBlock('${b.id}')">✕</button></span>`).join("")}
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
-  const beHtml=`<div class="card"><h3>🤖 AI Models (linked to your main account)</h3>
+  const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Any OpenAI-compatible API: OpenRouter, xAI Grok, local Ollama. Assign models per-persona and per-task. Keys are stored under your account only — never visible to anyone else.</p>
-    ${myBackends.map(b=>`<div class="t8pick"><b>🧠 ${esc(b.name)}</b><span class="muted">${esc(b.model)} · ${esc(b.base_url)}</span>
+    ${myBackends.map(b=>`<div class="t8pick"><b>${esc(b.name)}</b><span class="muted">${esc(b.model)} · ${esc(b.base_url)}</span>
       <button class="btn danger sm" style="margin-left:auto" onclick="deleteBackend('${b.id}')">✕</button></div>`).join("")||""}
     <div class="row" style="margin-top:8px">
       <div><input id="nbName" placeholder="name (e.g. Grok — NSFW ok)"></div>
@@ -598,20 +623,20 @@ function renderStudio(){
       <div><input id="nbModel" placeholder="model id"></div>
     </div>
     <button class="btn sm" style="margin-top:8px" onclick="addBackend()">+ Link model</button></div>`;
-  const tkHtml=`<div class="card"><h3>⏰ Scheduled tasks (persona + model + job)</h3>
+  const tkHtml=`<div class="card"><h3>${ico("clock")}Scheduled tasks (persona + model + job)</h3>
     ${myTasks.map(t=>{const p=myPersonas.find(x=>x.id===t.persona_id);const b=myBackends.find(x=>x.id===t.backend_id);
-      return `<div class="t8pick"><b>⚡ ${esc(t.name)}</b>
-      <span class="muted">${p?"★ "+esc(p.name):"(no persona)"} · ${esc(t.task_type)} · ${esc(t.cadence)} · ${b?"🧠 "+esc(b.name):"🧠 default"}${t.last_run?" · last run "+new Date(t.last_run).toLocaleDateString():""}</span>
+      return `<div class="t8pick"><b>${esc(t.name)}</b>
+      <span class="muted">${p?""+esc(p.name):"(no persona)"} · ${esc(t.task_type)} · ${esc(t.cadence)} · ${b?""+esc(b.name):"default"}${t.last_run?" · last run "+new Date(t.last_run).toLocaleDateString():""}</span>
       <span style="margin-left:auto"><button class="btn sm" onclick="runTask('${t.id}')">▶ Run</button>
       <button class="btn danger sm" onclick="deleteTask('${t.id}')">✕</button></span></div>`}).join("")||'<p class="muted">No tasks yet.</p>'}
     <hr>
     <div class="row">
       <div><label>Task name</label><input id="tkName" placeholder="Morning news scan — Sophia"></div>
-      <div><label>Persona</label><select id="tkPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">★ ${esc(p.name)}</option>`).join("")}</select></div>
+      <div><label>Persona</label><select id="tkPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
       <div><label>Job type</label><select id="tkType">${Object.keys(TASK_TYPES).map(k=>`<option value="${k}">${k}</option>`).join("")}</select></div>
     </div>
     <div class="row">
-      <div><label>AI model</label><select id="tkBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}">🧠 ${esc(b.name)}</option>`).join("")}</select></div>
+      <div><label>AI model</label><select id="tkBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("")}</select></div>
       <div><label>Cadence</label><select id="tkCad"><option>manual</option><option>daily</option><option>weekly</option></select></div>
     </div>
     <label>Extra instructions (optional)</label><textarea id="tkInstr" placeholder="e.g. focus on budget laptops this month"></textarea>
@@ -620,23 +645,23 @@ function renderStudio(){
   app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h3 class="secthead" style="margin:0">Matrix</h3>
     <div style="display:flex;gap:8px">
-      <button class="btn sec" onclick="openHQ()">🧠 HQ Assistant</button>
+      <button class="btn sec" onclick="openHQ()">HQ Assistant</button>
       <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
   ${reqHtml}
   <div class="pgrid">${myPersonas.map(p=>`
     <div class="pcard" style="--pc:${esc(p.theme)}">
       <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
       <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
-      <b>★ ${esc(p.name)}</b><span class="muted">@${esc(p.handle)} · ${esc(p.visibility)}</span>
+      <b>${esc(p.name)}</b><span class="muted">@${esc(p.handle)} · ${esc(p.visibility)}</span>
       <div style="margin-top:8px"><button class="btn sm" onclick="go('p/${esc(p.handle)}')">View</button>
       <button class="btn sec sm" onclick="go('edit/${p.id}')">Edit</button>
-      <button class="btn sec sm" onclick="openPersonaChat('${p.id}')">💬 Chat</button></div></div>
-    </div>`).join("")||'<div class="empty">No personas yet — create your first! ✨</div>'}</div>
+      <button class="btn sec sm" onclick="openPersonaChat('${p.id}')">Chat</button></div></div>
+    </div>`).join("")||'<div class="empty">No personas yet — create your first!</div>'}</div>
   ${beHtml}
   ${tkHtml}
   ${blockHtml}
   ${settingsCard()}
-  <div class="card"><h3>🔐 Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
+  <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
 
@@ -655,7 +680,7 @@ async function renderEdit(id){
     if((p.top8||[]).length){const{data:t}=await sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8);
       editT8=(p.top8||[]).map(tid=>(t||[]).find(x=>x.id===tid)).filter(Boolean)}else editT8=[];
   }else{editLinks=[];editT8=[]}
-  app.innerHTML=`<div class="card"><h3>${editId?"✏️ Edit":"✨ New"} Persona</h3>
+  app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
     <div class="row">
       <div><label>Name</label><input id="eName" value="${esc(p.name||"")}"></div>
       <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}"></div>
@@ -663,36 +688,36 @@ async function renderEdit(id){
     <div class="row">
       <div><label>Rating</label><select id="eNsfw"><option value="0">SFW</option><option value="1" ${p.nsfw?"selected":""}>NSFW / 18+</option></select></div>
       <div><label>Who can see this page?</label><select id="eVis">
-        <option value="public" ${p.visibility==="public"?"selected":""}>🌍 Public — in discover &amp; search</option>
-        <option value="unlisted" ${p.visibility==="unlisted"?"selected":""}>🔗 Unlisted — only via direct link</option>
-        <option value="private" ${p.visibility==="private"?"selected":""}>🔒 Private — accepted friends only</option>
+        <option value="public" ${p.visibility==="public"?"selected":""}>Public — in discover &amp; search</option>
+        <option value="unlisted" ${p.visibility==="unlisted"?"selected":""}>Unlisted — only via direct link</option>
+        <option value="private" ${p.visibility==="private"?"selected":""}>Private — accepted friends only</option>
       </select></div>
       <div><label>Theme color</label><input id="eTheme" type="color" value="${esc(p.theme||"#ff4fa3")}" style="height:38px;padding:2px"></div>
     </div>
     <label>Tagline</label><input id="eTagline" value="${esc(p.tagline||"")}">
     <label>Bio / About (shown on page)</label><textarea id="eBio">${esc(p.bio||"")}</textarea>
     <div id="advGate" class="card" style="margin-top:14px;${(p.purpose||p.voice||p.topics)?"display:none":""}">
-      <h3>🧭 Flesh out this persona</h3>
+      <h3>Flesh out this persona</h3>
       <p class="muted">Two quick questions — we'll suggest topics, a voice, and which accounts this kind of persona usually needs. You can adjust everything after.</p>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button class="btn" onclick="openWizard()">🧭 Quick setup</button>
-        <button class="btn sec" onclick="openBuilder()">🪄 Build with AI instead</button>
-        <button class="btn sec" onclick="document.getElementById('advWrap').style.display='';document.getElementById('advGate').style.display='none'">✍️ Fill manually</button>
+        <button class="btn" onclick="openWizard()">Quick setup</button>
+        <button class="btn sec" onclick="openBuilder()">Build with AI instead</button>
+        <button class="btn sec" onclick="document.getElementById('advWrap').style.display='';document.getElementById('advGate').style.display='none'">Fill manually</button>
       </div></div>
     <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
     <hr>
-    <h3>🖼 Page looks</h3>
-    ${["avatar_url:Profile image","banner_url:Banner image (wide)","bg_url:Background image (whole page)","feed_img_url:Feed header image","music_url:Profile song (YouTube / Spotify / SoundCloud / mp3 URL)","live_url:Live stream (your Twitch / YouTube / Kick URL — shows a 🔴 LIVE player while set)"].map(f=>{
+    <h3>Page looks</h3>
+    ${["avatar_url:Profile image","banner_url:Banner image (wide)","bg_url:Background image (whole page)","feed_img_url:Feed header image","music_url:Profile song (YouTube / Spotify / SoundCloud / mp3 URL)","live_url:Live stream (your Twitch / YouTube / Kick URL — shows a LIVE player while set)"].map(f=>{
       const[k,lbl]=f.split(":");
       return `<label>${lbl}</label><div class="linkrow"><input id="e_${k}" value="${esc(p[k]||"")}" placeholder="https://…">
-      ${["avatar_url","banner_url","bg_url","feed_img_url"].includes(k)?`<button class="btn sec sm" onclick="uploadTo('e_${k}',false)">⬆</button>`:""}</div>`}).join("")}
+      ${["avatar_url","banner_url","bg_url","feed_img_url"].includes(k)?`<button class="btn sec sm" onclick="uploadTo('e_${k}',false)">Upload</button>`:""}</div>`}).join("")}
     <label>Show on my page (uncheck to hide a section)</label>
     <div id="eMods" style="display:flex;gap:12px;flex-wrap:wrap">
-      ${[["music","🎵 Song"],["about","💫 About"],["links","🔗 Links"],["top8","👑 Top 8"],["live","🔴 Live"],["albums","📸 Albums"],["feed","📖 Feed"]].map(([k,l])=>
+      ${[["music","Song"],["about","About"],["links","Links"],["top8","Top 8"],["live","Live"],["albums","Albums"],["feed","Feed"]].map(([k,l])=>
         `<label style="margin:0;display:flex;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" data-k="${k}" ${(p.modules||{})[k]!==false?"checked":""}> ${l}</label>`).join("")}
     </div>
     <hr>
-    <h3>🧠 Personality (drives AI content and your page's vibe)</h3>
+    <h3>Personality (drives AI content and your page's vibe)</h3>
     <label>Purpose</label><textarea id="ePurpose">${esc(p.purpose||"")}</textarea>
     <label>Personality / voice</label><textarea id="eVoice">${esc(p.voice||"")}</textarea>
     <div class="row">
@@ -702,40 +727,40 @@ async function renderEdit(id){
     <label>Default hashtags</label><input id="eHashtags" value="${esc(p.hashtags||"")}">
     <label>Never do (hard rules)</label><textarea id="eDont">${esc(p.dont||"")}</textarea>
     <label>Dedicated AI model for this persona's chatbot &amp; tasks</label>
-    <select id="eBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}" ${p.ai_backend===b.id?"selected":""}>🧠 ${esc(b.name)}</option>`).join("")}</select>
+    <select id="eBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}" ${p.ai_backend===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select>
     <hr>
-    <h3>🔗 Social &amp; gaming links (public — shown on your page)</h3>
+    <h3>Social &amp; gaming links (public — shown on your page)</h3>
     <div id="eLinks"></div>
     <div class="linkrow">
-      <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.icon} ${v.name}</option>`).join("")}</select>
+      <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select>
       <input id="lHandle" placeholder="@handle or gamertag">
       <input id="lUrl" placeholder="https://link (optional)">
       <button class="btn sm" onclick="addLink()">+</button>
     </div>
     <hr>
-    <h3>👑 Top 8 (your favorite personas, in order)</h3>
+    <h3>Top8 (your favorite personas, in order)</h3>
     <div id="eT8"></div>
-    <div class="linkrow"><input id="t8q" placeholder="search personas to add…" onkeydown="if(event.key==='Enter')t8Search()"><button class="btn sm" onclick="t8Search()">🔍</button></div>
+    <div class="linkrow"><input id="t8q" placeholder="search personas to add…" onkeydown="if(event.key==='Enter')t8Search()"><button class="btn sm" onclick="t8Search()">Search</button></div>
     <div id="t8results"></div>
     <hr>
-    <h3>📸 Albums (thumbnails that send viewers to your OnlyFans / Instagram / affiliate links)</h3>
+    <h3>Albums (thumbnails that send viewers to your OnlyFans / Instagram / affiliate links)</h3>
     ${editId?`<div id="eAlbums"><p class="muted">Loading albums…</p></div>
     <div class="linkrow" style="margin-top:8px">
       <input id="nAlbTitle" placeholder="album title (e.g. Latest sets · Laptops I recommend)">
-      <select id="nAlbKind" style="max-width:150px"><option value="gallery">📸 Gallery</option><option value="affiliate">🛒 Sponsored</option></select>
+      <select id="nAlbKind" style="max-width:150px"><option value="gallery">Gallery</option><option value="affiliate">Sponsored</option></select>
       <button class="btn sm" onclick="createAlbum()">+ Album</button>
     </div>
     <p class="muted">Gallery items link out to wherever the full content lives (OnlyFans post, IG, Snap…). Sponsored items link to your affiliate/product URLs and get a "sponsored" label.</p>`
     :'<p class="muted">Save the persona first, then come back to add albums.</p>'}
     <hr>
-    <h3>🔐 Private notes (only you can ever see these — account emails, reminders. Never store passwords.)</h3>
+    <h3>Private notes (only you can ever see these — account emails, reminders. Never store passwords.)</h3>
     <textarea id="eNotes">${esc(notes.content||"")}</textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:space-between">
       ${editId?`<button class="btn danger" onclick="deletePersona()">Delete persona</button>`:"<span></span>"}
       <div style="display:flex;gap:8px">
         <button class="btn sec" onclick="go('studio')">Cancel</button>
-        <button class="btn" onclick="savePersona()">💾 Save</button>
+        <button class="btn" onclick="savePersona()">Save</button>
       </div>
     </div></div>`;
   renderEditLinks();renderT8();
@@ -756,7 +781,7 @@ function renderEditAlbums(){
   const el=document.getElementById("eAlbums");if(!el)return;
   el.innerHTML=editAlbums.map(a=>`
     <div class="card" style="padding:12px">
-      <div style="display:flex;align-items:center;gap:8px"><b>${a.kind==="affiliate"?"🛒":"📸"} ${esc(a.title)}</b>
+      <div style="display:flex;align-items:center;gap:8px"><b>${esc(a.title)}</b>
       ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}
       <button class="btn danger sm" style="margin-left:auto" onclick="deleteAlbum('${a.id}')">Delete album</button></div>
       <div class="albgrid">${(a.items||[]).map(it=>`<span class="albitem"><img src="${esc(it.thumb_url)}" onerror="this.style.opacity=.2">
@@ -764,7 +789,7 @@ function renderEditAlbums(){
         <span class="goicon" style="cursor:pointer" onclick="deleteAlbumItem('${it.id}')">✕</span></span>`).join("")}</div>
       <div class="linkrow" style="margin-top:8px">
         <input id="ait_${a.id}" placeholder="thumbnail URL">
-        <button class="btn sec sm" onclick="uploadTo('ait_${a.id}',false)">⬆</button>
+        <button class="btn sec sm" onclick="uploadTo('ait_${a.id}',false)">Upload</button>
         <input id="aic_${a.id}" placeholder="caption" style="max-width:130px">
         <input id="ail_${a.id}" placeholder="${a.kind==="affiliate"?"affiliate/product URL":"destination URL (OF post, IG, Snap…)"}">
         <button class="btn sm" onclick="addAlbumItem('${a.id}')">+</button>
@@ -781,7 +806,7 @@ async function createAlbum(){
 async function deleteAlbum(id){if(!confirm("Delete this album and its items?"))return;await sb.from("albums").delete().eq("id",id);loadEditAlbums()}
 async function addAlbumItem(aid){
   const thumb=document.getElementById("ait_"+aid).value.trim();
-  if(!thumb){toast("Add a thumbnail first (URL or ⬆ upload)");return}
+  if(!thumb){toast("Add a thumbnail first (URL or upload)");return}
   const a=editAlbums.find(x=>x.id===aid);
   const{error}=await sb.from("album_items").insert({album_id:aid,thumb_url:thumb,
     caption:document.getElementById("aic_"+aid).value.trim(),
@@ -793,7 +818,7 @@ async function deleteAlbumItem(id){await sb.from("album_items").delete().eq("id"
 function renderEditLinks(){
   document.getElementById("eLinks").innerHTML=editLinks.map((l,i)=>{
     const pl=PLATS[l.platform]||PLATS.other;
-    return `<div class="linkrow"><span class="chip">${pl.icon} ${esc(l.handle||pl.name)}</span>
+    return `<div class="linkrow"><span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>
     <span class="muted" style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(l.url)}</span>
     <button class="btn danger sm" onclick="editLinks.splice(${i},1);renderEditLinks()">✕</button></div>`}).join("")||'<p class="muted">No links yet.</p>';
 }
@@ -806,7 +831,7 @@ function addLink(){
 }
 function renderT8(){
   document.getElementById("eT8").innerHTML=editT8.map((t,i)=>`
-    <div class="t8pick"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'"><b>★ ${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
+    <div class="t8pick"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'"><b>${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
     <span style="margin-left:auto">
     <button class="btn sec sm" ${i===0?"disabled":""} onclick="[editT8[${i-1}],editT8[${i}]]=[editT8[${i}],editT8[${i-1}]];renderT8()">▲</button>
     <button class="btn danger sm" onclick="editT8.splice(${i},1);renderT8()">✕</button></span></div>`).join("")||'<p class="muted">Empty — search below to add up to 8.</p>';
@@ -815,7 +840,7 @@ async function t8Search(){
   const q=document.getElementById("t8q").value.trim();if(!q)return;
   const{data}=await sb.from("personas").select("id,handle,name,avatar_url").or(`name.ilike.%${q}%,handle.ilike.%${q}%`).limit(8);
   document.getElementById("t8results").innerHTML=(data||[]).filter(d=>!editT8.some(t=>t.id===d.id)&&d.id!==editId).map(d=>
-    `<span class="chip" onclick='t8Add(${JSON.stringify(d).replace(/'/g,"&#39;")})'>+ ★ ${esc(d.name)} @${esc(d.handle)}</span>`).join("")||'<p class="muted">No matches.</p>';
+    `<span class="chip" onclick='t8Add(${JSON.stringify(d).replace(/'/g,"&#39;")})'>+ ${esc(d.name)} @${esc(d.handle)}</span>`).join("")||'<p class="muted">No matches.</p>';
 }
 function t8Add(d){if(editT8.length>=8){toast("Top 8 is full!");return}editT8.push(d);document.getElementById("t8results").innerHTML="";renderT8()}
 async function savePersona(){
@@ -845,7 +870,7 @@ async function savePersona(){
   await sb.from("private_notes").delete().eq("persona_id",pid);
   const nc=document.getElementById("eNotes").value.trim();
   if(nc)await sb.from("private_notes").insert({persona_id:pid,content:nc});
-  await loadMine();toast("Saved ✨");go("p/"+handle);
+  await loadMine();toast("Saved");go("p/"+handle);
 }
 async function deletePersona(){
   if(!confirm("Delete this persona, its page, links and all its posts? This cannot be undone."))return;
@@ -872,10 +897,10 @@ function openChat(opts){
   closeChat();
   chatCtx={...opts,busy:false,messages:JSON.parse(localStorage.getItem(opts.storeKey)||"[]")};
   const d=document.createElement("div");d.id="chatov";
-  d.innerHTML=`<div class="ch">🤖 ${esc(opts.title)}
+  d.innerHTML=`<div class="ch">${esc(opts.title)}
     <span style="margin-left:auto;display:flex;gap:6px">
-    ${opts.extract?`<button class="btn sm" style="background:#fff;color:var(--accent2)" onclick="chatExtract()">✨ Apply to profile</button>`:""}
-    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="localStorage.removeItem(chatCtx.storeKey);chatCtx.messages=[];renderChatMsgs()">🧹</button>
+    ${opts.extract?`<button class="btn sm" style="background:#fff;color:var(--accent2)" onclick="chatExtract()">Apply to profile</button>`:""}
+    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="localStorage.removeItem(chatCtx.storeKey);chatCtx.messages=[];renderChatMsgs()">Clear</button>
     <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="closeChat()">✕</button></span></div>
     <div class="cm" id="chatMsgs"></div>
     <div class="ci"><textarea id="chatIn" placeholder="type…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
@@ -888,8 +913,8 @@ function closeChat(){const d=document.getElementById("chatov");if(d)d.remove();c
 function renderChatMsgs(){
   const el=document.getElementById("chatMsgs");if(!el||!chatCtx)return;
   el.innerHTML=chatCtx.messages.map(m=>`<div class="cmsg ${m.role==="user"?"u":"a"}">${esc(m.content)}</div>`).join("")
-    +(chatCtx.busy?'<div class="cmsg a">…thinking ✨</div>':"")
-    +(chatCtx.messages.length?`<div class="center" style="margin:6px 0"><button class="btn sec sm" onclick="copyText(chatCtx.messages.filter(m=>m.role==='assistant').slice(-1)[0]?.content||'')">📋 Copy last reply</button></div>`:"");
+    +(chatCtx.busy?'<div class="cmsg a">…thinking</div>':"")
+    +(chatCtx.messages.length?`<div class="center" style="margin:6px 0"><button class="btn sec sm" onclick="copyText(chatCtx.messages.filter(m=>m.role==='assistant').slice(-1)[0]?.content||'')">Copy last reply</button></div>`:"");
   el.scrollTop=el.scrollHeight;
 }
 async function chatSend(){
@@ -899,7 +924,7 @@ async function chatSend(){
   try{
     const reply=await callAI(chatCtx.backendId,[{role:"system",content:chatCtx.system},...chatCtx.messages]);
     chatCtx.messages.push({role:"assistant",content:reply});
-  }catch(e){chatCtx.messages.push({role:"assistant",content:"⚠ "+e.message})}
+  }catch(e){chatCtx.messages.push({role:"assistant",content:"Error: "+e.message})}
   chatCtx.busy=false;localStorage.setItem(chatCtx.storeKey,JSON.stringify(chatCtx.messages.slice(-40)));renderChatMsgs();
 }
 function openHQ(){
@@ -916,14 +941,14 @@ function openPersonaChat(pid){
 }
 // ----- scripted setup wizard (no AI needed) -----
 const CATS={
-adult:{label:"🔞 Adult creator",nsfw:true,voice:"Flirty, confident, playful; teasing but warm; emoji-friendly",purpose:"Grow a fanbase and funnel followers to premium content",topics:"behind the scenes, lifestyle, teasers, fan Q&A",hashtags:"#exclusive #newpost",plats:["onlyfans","twitter","reddit","telegram","snapchat","patreon"]},
-reviewer:{label:"⭐ Product reviewer",voice:"Honest, detailed, consumer-first; never hypes without receipts",purpose:"Build trust through honest reviews and earn through affiliate links",topics:"product reviews, comparisons, buying guides, deals",hashtags:"#review #worthit",plats:["youtube","amazon","website","twitter","tiktok","instagram"]},
-gamer:{label:"🎮 Gamer / streamer",voice:"Energetic, meme-fluent, community-first",purpose:"Grow a gaming community around streams and clips",topics:"gameplay clips, stream highlights, game news, community events",hashtags:"#gaming #live",plats:["twitch","discord","youtube","steam","tiktok","twitter"]},
-artist:{label:"🎨 Artist / musician",voice:"Creative, personal, process-focused",purpose:"Share work, grow an audience, and sell art or music",topics:"works in progress, finished pieces, process videos, releases",hashtags:"#art #wip",plats:["instagram","youtube","tiktok","patreon","etsy","website"]},
-hobby:{label:"💡 Hobby / fan page",voice:"Enthusiastic superfan energy, welcoming to newcomers",purpose:"Celebrate the topic and build a fan community",topics:"news, deep dives, hot takes, community highlights",hashtags:"#fans #community",plats:["instagram","reddit","facebook","discord","twitter"]},
-business:{label:"💼 Business / services",voice:"Professional but human; helpful, clear, credible",purpose:"Win clients and build reputation",topics:"tips, case studies, offers, testimonials",hashtags:"#smallbusiness",plats:["website","linkedin","facebook","instagram","gmail","yelp"]},
-lifestyle:{label:"🌸 Lifestyle influencer",voice:"Aspirational but relatable, upbeat, story-driven",purpose:"Grow an audience and land brand/affiliate deals",topics:"daily life, recommendations, hauls, routines",hashtags:"#lifestyle #dailyvlog",plats:["instagram","tiktok","youtube","snapchat","amazon"]},
-blogger:{label:"🕶 Anonymous blogger",voice:"Candid, thoughtful, unfiltered — identity stays hidden",purpose:"Publish honest writing while staying anonymous",topics:"essays, observations, commentary",hashtags:"#blog",plats:["website","reddit","twitter","telegram","email"]}};
+adult:{label:"Adult creator",nsfw:true,voice:"Flirty, confident, playful; teasing but warm; emoji-friendly",purpose:"Grow a fanbase and funnel followers to premium content",topics:"behind the scenes, lifestyle, teasers, fan Q&A",hashtags:"#exclusive #newpost",plats:["onlyfans","twitter","reddit","telegram","snapchat","patreon"]},
+reviewer:{label:"Product reviewer",voice:"Honest, detailed, consumer-first; never hypes without receipts",purpose:"Build trust through honest reviews and earn through affiliate links",topics:"product reviews, comparisons, buying guides, deals",hashtags:"#review #worthit",plats:["youtube","amazon","website","twitter","tiktok","instagram"]},
+gamer:{label:"Gamer / streamer",voice:"Energetic, meme-fluent, community-first",purpose:"Grow a gaming community around streams and clips",topics:"gameplay clips, stream highlights, game news, community events",hashtags:"#gaming #live",plats:["twitch","discord","youtube","steam","tiktok","twitter"]},
+artist:{label:"Artist / musician",voice:"Creative, personal, process-focused",purpose:"Share work, grow an audience, and sell art or music",topics:"works in progress, finished pieces, process videos, releases",hashtags:"#art #wip",plats:["instagram","youtube","tiktok","patreon","etsy","website"]},
+hobby:{label:"Hobby / fan page",voice:"Enthusiastic superfan energy, welcoming to newcomers",purpose:"Celebrate the topic and build a fan community",topics:"news, deep dives, hot takes, community highlights",hashtags:"#fans #community",plats:["instagram","reddit","facebook","discord","twitter"]},
+business:{label:"Business / services",voice:"Professional but human; helpful, clear, credible",purpose:"Win clients and build reputation",topics:"tips, case studies, offers, testimonials",hashtags:"#smallbusiness",plats:["website","linkedin","facebook","instagram","gmail","yelp"]},
+lifestyle:{label:"Lifestyle influencer",voice:"Aspirational but relatable, upbeat, story-driven",purpose:"Grow an audience and land brand/affiliate deals",topics:"daily life, recommendations, hauls, routines",hashtags:"#lifestyle #dailyvlog",plats:["instagram","tiktok","youtube","snapchat","amazon"]},
+blogger:{label:"Anonymous blogger",voice:"Candid, thoughtful, unfiltered — identity stays hidden",purpose:"Publish honest writing while staying anonymous",topics:"essays, observations, commentary",hashtags:"#blog",plats:["website","reddit","twitter","telegram","email"]}};
 const VIBES=["funny","flirty","professional","edgy","wholesome","snarky","nerdy","chill","chaotic","mysterious"];
 const GOALS={grow:"grow a big audience",money:"monetize and sell",community:"build a tight community",fun:"just for fun"};
 let wiz={cats:[],vibes:[],goal:"grow"};
@@ -966,13 +991,13 @@ function wizStep2(){
 }
 function wizStep3(){
   const c=wizMerged();
-  document.getElementById("wizBox").innerHTML=`<h2>✨ Suggested accounts for this persona</h2>
+  document.getElementById("wizBox").innerHTML=`<h2>Suggested accounts for this persona</h2>
     <p class="muted">Personas like this usually live on these platforms. Keep the ones you want — we'll add them to your links list so you can drop in handles as you create them.</p>
-    <div id="wizPlats">${c.plats.map(k=>`<span class="wizchip on" data-p="${k}" onclick="this.classList.toggle('on')">${PLATS[k].icon} ${PLATS[k].name}</span>`).join("")}</div>
+    <div id="wizPlats">${c.plats.map(k=>`<span class="wizchip on" data-p="${k}" onclick="this.classList.toggle('on')">${PLATS[k].name}</span>`).join("")}</div>
     <p class="muted" style="margin-top:10px">We'll also pre-fill topics, voice, purpose and hashtags — everything stays editable.</p>
     <div style="margin-top:14px;display:flex;gap:8px">
       <button class="btn sec sm" onclick="wizStep2()">◀ Back</button>
-      <button class="btn" onclick="wizApply()">✅ Apply</button></div>`;
+      <button class="btn" onclick="wizApply()">Apply</button></div>`;
 }
 function wizApply(){
   const c=wizMerged();
@@ -986,7 +1011,7 @@ function wizApply(){
     if(!editLinks.some(l=>l.platform===k))editLinks.push({platform:k,handle:"",url:"",sort:editLinks.length});
   });
   document.getElementById("advWrap").style.display="";document.getElementById("advGate").style.display="none";
-  renderEditLinks();wizClose();toast("Persona drafted ✨ Tweak anything, then Save!");
+  renderEditLinks();wizClose();toast("Persona drafted Tweak anything, then Save!");
 }
 function openBuilder(){
   if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
@@ -1007,7 +1032,7 @@ async function chatExtract(){
     for(const k in map){const el=document.getElementById(map[k]);if(el&&j[k])el.value=j[k]}
     const aw=document.getElementById("advWrap"),ag=document.getElementById("advGate");
     if(aw)aw.style.display="";if(ag)ag.style.display="none";
-    toast("Profile filled in ✨ Review it & hit Save!");closeChat();
+    toast("Profile filled in Review it & hit Save!");closeChat();
   }catch(e){toast("Couldn't parse the AI's answer — try again ("+e.message+")")}
 }
 // ----- scheduled tasks -----
@@ -1030,7 +1055,7 @@ async function createTask(){
   if(!d.name){toast("Task name required");return}
   const{error}=await sb.from("ai_tasks").insert(d);
   if(error){toast(error.message);return}
-  await loadMine();renderStudio();toast("Task saved ⏰");
+  await loadMine();renderStudio();toast("Task saved");
 }
 async function deleteTask(id){await sb.from("ai_tasks").delete().eq("id",id);await loadMine();renderStudio()}
 async function runTask(id){
@@ -1050,7 +1075,7 @@ async function addBackend(){
   if(!d.name||!d.base_url){toast("Name and base URL required");return}
   const{error}=await sb.from("ai_backends").insert(d);
   if(error){toast(error.message);return}
-  await loadMine();renderStudio();toast("Model linked 🤖");
+  await loadMine();renderStudio();toast("Model linked");
 }
 async function deleteBackend(id){await sb.from("ai_backends").delete().eq("id",id);await loadMine();renderStudio()}
 
@@ -1075,7 +1100,7 @@ async function watermarkImage(file,text){
     }
     ctx.restore();
     ctx.globalAlpha=.9;ctx.font=`800 ${Math.max(13,Math.round(fs*.7))}px 'Trebuchet MS',sans-serif`;
-    const pad=8,label="★ "+text,lw=ctx.measureText(label).width;
+    const pad=8,label=""+text,lw=ctx.measureText(label).width;
     ctx.fillStyle="rgba(0,0,0,.55)";ctx.fillRect(img.width-lw-pad*3,img.height-fs*1.6-pad,lw+pad*2,fs*1.4);
     ctx.fillStyle="#fff";ctx.fillText(label,img.width-lw-pad*2,img.height-fs*.9-pad+2);
     return new Promise(res=>c.toBlob(b=>res(new File([b],file.name.replace(/\.\w+$/,"")+"-wm.jpg",{type:"image/jpeg"})),"image/jpeg",.92));
