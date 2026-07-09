@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MyPersonas — every persona, one home</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
@@ -31,6 +32,15 @@ main{padding:24px;max-width:1160px;margin:0 auto}
 .secthead{font-size:20px;font-weight:800;color:var(--text);margin:6px 0 14px}
 .ico{width:17px;height:17px;fill:none;stroke:#1f8bff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:7px;filter:drop-shadow(0 0 2.5px rgba(70,170,255,.55))}
 .chip .ico{width:14px;height:14px;margin-right:2px;vertical-align:-2px}
+#staleBar{position:sticky;top:0;z-index:300;background:#fff3cd;color:#7a5d00;border-bottom:1px solid #e6d48a;padding:10px 20px;text-align:center;font-weight:600;font-size:14px}
+body.stale main{opacity:.55;pointer-events:none;filter:grayscale(.4)}
+.lookgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin:8px 0}
+.lookprev{height:110px;border:1px dashed #ccd0d5;border-radius:10px;background:#f7f9fb center/cover no-repeat;display:flex;align-items:center;justify-content:center}
+#sdPanel{position:fixed;right:16px;bottom:16px;width:430px;max-width:96vw;max-height:85vh;overflow-y:auto;background:#fff;border-radius:12px;z-index:185;box-shadow:0 12px 40px rgba(0,0,0,.3);display:flex;flex-direction:column}
+#sdPanel .sdh{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#0b2545;color:#7ec8ff;border-radius:12px 12px 0 0;font-weight:700}
+#sdPanel .sdb{padding:14px}
+#sdPanel .sdout{margin-top:10px;text-align:center}
+#sdPanel .sdout img{max-width:100%;border-radius:10px;border:1px solid var(--border)}
 .hero{position:relative;padding:0;overflow:hidden;min-height:420px;display:flex;align-items:center;justify-content:flex-end;background:#f4f9ff url('assets/hero.png') left center/cover no-repeat}
 .hero .ht{max-width:480px;padding:48px 56px;text-align:left}
 .hero h2{font-size:38px;font-weight:800;margin-bottom:12px;line-height:1.15;color:#0b2545}
@@ -660,6 +670,14 @@ function renderStudio(){
   ${beHtml}
   ${tkHtml}
   ${blockHtml}
+  <div class="card"><h3>${ico("node")}Apps &amp; extensions</h3>
+    <div class="t8pick"><div><b>Personas — desktop companion</b><br>
+      <span class="muted">Animated AI characters for each of your personas that hang out on your screen, react to your conversations, and help you toward your goals.</span></div>
+      <a class="btn sm" style="margin-left:auto;text-decoration:none;white-space:nowrap" href="assets/Downloads/Personas/" target="_blank">Get the app</a></div>
+    <div class="t8pick"><div><b>Concept — character studio</b><br>
+      <span class="muted">Build a persona's visual identity: reference images, tagging, generation, LoRA training on your local Stable Diffusion. Runs on your machine — start it, then open.</span></div>
+      <a class="btn sm" style="margin-left:auto;text-decoration:none;white-space:nowrap" href="http://localhost:4780" target="_blank">Open studio</a></div>
+  </div>
   ${settingsCard()}
   <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
 }
@@ -706,11 +724,24 @@ async function renderEdit(id){
       </div></div>
     <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
     <hr>
-    <h3>Page looks</h3>
-    ${["avatar_url:Profile image","banner_url:Banner image (wide)","bg_url:Background image (whole page)","feed_img_url:Feed header image","music_url:Profile song (YouTube / Spotify / SoundCloud / mp3 URL)","live_url:Live stream (your Twitch / YouTube / Kick URL — shows a LIVE player while set)"].map(f=>{
-      const[k,lbl]=f.split(":");
-      return `<label>${lbl}</label><div class="linkrow"><input id="e_${k}" value="${esc(p[k]||"")}" placeholder="https://…">
-      ${["avatar_url","banner_url","bg_url","feed_img_url"].includes(k)?`<button class="btn sec sm" onclick="uploadTo('e_${k}',false)">Upload</button>`:""}</div>`}).join("")}
+    <h3>${ico("image")}Page looks</h3>
+    <div class="lookgrid">
+    ${[["avatar_url","Profile image"],["banner_url","Banner (wide)"],["bg_url","Page background"],["feed_img_url","Feed header"]].map(([k,lbl])=>`
+      <div class="looktile">
+        <label style="margin-top:0">${lbl}</label>
+        <div class="lookprev" id="prev_${k}" style="${p[k]?`background-image:url('${esc(p[k])}')`:""}">${p[k]?"":'<span class="muted">no image</span>'}</div>
+        <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn sec sm" onclick="uploadTo('e_${k}',false)">Choose file</button>
+          <button class="btn sec sm" onclick="openSD('${k}')">Generate</button>
+          <button class="btn danger sm" onclick="setPrev('${k}','')">Clear</button>
+        </div>
+      </div>`).join("")}
+    </div>
+    <label>Profile song (YouTube / Spotify / SoundCloud / mp3 URL)</label>
+    <input id="e_music_url" value="${esc(p.music_url||"")}" placeholder="https://…">
+    <label>Live stream (your Twitch / YouTube / Kick URL — shows a LIVE player while set)</label>
+    <input id="e_live_url" value="${esc(p.live_url||"")}" placeholder="https://…">
     <label>Show on my page (uncheck to hide a section)</label>
     <div id="eMods" style="display:flex;gap:12px;flex-wrap:wrap">
       ${[["music","Song"],["about","About"],["links","Links"],["top8","Top 8"],["live","Live"],["albums","Albums"],["feed","Feed"]].map(([k,l])=>
@@ -1079,6 +1110,129 @@ async function addBackend(){
 }
 async function deleteBackend(id){await sb.from("ai_backends").delete().eq("id",id);await loadMine();renderStudio()}
 
+// ---------- image previews + Stable Diffusion character tool ----------
+function setPrev(k,url){
+  const inp=document.getElementById("e_"+k);if(inp)inp.value=url||"";
+  const pv=document.getElementById("prev_"+k);
+  if(pv){pv.style.backgroundImage=url?`url('${url}')`:"";pv.innerHTML=url?"":'<span class="muted">no image</span>'}
+}
+const SD_SIZES={avatar_url:[768,768],banner_url:[1152,640],bg_url:[1152,768],feed_img_url:[1152,512]};
+let sdTarget=null;
+function openSD(targetKey){
+  closeChat();closeSD();
+  sdTarget=targetKey||"avatar_url";
+  const name=document.getElementById("eName")?.value||"";
+  const voice=document.getElementById("eVoice")?.value||"";
+  const d=document.createElement("div");d.id="sdPanel";
+  d.innerHTML=`<div class="sdh">Character image — Stable Diffusion
+      <span style="margin-left:auto"><button class="btn sm" style="background:rgba(255,255,255,.15);box-shadow:none" onclick="closeSD()">Close</button></span></div>
+    <div class="sdb">
+      <label style="margin-top:0">Your Stable Diffusion API (AUTOMATIC1111 / Forge with --api)</label>
+      <input id="sdUrl" value="${esc(localStorage.getItem("sd_url")||"http://127.0.0.1:7860")}">
+      <div class="row">
+        <div><label>For</label><select id="sdFor" onchange="sdTarget=this.value">
+          ${Object.keys(SD_SIZES).map(k=>`<option value="${k}" ${k===sdTarget?"selected":""}>${{avatar_url:"Profile image",banner_url:"Banner",bg_url:"Page background",feed_img_url:"Feed header"}[k]}</option>`).join("")}
+        </select></div>
+        <div><label>Steps</label><input id="sdSteps" type="number" value="28" min="10" max="60"></div>
+      </div>
+      <label>Character / scene prompt</label>
+      <textarea id="sdPrompt" style="min-height:80px">${esc(name?name+", "+(voice?voice+", ":"")+"portrait, detailed, high quality":"")}</textarea>
+      <label>Negative prompt</label>
+      <input id="sdNeg" value="lowres, blurry, bad anatomy, watermark, text">
+      <button class="btn" style="margin-top:10px;width:100%" id="sdGo" onclick="sdGenerate()">Generate</button>
+      <p class="muted" style="margin-top:8px;text-align:center">Want full character consistency (references, tagging, LoRA training)?
+      <a href="http://localhost:4780" target="_blank">Open the Concept studio</a> — start it from your Extensions folder first.</p>
+      <div class="sdout" id="sdOut"></div>
+    </div>`;
+  document.body.appendChild(d);
+}
+function closeSD(){const d=document.getElementById("sdPanel");if(d)d.remove()}
+async function sdGenerate(){
+  const url=document.getElementById("sdUrl").value.trim().replace(/\/$/,"");
+  localStorage.setItem("sd_url",url);
+  const[w,h]=SD_SIZES[sdTarget]||[768,768];
+  const btn=document.getElementById("sdGo");btn.disabled=true;btn.textContent="Generating…";
+  const out=document.getElementById("sdOut");out.innerHTML='<p class="muted">Working — this can take a minute…</p>';
+  try{
+    const r=await fetch(url+"/sdapi/v1/txt2img",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({prompt:document.getElementById("sdPrompt").value,
+        negative_prompt:document.getElementById("sdNeg").value,
+        width:w,height:h,steps:parseInt(document.getElementById("sdSteps").value)||28})});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    const b64=j.images&&j.images[0];
+    if(!b64)throw new Error("no image returned");
+    out.innerHTML=`<img src="data:image/png;base64,${b64}">
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+        <button class="btn sm" onclick="sdUse('${sdTarget}')">Use this image</button>
+        <button class="btn sec sm" onclick="sdGenerate()">Try again</button></div>`;
+    out.dataset.b64=b64;
+  }catch(e){
+    out.innerHTML=`<p class="muted">Error: ${esc(e.message)}.<br>Is Stable Diffusion running with<br><code>--api --cors-allow-origins=${esc(location.origin)}</code> ?</p>`;
+  }
+  btn.disabled=false;btn.textContent="Generate";
+}
+async function sdUse(k){
+  const out=document.getElementById("sdOut");
+  const b64=out.dataset.b64;if(!b64)return;
+  toast("Uploading…");
+  try{
+    const blob=await(await fetch("data:image/png;base64,"+b64)).blob();
+    const path=`${session.user.id}/${Date.now()}-sd.png`;
+    const{error}=await sb.storage.from("media").upload(path,blob,{contentType:"image/png"});
+    if(error)throw error;
+    setPrev(k,sb.storage.from("media").getPublicUrl(path).data.publicUrl);
+    toast("Applied — remember to Save");closeSD();
+  }catch(e){toast("Upload failed: "+e.message)}
+}
+
+// ---------- session timeout warning ----------
+let sessTimer=null;
+setInterval(()=>{
+  if(!session||!session.expires_at){hideSessWarn();return}
+  const remaining=session.expires_at*1000-Date.now();
+  if(remaining<=0){hideSessWarn();markStale();session=null;updateAuthBtn();return}
+  if(remaining<120000)showSessWarn(remaining);else hideSessWarn();
+},15000);
+function showSessWarn(remaining){
+  let o=document.getElementById("sessWarn");
+  if(!o){
+    o=document.createElement("div");o.className="overlay";o.id="sessWarn";
+    o.innerHTML=`<div class="wizbox center" style="max-width:420px">
+      <h2>Still there?</h2>
+      <p>Your session is about to expire. You'll be signed out in <b id="sessCount"></b>.</p>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+        <button class="btn" onclick="extendSession()">Stay signed in</button>
+        <button class="btn sec" onclick="hideSessWarn();authAction()">Sign out now</button>
+      </div></div>`;
+    document.body.appendChild(o);
+    sessTimer=setInterval(()=>{
+      if(!session||!session.expires_at)return hideSessWarn();
+      const r=session.expires_at*1000-Date.now();
+      const el=document.getElementById("sessCount");
+      if(el)el.textContent=Math.max(0,Math.floor(r/60000))+"m "+Math.max(0,Math.floor(r/1000)%60)+"s";
+      if(r<=0)hideSessWarn();
+    },1000);
+  }
+}
+function hideSessWarn(){
+  const o=document.getElementById("sessWarn");if(o)o.remove();
+  if(sessTimer){clearInterval(sessTimer);sessTimer=null}
+}
+function markStale(){
+  if(document.getElementById("staleBar"))return;
+  document.body.classList.add("stale");
+  const b=document.createElement("div");b.id="staleBar";
+  b.innerHTML=`This page is stale — your session ended and what you see may be out of date.
+    <button class="btn sm" style="margin-left:10px" onclick="location.reload()">Refresh</button>`;
+  document.body.prepend(b);
+}
+async function extendSession(){
+  const{data,error}=await sb.auth.refreshSession();
+  if(error||!data.session){toast("Couldn't refresh — please sign in again");hideSessWarn();return}
+  session=data.session;hideSessWarn();toast("Session extended");
+}
+
 // ---------- uploads + watermarking ----------
 async function watermarkImage(file,text){
   if(!file.type.startsWith("image/")||file.type==="image/gif")return file; // gifs keep animation
@@ -1117,7 +1271,9 @@ function uploadTo(inputId,watermark){
     const path=`${session.user.id}/${Date.now()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
     const{error}=await sb.storage.from("media").upload(path,file);
     if(error){toast(error.message);return}
-    document.getElementById(inputId).value=sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+    const pub=sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+    document.getElementById(inputId).value=pub;
+    if(inputId.startsWith("e_"))setPrev(inputId.slice(2),pub);
     toast(watermark&&/^image\/(?!gif)/.test(file.type)?"Uploaded + watermarked ✓":"Uploaded ✓");
   };
   f.click();

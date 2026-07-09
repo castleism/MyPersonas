@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personas — desktop app · MyPersonas</title>
+<meta name="description" content="Personas is a free desktop app where animated AI personas lounge on your screen, react to your conversations, keep you company while you study or work, and help you hit your goals.">
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<style>
+:root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;min-height:100vh;line-height:1.55}
+header{display:flex;align-items:center;gap:14px;padding:10px 24px;background:#fff;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+header h1{font-size:24px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
+header h1 a{color:inherit;text-decoration:none}
+header .crumb{color:var(--dim);font-weight:600}
+main{padding:24px;max-width:980px;margin:0 auto}
+.hero{background:var(--panel);border-radius:12px;padding:40px 32px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.1);text-align:center}
+.hero .logo{font-size:52px}
+.hero h2{font-size:34px;font-weight:800;margin:6px 0 8px}
+.hero p{color:var(--dim);max-width:640px;margin:0 auto 22px;font-size:16px}
+.dl-buttons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;text-decoration:none}
+.btn:hover{background:var(--accent2)}
+.btn.sec{background:#e4e6eb;color:var(--text)}
+.btn.sec:hover{background:#d8dadf}
+.dl-note{color:var(--dim);font-size:12.5px}
+.card{background:var(--panel);border-radius:12px;padding:22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.card h3{font-size:20px;font-weight:800;margin-bottom:10px}
+.card p{margin-bottom:10px}
+.dim{color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px}
+.feat{background:#f7f8fa;border:1px solid var(--border);border-radius:10px;padding:16px}
+.feat .ic{font-size:24px}
+.feat h4{font-size:15px;margin:6px 0 4px}
+.feat p{font-size:13.5px;color:var(--dim);margin:0}
+ol.steps{margin:10px 0 0 20px}
+ol.steps li{margin:8px 0}
+code{background:#f0f2f5;border:1px solid var(--border);padding:1px 6px;border-radius:5px;font-size:13px}
+.adult{background:#fff8f0;border:1px solid #f0d9b5;border-radius:10px;padding:12px 16px;font-size:13px;color:#7a5d00;margin-top:14px}
+a.inline{color:var(--accent)}
+footer{text-align:center;color:var(--dim);font-size:13px;padding:24px}
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="/">MyPersonas</a></h1>
+  <span class="crumb">› Downloads › Personas</span>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="logo">🛋️</div>
+    <h2>Personas <span style="font-size:15px;color:var(--dim);font-weight:600" id="ver">v0.4.0</span></h2>
+    <p>A desktop lounge where your AI personas live — animated characters that react to your conversations, keep you company while you study or work, and help you hit your goals.</p>
+    <div class="dl-buttons" id="dl-buttons">
+      <a class="btn" id="dl-win" href="#" hidden>⬇ Windows installer</a>
+      <a class="btn" id="dl-mac" href="#" hidden>⬇ macOS</a>
+      <a class="btn" id="dl-linux" href="#" hidden>⬇ Linux</a>
+      <a class="btn" id="dl-src" href="Personas-0.4.0.zip" download>⬇ Download Personas (zip)</a>
+      <a class="btn sec" id="gh-link" href="#" hidden>All releases</a>
+    </div>
+    <div class="dl-note" id="dl-note">Free &amp; open source · Windows, macOS &amp; Linux</div>
+  </div>
+
+  <div class="card">
+    <h3>What is Personas?</h3>
+    <p>Personas is the desktop companion app of the MyPersonas project. You create personas — each with a name, personality, backstory, and interests — and give each one an animated <b>Live2D character</b>. They hang out in a cozy virtual room on your screen: they sway, blink, lip-sync while they talk, and change expression in real time based on the emotional tone of your conversation.</p>
+    <p>Every persona is wired to whichever AI model you choose — hundreds via <a class="inline" href="https://openrouter.ai">OpenRouter</a>, or free local models via <a class="inline" href="https://ollama.com">Ollama</a>. Different personas, and even different <i>goals</i> within one persona, can run on different models — so the right brain handles the right job.</p>
+  </div>
+
+  <div class="card">
+    <h3>What does it do?</h3>
+    <div class="grid">
+      <div class="feat"><div class="ic">🎭</div><h4>Living characters</h4><p>Live2D personas react instantly while replies stream — sentiment-driven expressions, lip-sync, idle motion, speech bubbles in the lounge.</p></div>
+      <div class="feat"><div class="ic">🎯</div><h4>Screen-aware focus mode</h4><p>Start a study/work session and personas whose interests match what you're doing chime in — encouragement, relevant thoughts, or a nudge if you drift to YouTube. Reads active window titles only, never screen contents.</p></div>
+      <div class="feat"><div class="ic">🗂️</div><h4>Goals → models</h4><p>Assign each goal its own AI model and project prompt. Switching goals reroutes the conversation to the right specialist.</p></div>
+      <div class="feat"><div class="ic">🧩</div><h4>Extensions</h4><p>Bundled add-ons — writing planner, bank-CSV subscription finder, daily check-in — plus a template so you (or any AI) can write and paste-install your own.</p></div>
+      <div class="feat"><div class="ic">🔀</div><h4>Model quick-switch</h4><p>Route a single reply to a different model mid-conversation, with a synopsis injected for context, then snap back.</p></div>
+      <div class="feat"><div class="ic">🔒</div><h4>Local &amp; private</h4><p>Everything stays on your machine. No account, no server, no telemetry — conversations go only to the model providers you configure.</p></div>
+    </div>
+    <div class="adult">🔞 Adult content is off by default. Adults can enable NSFW features in Settings, which route designated conversations to models whose providers permit adult roleplay.</div>
+  </div>
+
+  <div class="card">
+    <h3>Getting started</h3>
+    <ol class="steps">
+      <li><b>Installer:</b> download for your platform above and run it. <span class="dim">— or —</span> <b>Zip:</b> extract, then <code>npm install &amp;&amp; npm start</code> (needs <a class="inline" href="https://nodejs.org">Node.js</a>).</li>
+      <li>Open <b>Settings</b>, paste an <a class="inline" href="https://openrouter.ai/keys">OpenRouter API key</a> (or point at local Ollama), and refresh the model list.</li>
+      <li>Click <b>+ Persona</b> — personality, interests, pick their character.</li>
+      <li>Click them in the lounge to chat, or hit <b>🎯 Focus</b> and get to work with company.</li>
+    </ol>
+  </div>
+</main>
+
+<footer>Personas · a <a class="inline" href="/">MyPersonas</a> project</footer>
+
+<script>
+// If the Personas repo is published to GitHub with tagged releases,
+// installer buttons appear automatically. Until then the zip button serves.
+var OWNER = 'castleism', REPO = 'Personas';
+fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/releases/latest')
+  .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(function (rel) {
+    var assets = rel.assets || [];
+    function wire(id, re) {
+      var a = assets.find(function (x) { return re.test(x.name); });
+      if (a) { var el = document.getElementById(id); el.href = a.browser_download_url; el.hidden = false; }
+    }
+    wire('dl-win', /\.exe$/i);
+    wire('dl-mac', /\.dmg$/i);
+    wire('dl-linux', /\.AppImage$/i);
+    var gh = document.getElementById('gh-link');
+    gh.href = 'https://github.com/' + OWNER + '/' + REPO + '/releases';
+    gh.hidden = false;
+    document.getElementById('ver').textContent = rel.tag_name;
+    document.getElementById('dl-src').className = 'btn sec';
+    document.getElementById('dl-src').textContent = '⬇ Source (zip)';
+  })
+  .catch(function () { /* no GitHub release yet — zip download is primary */ });
+</script>
+</body>
+</html>

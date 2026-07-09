@@ -1,0 +1,11 @@
+{
+  "app": "personas",
+  "current": "Personas_v0",
+  "versions": ["Personas_v0"],
+  "release": {
+    "version": "0.4.0",
+    "zip": "Personas-0.4.0.zip",
+    "page": "index.html"
+  },
+  "note": "Each app version's source lives in its own folder (Personas_v0, Personas_v1, ...) with its own git repo — ignored by the website repo. 'current' points at the active source folder; 'release' is what the site actually ships (the zip is regenerated from the current folder's HEAD via git archive). Old version folders are kept as archives when a new one ships."
+}

@@ -1,0 +1,11 @@
+# Extension / app working copies live in their own git repos — the website repo
+# ships only the catalogs, download pages, and release zips.
+assets/Extensions/*/[A-Za-z]*_v[0-9]*/
+assets/Downloads/*/[A-Za-z]*_v[0-9]*/
+
+# local junk
+**/__pycache__/
+**/node_modules/
+**/forge-data/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8fdcff"/>
+      <stop offset="55%" stop-color="#3aa2ff"/>
+      <stop offset="100%" stop-color="#1665e0"/>
+    </linearGradient>
+    <radialGradient id="bgg" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#10254d"/>
+      <stop offset="100%" stop-color="#060d1f"/>
+    </radialGradient>
+    <filter id="fglow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bgg)"/>
+  <ellipse cx="32" cy="34" rx="22" ry="9" fill="none" stroke="#3aa2ff" stroke-width="1.4" opacity=".55" transform="rotate(-18 32 34)"/>
+  <g filter="url(#fglow)">
+    <path d="M24 50V15h12.5a10.5 10.5 0 0 1 0 21H24" fill="none" stroke="url(#pg)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <path d="M24 50V15h12.5a10.5 10.5 0 0 1 0 21H24" fill="none" stroke="#eaf7ff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+  <circle cx="49" cy="20" r="1.6" fill="#9fe0ff" opacity=".9"/>
+  <circle cx="15" cy="42" r="1.2" fill="#9fe0ff" opacity=".7"/>
+</svg>
