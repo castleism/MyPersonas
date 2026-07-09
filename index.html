@@ -631,8 +631,8 @@ async function renderEdit(id){
   }else{editLinks=[];editT8=[]}
   app.innerHTML=`<div class="card"><h3>${editId?"✏️ Edit":"✨ New"} Persona</h3>
     <div class="row">
-      <div><label>Name</label><input id="eName" value="${esc(p.name||"")}" placeholder="Sophia Imagines"></div>
-      <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}" placeholder="sophia.imagines"></div>
+      <div><label>Name</label><input id="eName" value="${esc(p.name||"")}"></div>
+      <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}"></div>
     </div>
     <div class="row">
       <div><label>Rating</label><select id="eNsfw"><option value="0">SFW</option><option value="1" ${p.nsfw?"selected":""}>NSFW / 18+</option></select></div>
@@ -643,7 +643,7 @@ async function renderEdit(id){
       </select></div>
       <div><label>Theme color</label><input id="eTheme" type="color" value="${esc(p.theme||"#ff4fa3")}" style="height:38px;padding:2px"></div>
     </div>
-    <label>Tagline</label><input id="eTagline" value="${esc(p.tagline||"")}" placeholder="AI girl clone of myself ✨">
+    <label>Tagline</label><input id="eTagline" value="${esc(p.tagline||"")}">
     <label>Bio / About (shown on page)</label><textarea id="eBio">${esc(p.bio||"")}</textarea>
     <div id="advGate" class="card" style="margin-top:14px;${(p.purpose||p.voice||p.topics)?"display:none":""}">
       <h3>🧭 Flesh out this persona</h3>
@@ -898,18 +898,33 @@ lifestyle:{label:"🌸 Lifestyle influencer",voice:"Aspirational but relatable, 
 blogger:{label:"🕶 Anonymous blogger",voice:"Candid, thoughtful, unfiltered — identity stays hidden",purpose:"Publish honest writing while staying anonymous",topics:"essays, observations, commentary",hashtags:"#blog",plats:["website","reddit","twitter","telegram","email"]}};
 const VIBES=["funny","flirty","professional","edgy","wholesome","snarky","nerdy","chill","chaotic","mysterious"];
 const GOALS={grow:"grow a big audience",money:"monetize and sell",community:"build a tight community",fun:"just for fun"};
-let wiz={cat:null,vibes:[],goal:"grow"};
+let wiz={cats:[],vibes:[],goal:"grow"};
 function openWizard(){
-  wiz={cat:null,vibes:[],goal:"grow"};
+  wiz={cats:[],vibes:[],goal:"grow"};
   const o=document.createElement("div");o.className="overlay";o.id="wizOv";
   o.innerHTML=`<div class="wizbox" id="wizBox"></div>`;
   document.body.appendChild(o);wizStep1();
 }
 function wizClose(){const o=document.getElementById("wizOv");if(o)o.remove()}
 function wizStep1(){
-  document.getElementById("wizBox").innerHTML=`<h2>1/2 · What kind of persona is this?</h2>
-    ${Object.entries(CATS).map(([k,c])=>`<span class="wizchip" onclick="wiz.cat='${k}';wizStep2()">${c.label}</span>`).join("")}
-    <div style="margin-top:14px"><button class="btn sec sm" onclick="wizClose()">Cancel</button></div>`;
+  document.getElementById("wizBox").innerHTML=`<h2>1/2 · What is this persona about?</h2>
+    <p class="muted">Select all that apply.</p>
+    <div id="wizCats">${Object.entries(CATS).map(([k,c])=>`<span class="wizchip ${wiz.cats.includes(k)?"on":""}" data-c="${k}" onclick="this.classList.toggle('on')">${c.label}</span>`).join("")}</div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn sec sm" onclick="wizClose()">Cancel</button>
+      <button class="btn" onclick="wiz.cats=[...document.querySelectorAll('#wizCats .on')].map(x=>x.dataset.c);if(!wiz.cats.length){toast('Pick at least one')}else wizStep2()">Next ➜</button></div>`;
+}
+function wizMerged(){
+  const cs=wiz.cats.map(k=>CATS[k]);
+  const uniq=a=>[...new Set(a)];
+  return{
+    nsfw:cs.some(c=>c.nsfw),
+    voice:uniq(cs.map(c=>c.voice)).join("; "),
+    purpose:uniq(cs.map(c=>c.purpose)).join(". "),
+    topics:uniq(cs.flatMap(c=>c.topics.split(",").map(t=>t.trim()))).join(", "),
+    hashtags:uniq(cs.flatMap(c=>c.hashtags.split(" "))).join(" "),
+    plats:uniq(cs.flatMap(c=>c.plats))
+  };
 }
 function wizStep2(){
   document.getElementById("wizBox").innerHTML=`<h2>2/2 · What's the vibe &amp; goal?</h2>
@@ -922,7 +937,7 @@ function wizStep2(){
       <button class="btn" onclick="wiz.goal=document.getElementById('wizGoal').value;wizStep3()">Next ➜</button></div>`;
 }
 function wizStep3(){
-  const c=CATS[wiz.cat];
+  const c=wizMerged();
   document.getElementById("wizBox").innerHTML=`<h2>✨ Suggested accounts for this persona</h2>
     <p class="muted">Personas like this usually live on these platforms. Keep the ones you want — we'll add them to your links list so you can drop in handles as you create them.</p>
     <div id="wizPlats">${c.plats.map(k=>`<span class="wizchip on" data-p="${k}" onclick="this.classList.toggle('on')">${PLATS[k].icon} ${PLATS[k].name}</span>`).join("")}</div>
@@ -932,7 +947,7 @@ function wizStep3(){
       <button class="btn" onclick="wizApply()">✅ Apply</button></div>`;
 }
 function wizApply(){
-  const c=CATS[wiz.cat];
+  const c=wizMerged();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v};
   set("eVoice",c.voice+(wiz.vibes.length?"; vibes: "+wiz.vibes.join(", "):""));
   set("ePurpose",c.purpose+" — main goal: "+GOALS[wiz.goal]+".");
