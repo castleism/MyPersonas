@@ -39,6 +39,11 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px;font-weigh
 input,select,textarea{width:100%;background:#fff;border:1px solid #ccd0d5;border-radius:8px;color:var(--text);padding:10px 12px;font-size:15px;font-family:inherit}
 textarea{resize:vertical;min-height:64px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(24,119,242,.15)}
+input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,
+select:-webkit-autofill,textarea:-webkit-autofill{
+  -webkit-box-shadow:0 0 0 1000px #fff inset!important;
+  -webkit-text-fill-color:var(--text)!important;
+  transition:background-color 99999s ease-in-out 0s}
 input[type=checkbox]{width:auto}
 .row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:170px}
 .muted{color:var(--dim);font-size:13px}
@@ -193,7 +198,11 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   <p>This app needs its Supabase backend connected. Open <b>index.html</b> and paste your <b>Project URL</b> and <b>anon key</b> into the CONFIG block at the top of the script. See SETUP-GUIDE.md.</p></div>`;
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
-  sb.auth.onAuthStateChange((_e,s)=>{session=s;updateAuthBtn();loadMine().then(route)});
+  sb.auth.onAuthStateChange((ev,s)=>{
+    session=s;updateAuthBtn();
+    if(ev==="TOKEN_REFRESHED"||ev==="INITIAL_SESSION")return; // don't re-render (would wipe forms in progress)
+    loadMine().then(route);
+  });
   sb.auth.getSession().then(({data})=>{session=data.session;updateAuthBtn();loadMine().then(route)});
   window.addEventListener("hashchange",route);
 }
@@ -795,7 +804,9 @@ function t8Add(d){if(editT8.length>=8){toast("Top 8 is full!");return}editT8.pus
 async function savePersona(){
   const handle=document.getElementById("eHandle").value.trim().toLowerCase();
   if(!/^[a-z0-9._]{3,30}$/.test(handle)){toast("Handle: 3-30 chars, lowercase letters/numbers/dots/underscores");return}
-  const d={owner:session.user.id,handle,name:document.getElementById("eName").value.trim(),
+  const{data:au}=await sb.auth.getUser();
+  if(!au||!au.user){toast("Your session expired — sign in again (your form is still here)");return}
+  const d={owner:au.user.id,handle,name:document.getElementById("eName").value.trim(),
     nsfw:document.getElementById("eNsfw").value==="1",visibility:document.getElementById("eVis").value,
     tagline:document.getElementById("eTagline").value.trim(),
     theme:document.getElementById("eTheme").value,bio:document.getElementById("eBio").value,
