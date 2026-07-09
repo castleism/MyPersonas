@@ -118,8 +118,8 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <h1 onclick="go('')">MyPersonas</h1>
   <input id="gsearch" placeholder="🔍 find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
   <nav>
-    <button onclick="go('')">🏠 Discover</button>
-    <button onclick="go('studio')">🎨 My Studio<span id="reqBadge" class="badge" style="display:none"></span></button>
+    <button onclick="go('')">Entangle</button>
+    <button onclick="go('studio')">Matrix<span id="reqBadge" class="badge" style="display:none"></span></button>
     <button id="authBtn" onclick="authAction()">Sign in</button>
   </nav>
 </header>
@@ -145,7 +145,7 @@ legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{na
 amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
-let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[];
+let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null;
 const app=document.getElementById("app");
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
 function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -200,13 +200,15 @@ function updateAuthBtn(){document.getElementById("authBtn").textContent=session?
 async function loadMine(){
   myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];
   if(!session){updateBadge();return}
-  const[{data:ps},{data:bl},{data:be},{data:tk}]=await Promise.all([
+  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof}]=await Promise.all([
     sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("blocks").select("*").eq("blocker",session.user.id),
     sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
-    sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at")
+    sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at"),
+    sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle()
   ]);
-  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];
+  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];myProfile=prof||null;
+  if(myProfile&&myProfile.prefs&&Object.keys(myProfile.prefs).length)localStorage.setItem("ps_filters",JSON.stringify(myProfile.prefs));
   if(myPersonas.length){
     const{data:reqs}=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
       .eq("status","pending").in("target",myPersonas.map(m=>m.id));
@@ -260,8 +262,29 @@ async function magicLink(){
 }
 
 // ---------- discover ----------
-function getFilters(){try{return JSON.parse(localStorage.getItem("ps_filters"))||{hideNsfw:true,hideTopics:""}}catch(e){return{hideNsfw:true,hideTopics:""}}}
-function setFilter(k,v){const f=getFilters();f[k]=v;localStorage.setItem("ps_filters",JSON.stringify(f));route()}
+function getFilters(){try{const f=JSON.parse(localStorage.getItem("ps_filters"))||{};return{hideNsfw:f.hideNsfw!==false,hideTopics:f.hideTopics||""}}catch(e){return{hideNsfw:true,hideTopics:""}}}
+function settingsCard(){
+  const f=getFilters();
+  return `<div class="card" style="margin-top:20px"><h3>⚙️ Account settings</h3>
+    <p class="muted">Private to you — never shown on any persona page.</p>
+    <div class="row">
+      <div><label>Display name (for your own reference)</label><input id="setName" value="${esc(myProfile?myProfile.display_name:"")}"></div>
+      <div><label>Signed in as</label><input value="${esc(session?session.user.email:"")}" disabled></div>
+    </div>
+    <label style="margin-top:14px">Content filters</label>
+    <label style="margin:6px 0;display:flex;align-items:center;gap:8px;color:var(--text);font-weight:400;font-size:14px">
+      <input type="checkbox" id="setNsfw" ${f.hideNsfw?"checked":""}> Hide 18+ profiles and posts from my view (on by default)</label>
+    <label>Hide topics containing (comma-separated)</label>
+    <input id="setTopics" value="${esc(f.hideTopics)}" placeholder="e.g. politics, crypto">
+    <button class="btn sm" style="margin-top:12px" onclick="saveSettings()">Save settings</button></div>`;
+}
+async function saveSettings(){
+  const prefs={hideNsfw:document.getElementById("setNsfw").checked,hideTopics:document.getElementById("setTopics").value.trim()};
+  localStorage.setItem("ps_filters",JSON.stringify(prefs));
+  const{error}=await sb.from("profiles").update({display_name:document.getElementById("setName").value.trim(),prefs}).eq("id",session.user.id);
+  if(error){toast(error.message);return}
+  await loadMine();toast("Settings saved ✓");
+}
 async function renderDiscover(q){
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
@@ -276,16 +299,7 @@ async function renderDiscover(q){
   if(!q){const{data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
     .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
     recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
-  app.innerHTML=`
-    ${(!session||!myPersonas.length)&&!q?`<div class="card hero">
-      <div class="ht">
-        <h2>Welcome to MyPersonas</h2>
-        <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
-        ${session?`<button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('edit/new')">Create your first persona</button>`:
-        `<button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>`}
-      </div>
-    </div>
-    <h3 class="secthead">What is MyPersonas?</h3>
+  const whatIs=`<h3 class="secthead">What is MyPersonas?</h3>
     <div class="feat3">
       <div class="card"><h3>🎭 A page for every side of you</h3>
         <p class="muted" style="font-size:14px">The artist. The gamer. The reviewer. The creator. The internet let us express our many personas — MyPersonas gives each one its own home page, with its own look, feed, albums, music, and friends.</p></div>
@@ -293,12 +307,29 @@ async function renderDiscover(q){
         <p class="muted" style="font-size:14px">Your personas are never linked to your identity or to each other. Share what you choose, where you choose. Private and unlisted pages, blocking, and content filters keep every space one you can find peace in.</p></div>
       <div class="card"><h3>✨ Bring them to life</h3>
         <p class="muted" style="font-size:14px">Modern tools take personas beyond a profile: give each one an AI voice that helps it write and plan, link every account it lives on across the web, go live, and connect with the personas of others.</p></div>
-    </div>`:""}
-    <div class="filterbar">
-      <label style="margin:0;display:flex;align-items:center;gap:6px"><input type="checkbox" ${f.hideNsfw?"checked":""} onchange="setFilter('hideNsfw',this.checked)"> Hide 18+ profiles</label>
-      <input type="text" placeholder="Hide topics (comma-separated)" value="${esc(f.hideTopics)}" onchange="setFilter('hideTopics',this.value)">
+    </div>`;
+  if(session&&!myPersonas.length&&!q){ // onboarding: no personas yet
+    app.innerHTML=`<div class="card hero">
+      <div class="ht">
+        <h2>Welcome to MyPersonas</h2>
+        <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
+        <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('edit/new')">Create your first persona</button>
+      </div>
     </div>
-    ${q?`<h3 class="secthead">Results for “${esc(q)}”</h3>`:'<h3 class="secthead">Discover personas</h3>'}
+    ${whatIs}
+    ${settingsCard()}`;
+    return;
+  }
+  app.innerHTML=`
+    ${!session&&!q?`<div class="card hero">
+      <div class="ht">
+        <h2>Welcome to MyPersonas</h2>
+        <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
+        <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>
+      </div>
+    </div>
+    ${whatIs}`:""}
+    ${q?`<h3 class="secthead">Results for “${esc(q)}”</h3>`:""}
     <div class="pgrid">${ps.map(pCard).join("")||'<div class="empty">Nothing here yet — be the first to create a page.</div>'}</div>
     ${recent.length?`<h3 class="secthead" style="margin-top:26px">Recent posts</h3>
     ${recent.map(r=>postHtml(r,r.personas,false)).join("")}`:""}`;
@@ -556,7 +587,7 @@ function renderStudio(){
     <button class="btn sm" style="margin-top:8px" onclick="createTask()">+ Save task</button>
     <p class="muted" style="margin-top:6px">▶ Run works now (opens the task's chat with the right persona + model). Daily/weekly auto-runs are phase 2 — they need a small server function; for now hit ▶ or ask Claude to schedule it.</p></div>`;
   app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <h3 class="secthead" style="margin:0">My Studio</h3>
+    <h3 class="secthead" style="margin:0">Matrix</h3>
     <div style="display:flex;gap:8px">
       <button class="btn sec" onclick="openHQ()">🧠 HQ Assistant</button>
       <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
@@ -573,6 +604,7 @@ function renderStudio(){
   ${beHtml}
   ${tkHtml}
   ${blockHtml}
+  ${settingsCard()}
   <div class="card"><h3>🔐 Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
@@ -794,7 +826,7 @@ function personaBlockFull(p){
 }
 async function callAI(backendId,messages){
   const b=myBackends.find(x=>x.id===backendId)||myBackends[0];
-  if(!b)throw new Error("No AI model linked. Add one in My Studio → AI Models.");
+  if(!b)throw new Error("No AI model linked. Add one in Matrix → AI Models.");
   const r=await fetch(b.base_url.replace(/\/$/,"")+"/chat/completions",{method:"POST",
     headers:{"Content-Type":"application/json","Authorization":"Bearer "+b.api_key},
     body:JSON.stringify({model:b.model,messages,max_tokens:2500})});
@@ -838,14 +870,14 @@ async function chatSend(){
   chatCtx.busy=false;localStorage.setItem(chatCtx.storeKey,JSON.stringify(chatCtx.messages.slice(-40)));renderChatMsgs();
 }
 function openHQ(){
-  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
   const summary=myPersonas.map(p=>`- ${p.name} (@${p.handle}, ${p.nsfw?"NSFW":"SFW"}): ${p.purpose||p.tagline||"no purpose yet"} | topics: ${p.topics||"?"}`).join("\n");
   openChat({title:"HQ Assistant",backendId:null,storeKey:"ps_hq_chat",
     system:`You are the HQ manager AI for a creator running a network of online personas. You help plan content strategy, coordinate across personas, spot opportunities, and keep each persona consistent. Be concise and practical.\n\nTHE PERSONA ROSTER:\n${summary||"(none created yet)"}`});
 }
 function openPersonaChat(pid){
   const p=myPersonas.find(x=>x.id===pid);if(!p)return;
-  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
   openChat({title:p.name+" — persona bot",backendId:p.ai_backend,storeKey:"ps_chat_"+pid,
     system:`You are the dedicated AI for the persona below. You draft content in their exact voice, brainstorm ideas on their topics, and always respect their hard rules.\n\n${personaBlockFull(p)}`});
 }
@@ -909,7 +941,7 @@ function wizApply(){
   renderEditLinks();wizClose();toast("Persona drafted ✨ Tweak anything, then Save!");
 }
 function openBuilder(){
-  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
   const name=document.getElementById("eName")?.value||"this persona";
   openChat({title:"Persona builder — "+name,backendId:document.getElementById("eBackend")?.value||null,
     storeKey:"ps_build_"+(editId||"new"),extract:true,
