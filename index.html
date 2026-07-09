@@ -131,6 +131,8 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 </header>
 <main id="app"><div class="empty">Loading…</div></main>
 <div id="toast"></div>
+<button id="bugBtn" onclick="reportError()" title="Report a problem"
+  style="position:fixed;left:14px;bottom:14px;z-index:170;background:#fff;border:1px solid #ccd0d5;border-radius:50px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#65676b;box-shadow:0 1px 4px rgba(0,0,0,.15)">🐞 Report a problem</button>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -153,7 +155,22 @@ trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlo
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null;
 const app=document.getElementById("app");
-function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
+const errBuf=[];
+function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
+window.addEventListener("error",e=>logErr("js",e.message+" @ "+e.filename+":"+e.lineno));
+window.addEventListener("unhandledrejection",e=>logErr("promise",e.reason&&e.reason.message||e.reason));
+function toast(m){logErr("toast",m);const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
+async function reportError(){
+  const note=prompt("What were you doing when it broke? (optional)")||"";
+  try{
+    const{data:au}=await sb.auth.getUser();
+    const{error}=await sb.from("error_logs").insert({user_id:au&&au.user?au.user.id:null,
+      message:note,
+      context:{page:location.hash,ua:navigator.userAgent.slice(0,200),recent:errBuf.slice(-15)}});
+    if(error)throw error;
+    toast("Report sent — thank you 🐞");
+  }catch(e){toast("Couldn't send report: "+e.message)}
+}
 function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function go(h){location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
