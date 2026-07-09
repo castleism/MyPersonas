@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>★ PersonaSpace ★</title>
+<title>MyPersonas — every persona, one home</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
@@ -32,6 +32,7 @@ main{padding:24px;max-width:1160px;margin:0 auto}
 .hero .ht{max-width:480px;padding:48px 56px;text-align:left}
 .hero h2{font-size:38px;font-weight:800;margin-bottom:12px;line-height:1.15;color:#0b2545}
 .hero p{color:#3d5875;font-size:17px;margin-bottom:22px}
+.feat3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:20px}
 @media(max-width:900px){.hero{justify-content:center;background-position:center}.hero .ht{background:rgba(255,255,255,.82);border-radius:12px;margin:24px;padding:28px}}
 label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px;font-weight:600}
 input,select,textarea{width:100%;background:#fff;border:1px solid #ccd0d5;border-radius:8px;color:var(--text);padding:10px 12px;font-size:15px;font-family:inherit}
@@ -114,7 +115,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 </head>
 <body>
 <header>
-  <h1 onclick="go('')">personaspace</h1>
+  <h1 onclick="go('')">MyPersonas</h1>
   <input id="gsearch" placeholder="🔍 find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
   <nav>
     <button onclick="go('')">🏠 Discover</button>
@@ -237,7 +238,7 @@ async function route(){
 function renderSignin(){
   if(session){go("studio");return}
   app.innerHTML=`<div class="card authbox">
-    <h3 class="center">✨ Welcome to PersonaSpace ✨</h3>
+    <h3 class="center">Welcome to MyPersonas</h3>
     <p class="muted center">One account, many personas. Your identity stays private — pages never show who owns them.</p>
     <button class="btn" style="width:100%;margin-top:14px" onclick="googleSignin()">Continue with Google</button>
     <hr>
@@ -278,10 +279,19 @@ async function renderDiscover(q){
   app.innerHTML=`
     ${!session&&!q?`<div class="card hero">
       <div class="ht">
-        <h2>Every persona.<br>One home.</h2>
-        <p>Create a page for each of your online identities — your art account, your gaming alias, your creator brand. Keep them separate, stay anonymous, share only what you choose.</p>
+        <h2>Welcome to MyPersonas</h2>
+        <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
         <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>
       </div>
+    </div>
+    <h3 class="secthead">What is MyPersonas?</h3>
+    <div class="feat3">
+      <div class="card"><h3>🎭 A page for every side of you</h3>
+        <p class="muted" style="font-size:14px">The artist. The gamer. The reviewer. The creator. The internet let us express our many personas — MyPersonas gives each one its own home page, with its own look, feed, albums, music, and friends.</p></div>
+      <div class="card"><h3>🕶 Anonymous by design</h3>
+        <p class="muted" style="font-size:14px">Your personas are never linked to your identity or to each other. Share what you choose, where you choose. Private and unlisted pages, blocking, and content filters keep every space one you can find peace in.</p></div>
+      <div class="card"><h3>✨ Bring them to life</h3>
+        <p class="muted" style="font-size:14px">Modern tools take personas beyond a profile: give each one an AI voice that helps it write and plan, link every account it lives on across the web, go live, and connect with the personas of others.</p></div>
     </div>`:""}
     <div class="filterbar">
       <label style="margin:0;display:flex;align-items:center;gap:6px"><input type="checkbox" ${f.hideNsfw?"checked":""} onchange="setFilter('hideNsfw',this.checked)"> Hide 18+ profiles</label>

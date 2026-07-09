@@ -1,4 +1,4 @@
-# ★ PersonaSpace — Setup Guide ★
+# MyPersonas.online — Setup Guide
 
 Files in this repo:
 - **index.html** — the entire app (hosted as a static site)
