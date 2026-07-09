@@ -277,11 +277,12 @@ async function renderDiscover(q){
     .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
     recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
   app.innerHTML=`
-    ${!session&&!q?`<div class="card hero">
+    ${(!session||!myPersonas.length)&&!q?`<div class="card hero">
       <div class="ht">
         <h2>Welcome to MyPersonas</h2>
         <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
-        <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>
+        ${session?`<button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('edit/new')">Create your first persona</button>`:
+        `<button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>`}
       </div>
     </div>
     <h3 class="secthead">What is MyPersonas?</h3>
