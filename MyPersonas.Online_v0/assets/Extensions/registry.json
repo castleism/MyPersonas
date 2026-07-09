@@ -1,0 +1,9 @@
+[
+  {
+    "id": "concept",
+    "githubRepo": "castleism/Concept_v0",
+    "releasesUrl": "assets/Extensions/Concept/releases.json",
+    "open": "http://localhost:4780",
+    "note": "githubRepo is checked first (GitHub Releases API); releasesUrl is the static fallback. Update githubRepo when the repo is renamed to Concept."
+  }
+]

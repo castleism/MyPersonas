@@ -1,0 +1,12 @@
+{
+  "app": "personas",
+  "repo": "https://github.com/castleism/Personas_v0",
+  "source": "D:\\GIT\\Personas\\Personas_v0",
+  "release": {
+    "version": "0.5.0",
+    "tag": "v0.5.0",
+    "zip": "Personas_v0.5.zip",
+    "page": "index.html"
+  },
+  "note": "The app source lives in its own repo (castleism/Personas_v0), stored locally at D:\\GIT\\Personas alongside the other project repos — no longer nested inside the website. Per VERSIONING.md the folder name carries the major line only; point releases are git tags (v0.4.0, v0.5.0, ...). This site folder ships only the download page, this catalog, and the current release zip (replaced each release; superseded by GitHub Release assets once releases are published from tags). Release archive folders (Personas_v0.5, ...) live next to the working copy at D:\\GIT\\Personas."
+}

@@ -674,14 +674,53 @@ function renderStudio(){
     <div class="t8pick"><div><b>Personas — desktop companion</b><br>
       <span class="muted">Animated AI characters for each of your personas that hang out on your screen, react to your conversations, and help you toward your goals.</span></div>
       <a class="btn sm" style="margin-left:auto;text-decoration:none;white-space:nowrap" href="assets/Downloads/Personas/" target="_blank">Get the app</a></div>
-    <div class="t8pick"><div><b>Concept — character studio</b><br>
-      <span class="muted">Build a persona's visual identity: reference images, tagging, generation, LoRA training on your local Stable Diffusion. Runs on your machine — start it, then open.</span></div>
-      <a class="btn sm" style="margin-left:auto;text-decoration:none;white-space:nowrap" href="http://localhost:4780" target="_blank">Open studio</a></div>
+    <div id="extList"><p class="muted">Loading extensions…</p></div>
   </div>
   ${settingsCard()}
   <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
+  loadExtensions();
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
+// ----- extensions catalog: manifest/release driven (git tags + GitHub Releases) -----
+async function loadExtensions(){
+  const el=document.getElementById("extList");if(!el)return;
+  let reg=[];
+  try{reg=await(await fetch("assets/Extensions/registry.json")).json()}
+  catch(e){el.innerHTML='<p class="muted">No extensions registered.</p>';return}
+  const rows=await Promise.all(reg.map(async x=>{
+    let rel=null,man=null;
+    if(x.githubRepo){ // primary: GitHub Releases API
+      try{
+        const r=await(await fetch("https://api.github.com/repos/"+x.githubRepo+"/releases/latest")).json();
+        if(r&&r.tag_name){
+          rel={version:(r.tag_name.match(/v?(\d+\.\d+\.\d+)/)||[])[1]||r.tag_name,tag:r.tag_name,
+            zipUrl:(r.assets&&r.assets[0]&&r.assets[0].browser_download_url)||r.zipball_url,
+            notes:r.body||"",published_at:r.published_at};
+          try{man=await(await fetch("https://raw.githubusercontent.com/"+x.githubRepo+"/"+r.tag_name+"/extension.json")).json()}catch(e){}
+        }
+      }catch(e){}
+    }
+    if(!rel&&x.releasesUrl){ // fallback: static releases.json produced at deploy time
+      try{
+        const j=await(await fetch(x.releasesUrl)).json();
+        const l=(j.releases||[]).find(v=>v.version===j.latest)||(j.releases||[])[0];
+        if(l){rel=l;try{man=await(await fetch(l.manifestUrl)).json()}catch(e){}}
+      }catch(e){}
+    }
+    return{x,rel,man};
+  }));
+  el.innerHTML=rows.map(({x,rel,man})=>{
+    const name=(man&&man.name)||x.id;
+    const desc=(man&&man.description)||"";
+    const ver=(rel&&rel.version)||(man&&man.version)||"";
+    const openUrl=(man&&man.host&&man.host.url)||x.open||"";
+    return `<div class="t8pick"><div><b>${esc(name)}</b> ${ver?`<span class="muted">v${esc(ver)}</span>`:""}<br>
+      <span class="muted">${esc(desc)}</span></div>
+      <span style="margin-left:auto;display:flex;gap:6px;white-space:nowrap">
+      ${rel&&rel.zipUrl?`<a class="btn sec sm" style="text-decoration:none" href="${esc(rel.zipUrl)}">Download</a>`:""}
+      ${openUrl?`<a class="btn sm" style="text-decoration:none" href="${esc(openUrl)}" target="_blank">Open</a>`:""}</span></div>`;
+  }).join("")||'<p class="muted">No extensions registered.</p>';
+}
 
 // ---------- edit persona ----------
 let editLinks=[],editT8=[],editId=null;

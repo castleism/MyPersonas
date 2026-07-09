@@ -51,13 +51,13 @@ footer{text-align:center;color:var(--dim);font-size:13px;padding:24px}
 <main>
   <div class="hero">
     <div class="logo">🛋️</div>
-    <h2>Personas <span style="font-size:15px;color:var(--dim);font-weight:600" id="ver">v0.4.0</span></h2>
+    <h2>Personas <span style="font-size:15px;color:var(--dim);font-weight:600" id="ver">v0.5.0</span></h2>
     <p>A desktop lounge where your AI personas live — animated characters that react to your conversations, keep you company while you study or work, and help you hit your goals.</p>
     <div class="dl-buttons" id="dl-buttons">
       <a class="btn" id="dl-win" href="#" hidden>⬇ Windows installer</a>
       <a class="btn" id="dl-mac" href="#" hidden>⬇ macOS</a>
       <a class="btn" id="dl-linux" href="#" hidden>⬇ Linux</a>
-      <a class="btn" id="dl-src" href="Personas-0.4.0.zip" download>⬇ Download Personas (zip)</a>
+      <a class="btn" id="dl-src" href="Personas_v0.5.zip" download>⬇ Download Personas (zip)</a>
       <a class="btn sec" id="gh-link" href="#" hidden>All releases</a>
     </div>
     <div class="dl-note" id="dl-note">Free &amp; open source · Windows, macOS &amp; Linux</div>
@@ -76,7 +76,7 @@ footer{text-align:center;color:var(--dim);font-size:13px;padding:24px}
       <div class="feat"><div class="ic">🎯</div><h4>Screen-aware focus mode</h4><p>Start a study/work session and personas whose interests match what you're doing chime in — encouragement, relevant thoughts, or a nudge if you drift to YouTube. Reads active window titles only, never screen contents.</p></div>
       <div class="feat"><div class="ic">🗂️</div><h4>Goals → models</h4><p>Assign each goal its own AI model and project prompt. Switching goals reroutes the conversation to the right specialist.</p></div>
       <div class="feat"><div class="ic">🧩</div><h4>Extensions</h4><p>Bundled add-ons — writing planner, bank-CSV subscription finder, daily check-in — plus a template so you (or any AI) can write and paste-install your own.</p></div>
-      <div class="feat"><div class="ic">🔀</div><h4>Model quick-switch</h4><p>Route a single reply to a different model mid-conversation, with a synopsis injected for context, then snap back.</p></div>
+      <div class="feat"><div class="ic">🖥️</div><h4>Desktop World</h4><p>Go fullscreen and your desktop becomes a world of live window snapshots — personas walk between your windows, comment on what you have open, tidy the virtual copies, and can even look at contents (opt-in vision). Your real windows are never touched.</p></div><div class="feat"><div class="ic">🔀</div><h4>Model quick-switch</h4><p>Route a single reply to a different model mid-conversation, with a synopsis injected for context, then snap back.</p></div>
       <div class="feat"><div class="ic">🔒</div><h4>Local &amp; private</h4><p>Everything stays on your machine. No account, no server, no telemetry — conversations go only to the model providers you configure.</p></div>
     </div>
     <div class="adult">🔞 Adult content is off by default. Adults can enable NSFW features in Settings, which route designated conversations to models whose providers permit adult roleplay.</div>
@@ -98,7 +98,7 @@ footer{text-align:center;color:var(--dim);font-size:13px;padding:24px}
 <script>
 // If the Personas repo is published to GitHub with tagged releases,
 // installer buttons appear automatically. Until then the zip button serves.
-var OWNER = 'castleism', REPO = 'Personas';
+var OWNER = 'castleism', REPO = 'Personas_v0';
 fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/releases/latest')
   .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(function (rel) {
