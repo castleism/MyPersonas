@@ -270,7 +270,7 @@ function settingsCard(){
   return `<div class="card" style="margin-top:20px"><h3>⚙️ Account settings</h3>
     <p class="muted">Private to you — never shown on any persona page.</p>
     <div class="row">
-      <div><label>Display name (for your own reference)</label><input id="setName" value="${esc(myProfile?myProfile.display_name:"")}"></div>
+      <div><label>Account name (for your own reference)</label><input id="setName" value="${esc(myProfile?myProfile.display_name:"")}"></div>
       <div><label>Signed in as</label><input value="${esc(session?session.user.email:"")}" disabled></div>
     </div>
     <label style="margin-top:14px">Content filters</label>
@@ -281,11 +281,14 @@ function settingsCard(){
     <button class="btn sm" style="margin-top:12px" onclick="saveSettings()">Save settings</button></div>`;
 }
 async function saveSettings(){
-  const prefs={hideNsfw:document.getElementById("setNsfw").checked,hideTopics:document.getElementById("setTopics").value.trim()};
+  const prefs={hideNsfw:document.getElementById("setNsfw").checked,hideTopics:document.getElementById("setTopics").value.trim(),saved:true};
   localStorage.setItem("ps_filters",JSON.stringify(prefs));
+  const btn=event&&event.target?event.target:null;
   const{error}=await sb.from("profiles").update({display_name:document.getElementById("setName").value.trim(),prefs}).eq("id",session.user.id);
   if(error){toast(error.message);return}
   await loadMine();toast("Settings saved ✓");
+  // on the welcome/onboarding page, collapse the card after a successful save
+  if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
 async function renderDiscover(q){
   app.innerHTML='<div class="empty">Loading…</div>';
@@ -319,7 +322,7 @@ async function renderDiscover(q){
       </div>
     </div>
     ${whatIs}
-    ${settingsCard()}`;
+    ${myProfile&&myProfile.prefs&&myProfile.prefs.saved?"":settingsCard()}`;
     return;
   }
   app.innerHTML=`
