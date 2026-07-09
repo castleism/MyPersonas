@@ -1,6 +1,9 @@
 {
   "extension": "concept",
-  "current": "Concept_v0",
-  "versions": ["Concept_v0"],
+  "current": "Concept_v1",
+  "versions": [
+    "Concept_v0",
+    "Concept_v1"
+  ],
   "note": "Each version lives in its own folder (Concept_v0, Concept_v1, ...). 'current' points at the active one the host should load; its manifest is at <current>/extension.json."
 }
