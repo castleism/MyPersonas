@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>★ PersonaSpace ★</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#fdf6ff;--panel:#fff;--border:#e8d5f5;--text:#3a2a4d;--dim:#8b7a9e;--accent:#ff4fa3;--accent2:#7b5bff;--red:#ff4757}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(135deg,#ffe9f7 0%,#f0e9ff 40%,#e6f7ff 100%) fixed;color:var(--text);font-family:'Trebuchet MS','Segoe UI',sans-serif;font-size:14px;min-height:100vh}
+body.custom-bg{background-size:cover!important;background-attachment:fixed!important;background-position:center!important}
+header{display:flex;align-items:center;gap:14px;padding:10px 20px;background:linear-gradient(90deg,#ff4fa3,#7b5bff,#00bcd4);position:sticky;top:0;z-index:50;box-shadow:0 3px 12px rgba(123,91,255,.35);flex-wrap:wrap}
+header h1{font-family:'Comic Sans MS',cursive;font-size:18px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.2);cursor:pointer;white-space:nowrap}
+#gsearch{max-width:220px;border-radius:20px;border:none;padding:8px 14px}
+nav{display:flex;gap:6px;flex:1;justify-content:flex-end;flex-wrap:wrap}
+nav button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 15px;border-radius:20px;cursor:pointer;font-weight:700;font-family:inherit;font-size:13px;position:relative}
+nav button:hover{background:rgba(255,255,255,.4)}
+.badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800}
+main{padding:22px;max-width:1100px;margin:0 auto}
+.btn{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;border:none;padding:9px 18px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;box-shadow:0 2px 6px rgba(255,79,163,.35)}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:#fff;color:var(--accent2);border:2px solid var(--accent2);box-shadow:none}
+.btn.danger{background:#fff;color:var(--red);border:2px solid var(--red);box-shadow:none}
+.btn.sm{padding:4px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:rgba(255,255,255,.93);border:2px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px}
+.card h3{font-family:'Comic Sans MS',cursive;color:var(--accent);font-size:15px;margin-bottom:8px}
+label{display:block;font-size:12px;color:var(--accent2);margin:10px 0 4px;font-weight:700}
+input,select,textarea{width:100%;background:#fdfaff;border:2px solid var(--border);border-radius:10px;color:var(--text);padding:8px 12px;font-size:13px;font-family:inherit}
+textarea{resize:vertical;min-height:60px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+input[type=checkbox]{width:auto}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:170px}
+.muted{color:var(--dim);font-size:12px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.pcard{background:#fff;border:3px solid var(--pc,#ff4fa3);border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 5px 14px rgba(123,91,255,.15)}
+.pcard:hover{transform:translateY(-3px)}
+.pcard .ph{height:70px;background:linear-gradient(90deg,var(--pc,#ff4fa3),#7b5bff);background-size:cover;background-position:center}
+.pcard .pb{padding:12px;position:relative}
+.pcard .av{width:56px;height:56px;border-radius:50%;border:3px solid #fff;position:absolute;top:-30px;left:12px;background:#eee center/cover;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.pcard b{display:block;margin-top:22px;font-family:'Comic Sans MS',cursive}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:800}
+.pill.nsfw{background:#ffe3e8;color:#d63054}
+.pill.priv{background:#eee7ff;color:#6a4fd0}
+.pill.live{background:#ff2d55;color:#fff;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#f6f0ff;border:2px solid var(--border);border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700;margin:3px 4px 3px 0;text-decoration:none;color:var(--text)}
+.chip:hover{border-color:var(--accent2)}
+.tag2{display:inline-block;background:#fff3fb;border:1px solid #ffd6ec;border-radius:6px;padding:1px 7px;font-size:11px;margin:2px 3px 0 0;color:#c04a8b;font-weight:700;cursor:pointer}
+.banner{height:200px;border-radius:18px;background:linear-gradient(90deg,var(--pc,#ff4fa3),#7b5bff) center/cover;border:3px solid #fff;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.pp-head{display:flex;gap:18px;align-items:flex-end;margin-top:-46px;padding:0 24px;flex-wrap:wrap}
+.pp-av{width:120px;height:120px;border-radius:20px;border:4px solid #fff;background:#eee center/cover;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.pp-name{font-family:'Comic Sans MS',cursive;font-size:24px;text-shadow:1px 1px 0 #fff}
+.cols{display:grid;grid-template-columns:300px 1fr;gap:18px;margin-top:18px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.top8grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.t8{text-align:center;cursor:pointer;font-size:10px;font-weight:700}
+.t8 .av8{width:100%;aspect-ratio:1;border-radius:12px;background:#eee center/cover;border:2px solid var(--border)}
+.t8:hover .av8{border-color:var(--accent)}
+.post{background:rgba(255,255,255,.95);border:2px solid var(--border);border-left:6px solid var(--pc,#ff4fa3);border-radius:14px;padding:16px;margin-bottom:14px}
+.post h4{font-family:'Comic Sans MS',cursive;color:var(--accent2)}
+.media{position:relative;margin-top:8px;-webkit-user-select:none;user-select:none}
+.media img,.media video{max-width:100%;border-radius:12px;display:block;pointer-events:auto}
+.media.reel video,.media.reel img{max-height:70vh;margin:0 auto;aspect-ratio:9/16;object-fit:cover}
+.media iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:12px}
+.wm-diag{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;z-index:2}
+.wm-diag span{transform:rotate(-24deg);font-weight:800;color:rgba(255,255,255,.4);text-shadow:0 0 4px rgba(0,0,0,.35);font-size:clamp(12px,2.4vw,20px);white-space:nowrap}
+.wm-tag{position:absolute;right:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;pointer-events:none;z-index:2}
+.music iframe{width:100%;border:none;border-radius:12px}
+.music audio{width:100%}
+.livebox iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:14px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;padding:10px 24px;border-radius:20px;display:none;z-index:200;font-weight:700}
+.empty{text-align:center;color:var(--dim);padding:40px 0}
+.overlay{position:fixed;inset:0;background:rgba(30,10,40,.92);z-index:150;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;padding:20px}
+.linkrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.gate h2{font-family:'Comic Sans MS',cursive;margin-bottom:10px}
+a{color:var(--accent2)}
+.authbox{max-width:440px;margin:60px auto}
+.center{text-align:center}
+.t8pick{display:flex;gap:8px;align-items:center;background:#f6f0ff;border-radius:10px;padding:6px 10px;margin-bottom:6px}
+.t8pick img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.filterbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:rgba(255,255,255,.8);border:2px dashed var(--border);border-radius:14px;padding:10px 14px;margin-bottom:16px;font-size:12px;font-weight:700}
+.filterbar input[type=text]{max-width:220px}
+hr{border:none;border-top:2px dashed var(--border);margin:14px 0}
+.feedchips{margin:8px 0}
+.feedchips .chip.on{border-color:var(--accent);background:#ffeaf5}
+#chatov{position:fixed;right:16px;bottom:16px;width:400px;max-width:96vw;height:540px;max-height:85vh;background:#fff;border:3px solid var(--accent2);border-radius:18px;z-index:180;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(123,91,255,.4)}
+#chatov .ch{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;border-radius:14px 14px 0 0;font-weight:800}
+#chatov .cm{flex:1;overflow-y:auto;padding:12px}
+.cmsg{max-width:85%;padding:8px 12px;border-radius:14px;margin-bottom:8px;font-size:13px;white-space:pre-wrap}
+.cmsg.u{background:#ffeaf5;margin-left:auto;border:1px solid #ffd6ec}
+.cmsg.a{background:#f2edff;border:1px solid #e2d8ff}
+#chatov .ci{display:flex;gap:6px;padding:10px;border-top:2px dashed var(--border)}
+#chatov .ci textarea{min-height:40px;max-height:100px}
+.albgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}
+.albitem{position:relative;display:block;border-radius:12px;overflow:hidden;border:2px solid var(--border);text-decoration:none;color:var(--text);background:#f6f0ff}
+.albitem:hover{border-color:var(--accent)}
+.albitem img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.albitem .cap{display:block;font-size:10px;font-weight:700;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.albitem .goicon{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border-radius:8px;padding:1px 6px;font-size:11px}
+.wizchip{display:inline-block;background:#fff;border:2px solid var(--border);border-radius:20px;padding:6px 14px;margin:4px;cursor:pointer;font-weight:700;font-size:13px}
+.wizchip.on{border-color:var(--accent);background:#ffeaf5}
+.wizbox{background:#fff;border:3px solid var(--accent);border-radius:18px;padding:24px;max-width:560px;width:100%;color:var(--text);text-align:left;max-height:85vh;overflow-y:auto}
+.wizbox h2{font-family:'Comic Sans MS',cursive;color:var(--accent);margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1 onclick="go('')">★ PersonaSpace ★</h1>
+  <input id="gsearch" placeholder="🔍 find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
+  <nav>
+    <button onclick="go('')">🏠 Discover</button>
+    <button onclick="go('studio')">🎨 My Studio<span id="reqBadge" class="badge" style="display:none"></span></button>
+    <button id="authBtn" onclick="authAction()">Sign in</button>
+  </nav>
+</header>
+<main id="app"><div class="empty">Loading…</div></main>
+<div id="toast"></div>
+<script>
+// ================= CONFIG — paste your Supabase values here =================
+const CONFIG={
+  SUPABASE_URL:"PASTE_SUPABASE_URL_HERE",        // e.g. https://abcdxyz.supabase.co
+  SUPABASE_ANON_KEY:"PASTE_SUPABASE_ANON_KEY_HERE"
+};
+// ============================================================================
+const PLATS={
+twitter:{name:"X / Twitter",icon:"𝕏"},instagram:{name:"Instagram",icon:"📸"},facebook:{name:"Facebook",icon:"📘"},
+tiktok:{name:"TikTok",icon:"🎵"},onlyfans:{name:"OnlyFans",icon:"🔒"},patreon:{name:"Patreon",icon:"🅿️"},
+snapchat:{name:"Snapchat",icon:"👻"},discord:{name:"Discord",icon:"💬"},reddit:{name:"Reddit",icon:"👽"},
+youtube:{name:"YouTube",icon:"▶️"},twitch:{name:"Twitch",icon:"🎮"},kick:{name:"Kick",icon:"🟢"},
+rumble:{name:"Rumble",icon:"📹"},steam:{name:"Steam",icon:"🎲"},psn:{name:"PlayStation",icon:"🕹️"},
+xbox:{name:"Xbox",icon:"🟩"},nintendo:{name:"Nintendo",icon:"🍄"},epic:{name:"Epic Games",icon:"🏰"},
+linkedin:{name:"LinkedIn",icon:"💼"},signal:{name:"Signal",icon:"🔵"},whatsapp:{name:"WhatsApp",icon:"🟢"},
+telegram:{name:"Telegram",icon:"✈️"},bluesky:{name:"Bluesky",icon:"🦋"},threads:{name:"Threads",icon:"🧵"},
+legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{name:"Fiverr",icon:"🛠️"},
+amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
+trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
+website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
+let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[];
+const app=document.getElementById("app");
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
+function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function go(h){location.hash="#/"+h}
+function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
+function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
+
+// ---------- embeds ----------
+function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
+function mediaHtml(u,handle,kind){
+  if(!u)return "";
+  const wm=`<div class="wm-diag"><span>★ ${esc(pageUrl(handle))}</span></div><div class="wm-tag">@${esc(handle)}</div>`;
+  const y=ytId(u);const cls="media"+(kind==="reel"?" reel":"");
+  const guard=`oncontextmenu="return false"`;
+  if(y)return `<div class="${cls}" ${guard}><iframe src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe></div>`;
+  if(/open\.spotify\.com/.test(u))return `<div class="${cls}" ${guard}><iframe src="${esc(u.replace("open.spotify.com/","open.spotify.com/embed/"))}" style="height:152px"></iframe></div>`;
+  if(/\.(mp4|webm|mov)(\?|$)/i.test(u))return `<div class="${cls}" ${guard}><video src="${esc(u)}" controls controlslist="nodownload" draggable="false"></video>${wm}</div>`;
+  if(/\.(mp3|ogg|wav)(\?|$)/i.test(u))return `<div class="${cls}" ${guard}><audio src="${esc(u)}" controls></audio></div>`;
+  return `<div class="${cls}" ${guard}><img src="${esc(u)}" loading="lazy" draggable="false" alt="">${wm}</div>`;
+}
+function musicHtml(u){
+  if(!u)return "";
+  const y=ytId(u);
+  if(y)return `<iframe style="aspect-ratio:16/9" src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe>`;
+  if(/open\.spotify\.com/.test(u))return `<iframe src="${esc(u.replace("open.spotify.com/","open.spotify.com/embed/"))}" style="height:152px"></iframe>`;
+  if(/soundcloud\.com/.test(u))return `<iframe style="height:120px" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%23ff4fa3"></iframe>`;
+  if(/\.(mp3|ogg|wav)(\?|$)/i.test(u))return `<audio src="${esc(u)}" controls loop></audio>`;
+  return `<a href="${esc(u)}" target="_blank" rel="noopener">🎵 ${esc(u)}</a>`;
+}
+function liveHtml(u){
+  if(!u)return "";
+  let tw=u.match(/twitch\.tv\/([\w_]+)/);
+  if(tw)return `<iframe src="https://player.twitch.tv/?channel=${tw[1]}&parent=${location.hostname}" allowfullscreen></iframe>`;
+  const y=ytId(u);
+  if(y)return `<iframe src="https://www.youtube.com/embed/${y}?autoplay=0" allowfullscreen></iframe>`;
+  let kk=u.match(/kick\.com\/([\w_-]+)/);
+  if(kk)return `<iframe src="https://player.kick.com/${kk[1]}" allowfullscreen></iframe>`;
+  return `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔴 Watch live ↗</a>`;
+}
+
+// ---------- init ----------
+if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
+  app.innerHTML=`<div class="card authbox center"><h3>⚙ Almost ready!</h3>
+  <p>This app needs its Supabase backend connected. Open <b>index.html</b> and paste your <b>Project URL</b> and <b>anon key</b> into the CONFIG block at the top of the script. See SETUP-GUIDE.md.</p></div>`;
+}else{
+  sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  sb.auth.onAuthStateChange((_e,s)=>{session=s;updateAuthBtn();loadMine().then(route)});
+  sb.auth.getSession().then(({data})=>{session=data.session;updateAuthBtn();loadMine().then(route)});
+  window.addEventListener("hashchange",route);
+}
+function updateAuthBtn(){document.getElementById("authBtn").textContent=session?"Sign out":"Sign in"}
+async function loadMine(){
+  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];
+  if(!session){updateBadge();return}
+  const[{data:ps},{data:bl},{data:be},{data:tk}]=await Promise.all([
+    sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
+    sb.from("blocks").select("*").eq("blocker",session.user.id),
+    sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
+    sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at")
+  ]);
+  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];
+  if(myPersonas.length){
+    const{data:reqs}=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
+      .eq("status","pending").in("target",myPersonas.map(m=>m.id));
+    pendingIn=reqs||[];
+  }
+  updateBadge();
+}
+function updateBadge(){
+  const b=document.getElementById("reqBadge");
+  if(pendingIn.length){b.style.display="flex";b.textContent=pendingIn.length}else b.style.display="none";
+}
+function authAction(){if(session){sb.auth.signOut().then(()=>{toast("Signed out");go("")})}else go("signin")}
+function isHidden(personaId){return myBlocks.some(b=>b.blocked_persona===personaId)}
+
+// ---------- router ----------
+async function route(){
+  const h=location.hash.replace(/^#\//,"");
+  document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
+  const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
+  if(view==="p")return renderPersonaPage(arg);
+  if(view==="studio")return renderStudio();
+  if(view==="edit")return renderEdit(arg);
+  if(view==="signin")return renderSignin();
+  if(view==="search")return renderDiscover(arg);
+  return renderDiscover("");
+}
+
+// ---------- sign in ----------
+function renderSignin(){
+  if(session){go("studio");return}
+  app.innerHTML=`<div class="card authbox">
+    <h3 class="center">✨ Welcome to PersonaSpace ✨</h3>
+    <p class="muted center">One account, many personas. Your identity stays private — pages never show who owns them.</p>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="googleSignin()">Continue with Google</button>
+    <hr>
+    <label>Or get a magic link by email</label>
+    <input id="mlEmail" type="email" placeholder="you@example.com">
+    <button class="btn sec" style="width:100%;margin-top:10px" onclick="magicLink()">Email me a sign-in link</button>
+    <p class="muted" style="margin-top:12px">🔐 Your email is used only to sign in. It is never shown on any page, post, or persona.</p>
+  </div>`;
+}
+async function googleSignin(){
+  const{error}=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}});
+  if(error)toast(error.message);
+}
+async function magicLink(){
+  const email=document.getElementById("mlEmail").value.trim();
+  if(!email){toast("Enter your email");return}
+  const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  toast(error?error.message:"Check your email for the link! ✉️");
+}
+
+// ---------- discover ----------
+function getFilters(){try{return JSON.parse(localStorage.getItem("ps_filters"))||{hideNsfw:true,hideTopics:""}}catch(e){return{hideNsfw:true,hideTopics:""}}}
+function setFilter(k,v){const f=getFilters();f[k]=v;localStorage.setItem("ps_filters",JSON.stringify(f));route()}
+async function renderDiscover(q){
+  app.innerHTML='<div class="empty">Loading…</div>';
+  const f=getFilters();
+  let query=sb.from("personas").select("*").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
+  if(q)query=query.or(`name.ilike.%${q}%,handle.ilike.%${q}%,topics.ilike.%${q}%,tagline.ilike.%${q}%`);
+  const{data:psRaw}=await query;
+  const hideT=f.hideTopics.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean);
+  const ps=(psRaw||[]).filter(p=>!isHidden(p.id))
+    .filter(p=>!(f.hideNsfw&&p.nsfw))
+    .filter(p=>!hideT.some(t=>((p.topics||"")+" "+(p.tagline||"")+" "+(p.name||"")).toLowerCase().includes(t)));
+  let recent=[];
+  if(!q){const{data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
+    .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
+    recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
+  app.innerHTML=`
+    <div class="filterbar">🔎 Filters:
+      <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" ${f.hideNsfw?"checked":""} onchange="setFilter('hideNsfw',this.checked)"> Hide 18+ profiles</label>
+      <input type="text" placeholder="hide topics (comma-separated)…" value="${esc(f.hideTopics)}" onchange="setFilter('hideTopics',this.value)">
+      <span class="muted">Muted &amp; blocked personas are always hidden</span>
+    </div>
+    ${q?`<h3 style="font-family:'Comic Sans MS',cursive;color:var(--accent2);margin-bottom:10px">Results for “${esc(q)}”</h3>`:""}
+    <div class="pgrid">${ps.map(pCard).join("")||'<div class="empty">Nothing here (yet) ✨</div>'}</div>
+    ${recent.length?`<h3 style="font-family:'Comic Sans MS',cursive;color:var(--accent2);margin:22px 0 10px">📰 Fresh posts</h3>
+    ${recent.map(r=>postHtml(r,r.personas,false)).join("")}`:""}`;
+}
+function pCard(p){
+  return `<div class="pcard" style="--pc:${esc(p.theme||"#ff4fa3")}" onclick="go('p/${esc(p.handle)}')">
+    <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
+    <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+    <b>★ ${esc(p.name)}</b><span class="muted">@${esc(p.handle)}</span> ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">🔴 LIVE</span>':""}
+    <div class="muted" style="margin-top:4px">${esc(p.tagline)}</div></div></div>`;
+}
+
+// ---------- persona page ----------
+let pageState={};
+async function renderPersonaPage(handle,skipGate){
+  app.innerHTML='<div class="empty">Loading…</div>';
+  const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
+  if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access. 💔<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
+  if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
+    app.innerHTML="";
+    const o=document.createElement("div");o.className="overlay";
+    o.innerHTML=`<div class="gate"><h2>🔞 18+ Content</h2><p>This page may contain adult content.<br>You must be 18 or older to continue.</p>
+      <div style="margin-top:16px"><button class="btn" onclick="sessionStorage.setItem('age_ok','1');this.closest('.overlay').remove();renderPersonaPage('${esc(handle)}',true)">I'm 18+, enter</button>
+      <button class="btn sec" style="margin-left:8px" onclick="location.hash=''">Take me back</button></div></div>`;
+    document.body.appendChild(o);return;
+  }
+  document.querySelectorAll(".overlay").forEach(o=>o.remove());
+  const isOwner=session&&p.owner===session.user.id;
+  const[{data:links},{data:posts},{data:fr},{data:albums}]=await Promise.all([
+    sb.from("persona_links").select("*").eq("persona_id",p.id).order("sort"),
+    sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).limit(50),
+    sb.from("follows").select("*").or(`target.eq.${p.id},follower.eq.${p.id}`),
+    sb.from("albums").select("*").eq("persona_id",p.id).order("sort")
+  ]);
+  if(albums&&albums.length){
+    const{data:aitems}=await sb.from("album_items").select("*").in("album_id",albums.map(a=>a.id)).order("sort");
+    albums.forEach(a=>a.items=(aitems||[]).filter(i=>i.album_id===a.id));
+  }
+  const M=k=>((p.modules||{})[k]!==false);
+  const friends=(fr||[]).filter(x=>x.status==="accepted"&&(x.target===p.id||x.follower===p.id));
+  let rel=null;
+  if(session&&myPersonas.length&&!isOwner){
+    rel=(fr||[]).find(x=>myPersonas.some(m=>m.id===x.follower)&&x.target===p.id)||
+        (fr||[]).find(x=>myPersonas.some(m=>m.id===x.target)&&x.follower===p.id)||null;
+  }
+  let top8=[];
+  const t8ids=(p.top8||[]).slice(0,8);
+  if(t8ids.length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,theme").in("id",t8ids);
+    top8=t8ids.map(id=>(data||[]).find(x=>x.id===id)).filter(Boolean)}
+  pageState={p,posts:posts||[],isOwner,feedKind:"all"};
+  if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
+  const blocked=isHidden(p.id);
+  let relBtn="";
+  if(isOwner)relBtn=`<button class="btn sec" onclick="go('edit/${p.id}')">✏️ Edit page</button>`;
+  else if(!session)relBtn=`<button class="btn" onclick="go('signin')">💖 Sign in to connect</button>`;
+  else if(!myPersonas.length)relBtn=`<button class="btn" onclick="go('edit/new')">Create a persona to connect</button>`;
+  else if(rel&&rel.status==="accepted")relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">💔 Remove friend</button>`;
+  else if(rel&&rel.status==="pending"&&myPersonas.some(m=>m.id===rel.follower))relBtn=`<button class="btn sec" onclick="unfriend('${p.id}')">⏳ Requested — cancel</button>`;
+  else if(rel&&rel.status==="pending")relBtn=`<button class="btn" onclick="acceptReq('${rel.id}')">✅ Accept friend request</button>`;
+  else relBtn=`<button class="btn" onclick="sendRequest('${p.id}')">💖 Add friend</button>`;
+  app.innerHTML=`
+  <div class="banner" style="--pc:${esc(p.theme)};${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
+  <div class="pp-head">
+    <div class="pp-av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+    <div style="flex:1;padding-bottom:6px">
+      <div class="pp-name">★ ${esc(p.name)} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">🔴 LIVE</span>':""}</div>
+      <div class="muted" style="background:rgba(255,255,255,.8);display:inline-block;padding:2px 8px;border-radius:8px">@${esc(p.handle)} · ${friends.length} friend${friends.length===1?"":"s"} — ${esc(p.tagline)}</div>
+    </div>
+    <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
+      ${relBtn}
+      ${!isOwner&&session?`<button class="btn danger sm" title="They can't friend or interact with you" onclick="blockPersona('${p.id}','block')">🚫 ${blocked?"Blocked":"Block"}</button>
+      <button class="btn sec sm" title="Hide them from your view" onclick="blockPersona('${p.id}','mute')">🔇 Mute</button>`:""}
+    </div>
+  </div>
+  <div class="cols">
+    <div>
+      ${M("live")&&p.live_url?`<div class="card livebox"><h3>🔴 Live now</h3>${liveHtml(p.live_url)}</div>`:""}
+      ${M("music")&&p.music_url?`<div class="card music"><h3>🎵 Profile song</h3>${musicHtml(p.music_url)}</div>`:""}
+      ${M("about")?`<div class="card"><h3>💫 About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
+        ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="pageSearch('${esc(t.trim())}')">${esc(t.trim())}</span>`).join("")}</div>`:""}</div>`:""}
+      ${M("links")&&(links||[]).length?`<div class="card"><h3>🔗 Find me on</h3>${links.map(l=>{
+        const pl=PLATS[l.platform]||PLATS.other;
+        return l.url?`<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${pl.icon} ${esc(l.handle||pl.name)}</a>`:`<span class="chip">${pl.icon} ${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
+      ${M("top8")&&top8.length?`<div class="card"><h3>👑 Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>
+        `<div class="t8" onclick="go('p/${esc(t.handle)}')"><div class="av8" style="${t.avatar_url?`background-image:url('${esc(t.avatar_url)}')`:""}"></div>${esc(t.name)}</div>`).join("")}</div></div>`:""}
+    </div>
+    <div>
+      ${isOwner?composerHtml(p):""}
+      ${M("albums")?(albums||[]).filter(a=>(a.items||[]).length||isOwner).map(a=>`
+        <div class="card"><h3>${a.kind==="affiliate"?"🛒":"📸"} ${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3>
+        <div class="albgrid">${(a.items||[]).map(it=>{
+          const inner=`<img src="${esc(it.thumb_url)}" loading="lazy" draggable="false"><span class="cap">${esc(it.caption)||"&nbsp;"}</span>${it.link_url?'<span class="goicon">↗</span>':""}`;
+          return it.link_url?`<a class="albitem" href="${esc(it.link_url)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join(""):""}
+      ${M("feed")?`<div class="card">
+        ${p.feed_img_url?`<img src="${esc(p.feed_img_url)}" style="width:100%;border-radius:12px;margin-bottom:10px" alt="">`:""}
+        <h3>📖 ${esc(p.name)}'s feed</h3>
+        <input id="feedSearch" placeholder="🔍 search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)">
+        <div class="feedchips">
+          <span class="chip on" id="fk_all" onclick="setFeedKind('all')">✨ All</span>
+          <span class="chip" id="fk_post" onclick="setFeedKind('post')">📝 Posts</span>
+          <span class="chip" id="fk_reel" onclick="setFeedKind('reel')">📱 Reels</span>
+        </div>
+      </div>
+      <div id="feedList">${(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet ✍️</div>'}</div>`:""}
+    </div>
+  </div>`;
+}
+function postHtml(x,p,owner){
+  return `<div class="post" style="--pc:${esc((p&&p.theme)||"#ff4fa3")}">
+    ${p&&p.handle?`<div class="muted" style="margin-bottom:4px;cursor:pointer" onclick="go('p/${esc(p.handle)}')">★ ${esc(p.name)} @${esc(p.handle)} ${x.kind==="reel"?"· 📱 reel":""}</div>`:""}
+    ${x.title?`<h4>${esc(x.title)}</h4>`:""}
+    <p style="white-space:pre-wrap;margin-top:4px">${esc(x.body)}</p>
+    ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind):""}
+    <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="pageSearch('${esc(t.trim())}')">#${esc(t.trim())}</span>`).join("")}
+    <span class="muted" style="float:right">${new Date(x.created_at).toLocaleDateString()}</span></div>
+    ${owner?`<div style="margin-top:8px"><button class="btn danger sm" onclick="deletePost('${x.id}')">Delete</button></div>`:""}
+  </div>`;
+}
+function setFeedKind(k){
+  pageState.feedKind=k;
+  ["all","post","reel"].forEach(x=>document.getElementById("fk_"+x).classList.toggle("on",x===k));
+  pageSearch(document.getElementById("feedSearch").value);
+}
+async function pageSearch(q){
+  const p=pageState.p;if(!p)return;
+  const el=document.getElementById("feedSearch");if(el)el.value=q||"";
+  let query=sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).limit(50);
+  if(pageState.feedKind&&pageState.feedKind!=="all")query=query.eq("kind",pageState.feedKind);
+  if(q&&q.trim())query=query.or(`title.ilike.%${q.trim()}%,body.ilike.%${q.trim()}%,tags.ilike.%${q.trim()}%`);
+  const{data}=await query;
+  document.getElementById("feedList").innerHTML=(data||[]).map(x=>postHtml(x,p,pageState.isOwner)).join("")||`<div class="empty">No posts${q?` matching “${esc(q)}”`:""}</div>`;
+}
+
+// ---------- friends / blocks ----------
+async function pickMine(){
+  if(myPersonas.length===1)return myPersonas[0].id;
+  const pick=prompt("Act as which of your personas?\n"+myPersonas.map((m,i)=>`${i+1}. ${m.name}`).join("\n"),"1");
+  const idx=parseInt(pick)-1;
+  return (!isNaN(idx)&&myPersonas[idx])?myPersonas[idx].id:null;
+}
+async function sendRequest(targetId){
+  const follower=await pickMine();if(!follower)return;
+  const{error}=await sb.from("follows").insert({follower,target:targetId,status:"pending"});
+  if(error){toast(error.message.includes("row-level")?"You can't send this request (blocked or not allowed)":error.message);return}
+  toast("Friend request sent! 💌");route();
+}
+async function acceptReq(id){
+  const{error}=await sb.from("follows").update({status:"accepted"}).eq("id",id);
+  if(error){toast(error.message);return}
+  toast("Friends! 💖");await loadMine();route();
+}
+async function declineReq(id){await sb.from("follows").delete().eq("id",id);await loadMine();route()}
+async function unfriend(targetId){
+  const ids=myPersonas.map(m=>m.id);
+  await sb.from("follows").delete().or(`and(target.eq.${targetId},follower.in.(${ids.join(",")})),and(follower.eq.${targetId},target.in.(${ids.join(",")}))`);
+  toast("Removed");route();
+}
+async function blockPersona(pid,kind){
+  if(isHidden(pid)&&kind==="block"){
+    await sb.from("blocks").delete().eq("blocker",session.user.id).eq("blocked_persona",pid);
+    await loadMine();toast("Unblocked");route();return;
+  }
+  if(!confirm(kind==="block"?"Block this persona? They won't be able to friend you, and you won't see them.":"Mute this persona? You won't see them anywhere (they can still see your public pages)."))return;
+  const{error}=await sb.from("blocks").insert({blocker:session.user.id,blocked_persona:pid,kind});
+  if(error&&!error.message.includes("duplicate")){toast(error.message);return}
+  if(kind==="block")await unfriendQuiet(pid);
+  await loadMine();toast(kind==="block"?"Blocked 🚫":"Muted 🔇");go("");
+}
+async function unfriendQuiet(targetId){
+  const ids=myPersonas.map(m=>m.id);
+  if(ids.length)await sb.from("follows").delete().or(`and(target.eq.${targetId},follower.in.(${ids.join(",")})),and(follower.eq.${targetId},target.in.(${ids.join(",")}))`);
+}
+
+// ---------- composer ----------
+function composerHtml(p){
+  return `<div class="card"><h3>✍️ New post</h3>
+    <input id="npTitle" placeholder="Title (e.g. Review: Lenovo Legion 9i)">
+    <textarea id="npBody" placeholder="What's on your mind? Reviews, recommendations, thoughts…" style="margin-top:8px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <div><input id="npTags" placeholder="tags: laptops, reviews, gaming"></div>
+      <div><input id="npMedia" placeholder="image / gif / video / YouTube URL"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="npReel"> 📱 Reel (vertical video)</label>
+      <button class="btn sm sec" onclick="uploadTo('npMedia',true)">⬆ Upload (auto-watermarked)</button>
+      <button class="btn sm sec" onclick="aiPrompt()">🤖 Copy AI writing prompt</button>
+      <button class="btn sm" style="margin-left:auto" onclick="publishPost()">🚀 Publish</button>
+    </div>
+    <p class="muted" style="margin-top:6px">Uploaded images get your page URL watermarked into the pixels. (No system can stop screenshots entirely.)</p></div>`;
+}
+async function publishPost(){
+  const p=pageState.p;
+  const d={persona_id:p.id,kind:document.getElementById("npReel").checked?"reel":"post",
+    title:document.getElementById("npTitle").value.trim(),
+    body:document.getElementById("npBody").value.trim(),tags:document.getElementById("npTags").value.trim(),
+    media_url:document.getElementById("npMedia").value.trim()};
+  if(!d.title&&!d.body&&!d.media_url){toast("Write or add something first!");return}
+  const{error}=await sb.from("posts").insert(d);
+  if(error){toast(error.message);return}
+  toast("Posted! 🎉");renderPersonaPage(p.handle,true);
+}
+async function deletePost(id){
+  if(!confirm("Delete this post?"))return;
+  await sb.from("posts").delete().eq("id",id);
+  renderPersonaPage(pageState.p.handle,true);
+}
+function aiPrompt(){
+  const p=pageState.p;
+  copyText(`You are the social media manager for this persona.\n\n${personaBlockFull(p)}\n\nTASK: Write a blog-style feed post for this persona's page${document.getElementById("npTitle").value?` titled "${document.getElementById("npTitle").value}"`:""}. Match the personality exactly. Include a suggested title and 3-6 tags.`);
+}
+
+// ---------- studio ----------
+function renderStudio(){
+  if(!session){renderSignin();return}
+  const reqHtml=pendingIn.length?`<div class="card"><h3>💌 Friend requests (${pendingIn.length})</h3>
+    ${pendingIn.map(r=>{const f=r.personas;const mine=myPersonas.find(m=>m.id===r.target);
+      return `<div class="t8pick"><img src="${esc(f?f.avatar_url:"")}" onerror="this.style.visibility='hidden'">
+      <b>★ ${esc(f?f.name:"?")}</b><span class="muted">wants to be friends with ${esc(mine?mine.name:"you")}</span>
+      <span style="margin-left:auto"><button class="btn sm" onclick="acceptReq('${r.id}')">✅ Accept</button>
+      <button class="btn danger sm" onclick="declineReq('${r.id}')">✕</button></span></div>`}).join("")}</div>`:"";
+  const blockHtml=myBlocks.length?`<div class="card"><h3>🚫 Blocked &amp; muted</h3>
+    ${myBlocks.map(b=>`<span class="chip">${b.kind==="block"?"🚫":"🔇"} ${esc(b.blocked_persona.slice(0,8))}…
+    <button class="btn danger sm" onclick="removeBlock('${b.id}')">✕</button></span>`).join("")}
+    <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
+  const beHtml=`<div class="card"><h3>🤖 AI Models (linked to your main account)</h3>
+    <p class="muted">Any OpenAI-compatible API: OpenRouter, xAI Grok, local Ollama. Assign models per-persona and per-task. Keys are stored under your account only — never visible to anyone else.</p>
+    ${myBackends.map(b=>`<div class="t8pick"><b>🧠 ${esc(b.name)}</b><span class="muted">${esc(b.model)} · ${esc(b.base_url)}</span>
+      <button class="btn danger sm" style="margin-left:auto" onclick="deleteBackend('${b.id}')">✕</button></div>`).join("")||""}
+    <div class="row" style="margin-top:8px">
+      <div><input id="nbName" placeholder="name (e.g. Grok — NSFW ok)"></div>
+      <div><input id="nbUrl" placeholder="base URL e.g. https://openrouter.ai/api/v1"></div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <div><input id="nbKey" type="password" placeholder="API key"></div>
+      <div><input id="nbModel" placeholder="model id"></div>
+    </div>
+    <button class="btn sm" style="margin-top:8px" onclick="addBackend()">+ Link model</button></div>`;
+  const tkHtml=`<div class="card"><h3>⏰ Scheduled tasks (persona + model + job)</h3>
+    ${myTasks.map(t=>{const p=myPersonas.find(x=>x.id===t.persona_id);const b=myBackends.find(x=>x.id===t.backend_id);
+      return `<div class="t8pick"><b>⚡ ${esc(t.name)}</b>
+      <span class="muted">${p?"★ "+esc(p.name):"(no persona)"} · ${esc(t.task_type)} · ${esc(t.cadence)} · ${b?"🧠 "+esc(b.name):"🧠 default"}${t.last_run?" · last run "+new Date(t.last_run).toLocaleDateString():""}</span>
+      <span style="margin-left:auto"><button class="btn sm" onclick="runTask('${t.id}')">▶ Run</button>
+      <button class="btn danger sm" onclick="deleteTask('${t.id}')">✕</button></span></div>`}).join("")||'<p class="muted">No tasks yet.</p>'}
+    <hr>
+    <div class="row">
+      <div><label>Task name</label><input id="tkName" placeholder="Morning news scan — Sophia"></div>
+      <div><label>Persona</label><select id="tkPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">★ ${esc(p.name)}</option>`).join("")}</select></div>
+      <div><label>Job type</label><select id="tkType">${Object.keys(TASK_TYPES).map(k=>`<option value="${k}">${k}</option>`).join("")}</select></div>
+    </div>
+    <div class="row">
+      <div><label>AI model</label><select id="tkBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}">🧠 ${esc(b.name)}</option>`).join("")}</select></div>
+      <div><label>Cadence</label><select id="tkCad"><option>manual</option><option>daily</option><option>weekly</option></select></div>
+    </div>
+    <label>Extra instructions (optional)</label><textarea id="tkInstr" placeholder="e.g. focus on budget laptops this month"></textarea>
+    <button class="btn sm" style="margin-top:8px" onclick="createTask()">+ Save task</button>
+    <p class="muted" style="margin-top:6px">▶ Run works now (opens the task's chat with the right persona + model). Daily/weekly auto-runs are phase 2 — they need a small server function; for now hit ▶ or ask Claude to schedule it.</p></div>`;
+  app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <h3 style="font-family:'Comic Sans MS',cursive;color:var(--accent2);font-size:20px">🎨 My Studio</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn sec" onclick="openHQ()">🧠 HQ Assistant</button>
+      <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
+  ${reqHtml}
+  <div class="pgrid">${myPersonas.map(p=>`
+    <div class="pcard" style="--pc:${esc(p.theme)}">
+      <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
+      <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+      <b>★ ${esc(p.name)}</b><span class="muted">@${esc(p.handle)} · ${esc(p.visibility)}</span>
+      <div style="margin-top:8px"><button class="btn sm" onclick="go('p/${esc(p.handle)}')">View</button>
+      <button class="btn sec sm" onclick="go('edit/${p.id}')">Edit</button>
+      <button class="btn sec sm" onclick="openPersonaChat('${p.id}')">💬 Chat</button></div></div>
+    </div>`).join("")||'<div class="empty">No personas yet — create your first! ✨</div>'}</div>
+  ${beHtml}
+  ${tkHtml}
+  ${blockHtml}
+  <div class="card"><h3>🔐 Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
+}
+async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
+
+// ---------- edit persona ----------
+let editLinks=[],editT8=[],editId=null;
+async function renderEdit(id){
+  if(!session){renderSignin();return}
+  editId=id==="new"?null:id;
+  let p={theme:"#ff4fa3",visibility:"public"},notes={content:""};
+  if(editId){
+    p=myPersonas.find(x=>x.id===editId)||p;
+    const{data:ls}=await sb.from("persona_links").select("*").eq("persona_id",editId).order("sort");
+    editLinks=ls||[];
+    const{data:n}=await sb.from("private_notes").select("*").eq("persona_id",editId).maybeSingle();
+    if(n)notes=n;
+    if((p.top8||[]).length){const{data:t}=await sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8);
+      editT8=(p.top8||[]).map(tid=>(t||[]).find(x=>x.id===tid)).filter(Boolean)}else editT8=[];
+  }else{editLinks=[];editT8=[]}
+  app.innerHTML=`<div class="card"><h3>${editId?"✏️ Edit":"✨ New"} Persona</h3>
+    <div class="row">
+      <div><label>Name</label><input id="eName" value="${esc(p.name||"")}" placeholder="Sophia Imagines"></div>
+      <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}" placeholder="sophia.imagines"></div>
+    </div>
+    <div class="row">
+      <div><label>Rating</label><select id="eNsfw"><option value="0">SFW</option><option value="1" ${p.nsfw?"selected":""}>NSFW / 18+</option></select></div>
+      <div><label>Who can see this page?</label><select id="eVis">
+        <option value="public" ${p.visibility==="public"?"selected":""}>🌍 Public — in discover &amp; search</option>
+        <option value="unlisted" ${p.visibility==="unlisted"?"selected":""}>🔗 Unlisted — only via direct link</option>
+        <option value="private" ${p.visibility==="private"?"selected":""}>🔒 Private — accepted friends only</option>
+      </select></div>
+      <div><label>Theme color</label><input id="eTheme" type="color" value="${esc(p.theme||"#ff4fa3")}" style="height:38px;padding:2px"></div>
+    </div>
+    <label>Tagline</label><input id="eTagline" value="${esc(p.tagline||"")}" placeholder="AI girl clone of myself ✨">
+    <label>Bio / About (shown on page)</label><textarea id="eBio">${esc(p.bio||"")}</textarea>
+    <div id="advGate" class="card" style="margin-top:14px;${(p.purpose||p.voice||p.topics)?"display:none":""}">
+      <h3>🧭 Flesh out this persona</h3>
+      <p class="muted">Two quick questions — we'll suggest topics, a voice, and which accounts this kind of persona usually needs. You can adjust everything after.</p>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn" onclick="openWizard()">🧭 Quick setup</button>
+        <button class="btn sec" onclick="openBuilder()">🪄 Build with AI instead</button>
+        <button class="btn sec" onclick="document.getElementById('advWrap').style.display='';document.getElementById('advGate').style.display='none'">✍️ Fill manually</button>
+      </div></div>
+    <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
+    <hr>
+    <h3>🖼 Page looks</h3>
+    ${["avatar_url:Profile image","banner_url:Banner image (wide)","bg_url:Background image (whole page)","feed_img_url:Feed header image","music_url:Profile song (YouTube / Spotify / SoundCloud / mp3 URL)","live_url:Live stream (your Twitch / YouTube / Kick URL — shows a 🔴 LIVE player while set)"].map(f=>{
+      const[k,lbl]=f.split(":");
+      return `<label>${lbl}</label><div class="linkrow"><input id="e_${k}" value="${esc(p[k]||"")}" placeholder="https://…">
+      ${["avatar_url","banner_url","bg_url","feed_img_url"].includes(k)?`<button class="btn sec sm" onclick="uploadTo('e_${k}',false)">⬆</button>`:""}</div>`}).join("")}
+    <label>Show on my page (uncheck to hide a section)</label>
+    <div id="eMods" style="display:flex;gap:12px;flex-wrap:wrap">
+      ${[["music","🎵 Song"],["about","💫 About"],["links","🔗 Links"],["top8","👑 Top 8"],["live","🔴 Live"],["albums","📸 Albums"],["feed","📖 Feed"]].map(([k,l])=>
+        `<label style="margin:0;display:flex;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" data-k="${k}" ${(p.modules||{})[k]!==false?"checked":""}> ${l}</label>`).join("")}
+    </div>
+    <hr>
+    <h3>🧠 Personality (drives AI content and your page's vibe)</h3>
+    <label>Purpose</label><textarea id="ePurpose">${esc(p.purpose||"")}</textarea>
+    <label>Personality / voice</label><textarea id="eVoice">${esc(p.voice||"")}</textarea>
+    <div class="row">
+      <div><label>Core topics (comma-separated)</label><input id="eTopics" value="${esc(p.topics||"")}"></div>
+      <div><label>Audience</label><input id="eAudience" value="${esc(p.audience||"")}"></div>
+    </div>
+    <label>Default hashtags</label><input id="eHashtags" value="${esc(p.hashtags||"")}">
+    <label>Never do (hard rules)</label><textarea id="eDont">${esc(p.dont||"")}</textarea>
+    <label>Dedicated AI model for this persona's chatbot &amp; tasks</label>
+    <select id="eBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}" ${p.ai_backend===b.id?"selected":""}>🧠 ${esc(b.name)}</option>`).join("")}</select>
+    <hr>
+    <h3>🔗 Social &amp; gaming links (public — shown on your page)</h3>
+    <div id="eLinks"></div>
+    <div class="linkrow">
+      <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.icon} ${v.name}</option>`).join("")}</select>
+      <input id="lHandle" placeholder="@handle or gamertag">
+      <input id="lUrl" placeholder="https://link (optional)">
+      <button class="btn sm" onclick="addLink()">+</button>
+    </div>
+    <hr>
+    <h3>👑 Top 8 (your favorite personas, in order)</h3>
+    <div id="eT8"></div>
+    <div class="linkrow"><input id="t8q" placeholder="search personas to add…" onkeydown="if(event.key==='Enter')t8Search()"><button class="btn sm" onclick="t8Search()">🔍</button></div>
+    <div id="t8results"></div>
+    <hr>
+    <h3>📸 Albums (thumbnails that send viewers to your OnlyFans / Instagram / affiliate links)</h3>
+    ${editId?`<div id="eAlbums"><p class="muted">Loading albums…</p></div>
+    <div class="linkrow" style="margin-top:8px">
+      <input id="nAlbTitle" placeholder="album title (e.g. Latest sets · Laptops I recommend)">
+      <select id="nAlbKind" style="max-width:150px"><option value="gallery">📸 Gallery</option><option value="affiliate">🛒 Sponsored</option></select>
+      <button class="btn sm" onclick="createAlbum()">+ Album</button>
+    </div>
+    <p class="muted">Gallery items link out to wherever the full content lives (OnlyFans post, IG, Snap…). Sponsored items link to your affiliate/product URLs and get a "sponsored" label.</p>`
+    :'<p class="muted">Save the persona first, then come back to add albums.</p>'}
+    <hr>
+    <h3>🔐 Private notes (only you can ever see these — account emails, reminders. Never store passwords.)</h3>
+    <textarea id="eNotes">${esc(notes.content||"")}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:space-between">
+      ${editId?`<button class="btn danger" onclick="deletePersona()">Delete persona</button>`:"<span></span>"}
+      <div style="display:flex;gap:8px">
+        <button class="btn sec" onclick="go('studio')">Cancel</button>
+        <button class="btn" onclick="savePersona()">💾 Save</button>
+      </div>
+    </div></div>`;
+  renderEditLinks();renderT8();
+  if(editId)loadEditAlbums();
+}
+// ----- album manager -----
+let editAlbums=[];
+async function loadEditAlbums(){
+  const{data:als}=await sb.from("albums").select("*").eq("persona_id",editId).order("sort");
+  editAlbums=als||[];
+  if(editAlbums.length){
+    const{data:items}=await sb.from("album_items").select("*").in("album_id",editAlbums.map(a=>a.id)).order("sort");
+    editAlbums.forEach(a=>a.items=(items||[]).filter(i=>i.album_id===a.id));
+  }
+  renderEditAlbums();
+}
+function renderEditAlbums(){
+  const el=document.getElementById("eAlbums");if(!el)return;
+  el.innerHTML=editAlbums.map(a=>`
+    <div class="card" style="padding:12px">
+      <div style="display:flex;align-items:center;gap:8px"><b>${a.kind==="affiliate"?"🛒":"📸"} ${esc(a.title)}</b>
+      ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}
+      <button class="btn danger sm" style="margin-left:auto" onclick="deleteAlbum('${a.id}')">Delete album</button></div>
+      <div class="albgrid">${(a.items||[]).map(it=>`<span class="albitem"><img src="${esc(it.thumb_url)}" onerror="this.style.opacity=.2">
+        <span class="cap">${esc(it.caption)||"&nbsp;"}</span>
+        <span class="goicon" style="cursor:pointer" onclick="deleteAlbumItem('${it.id}')">✕</span></span>`).join("")}</div>
+      <div class="linkrow" style="margin-top:8px">
+        <input id="ait_${a.id}" placeholder="thumbnail URL">
+        <button class="btn sec sm" onclick="uploadTo('ait_${a.id}',false)">⬆</button>
+        <input id="aic_${a.id}" placeholder="caption" style="max-width:130px">
+        <input id="ail_${a.id}" placeholder="${a.kind==="affiliate"?"affiliate/product URL":"destination URL (OF post, IG, Snap…)"}">
+        <button class="btn sm" onclick="addAlbumItem('${a.id}')">+</button>
+      </div>
+    </div>`).join("")||'<p class="muted">No albums yet.</p>';
+}
+async function createAlbum(){
+  const title=document.getElementById("nAlbTitle").value.trim();
+  if(!title){toast("Album title required");return}
+  const{error}=await sb.from("albums").insert({persona_id:editId,title,kind:document.getElementById("nAlbKind").value,sort:editAlbums.length});
+  if(error){toast(error.message);return}
+  document.getElementById("nAlbTitle").value="";loadEditAlbums();
+}
+async function deleteAlbum(id){if(!confirm("Delete this album and its items?"))return;await sb.from("albums").delete().eq("id",id);loadEditAlbums()}
+async function addAlbumItem(aid){
+  const thumb=document.getElementById("ait_"+aid).value.trim();
+  if(!thumb){toast("Add a thumbnail first (URL or ⬆ upload)");return}
+  const a=editAlbums.find(x=>x.id===aid);
+  const{error}=await sb.from("album_items").insert({album_id:aid,thumb_url:thumb,
+    caption:document.getElementById("aic_"+aid).value.trim(),
+    link_url:document.getElementById("ail_"+aid).value.trim(),sort:(a.items||[]).length});
+  if(error){toast(error.message);return}
+  loadEditAlbums();
+}
+async function deleteAlbumItem(id){await sb.from("album_items").delete().eq("id",id);loadEditAlbums()}
+function renderEditLinks(){
+  document.getElementById("eLinks").innerHTML=editLinks.map((l,i)=>{
+    const pl=PLATS[l.platform]||PLATS.other;
+    return `<div class="linkrow"><span class="chip">${pl.icon} ${esc(l.handle||pl.name)}</span>
+    <span class="muted" style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(l.url)}</span>
+    <button class="btn danger sm" onclick="editLinks.splice(${i},1);renderEditLinks()">✕</button></div>`}).join("")||'<p class="muted">No links yet.</p>';
+}
+function addLink(){
+  const platform=document.getElementById("lPlat").value,handle=document.getElementById("lHandle").value.trim(),url=document.getElementById("lUrl").value.trim();
+  if(!handle&&!url){toast("Add a handle or URL");return}
+  editLinks.push({platform,handle,url,sort:editLinks.length});
+  document.getElementById("lHandle").value="";document.getElementById("lUrl").value="";
+  renderEditLinks();
+}
+function renderT8(){
+  document.getElementById("eT8").innerHTML=editT8.map((t,i)=>`
+    <div class="t8pick"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'"><b>★ ${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
+    <span style="margin-left:auto">
+    <button class="btn sec sm" ${i===0?"disabled":""} onclick="[editT8[${i-1}],editT8[${i}]]=[editT8[${i}],editT8[${i-1}]];renderT8()">▲</button>
+    <button class="btn danger sm" onclick="editT8.splice(${i},1);renderT8()">✕</button></span></div>`).join("")||'<p class="muted">Empty — search below to add up to 8.</p>';
+}
+async function t8Search(){
+  const q=document.getElementById("t8q").value.trim();if(!q)return;
+  const{data}=await sb.from("personas").select("id,handle,name,avatar_url").or(`name.ilike.%${q}%,handle.ilike.%${q}%`).limit(8);
+  document.getElementById("t8results").innerHTML=(data||[]).filter(d=>!editT8.some(t=>t.id===d.id)&&d.id!==editId).map(d=>
+    `<span class="chip" onclick='t8Add(${JSON.stringify(d).replace(/'/g,"&#39;")})'>+ ★ ${esc(d.name)} @${esc(d.handle)}</span>`).join("")||'<p class="muted">No matches.</p>';
+}
+function t8Add(d){if(editT8.length>=8){toast("Top 8 is full!");return}editT8.push(d);document.getElementById("t8results").innerHTML="";renderT8()}
+async function savePersona(){
+  const handle=document.getElementById("eHandle").value.trim().toLowerCase();
+  if(!/^[a-z0-9._]{3,30}$/.test(handle)){toast("Handle: 3-30 chars, lowercase letters/numbers/dots/underscores");return}
+  const d={owner:session.user.id,handle,name:document.getElementById("eName").value.trim(),
+    nsfw:document.getElementById("eNsfw").value==="1",visibility:document.getElementById("eVis").value,
+    tagline:document.getElementById("eTagline").value.trim(),
+    theme:document.getElementById("eTheme").value,bio:document.getElementById("eBio").value,
+    avatar_url:document.getElementById("e_avatar_url").value.trim(),banner_url:document.getElementById("e_banner_url").value.trim(),
+    bg_url:document.getElementById("e_bg_url").value.trim(),feed_img_url:document.getElementById("e_feed_img_url").value.trim(),
+    music_url:document.getElementById("e_music_url").value.trim(),live_url:document.getElementById("e_live_url").value.trim(),
+    purpose:document.getElementById("ePurpose").value,
+    voice:document.getElementById("eVoice").value,topics:document.getElementById("eTopics").value,
+    audience:document.getElementById("eAudience").value,hashtags:document.getElementById("eHashtags").value,
+    dont:document.getElementById("eDont").value,ai_backend:document.getElementById("eBackend").value||null,top8:editT8.map(t=>t.id),
+    modules:Object.fromEntries([...document.querySelectorAll("#eMods input")].map(i=>[i.dataset.k,i.checked]))};
+  if(!d.name){toast("Name required");return}
+  let pid=editId,err;
+  if(editId){({error:err}=await sb.from("personas").update(d).eq("id",editId))}
+  else{const{data,error}=await sb.from("personas").insert(d).select().single();err=error;if(data)pid=data.id}
+  if(err){toast(err.message.includes("duplicate")?"That handle is taken!":err.message);return}
+  await sb.from("persona_links").delete().eq("persona_id",pid);
+  if(editLinks.length)await sb.from("persona_links").insert(editLinks.map((l,i)=>({persona_id:pid,platform:l.platform,handle:l.handle,url:l.url,sort:i})));
+  await sb.from("private_notes").delete().eq("persona_id",pid);
+  const nc=document.getElementById("eNotes").value.trim();
+  if(nc)await sb.from("private_notes").insert({persona_id:pid,content:nc});
+  await loadMine();toast("Saved ✨");go("p/"+handle);
+}
+async function deletePersona(){
+  if(!confirm("Delete this persona, its page, links and all its posts? This cannot be undone."))return;
+  await sb.from("personas").delete().eq("id",editId);
+  await loadMine();go("studio");
+}
+
+// ---------- AI: backends, chat, HQ, per-persona bots, tasks ----------
+function personaBlockFull(p){
+  return `PERSONA PROFILE\nName: ${p.name}\nHandle: @${p.handle}\nTagline: ${p.tagline||"n/a"}\nBio: ${p.bio||"n/a"}\nPurpose: ${p.purpose||"n/a"}\nPersonality/voice: ${p.voice||"n/a"}\nCore topics: ${p.topics||"n/a"}\nAudience: ${p.audience||"n/a"}\nDefault hashtags: ${p.hashtags||"n/a"}\nHard rules — never do: ${p.dont||"n/a"}\nContent rating: ${p.nsfw?"NSFW/18+":"SFW"}`;
+}
+async function callAI(backendId,messages){
+  const b=myBackends.find(x=>x.id===backendId)||myBackends[0];
+  if(!b)throw new Error("No AI model linked. Add one in My Studio → AI Models.");
+  const r=await fetch(b.base_url.replace(/\/$/,"")+"/chat/completions",{method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+b.api_key},
+    body:JSON.stringify({model:b.model,messages,max_tokens:2500})});
+  const j=await r.json();
+  if(!r.ok)throw new Error(j.error?.message||("HTTP "+r.status));
+  return j.choices[0].message.content;
+}
+let chatCtx=null;
+function openChat(opts){
+  closeChat();
+  chatCtx={...opts,busy:false,messages:JSON.parse(localStorage.getItem(opts.storeKey)||"[]")};
+  const d=document.createElement("div");d.id="chatov";
+  d.innerHTML=`<div class="ch">🤖 ${esc(opts.title)}
+    <span style="margin-left:auto;display:flex;gap:6px">
+    ${opts.extract?`<button class="btn sm" style="background:#fff;color:var(--accent2)" onclick="chatExtract()">✨ Apply to profile</button>`:""}
+    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="localStorage.removeItem(chatCtx.storeKey);chatCtx.messages=[];renderChatMsgs()">🧹</button>
+    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="closeChat()">✕</button></span></div>
+    <div class="cm" id="chatMsgs"></div>
+    <div class="ci"><textarea id="chatIn" placeholder="type…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
+    <button class="btn" onclick="chatSend()">➤</button></div>`;
+  document.body.appendChild(d);
+  renderChatMsgs();
+  if(opts.autoSend&&!chatCtx.messages.length){document.getElementById("chatIn").value=opts.autoSend;chatSend()}
+}
+function closeChat(){const d=document.getElementById("chatov");if(d)d.remove();chatCtx=null}
+function renderChatMsgs(){
+  const el=document.getElementById("chatMsgs");if(!el||!chatCtx)return;
+  el.innerHTML=chatCtx.messages.map(m=>`<div class="cmsg ${m.role==="user"?"u":"a"}">${esc(m.content)}</div>`).join("")
+    +(chatCtx.busy?'<div class="cmsg a">…thinking ✨</div>':"")
+    +(chatCtx.messages.length?`<div class="center" style="margin:6px 0"><button class="btn sec sm" onclick="copyText(chatCtx.messages.filter(m=>m.role==='assistant').slice(-1)[0]?.content||'')">📋 Copy last reply</button></div>`:"");
+  el.scrollTop=el.scrollHeight;
+}
+async function chatSend(){
+  if(!chatCtx||chatCtx.busy)return;
+  const inp=document.getElementById("chatIn");const text=inp.value.trim();if(!text)return;
+  inp.value="";chatCtx.messages.push({role:"user",content:text});chatCtx.busy=true;renderChatMsgs();
+  try{
+    const reply=await callAI(chatCtx.backendId,[{role:"system",content:chatCtx.system},...chatCtx.messages]);
+    chatCtx.messages.push({role:"assistant",content:reply});
+  }catch(e){chatCtx.messages.push({role:"assistant",content:"⚠ "+e.message})}
+  chatCtx.busy=false;localStorage.setItem(chatCtx.storeKey,JSON.stringify(chatCtx.messages.slice(-40)));renderChatMsgs();
+}
+function openHQ(){
+  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  const summary=myPersonas.map(p=>`- ${p.name} (@${p.handle}, ${p.nsfw?"NSFW":"SFW"}): ${p.purpose||p.tagline||"no purpose yet"} | topics: ${p.topics||"?"}`).join("\n");
+  openChat({title:"HQ Assistant",backendId:null,storeKey:"ps_hq_chat",
+    system:`You are the HQ manager AI for a creator running a network of online personas. You help plan content strategy, coordinate across personas, spot opportunities, and keep each persona consistent. Be concise and practical.\n\nTHE PERSONA ROSTER:\n${summary||"(none created yet)"}`});
+}
+function openPersonaChat(pid){
+  const p=myPersonas.find(x=>x.id===pid);if(!p)return;
+  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  openChat({title:p.name+" — persona bot",backendId:p.ai_backend,storeKey:"ps_chat_"+pid,
+    system:`You are the dedicated AI for the persona below. You draft content in their exact voice, brainstorm ideas on their topics, and always respect their hard rules.\n\n${personaBlockFull(p)}`});
+}
+// ----- scripted setup wizard (no AI needed) -----
+const CATS={
+adult:{label:"🔞 Adult creator",nsfw:true,voice:"Flirty, confident, playful; teasing but warm; emoji-friendly",purpose:"Grow a fanbase and funnel followers to premium content",topics:"behind the scenes, lifestyle, teasers, fan Q&A",hashtags:"#exclusive #newpost",plats:["onlyfans","twitter","reddit","telegram","snapchat","patreon"]},
+reviewer:{label:"⭐ Product reviewer",voice:"Honest, detailed, consumer-first; never hypes without receipts",purpose:"Build trust through honest reviews and earn through affiliate links",topics:"product reviews, comparisons, buying guides, deals",hashtags:"#review #worthit",plats:["youtube","amazon","website","twitter","tiktok","instagram"]},
+gamer:{label:"🎮 Gamer / streamer",voice:"Energetic, meme-fluent, community-first",purpose:"Grow a gaming community around streams and clips",topics:"gameplay clips, stream highlights, game news, community events",hashtags:"#gaming #live",plats:["twitch","discord","youtube","steam","tiktok","twitter"]},
+artist:{label:"🎨 Artist / musician",voice:"Creative, personal, process-focused",purpose:"Share work, grow an audience, and sell art or music",topics:"works in progress, finished pieces, process videos, releases",hashtags:"#art #wip",plats:["instagram","youtube","tiktok","patreon","etsy","website"]},
+hobby:{label:"💡 Hobby / fan page",voice:"Enthusiastic superfan energy, welcoming to newcomers",purpose:"Celebrate the topic and build a fan community",topics:"news, deep dives, hot takes, community highlights",hashtags:"#fans #community",plats:["instagram","reddit","facebook","discord","twitter"]},
+business:{label:"💼 Business / services",voice:"Professional but human; helpful, clear, credible",purpose:"Win clients and build reputation",topics:"tips, case studies, offers, testimonials",hashtags:"#smallbusiness",plats:["website","linkedin","facebook","instagram","gmail","yelp"]},
+lifestyle:{label:"🌸 Lifestyle influencer",voice:"Aspirational but relatable, upbeat, story-driven",purpose:"Grow an audience and land brand/affiliate deals",topics:"daily life, recommendations, hauls, routines",hashtags:"#lifestyle #dailyvlog",plats:["instagram","tiktok","youtube","snapchat","amazon"]},
+blogger:{label:"🕶 Anonymous blogger",voice:"Candid, thoughtful, unfiltered — identity stays hidden",purpose:"Publish honest writing while staying anonymous",topics:"essays, observations, commentary",hashtags:"#blog",plats:["website","reddit","twitter","telegram","email"]}};
+const VIBES=["funny","flirty","professional","edgy","wholesome","snarky","nerdy","chill","chaotic","mysterious"];
+const GOALS={grow:"grow a big audience",money:"monetize and sell",community:"build a tight community",fun:"just for fun"};
+let wiz={cat:null,vibes:[],goal:"grow"};
+function openWizard(){
+  wiz={cat:null,vibes:[],goal:"grow"};
+  const o=document.createElement("div");o.className="overlay";o.id="wizOv";
+  o.innerHTML=`<div class="wizbox" id="wizBox"></div>`;
+  document.body.appendChild(o);wizStep1();
+}
+function wizClose(){const o=document.getElementById("wizOv");if(o)o.remove()}
+function wizStep1(){
+  document.getElementById("wizBox").innerHTML=`<h2>1/2 · What kind of persona is this?</h2>
+    ${Object.entries(CATS).map(([k,c])=>`<span class="wizchip" onclick="wiz.cat='${k}';wizStep2()">${c.label}</span>`).join("")}
+    <div style="margin-top:14px"><button class="btn sec sm" onclick="wizClose()">Cancel</button></div>`;
+}
+function wizStep2(){
+  document.getElementById("wizBox").innerHTML=`<h2>2/2 · What's the vibe &amp; goal?</h2>
+    <label>Pick a few vibes</label>
+    <div id="wizVibes">${VIBES.map(v=>`<span class="wizchip" onclick="this.classList.toggle('on');wiz.vibes=[...document.querySelectorAll('#wizVibes .on')].map(x=>x.textContent)">${v}</span>`).join("")}</div>
+    <label>Main goal</label>
+    <select id="wizGoal">${Object.entries(GOALS).map(([k,g])=>`<option value="${k}">${g}</option>`).join("")}</select>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn sec sm" onclick="wizStep1()">◀ Back</button>
+      <button class="btn" onclick="wiz.goal=document.getElementById('wizGoal').value;wizStep3()">Next ➜</button></div>`;
+}
+function wizStep3(){
+  const c=CATS[wiz.cat];
+  document.getElementById("wizBox").innerHTML=`<h2>✨ Suggested accounts for this persona</h2>
+    <p class="muted">Personas like this usually live on these platforms. Keep the ones you want — we'll add them to your links list so you can drop in handles as you create them.</p>
+    <div id="wizPlats">${c.plats.map(k=>`<span class="wizchip on" data-p="${k}" onclick="this.classList.toggle('on')">${PLATS[k].icon} ${PLATS[k].name}</span>`).join("")}</div>
+    <p class="muted" style="margin-top:10px">We'll also pre-fill topics, voice, purpose and hashtags — everything stays editable.</p>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn sec sm" onclick="wizStep2()">◀ Back</button>
+      <button class="btn" onclick="wizApply()">✅ Apply</button></div>`;
+}
+function wizApply(){
+  const c=CATS[wiz.cat];
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v};
+  set("eVoice",c.voice+(wiz.vibes.length?"; vibes: "+wiz.vibes.join(", "):""));
+  set("ePurpose",c.purpose+" — main goal: "+GOALS[wiz.goal]+".");
+  set("eTopics",c.topics);set("eHashtags",c.hashtags);
+  if(c.nsfw)document.getElementById("eNsfw").value="1";
+  [...document.querySelectorAll("#wizPlats .on")].forEach(el=>{
+    const k=el.dataset.p;
+    if(!editLinks.some(l=>l.platform===k))editLinks.push({platform:k,handle:"",url:"",sort:editLinks.length});
+  });
+  document.getElementById("advWrap").style.display="";document.getElementById("advGate").style.display="none";
+  renderEditLinks();wizClose();toast("Persona drafted ✨ Tweak anything, then Save!");
+}
+function openBuilder(){
+  if(!myBackends.length){toast("Link an AI model first (My Studio → AI Models)");return}
+  const name=document.getElementById("eName")?.value||"this persona";
+  openChat({title:"Persona builder — "+name,backendId:document.getElementById("eBackend")?.value||null,
+    storeKey:"ps_build_"+(editId||"new"),extract:true,
+    system:`You are a persona-building interviewer for a MySpace-style persona network. The user is creating a persona named "${name}". Ask short, friendly questions ONE at a time to flesh out: what the persona covers (purpose), personality & voice, core topics, target audience, hashtags, hard rules (never-do), a tagline and a short bio. Keep it fun and quick — 6-8 questions max, then summarize what you've got.`,
+    autoSend:"Hi! Help me flesh out this persona. Ask me your first question."});
+}
+async function chatExtract(){
+  if(!chatCtx)return;
+  toast("Extracting profile…");
+  try{
+    const raw=await callAI(chatCtx.backendId,[{role:"system",content:chatCtx.system},...chatCtx.messages,
+      {role:"user",content:"Based on our whole conversation, output ONLY a JSON object (no code fences, no commentary) with these string keys: tagline, bio, purpose, voice, topics, audience, hashtags, dont. topics and hashtags are comma-separated lists. Make every field complete and usable, inferring sensibly where needed."}]);
+    const j=JSON.parse(raw.replace(/^```json?\s*/i,"").replace(/```\s*$/,"").trim());
+    const map={tagline:"eTagline",bio:"eBio",purpose:"ePurpose",voice:"eVoice",topics:"eTopics",audience:"eAudience",hashtags:"eHashtags",dont:"eDont"};
+    for(const k in map){const el=document.getElementById(map[k]);if(el&&j[k])el.value=j[k]}
+    const aw=document.getElementById("advWrap"),ag=document.getElementById("advGate");
+    if(aw)aw.style.display="";if(ag)ag.style.display="none";
+    toast("Profile filled in ✨ Review it & hit Save!");closeChat();
+  }catch(e){toast("Couldn't parse the AI's answer — try again ("+e.message+")")}
+}
+// ----- scheduled tasks -----
+const TASK_TYPES={newsplan:"News scan: create 5-8 specific search queries to find repost-worthy news today for this persona's topics, with the angle to take on each.",
+original:"Write 3 alternative original posts on the persona's core topics. Match the personality exactly. Number them.",
+repost:"I'll paste an article; write 3 repost captions adding this persona's take. If no article was given, ask for one.",
+article:"Write a full blog article (500-900 words) on the current state of the persona's core topics: hook, 3-5 short sections, closing call-to-discussion.",
+reel:"Write a 30-second vertical reel script: hook (first 2 seconds), beats, on-screen text, and caption with hashtags.",
+image:"Write 3 detailed image-generation prompts (style, composition, lighting, mood) for this persona's next posts.",
+newsletter:"Write a newsletter email: 3 subject lines, punchy intro, 2-4 short sections, sign-off with call-to-action.",
+promo:"Write 3 promo posts for a product/offer in the persona's voice with clear call-to-action.",
+custom:""};
+async function createTask(){
+  const d={owner:session.user.id,name:document.getElementById("tkName").value.trim(),
+    persona_id:document.getElementById("tkPersona").value||null,
+    backend_id:document.getElementById("tkBackend").value||null,
+    task_type:document.getElementById("tkType").value,
+    instructions:document.getElementById("tkInstr").value.trim(),
+    cadence:document.getElementById("tkCad").value};
+  if(!d.name){toast("Task name required");return}
+  const{error}=await sb.from("ai_tasks").insert(d);
+  if(error){toast(error.message);return}
+  await loadMine();renderStudio();toast("Task saved ⏰");
+}
+async function deleteTask(id){await sb.from("ai_tasks").delete().eq("id",id);await loadMine();renderStudio()}
+async function runTask(id){
+  const t=myTasks.find(x=>x.id===id);if(!t)return;
+  const p=myPersonas.find(x=>x.id===t.persona_id);
+  const sys=p?`You are the dedicated AI for this persona. Stay perfectly in character and respect the hard rules.\n\n${personaBlockFull(p)}`:
+    "You are a helpful content assistant for a creator managing multiple online personas.";
+  const instr=(TASK_TYPES[t.task_type]||"")+(t.instructions?"\n\nAdditional instructions: "+t.instructions:"");
+  sb.from("ai_tasks").update({last_run:new Date().toISOString()}).eq("id",id).then(()=>{});
+  openChat({title:"▶ "+t.name,backendId:t.backend_id,storeKey:"ps_task_"+id,system:sys,autoSend:instr||"Run this task."});
+}
+// ----- backends CRUD -----
+async function addBackend(){
+  const d={owner:session.user.id,name:document.getElementById("nbName").value.trim(),
+    base_url:document.getElementById("nbUrl").value.trim(),
+    api_key:document.getElementById("nbKey").value.trim(),model:document.getElementById("nbModel").value.trim()};
+  if(!d.name||!d.base_url){toast("Name and base URL required");return}
+  const{error}=await sb.from("ai_backends").insert(d);
+  if(error){toast(error.message);return}
+  await loadMine();renderStudio();toast("Model linked 🤖");
+}
+async function deleteBackend(id){await sb.from("ai_backends").delete().eq("id",id);await loadMine();renderStudio()}
+
+// ---------- uploads + watermarking ----------
+async function watermarkImage(file,text){
+  if(!file.type.startsWith("image/")||file.type==="image/gif")return file; // gifs keep animation
+  try{
+    const img=await createImageBitmap(file);
+    const c=document.createElement("canvas");c.width=img.width;c.height=img.height;
+    const ctx=c.getContext("2d");ctx.drawImage(img,0,0);
+    const fs=Math.max(16,Math.round(img.width/28));
+    ctx.font=`800 ${fs}px 'Trebuchet MS',sans-serif`;
+    ctx.textBaseline="middle";
+    ctx.save();ctx.translate(img.width/2,img.height/2);ctx.rotate(-24*Math.PI/180);
+    const tw=ctx.measureText(text).width+fs*3;
+    ctx.globalAlpha=.30;
+    for(let y=-img.height;y<img.height;y+=fs*5){
+      for(let x=-img.width-tw;x<img.width+tw;x+=tw){
+        ctx.fillStyle="#fff";ctx.fillText(text,x,y+1);
+        ctx.fillStyle="rgba(0,0,0,.85)";ctx.globalAlpha=.18;ctx.fillText(text,x+2,y+3);ctx.globalAlpha=.30;
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha=.9;ctx.font=`800 ${Math.max(13,Math.round(fs*.7))}px 'Trebuchet MS',sans-serif`;
+    const pad=8,label="★ "+text,lw=ctx.measureText(label).width;
+    ctx.fillStyle="rgba(0,0,0,.55)";ctx.fillRect(img.width-lw-pad*3,img.height-fs*1.6-pad,lw+pad*2,fs*1.4);
+    ctx.fillStyle="#fff";ctx.fillText(label,img.width-lw-pad*2,img.height-fs*.9-pad+2);
+    return new Promise(res=>c.toBlob(b=>res(new File([b],file.name.replace(/\.\w+$/,"")+"-wm.jpg",{type:"image/jpeg"})),"image/jpeg",.92));
+  }catch(e){return file}
+}
+function uploadTo(inputId,watermark){
+  if(!session){toast("Sign in first");return}
+  const f=document.createElement("input");f.type="file";f.accept="image/*,video/mp4,video/webm";
+  f.onchange=async()=>{
+    let file=f.files[0];if(!file)return;
+    if(file.size>15*1024*1024){toast("Max 15 MB — host bigger files elsewhere and paste the URL");return}
+    toast("Uploading…");
+    if(watermark&&pageState.p)file=await watermarkImage(file,pageUrl(pageState.p.handle));
+    const path=`${session.user.id}/${Date.now()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
+    const{error}=await sb.storage.from("media").upload(path,file);
+    if(error){toast(error.message);return}
+    document.getElementById(inputId).value=sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+    toast(watermark&&/^image\/(?!gif)/.test(file.type)?"Uploaded + watermarked ✓":"Uploaded ✓");
+  };
+  f.click();
+}
+</script>
+</body>
+</html>
