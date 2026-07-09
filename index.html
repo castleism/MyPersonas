@@ -10,6 +10,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;min-height:100vh}
 body.custom-bg{background-size:cover!important;background-attachment:fixed!important;background-position:center!important}
+body.app-bg{background:#f7fafd url('assets/bg.png') center top/cover fixed no-repeat}
 header{display:flex;align-items:center;gap:14px;padding:10px 24px;background:#fff;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,.12);flex-wrap:wrap}
 header h1{font-size:24px;font-weight:800;color:var(--accent);cursor:pointer;white-space:nowrap;letter-spacing:-.5px}
 #gsearch{max-width:280px;border-radius:50px;border:none;background:var(--bg);padding:10px 16px;font-size:15px}
@@ -227,6 +228,7 @@ function isHidden(personaId){return myBlocks.some(b=>b.blocked_persona===persona
 async function route(){
   const h=location.hash.replace(/^#\//,"");
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
+  document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
   if(view==="p")return renderPersonaPage(arg);
   if(view==="studio")return renderStudio();
