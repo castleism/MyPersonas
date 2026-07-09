@@ -187,7 +187,7 @@ legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{na
 amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
-let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null;
+let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[];
 const app=document.getElementById("app");
 const errBuf=[];
 function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
@@ -210,6 +210,7 @@ function go(h){location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
 function ico(n){return `<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`}
+function sharePage(handle){copyText(location.origin+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle)}
 
 // ---------- embeds ----------
 function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
@@ -262,14 +263,15 @@ function updateAuthBtn(){document.getElementById("authBtn").textContent=session?
 async function loadMine(){
   myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];
   if(!session){updateBadge();return}
-  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof}]=await Promise.all([
+  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof},{data:dr}]=await Promise.all([
     sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("blocks").select("*").eq("blocker",session.user.id),
     sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at"),
-    sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle()
+    sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle(),
+    sb.from("drafts").select("*").eq("owner",session.user.id).order("created_at",{ascending:false}).limit(100)
   ]);
-  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];myProfile=prof||null;
+  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];myProfile=prof||null;myDrafts=dr||[];
   if(myProfile&&myProfile.prefs&&Object.keys(myProfile.prefs).length)localStorage.setItem("ps_filters",JSON.stringify(myProfile.prefs));
   if(myPersonas.length){
     const{data:reqs}=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
@@ -466,6 +468,7 @@ async function renderPersonaPage(handle,skipGate){
     </div>
     <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${relBtn}
+      <button class="btn sec sm" title="Copy a link to this page" onclick="sharePage('${esc(p.handle)}')">Share</button>
       ${!isOwner&&session?`<button class="btn danger sm" title="They can't friend or interact with you" onclick="blockPersona('${p.id}','block')">${blocked?"Blocked":"Block"}</button>
       <button class="btn sec sm" title="Hide them from your view" onclick="blockPersona('${p.id}','mute')">Mute</button>`:""}
     </div>
@@ -652,6 +655,29 @@ function renderStudio(){
     <label>Extra instructions (optional)</label><textarea id="tkInstr" placeholder="e.g. focus on budget laptops this month"></textarea>
     <button class="btn sm" style="margin-top:8px" onclick="createTask()">+ Save task</button>
     <p class="muted" style="margin-top:6px">▶ Run works now (opens the task's chat with the right persona + model). Daily/weekly auto-runs are phase 2 — they need a small server function; for now hit ▶ or ask Claude to schedule it.</p></div>`;
+  const stNext={idea:"ready",ready:"posted",posted:"idea"};
+  const drHtml=`<div class="card"><h3>${ico("pen")}Content drafts (write here, post on your platforms)</h3>
+    ${["idea","ready","posted"].map(st=>{
+      const list=myDrafts.filter(d=>d.status===st);
+      return `<label style="margin-top:10px;text-transform:capitalize">${st} (${list.length})</label>`+
+        (list.map(d=>{const p=myPersonas.find(x=>x.id===d.persona_id);
+        return `<div class="t8pick"><div style="min-width:0"><b>${esc(d.title||(d.body||"").slice(0,50)||"untitled")}</b>
+          <span class="muted">${p?esc(p.name)+" · ":""}${esc((PLATS[d.platform]||{}).name||d.platform||"any platform")}</span><br>
+          <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:480px">${esc((d.body||"").slice(0,120))}</span></div>
+          <span style="margin-left:auto;display:flex;gap:4px;white-space:nowrap">
+          <button class="btn sec sm" onclick="copyDraft('${d.id}')">Copy</button>
+          <button class="btn sm" onclick="advanceDraft('${d.id}','${stNext[st]}')">→ ${stNext[st]}</button>
+          <button class="btn danger sm" onclick="deleteDraft('${d.id}')">✕</button></span></div>`}).join("")||'<p class="muted">—</p>')
+    }).join("")}
+    <hr>
+    <div class="row">
+      <div><label>Persona</label><select id="ndPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
+      <div><label>Platform it's for</label><select id="ndPlat"><option value="">(any)</option>${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select></div>
+      <div><label>Title</label><input id="ndTitle"></div>
+    </div>
+    <label>Text</label><textarea id="ndBody"></textarea>
+    <button class="btn sm" style="margin-top:8px" onclick="createDraftQuick()">+ Save draft</button>
+    <p class="muted" style="margin-top:6px">Drafts are private to you. Write or generate them here (persona chats and task runs have a "Save draft" button), then Copy and post on the platform itself. Idea → ready → posted.</p></div>`;
   app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h3 class="secthead" style="margin:0">Matrix</h3>
     <div style="display:flex;gap:8px">
@@ -669,6 +695,7 @@ function renderStudio(){
     </div>`).join("")||'<div class="empty">No personas yet — create your first!</div>'}</div>
   ${beHtml}
   ${tkHtml}
+  ${drHtml}
   ${blockHtml}
   <div class="card"><h3>${ico("node")}Apps &amp; extensions</h3>
     <div class="t8pick"><div><b>Personas — desktop companion</b><br>
@@ -681,6 +708,37 @@ function renderStudio(){
   loadExtensions();
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
+// ----- content drafts (for external platforms) -----
+function copyDraft(id){const d=myDrafts.find(x=>x.id===id);if(d)copyText((d.title?d.title+"\n\n":"")+(d.body||""))}
+async function createDraftQuick(){
+  const body=document.getElementById("ndBody").value.trim();
+  if(!body){toast("Write something first");return}
+  const{error}=await sb.from("drafts").insert({owner:session.user.id,
+    persona_id:document.getElementById("ndPersona").value||null,
+    platform:document.getElementById("ndPlat").value,
+    title:document.getElementById("ndTitle").value.trim(),body});
+  if(error){toast(error.message);return}
+  await loadMine();renderStudio();toast("Draft saved");
+}
+async function advanceDraft(id,st){
+  await sb.from("drafts").update({status:st}).eq("id",id);
+  await loadMine();renderStudio();
+}
+async function deleteDraft(id){
+  if(!confirm("Delete this draft?"))return;
+  await sb.from("drafts").delete().eq("id",id);
+  await loadMine();renderStudio();
+}
+async function saveChatDraft(){
+  if(!chatCtx)return;
+  const last=chatCtx.messages.filter(m=>m.role==="assistant").slice(-1)[0];
+  if(!last){toast("Nothing to save yet");return}
+  const{error}=await sb.from("drafts").insert({owner:session.user.id,
+    persona_id:chatCtx.personaId||null,platform:"",
+    title:(chatCtx.title||"chat").slice(0,60),body:last.content});
+  if(error){toast(error.message);return}
+  await loadMine();toast("Saved to drafts (Matrix)");
+}
 // ----- extensions catalog: manifest/release driven (git tags + GitHub Releases) -----
 async function loadExtensions(){
   const el=document.getElementById("extList");if(!el)return;
@@ -970,6 +1028,7 @@ function openChat(opts){
   d.innerHTML=`<div class="ch">${esc(opts.title)}
     <span style="margin-left:auto;display:flex;gap:6px">
     ${opts.extract?`<button class="btn sm" style="background:#fff;color:var(--accent2)" onclick="chatExtract()">Apply to profile</button>`:""}
+    ${opts.extract?"":`<button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="saveChatDraft()">Save draft</button>`}
     <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="localStorage.removeItem(chatCtx.storeKey);chatCtx.messages=[];renderChatMsgs()">Clear</button>
     <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="closeChat()">✕</button></span></div>
     <div class="cm" id="chatMsgs"></div>
@@ -1006,7 +1065,7 @@ function openHQ(){
 function openPersonaChat(pid){
   const p=myPersonas.find(x=>x.id===pid);if(!p)return;
   if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
-  openChat({title:p.name+" — persona bot",backendId:p.ai_backend,storeKey:"ps_chat_"+pid,
+  openChat({title:p.name+" — persona bot",backendId:p.ai_backend,storeKey:"ps_chat_"+pid,personaId:pid,
     system:`You are the dedicated AI for the persona below. You draft content in their exact voice, brainstorm ideas on their topics, and always respect their hard rules.\n\n${personaBlockFull(p)}`});
 }
 // ----- scripted setup wizard (no AI needed) -----
@@ -1135,7 +1194,7 @@ async function runTask(id){
     "You are a helpful content assistant for a creator managing multiple online personas.";
   const instr=(TASK_TYPES[t.task_type]||"")+(t.instructions?"\n\nAdditional instructions: "+t.instructions:"");
   sb.from("ai_tasks").update({last_run:new Date().toISOString()}).eq("id",id).then(()=>{});
-  openChat({title:"▶ "+t.name,backendId:t.backend_id,storeKey:"ps_task_"+id,system:sys,autoSend:instr||"Run this task."});
+  openChat({title:"▶ "+t.name,backendId:t.backend_id,storeKey:"ps_task_"+id,personaId:t.persona_id,system:sys,autoSend:instr||"Run this task."});
 }
 // ----- backends CRUD -----
 async function addBackend(){
