@@ -47,6 +47,11 @@ Shipped:
 - [ ] Extensions page: full catalog view with release notes + version history;
       Personas app switched to the same releases-driven model as Concept
 - [ ] Resolve persona-save session bug from verification round (error_logs driven)
+- [ ] SEO: path-based routing + prerendered persona pages so Google indexes each
+      persona individually, and per-persona OG images for rich link previews
+      (today: hash routes = one indexable URL; JS-set titles/descriptions only)
+- [ ] Auto-generated per-persona sitemap (Edge Function serving sitemap.xml
+      from the personas table)
 
 ## v1 — The platform (major milestone)
 

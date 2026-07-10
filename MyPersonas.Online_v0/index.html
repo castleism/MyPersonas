@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MyPersonas — every persona, one home</title>
+<meta name="description" content="A home page for every side of you. Create anonymous persona pages with feeds, albums, music, Top 8 friends and every account you live on — never linked to your identity.">
+<meta name="keywords" content="personas, anonymous social network, creator page, link in bio, virtual influencer, persona pages, AI personas, creator hub">
+<link rel="canonical" href="https://mypersonas.online/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MyPersonas">
+<meta property="og:title" content="MyPersonas — every persona, one home">
+<meta property="og:description" content="A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.">
+<meta property="og:image" content="https://mypersonas.online/assets/hero.png">
+<meta property="og:url" content="https://mypersonas.online/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MyPersonas — every persona, one home">
+<meta name="twitter:description" content="A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.">
+<meta name="twitter:image" content="https://mypersonas.online/assets/hero.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"MyPersonas","url":"https://mypersonas.online/","description":"A home page for every side of you — anonymous persona pages with feeds, albums, music and links."}</script>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -211,6 +225,13 @@ function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
 function ico(n){return `<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`}
 function sharePage(handle){copyText(location.origin+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle)}
+function setMeta(title,desc){
+  document.title=title;
+  const set=(sel,val)=>{const m=document.querySelector(sel);if(m)m.setAttribute("content",val)};
+  set('meta[name="description"]',desc);
+  set('meta[property="og:title"]',title);set('meta[property="og:description"]',desc);
+  set('meta[name="twitter:title"]',title);set('meta[name="twitter:description"]',desc);
+}
 
 // ---------- embeds ----------
 function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
@@ -252,11 +273,11 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
   sb.auth.onAuthStateChange((ev,s)=>{
-    session=s;updateAuthBtn();
-    if(ev==="TOKEN_REFRESHED"||ev==="INITIAL_SESSION")return; // don't re-render (would wipe forms in progress)
-    loadMine().then(route);
+    const prev=session;session=s;updateAuthBtn();
+    if(ev==="TOKEN_REFRESHED")return; // don't re-render (would wipe forms in progress)
+    if(ev==="SIGNED_IN"&&prev&&s&&prev.user.id===s.user.id)return; // tab-refocus re-fire, not a new sign-in
+    loadMine().then(route); // INITIAL_SESSION lands here — the single startup load
   });
-  sb.auth.getSession().then(({data})=>{session=data.session;updateAuthBtn();loadMine().then(route)});
   window.addEventListener("hashchange",route);
 }
 function updateAuthBtn(){document.getElementById("authBtn").textContent=session?"Sign out":"Sign in"}
@@ -354,6 +375,7 @@ async function saveSettings(){
   if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
 async function renderDiscover(q){
+  setMeta("MyPersonas — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
   let query=sb.from("personas").select("*").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
@@ -447,7 +469,11 @@ async function renderPersonaPage(handle,skipGate){
   const t8ids=(p.top8||[]).slice(0,8);
   if(t8ids.length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,theme").in("id",t8ids);
     top8=t8ids.map(id=>(data||[]).find(x=>x.id===id)).filter(Boolean)}
+  let linkedP=[];
+  if((p.linked||[]).length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,tagline").in("id",p.linked);
+    linkedP=data||[]}
   pageState={p,posts:posts||[],isOwner,feedKind:"all"};
+  setMeta(`${p.name} (@${p.handle}) — MyPersonas`,(p.tagline||p.bio||"A persona on MyPersonas").slice(0,160));
   if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
   const blocked=isHidden(p.id);
   let relBtn="";
@@ -469,6 +495,7 @@ async function renderPersonaPage(handle,skipGate){
     <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${relBtn}
       <button class="btn sec sm" title="Copy a link to this page" onclick="sharePage('${esc(p.handle)}')">Share</button>
+      ${isOwner?`<button class="btn sm" onclick="openPromo('${p.id}')">Promote</button>`:""}
       ${!isOwner&&session?`<button class="btn danger sm" title="They can't friend or interact with you" onclick="blockPersona('${p.id}','block')">${blocked?"Blocked":"Block"}</button>
       <button class="btn sec sm" title="Hide them from your view" onclick="blockPersona('${p.id}','mute')">Mute</button>`:""}
     </div>
@@ -484,6 +511,9 @@ async function renderPersonaPage(handle,skipGate){
         return l.url?`<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
       ${M("top8")&&top8.length?`<div class="card"><h3>${ico("crown")}Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>
         `<div class="t8" onclick="go('p/${esc(t.handle)}')"><div class="av8" style="${t.avatar_url?`background-image:url('${esc(t.avatar_url)}')`:""}"></div>${esc(t.name)}</div>`).join("")}</div></div>`:""}
+      ${M("linked")&&linkedP.length?`<div class="card"><h3>${ico("mask")}More of me</h3>${linkedP.map(t=>
+        `<div class="t8pick" style="cursor:pointer" onclick="go('p/${esc(t.handle)}')"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'">
+        <div><b>${esc(t.name)}</b><br><span class="muted">${esc(t.tagline||"@"+t.handle)}</span></div></div>`).join("")}</div>`:""}
     </div>
     <div>
       ${isOwner?composerHtml(p):""}
@@ -708,6 +738,41 @@ function renderStudio(){
   loadExtensions();
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
+// ----- promote: ready-made ad posts + share intents -----
+function promoTexts(p,url){
+  const tag=(p.hashtags||"").trim();
+  return [
+    `Come see what ${p.name} is all about${p.tagline?" — "+p.tagline:""}. My feed, albums, and every place I post, all in one page: ${url} #MyPersonas ${tag}`.trim(),
+    `One page, all of me. Follow ${p.name} and never lose track of where I post next: ${url} #MyPersonas`,
+    `New home page for ${p.name}${p.topics?" — "+p.topics.split(",")[0].trim()+" and more":""}. Everything I make, one link: ${url}`
+  ];
+}
+function openPromo(pid){
+  const p=myPersonas.find(x=>x.id===pid)||pageState.p;if(!p)return;
+  const url=location.origin+location.pathname.replace(/index\.html$/,"")+"#/p/"+p.handle;
+  const texts=promoTexts(p,url);
+  const eU=encodeURIComponent(url);
+  const o=document.createElement("div");o.className="overlay";o.id="promoOv";
+  o.innerHTML=`<div class="wizbox">
+    <h2>Promote this page</h2>
+    <p class="muted">Pick an ad post, copy it (or share straight to a platform), and post it from your linked accounts.</p>
+    ${texts.map((t,i)=>`<div class="t8pick" style="align-items:flex-start"><span style="font-size:13px;white-space:pre-wrap">${esc(t)}</span>
+      <button class="btn sm" style="margin-left:auto;white-space:nowrap" onclick='copyText(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Copy</button></div>`).join("")}
+    <label>Share directly</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <a class="chip" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(texts[0])}">X / Twitter</a>
+      <a class="chip" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${eU}&quote=${encodeURIComponent(texts[0])}">Facebook</a>
+      <a class="chip" target="_blank" rel="noopener" href="https://www.reddit.com/submit?url=${eU}&title=${encodeURIComponent(p.name+" — "+(p.tagline||"my new page"))}">Reddit</a>
+      <a class="chip" target="_blank" rel="noopener" href="https://t.me/share/url?url=${eU}&text=${encodeURIComponent(texts[1])}">Telegram</a>
+      <a class="chip" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(texts[1])}">WhatsApp</a>
+      <a class="chip" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=${eU}">LinkedIn</a>
+      <a class="chip" target="_blank" rel="noopener" href="mailto:?subject=${encodeURIComponent(p.name+" on MyPersonas")}&body=${encodeURIComponent(texts[0])}">Email</a>
+    </div>
+    <p class="muted" style="margin-top:8px">Instagram, TikTok, Snapchat and OnlyFans don't accept pre-filled posts — use Copy and paste there.</p>
+    <div style="margin-top:14px;text-align:right"><button class="btn sec" onclick="document.getElementById('promoOv').remove()">Close</button></div>
+  </div>`;
+  document.body.appendChild(o);
+}
 // ----- content drafts (for external platforms) -----
 function copyDraft(id){const d=myDrafts.find(x=>x.id===id);if(d)copyText((d.title?d.title+"\n\n":"")+(d.body||""))}
 async function createDraftQuick(){
@@ -841,7 +906,7 @@ async function renderEdit(id){
     <input id="e_live_url" value="${esc(p.live_url||"")}" placeholder="https://…">
     <label>Show on my page (uncheck to hide a section)</label>
     <div id="eMods" style="display:flex;gap:12px;flex-wrap:wrap">
-      ${[["music","Song"],["about","About"],["links","Links"],["top8","Top 8"],["live","Live"],["albums","Albums"],["feed","Feed"]].map(([k,l])=>
+      ${[["music","Song"],["about","About"],["links","Links"],["top8","Top 8"],["linked","My personas"],["live","Live"],["albums","Albums"],["feed","Feed"]].map(([k,l])=>
         `<label style="margin:0;display:flex;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" data-k="${k}" ${(p.modules||{})[k]!==false?"checked":""}> ${l}</label>`).join("")}
     </div>
     <hr>
@@ -864,6 +929,13 @@ async function renderEdit(id){
       <input id="lHandle" placeholder="@handle or gamertag">
       <input id="lUrl" placeholder="https://link (optional)">
       <button class="btn sm" onclick="addLink()">+</button>
+    </div>
+    <hr>
+    <h3>${ico("mask")}Linked personas (which of YOUR other personas this page reveals)</h3>
+    <p class="muted">Off by default — your personas are never connected unless you choose. Checking one shows it in a "More of me" section on this page. Each persona controls its own list, so a public persona can point to another while your anonymous ones stay unlinked.</p>
+    <div id="eLinked" style="display:flex;gap:12px;flex-wrap:wrap">
+      ${myPersonas.filter(x=>x.id!==editId).map(x=>
+        `<label style="margin:0;display:flex;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" data-lp="${x.id}" ${(p.linked||[]).includes(x.id)?"checked":""}> ${esc(x.name)} <span class="muted">@${esc(x.handle)}</span></label>`).join("")||'<p class="muted">No other personas yet.</p>'}
     </div>
     <hr>
     <h3>Top8 (your favorite personas, in order)</h3>
@@ -987,6 +1059,7 @@ async function savePersona(){
     voice:document.getElementById("eVoice").value,topics:document.getElementById("eTopics").value,
     audience:document.getElementById("eAudience").value,hashtags:document.getElementById("eHashtags").value,
     dont:document.getElementById("eDont").value,ai_backend:document.getElementById("eBackend").value||null,top8:editT8.map(t=>t.id),
+    linked:[...document.querySelectorAll("#eLinked input:checked")].map(i=>i.dataset.lp),
     modules:Object.fromEntries([...document.querySelectorAll("#eMods input")].map(i=>[i.dataset.k,i.checked]))};
   if(!d.name){toast("Name required");return}
   let pid=editId,err;
