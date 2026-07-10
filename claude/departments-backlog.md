@@ -15,6 +15,29 @@ these are things a department needs to decide or own.
   environment, or change the task's expected output to "pushed branch,
   PR opened manually." Until resolved, every session's dev-log entry will
   need a manual PR-open step. See claude/dev-log.md 2026-07-10 entry.
+- **2026-07-10 — `claude/` docs directory isn't on `main`.** `claude/dev-log.md`,
+  `claude/departments-backlog.md` (this file) and this whole directory only
+  exist on branch `feat/hide-persona-owner-column` — they were created there
+  by the first scheduled-task session and never merged to `main`. Every
+  session is expected to branch off `main` per the task instructions, so a
+  fresh session branching off `main` won't see these files at all (this
+  session had to switch branches just to append an entry). Merge that
+  branch (or cherry-pick just the `claude/` directory to `main`) so the
+  docs are visible regardless of which feature branch a session starts
+  from.
+- **2026-07-10 — Uncommitted "v0a" feature + QA scaffolding found in the
+  working tree, stashed for review.** Found ~369 uncommitted lines on
+  `feat/hide-persona-owner-column` implementing a large account/security/
+  personality/astrology feature (password & TOTP management, data export,
+  account deletion, Myers-Briggs, full natal-chart astrology with an SVG
+  chart wheel), plus an untracked `_to_delete/` folder with QA scaffolding
+  (`_qa_splice.py`, `index.html.qabak`). Not from this session, unrelated to
+  that branch's purpose, and far bigger than one session's scoped unit, so
+  it was preserved via `git stash push -u` on that branch rather than
+  discarded or committed. Someone should review the stash (`git stash list`
+  → `git stash show -p <ref>`), decide whether it's worth finishing as its
+  own branch/PR, and make sure it isn't lost. Full detail in
+  claude/dev-log.md 2026-07-10 "Route render race guard" entry.
 
 ## Security
 
