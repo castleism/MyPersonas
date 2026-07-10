@@ -2,7 +2,7 @@
 
 Status: ⬜ untested · ✅ pass · ❌ fail (see note) · ⏭ skipped/blocked
 
-Prereqs: sql-updates 001, 002, 003, 004 run in Supabase; latest commit pushed and
+Prereqs: sql-updates 001, 002, 003, 004, 005 run in Supabase; latest commit pushed and
 deployed (Actions green); hard refresh.
 
 Verification round 2026-07-10 run by Claude (browser automation) + Christian.
@@ -63,6 +63,7 @@ Progress: 19 / 34 (4 need second account, 3 need Christian-side auth, 1 needs lo
 7. FINDING (UX/perf, roadmap candidate): route renders don't cancel superseded ones — navigating while a page render's queries are in flight lets the old render resolve late and clobber the new view (seen live: edit form replaced by the previous persona page). An epoch/generation check in route() would fix it.
 8. FINDING (onboarding): fetching localhost (SD panel / local Ollama) from the https site triggers Chrome's local-network-access permission prompt, which blocks the page until answered. Expected browser behavior, but the SD/extensions docs should tell users to click Allow.
 9. SECURITY NOTE: API keys were pasted into a chat during verification — owner advised to rotate the OpenRouter, xAI and ollama.com keys. As designed, keys should only ever be entered directly into Matrix → AI Models by the owner.
+10. FIXED (sql-updates/005): the personas SELECT policy exposed whole rows — including the `owner` uuid — to anyone, even signed-out (verified: anon-role `select=owner` returned 200). The uuid didn't reveal an email (profiles are self-read-only), but it let anyone GROUP all public personas of one account by owner — breaking the "never linked to each other" promise at the API level even though the UI never showed it. Fix: revoked column-level SELECT on personas.owner from anon/authenticated; added a security-definer `my_personas()` RPC for the owner's own roster (replaces the raw `.eq("owner",...)` query); switched every other client read of `personas` to an explicit column list; page-owner status now comes from membership in the already-loaded roster instead of comparing the raw uuid. `linked` (jsonb array of a persona's own OTHER persona ids it chooses to reveal) was reviewed and left public — that's the intentional one-way reveal feature from finding #34, not a leak. NEEDS RE-VERIFICATION after 005 is applied and deployed: confirm anon `select=owner` now 403s/omits the column, and that persona create/edit/browse/page-view/discover all still work (RETURNING no longer requests `owner`, so watch the create path in particular).
 
 ## Round findings (2026-07-10)
 1. FIXED — persona create RLS (sql-updates/004): SELECT policy now checks owner/public inline; persona_visible() kept for private-friends case.

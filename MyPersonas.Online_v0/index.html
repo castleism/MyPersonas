@@ -288,7 +288,7 @@ async function loadMine(){
   myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];
   if(!session){updateBadge();return}
   const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof},{data:dr}]=await Promise.all([
-    sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
+    sb.rpc("my_personas"),
     sb.from("blocks").select("*").eq("blocker",session.user.id),
     sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at"),
@@ -381,7 +381,7 @@ async function renderDiscover(q){
   setMeta("MyPersonas — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
-  let query=sb.from("personas").select("*").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
+  let query=sb.from("personas").select("id,handle,name,tagline,topics,theme,banner_url,avatar_url,nsfw,live_url,visibility").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
   if(q)query=query.or(`name.ilike.%${q}%,handle.ilike.%${q}%,topics.ilike.%${q}%,tagline.ilike.%${q}%`);
   const{data:psRaw}=await query;
   const hideT=f.hideTopics.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean);
@@ -439,7 +439,7 @@ function pCard(p){
 let pageState={};
 async function renderPersonaPage(handle,skipGate){
   app.innerHTML='<div class="empty">Loading…</div>';
-  const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
+  const{data:p}=await sb.from("personas").select("id,handle,name,tagline,bio,nsfw,visibility,avatar_url,banner_url,bg_url,feed_img_url,music_url,live_url,theme,topics,purpose,voice,audience,hashtags,dont,top8,modules,ai_backend,created_at,linked").eq("handle",handle).maybeSingle();
   if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
     app.innerHTML="";
@@ -450,7 +450,7 @@ async function renderPersonaPage(handle,skipGate){
     document.body.appendChild(o);return;
   }
   document.querySelectorAll(".overlay").forEach(o=>o.remove());
-  const isOwner=session&&p.owner===session.user.id;
+  const isOwner=session&&myPersonas.some(m=>m.id===p.id);
   const[{data:links},{data:posts},{data:fr},{data:albums}]=await Promise.all([
     sb.from("persona_links").select("*").eq("persona_id",p.id).order("sort"),
     sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).limit(50),
@@ -1067,7 +1067,7 @@ async function savePersona(){
   if(!d.name){toast("Name required");return}
   let pid=editId,err;
   if(editId){({error:err}=await sb.from("personas").update(d).eq("id",editId))}
-  else{const{data,error}=await sb.from("personas").insert(d).select().single();err=error;if(data)pid=data.id}
+  else{const{data,error}=await sb.from("personas").insert(d).select("id").single();err=error;if(data)pid=data.id}
   if(err){toast(err.message.includes("duplicate")?"That handle is taken!":err.message);return}
   await sb.from("persona_links").delete().eq("persona_id",pid);
   if(editLinks.length)await sb.from("persona_links").insert(editLinks.map((l,i)=>({persona_id:pid,platform:l.platform,handle:l.handle,url:l.url,sort:i})));

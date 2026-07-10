@@ -5,6 +5,16 @@ trailing letters are hotfixes. Releases are git tags.
 
 ## v0a — Verification fixes (2026-07-10)
 
+- Fixed a privacy leak (sql-updates/005): the personas SELECT policy returned
+  whole rows, including the `owner` uuid, to anyone — even signed out. The
+  uuid didn't reveal an email, but it let anyone group all of one account's
+  public personas together, breaking the "never linked to each other" promise
+  at the API level even though the UI never showed it. Fixed by revoking
+  column-level SELECT on `personas.owner` from anon/authenticated and adding
+  a security-definer `my_personas()` RPC for the owner's own roster; the app
+  now uses explicit column lists (never `select("*")`) everywhere it reads
+  personas, and derives page-owner status from the already-loaded roster
+  instead of comparing the raw uuid client-side.
 - Fixed persona creation failing with an RLS error (sql-updates/004). Root cause:
   the create path inserts with RETURNING, and the returned row must pass the
   personas SELECT policy; persona_visible() (security definer, STABLE) re-queries
