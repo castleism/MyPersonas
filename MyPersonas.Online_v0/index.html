@@ -272,11 +272,14 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   <p>This app needs its Supabase backend connected. Open <b>index.html</b> and paste your <b>Project URL</b> and <b>anon key</b> into the CONFIG block at the top of the script. See SETUP-GUIDE.md.</p></div>`;
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
   sb.auth.onAuthStateChange((ev,s)=>{
-    const prev=session;session=s;updateAuthBtn();
+    session=s;updateAuthBtn();
     if(ev==="TOKEN_REFRESHED")return; // don't re-render (would wipe forms in progress)
-    if(ev==="SIGNED_IN"&&prev&&s&&prev.user.id===s.user.id)return; // tab-refocus re-fire, not a new sign-in
-    loadMine().then(route); // INITIAL_SESSION lands here — the single startup load
+    const uid=s&&s.user?s.user.id:null;
+    if(uid===loadedUid)return; // already loaded for this user (startup double-fire, tab refocus)
+    loadedUid=uid;
+    loadMine().then(route);
   });
   window.addEventListener("hashchange",route);
 }

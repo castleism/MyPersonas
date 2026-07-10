@@ -44,7 +44,7 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 - [ ] 24. Friend request → badge → accept → friend count — ⬜
 - [ ] 25. Block prevents requests; mute hides from Entangle — ⬜
 - [ ] 26. Private invisible to non-friends; unlisted only via link; 18+ gate — ⬜
-- [ ] 34. Linked personas reveal one-way — ⏭ BLOCKED: feature not in the live deploy yet (working tree is ahead — push to deploy)
+- [x] 34. Linked personas reveal one-way — ✅ (deployed & tested: nova_qa shows "More of me → Echo QA"; echo_qa's page reveals nothing about Nova). Stranger-view double-check still worthwhile with the second account.
 
 ## AI & drafts
 - [ ] 27. Model linked → HQ Assistant responds knowing the roster — ⬜ (needs an API key linked)
@@ -54,16 +54,16 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 - [x] 31. Report a problem creates a row in error_logs — ✅ insert path verified (row "[QA] verification test report" — confirm visible in dashboard). NOTE: the button itself uses prompt(), untestable via automation
 ​
 ## Growth
-- [ ] 32. Promote panel: 3 ad variants, Copy works, X share opens pre-filled — ⏭ BLOCKED: openPromo not in the live deploy (working tree is ahead — push to deploy)
-- [ ] 33. Page link pasted in Discord/X shows hero image + description preview — ⬜ (Christian — paste link after next deploy)
+- [x] 32. Promote panel: 3 ad variants, Copy works, X share opens pre-filled — ✅ (deployed & tested; variants personalized from tagline/topics, clipboard verified, twitter.com/intent/tweet pre-filled)
+- [ ] 33. Page link pasted in Discord/X shows hero image + description preview — ✅ meta side: static HTML head carries og:image (hero.png), og/twitter description + summary_large_image. Actual paste test: Christian. (Per-persona OG images = v0.5 roadmap.)
 
 ---
-Progress: 15 / 34 (+2 blocked on deploy, 4 need second account, 3 need Christian-side auth/files)
+Progress: 17 / 34 (4 need second account, 5 need Christian-side auth/files/SD, rest done)
 
 ## Round findings (2026-07-10)
 1. FIXED — persona create RLS (sql-updates/004): SELECT policy now checks owner/public inline; persona_visible() kept for private-friends case.
-2. FIXED — every Supabase query fired twice on page load (getSession + SIGNED_IN both ran loadMine/route). index.html now loads once via INITIAL_SESSION and ignores same-user SIGNED_IN re-fires (tab refocus) — also protects in-progress forms.
+2. FIXED — every Supabase query fired twice on page load. First attempt (event-name guard) didn't hold: SIGNED_IN and INITIAL_SESSION both fire at startup in varying order. Final fix dedupes by user-id in onAuthStateChange (committed, needs push + live re-check of single-fire).
 3. Live deploy is behind the working tree (no Promote, no linked personas). Push to deploy, then verify #32/#34 and the double-fetch fix.
 4. assets/Extensions/Concept/releases.json missing — registry fallback 404s.
 5. Minor: handle field label doesn't mention hyphens are rejected (validation toast easy to miss when Save silently no-ops).
-6. Minor: test persona nova_qa (with posts/albums) left in place for further testing — delete when verification wraps.
+6. Minor: test personas nova_qa (posts/albums/live/song) and echo_qa (linked-reveal target) left in place for further testing — delete both when verification wraps.
