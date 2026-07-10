@@ -3,6 +3,16 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## v0b — Route render race guard (2026-07-10)
+
+- Fixed VERIFICATION.md finding #7: navigating away while a route's data was
+  still loading let the stale render resolve late and overwrite the new page
+  (observed live: opening the edit form got replaced by the previous persona
+  page once its fetch caught up). Added a render-epoch counter bumped by
+  route() and by every direct render call (post publish/delete, age-gate
+  continue); renderDiscover/renderPersonaPage/renderEdit now bail before
+  their final DOM write if a newer render has since started.
+
 ## v0a — Verification fixes (2026-07-10)
 
 - Fixed persona creation failing with an RLS error (sql-updates/004). Root cause:

@@ -202,6 +202,7 @@ amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},ye
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[];
+let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
 const app=document.getElementById("app");
 const errBuf=[];
 function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
@@ -313,16 +314,17 @@ function isHidden(personaId){return myBlocks.some(b=>b.blocked_persona===persona
 
 // ---------- router ----------
 async function route(){
+  const myEpoch=++renderEpoch;
   const h=location.hash.replace(/^#\//,"");
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
-  if(view==="p")return renderPersonaPage(arg);
+  if(view==="p")return renderPersonaPage(arg,false,myEpoch);
   if(view==="studio")return renderStudio();
-  if(view==="edit")return renderEdit(arg);
+  if(view==="edit")return renderEdit(arg,myEpoch);
   if(view==="signin")return renderSignin();
-  if(view==="search")return renderDiscover(arg);
-  return renderDiscover("");
+  if(view==="search")return renderDiscover(arg,myEpoch);
+  return renderDiscover("",myEpoch);
 }
 
 // ---------- sign in ----------
@@ -377,7 +379,7 @@ async function saveSettings(){
   // on the welcome/onboarding page, collapse the card after a successful save
   if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
-async function renderDiscover(q){
+async function renderDiscover(q,epoch=++renderEpoch){
   setMeta("MyPersonas — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
@@ -392,6 +394,7 @@ async function renderDiscover(q){
   if(!q){const{data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
     .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
     recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
+  if(epoch!==renderEpoch)return;
   const whatIs=`<h3 class="secthead">What is MyPersonas?</h3>
     <div class="feat3">
       <div class="card"><h3>${ico("mask")}A page for every side of you</h3>
@@ -437,9 +440,10 @@ function pCard(p){
 
 // ---------- persona page ----------
 let pageState={};
-async function renderPersonaPage(handle,skipGate){
+async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   app.innerHTML='<div class="empty">Loading…</div>';
   const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
+  if(epoch!==renderEpoch)return;
   if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
     app.innerHTML="";
@@ -475,6 +479,7 @@ async function renderPersonaPage(handle,skipGate){
   let linkedP=[];
   if((p.linked||[]).length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,tagline").in("id",p.linked);
     linkedP=data||[]}
+  if(epoch!==renderEpoch)return;
   pageState={p,posts:posts||[],isOwner,feedKind:"all"};
   setMeta(`${p.name} (@${p.handle}) — MyPersonas`,(p.tagline||p.bio||"A persona on MyPersonas").slice(0,160));
   if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
@@ -850,7 +855,7 @@ async function loadExtensions(){
 
 // ---------- edit persona ----------
 let editLinks=[],editT8=[],editId=null;
-async function renderEdit(id){
+async function renderEdit(id,epoch=++renderEpoch){
   if(!session){renderSignin();return}
   editId=id==="new"?null:id;
   let p={theme:"#ff4fa3",visibility:"public"},notes={content:""};
@@ -863,6 +868,7 @@ async function renderEdit(id){
     if((p.top8||[]).length){const{data:t}=await sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8);
       editT8=(p.top8||[]).map(tid=>(t||[]).find(x=>x.id===tid)).filter(Boolean)}else editT8=[];
   }else{editLinks=[];editT8=[]}
+  if(epoch!==renderEpoch)return;
   app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
     <div class="row">
       <div><label>Name</label><input id="eName" value="${esc(p.name||"")}"></div>
