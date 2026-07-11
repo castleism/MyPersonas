@@ -60,7 +60,7 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 ---
 Progress: 19 / 34 (4 need second account, 3 need Christian-side auth, 1 needs local SD, AI checks need a linked model)
 
-7. FINDING (UX/perf, roadmap candidate): route renders don't cancel superseded ones — navigating while a page render's queries are in flight lets the old render resolve late and clobber the new view (seen live: edit form replaced by the previous persona page). An epoch/generation check in route() would fix it.
+7. FIXED: route renders don't cancel superseded ones — navigating while a page render's queries are in flight lets the old render resolve late and clobber the new view (seen live: edit form replaced by the previous persona page). Added a renderEpoch counter: route() and every direct render call (post publish/delete, age-gate continue) claim a new epoch; renderDiscover/renderPersonaPage/renderEdit check it before their final DOM write and bail if superseded. Syntax-checked and smoke-tested locally (rapid hash-navigation sequence lands on the correct final view, no console errors) — NEEDS RE-VERIFICATION on a live deploy with real network latency to confirm the original repro (fast nav into an edit form) no longer clobbers.
 8. FINDING (onboarding): fetching localhost (SD panel / local Ollama) from the https site triggers Chrome's local-network-access permission prompt, which blocks the page until answered. Expected browser behavior, but the SD/extensions docs should tell users to click Allow.
 9. SECURITY NOTE: API keys were pasted into a chat during verification — owner advised to rotate the OpenRouter, xAI and ollama.com keys. As designed, keys should only ever be entered directly into Matrix → AI Models by the owner.
 

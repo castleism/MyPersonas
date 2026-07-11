@@ -143,6 +143,26 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .wizchip.on{border-color:var(--accent);background:#e7f3ff;color:var(--accent)}
 .wizbox{background:#fff;border-radius:12px;padding:28px;max-width:560px;width:100%;color:var(--text);text-align:left;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.3)}
 .wizbox h2{font-size:20px;font-weight:800;margin-bottom:6px}
+.b3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.b3 .c{background:var(--bg);border-radius:10px;padding:14px;text-align:center}
+.b3 .c b{display:block;font-size:19px;color:var(--text);line-height:1.2}
+.b3 .c i{display:block;font-size:12px;color:var(--dim);font-weight:700;font-style:normal;margin-bottom:4px;letter-spacing:.4px;text-transform:uppercase}
+.b3 .c span{font-size:12px;color:var(--dim)}
+.ptable{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+.ptable th,.ptable td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+.ptable th{color:var(--dim);font-size:12px;font-weight:700}
+.natalwheel{width:100%;max-width:360px;margin:12px auto;display:block}
+.asplist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.qrbox img{width:168px;height:168px;background:#fff;border-radius:8px;border:1px solid var(--border)}
+.acctsub{font-size:15px;font-weight:700;color:var(--text);margin:14px 0 2px}
+.sysgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:8px 0}
+.syschip{display:block;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:13px}
+.syschip input{width:auto;margin-right:6px}
+.syschip b{font-weight:700;color:var(--text)}
+.syschip span{display:block;color:var(--dim);font-size:12px;margin-top:2px}
+.ecorow{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.astblk{border-top:1px solid var(--border);margin-top:14px;padding-top:6px}
 </style>
 </head>
 <body>
@@ -167,7 +187,9 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <symbol id="i-mask" viewBox="0 0 24 24"><path d="M4 5c2.5 1 5 1.5 8 1.5S17.5 6 20 5v6c0 5-3.5 9-8 9s-8-4-8-9Z"/><path d="M8.5 12h1M14.5 12h1"/></symbol>
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/></symbol>
   <symbol id="i-bug" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 1 4 4v3a4 4 0 0 1-8 0v-3a4 4 0 0 1 4-4Z"/><path d="M9 6L8 4M15 6l1-2M8 13H4M20 13h-4M6 19l2.5-2M18 19l-2.5-2"/></symbol>
-</svg>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.5 5.6L20.5 9.4l-4.3 4.1 1 5.9L12 16.6l-5.2 2.8 1-5.9L3.5 9.4l6-.8Z"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8 8 0 1 1 9.4 4 6.5 6.5 0 0 0 20 14.6Z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol></svg>
 <header>
   <h1 onclick="go('')">MyPersonas</h1>
   <input id="gsearch" placeholder="find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
@@ -202,6 +224,7 @@ amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},ye
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[];
+let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
 const app=document.getElementById("app");
 const errBuf=[];
 function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
@@ -313,16 +336,17 @@ function isHidden(personaId){return myBlocks.some(b=>b.blocked_persona===persona
 
 // ---------- router ----------
 async function route(){
+  const myEpoch=++renderEpoch;
   const h=location.hash.replace(/^#\//,"");
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
-  if(view==="p")return renderPersonaPage(arg);
+  if(view==="p")return renderPersonaPage(arg,false,myEpoch);
   if(view==="studio")return renderStudio();
-  if(view==="edit")return renderEdit(arg);
+  if(view==="edit")return renderEdit(arg,myEpoch);
   if(view==="signin")return renderSignin();
-  if(view==="search")return renderDiscover(arg);
-  return renderDiscover("");
+  if(view==="search")return renderDiscover(arg,myEpoch);
+  return renderDiscover("",myEpoch);
 }
 
 // ---------- sign in ----------
@@ -377,7 +401,7 @@ async function saveSettings(){
   // on the welcome/onboarding page, collapse the card after a successful save
   if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
-async function renderDiscover(q){
+async function renderDiscover(q,epoch=++renderEpoch){
   setMeta("MyPersonas — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
@@ -392,6 +416,7 @@ async function renderDiscover(q){
   if(!q){const{data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
     .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
     recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
+  if(epoch!==renderEpoch)return;
   const whatIs=`<h3 class="secthead">What is MyPersonas?</h3>
     <div class="feat3">
       <div class="card"><h3>${ico("mask")}A page for every side of you</h3>
@@ -437,9 +462,10 @@ function pCard(p){
 
 // ---------- persona page ----------
 let pageState={};
-async function renderPersonaPage(handle,skipGate){
+async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   app.innerHTML='<div class="empty">Loading…</div>';
   const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
+  if(epoch!==renderEpoch)return;
   if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
     app.innerHTML="";
@@ -475,6 +501,7 @@ async function renderPersonaPage(handle,skipGate){
   let linkedP=[];
   if((p.linked||[]).length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,tagline").in("id",p.linked);
     linkedP=data||[]}
+  if(epoch!==renderEpoch)return;
   pageState={p,posts:posts||[],isOwner,feedKind:"all"};
   setMeta(`${p.name} (@${p.handle}) — MyPersonas`,(p.tagline||p.bio||"A persona on MyPersonas").slice(0,160));
   if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
@@ -737,6 +764,7 @@ function renderStudio(){
     <div id="extList"><p class="muted">Loading extensions…</p></div>
   </div>
   ${settingsCard()}
+  ${accountArea()}
   <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
   loadExtensions();
 }
@@ -850,7 +878,7 @@ async function loadExtensions(){
 
 // ---------- edit persona ----------
 let editLinks=[],editT8=[],editId=null;
-async function renderEdit(id){
+async function renderEdit(id,epoch=++renderEpoch){
   if(!session){renderSignin();return}
   editId=id==="new"?null:id;
   let p={theme:"#ff4fa3",visibility:"public"},notes={content:""};
@@ -863,6 +891,7 @@ async function renderEdit(id){
     if((p.top8||[]).length){const{data:t}=await sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8);
       editT8=(p.top8||[]).map(tid=>(t||[]).find(x=>x.id===tid)).filter(Boolean)}else editT8=[];
   }else{editLinks=[];editT8=[]}
+  if(epoch!==renderEpoch)return;
   app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
     <div class="row">
       <div><label>Name</label><input id="eName" value="${esc(p.name||"")}"></div>
@@ -1452,6 +1481,496 @@ function uploadTo(inputId,watermark){
   };
   f.click();
 }
+
+// ================= ACCOUNT: details, security, personality, ecosystem, astrology =================
+const MBTI_TYPES={
+  INTJ:"Architect",INTP:"Logician",ENTJ:"Commander",ENTP:"Debater",
+  INFJ:"Advocate",INFP:"Mediator",ENFJ:"Protagonist",ENFP:"Campaigner",
+  ISTJ:"Logistician",ISFJ:"Defender",ESTJ:"Executive",ESFJ:"Consul",
+  ISTP:"Virtuoso",ISFP:"Adventurer",ESTP:"Entrepreneur",ESFP:"Entertainer"};
+const SIGNS=["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const PLABEL={Sun:"Sun",Moon:"Moon",Mercury:"Mercury",Venus:"Venus",Mars:"Mars",Jupiter:"Jupiter",Saturn:"Saturn",Uranus:"Uranus",Neptune:"Neptune",Pluto:"Pluto","North Node":"North Node"};
+const PSHORT={Sun:"Sun",Moon:"Moon",Mercury:"Mer",Venus:"Ven",Mars:"Mar",Jupiter:"Jup",Saturn:"Sat",Uranus:"Ura",Neptune:"Nep",Pluto:"Plu","North Node":"Node"};
+// Castleborn ecosystem — PLACEHOLDER URLs; confirm/replace with the real product links.
+const CASTLEBORN=[
+  {key:"castleborn",name:"Castleborn",url:"https://castleborn.com",desc:"The Castleborn home — the studio behind MyPersonas and its sibling products."},
+  {key:"trainify",name:"trAInify",url:"https://trainify.app",desc:"AI product in the Castleborn family (models, assistants, automation)."}
+];
+const ASTRO_SYSTEMS=[
+  {key:"western",name:"Western (Tropical)",desc:"Sun/Moon/Rising, houses, aspects — the familiar zodiac."},
+  {key:"vedic",name:"Vedic (Sidereal)",desc:"Jyotish: sidereal signs with your ayanamsa, plus Moon nakshatra."},
+  {key:"iau13",name:"13-Sign (Ophiuchus)",desc:"The astronomical zodiac — where each body actually sits, including Ophiuchus."},
+  {key:"chinese",name:"Chinese zodiac",desc:"Year animal + element (solar-term year boundary), plus month & hour animals."},
+  {key:"mayan",name:"Mayan (Tzolk'in)",desc:"The 260-day sacred count: your day-sign and galactic tone."},
+  {key:"lunar",name:"Lunar & Moon",desc:"Moon phase at birth, illumination, and the lunar day (tithi)."}
+];
+const AYAN={lahiri:{name:"Lahiri (Chitrapaksha)",off:0},fagan:{name:"Fagan / Bradley",off:-0.88},kp:{name:"Krishnamurti (KP)",off:-0.10}};
+
+function prefsObj(){return (myProfile&&myProfile.prefs)||{}}
+function astroCfg(){const c=(prefsObj().astro)||{};return{
+  systems:c.systems||["western"],ayanamsa:c.ayanamsa||"lahiri",houses:c.houses||"whole"};}
+async function patchPrefs(partial){
+  const P=Object.assign({},prefsObj(),partial);
+  const{error}=await sb.from("profiles").update({prefs:P}).eq("id",session.user.id);
+  if(error){toast(error.message);return false}
+  await loadMine();return true;
+}
+
+function accountArea(){
+  const P=prefsObj(),acc=P.account||{},mb=P.mbti||{},nat=P.natal||null,eco=P.eco||{};
+  const tzGuess=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+  const emailVerified=session&&session.user&&session.user.email;
+  const cfg=astroCfg();
+  return `
+  <div class="card"><h3>${ico("user")}Account details</h3>
+    <p class="muted">Private to you — never shown on any persona page.</p>
+    <div class="row">
+      <div><label>Full name</label><input id="acFull" value="${esc(acc.fullName||"")}"></div>
+      <div><label>Pronouns</label><input id="acPro" value="${esc(acc.pronouns||"")}" placeholder="she/her, he/him, they/them"></div>
+    </div>
+    <div class="row">
+      <div><label>Date of birth</label><input id="acDob" type="date" value="${esc(acc.dob||"")}"></div>
+      <div><label>Gender (optional)</label><input id="acGender" value="${esc(acc.gender||"")}"></div>
+    </div>
+    <div class="row">
+      <div><label>Country</label><input id="acCountry" value="${esc(acc.country||"")}"></div>
+      <div><label>City / region</label><input id="acCity" value="${esc(acc.city||"")}"></div>
+    </div>
+    <div class="row">
+      <div><label>Phone (optional)</label><input id="acPhone" value="${esc(acc.phone||"")}" placeholder="+1 555 000 0000"></div>
+      <div><label>Time zone</label><input id="acTz" value="${esc(acc.tz||tzGuess)}"></div>
+    </div>
+    <button class="btn sm" style="margin-top:12px" onclick="saveAccount()">Save account details</button></div>
+
+  <div class="card"><h3>${ico("lock")}Sign-in &amp; security</h3>
+    <p class="muted">You are signed in as <b>${esc(emailVerified||"")}</b>. MyPersonas never shows your email anywhere.</p>
+    <div class="acctsub">Password</div>
+    <p class="muted">You can sign in with Google or a magic link with no password at all. Set one here if you also want email + password sign-in.</p>
+    <div class="row">
+      <div><label>New password</label><input id="secPass" type="password" placeholder="at least 8 characters" autocomplete="new-password"></div>
+      <div><label>Confirm password</label><input id="secPass2" type="password" autocomplete="new-password"></div>
+    </div>
+    <button class="btn sm" style="margin-top:10px" onclick="setPassword()">Set / change password</button>
+    <div class="acctsub">Email</div>
+    <div class="row"><div><label>Change email (a confirmation link is sent to both addresses)</label>
+      <input id="secEmail" type="email" placeholder="new@email.com"></div></div>
+    <button class="btn sm" style="margin-top:10px" onclick="changeEmail()">Update email</button>
+    <div class="acctsub">Two-factor authentication (TOTP)</div>
+    <p class="muted">Add an authenticator app (Google Authenticator, Authy, 1Password) for a second layer.</p>
+    <div id="mfaBox"><button class="btn sm sec" onclick="mfaStart()">Manage two-factor</button></div>
+    <div class="acctsub">Sessions &amp; data</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn sm sec" onclick="signOutEverywhere()">Sign out of all devices</button>
+      <button class="btn sm sec" onclick="exportMyData()">Download my data (JSON)</button>
+      <button class="btn sm danger" onclick="deleteAllContent()">Delete all my content</button>
+    </div>
+    <p class="muted" style="margin-top:6px">Deleting content removes every persona, page, post, album, draft, task and linked model. Your sign-in record (email/identity) is removed separately — see Privacy below.</p></div>
+
+  <div class="card"><h3>${ico("node")}Castleborn ecosystem</h3>
+    <p class="muted">One account across the Castleborn family. Connect each product and jump between them. Your connection details are private to you.</p>
+    ${CASTLEBORN.map(pr=>{const c=eco[pr.key]||{};return `<div class="ecorow">
+      <div style="min-width:0"><b>${esc(pr.name)}</b> <span class="muted">${esc(pr.desc)}</span><br>
+        <input id="eco_${pr.key}" value="${esc(c.handle||"")}" placeholder="your ${esc(pr.name)} handle / ID (optional)" style="max-width:320px;margin-top:4px"></div>
+      <div style="display:flex;gap:6px;align-items:center;white-space:nowrap">
+        <span class="pill ${c.connected?"live":"priv"}">${c.connected?"Connected":"Not connected"}</span>
+        <button class="btn sm sec" onclick="toggleEco('${pr.key}')">${c.connected?"Disconnect":"Connect"}</button>
+        <a class="btn sm" style="text-decoration:none" href="${esc(pr.url)}" target="_blank" rel="noopener">Open ↗</a>
+      </div></div>`;}).join("")}
+    <p class="muted" style="margin-top:8px">Note: these product links are placeholders — confirm the real URLs. Full single sign-on across Castleborn products is on the roadmap; for now this stores your handle and a connected flag.</p></div>
+
+  <div class="card"><h3>${ico("mask")}Personality — Myers-Briggs</h3>
+    <p class="muted">Optional and private. Record your type, or take a free test if you do not know it.</p>
+    <div class="row">
+      <div><label>Your type</label><select id="mbType"><option value="">— select —</option>
+        ${Object.entries(MBTI_TYPES).map(([k,v])=>`<option value="${k}" ${mb.type===k?"selected":""}>${k} — ${v}</option>`).join("")}</select></div>
+      <div><label>&nbsp;</label><a class="btn sm sec" style="text-decoration:none;display:inline-block" href="https://www.16personalities.com/free-personality-test" target="_blank" rel="noopener">Take the free test ↗</a></div>
+    </div>
+    ${mb.type?`<p class="muted" style="margin-top:8px">${esc(mb.type)} — <b>${esc(MBTI_TYPES[mb.type]||"")}</b>. ${mbtiBlurb(mb.type)}</p>`:""}
+    <label>Notes (strengths, what fits, what doesn't)</label>
+    <textarea id="mbNotes" placeholder="Optional">${esc(mb.notes||"")}</textarea>
+    <button class="btn sm" style="margin-top:10px" onclick="saveMbti()">Save personality</button></div>
+
+  <div class="card"><h3>${ico("star")}Astrology &amp; natal chart</h3>
+    <p class="muted">Private to you. Choose which systems and traditions to include, then calculate. Birth details are stored only under your account and never shown publicly. Houses and rising sign need an exact birth time.</p>
+    <div class="row">
+      <div><label>Birth date</label><input id="natDate" type="date" value="${esc(nat?nat.date:(acc.dob||""))}"></div>
+      <div><label>Birth time</label><input id="natTime" type="time" value="${esc(nat&&nat.time?nat.time:"")}"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:400;color:var(--text);font-size:14px;margin-top:6px">
+      <input type="checkbox" id="natUnknown" ${nat&&nat.unknownTime?"checked":""}> I don't know my exact birth time</label>
+    <div class="row" style="margin-top:6px">
+      <div><label>Birth place (city, country)</label><input id="natPlace" value="${esc(nat?nat.place:"")}" placeholder="Ulm, Germany"></div>
+      <div style="max-width:150px;flex:0 0 150px"><label>&nbsp;</label><button class="btn sm sec" style="width:100%" onclick="natalGeocode()">Find place</button></div>
+    </div>
+    <p class="muted" id="natGeoOut">${nat?("Saved: "+esc(nat.place)+"  ("+(+nat.lat).toFixed(2)+", "+(+nat.lng).toFixed(2)+", "+esc(nat.tz)+")"):"We look up coordinates and time zone from a free geocoder — no account needed."}</p>
+    <div class="acctsub">Systems &amp; beliefs</div>
+    <div class="sysgrid">
+      ${ASTRO_SYSTEMS.map(s=>`<label class="syschip"><input type="checkbox" class="sysBox" value="${s.key}" ${cfg.systems.includes(s.key)?"checked":""}> <b>${esc(s.name)}</b><span>${esc(s.desc)}</span></label>`).join("")}
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Sidereal ayanamsa (Vedic)</label><select id="astAyan">${Object.entries(AYAN).map(([k,v])=>`<option value="${k}" ${cfg.ayanamsa===k?"selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
+      <div><label>House system</label><select id="astHouse"><option value="whole" ${cfg.houses==="whole"?"selected":""}>Whole sign</option><option value="equal" ${cfg.houses==="equal"?"selected":""}>Equal</option></select></div>
+    </div>
+    <button class="btn sm" style="margin-top:10px" onclick="computeChart()">Calculate my chart</button>
+    <button class="btn sm sec" style="margin-top:10px" onclick="saveAstroCfg()">Save systems (re-render)</button>
+    ${nat?renderAstro(nat,cfg):""}
+    <p class="muted" style="margin-top:10px">Astronomical positions of date (astronomy-engine). Cultural systems are offered for personalization; educational and for fun.</p></div>`;
+}
+function mbtiBlurb(t){
+  const ie=t[0]==="I"?"draws energy from the inner world":"draws energy from the outer world";
+  const ns=t[1]==="N"?"focuses on patterns and possibilities":"focuses on concrete facts and details";
+  const tf=t[2]==="T"?"decides by logic":"decides by values";
+  const jp=t[3]==="J"?"prefers structure and closure":"prefers flexibility and openness";
+  return `${ie[0].toUpperCase()+ie.slice(1)}, ${ns}, ${tf}, and ${jp}.`;
+}
+
+async function saveAccount(){
+  const account={fullName:val("acFull"),pronouns:val("acPro"),dob:val("acDob"),gender:val("acGender"),
+    country:val("acCountry"),city:val("acCity"),phone:val("acPhone"),tz:val("acTz")};
+  if(await patchPrefs({account}))toast("Account details saved");
+}
+async function saveMbti(){
+  const mbti={type:val("mbType"),notes:val("mbNotes")};
+  if(await patchPrefs({mbti})){toast("Personality saved");renderStudio();}
+}
+async function toggleEco(key){
+  const eco=Object.assign({},prefsObj().eco||{});
+  const cur=eco[key]||{};
+  eco[key]={handle:val("eco_"+key),connected:!cur.connected};
+  if(await patchPrefs({eco})){toast(eco[key].connected?"Connected":"Disconnected");renderStudio();}
+}
+async function saveAstroCfg(){
+  const systems=[...document.querySelectorAll(".sysBox:checked")].map(b=>b.value);
+  const astro={systems:systems.length?systems:["western"],ayanamsa:val("astAyan")||"lahiri",houses:val("astHouse")||"whole"};
+  if(await patchPrefs({astro})){toast("Systems saved");renderStudio();}
+}
+function val(id){const e=document.getElementById(id);return e?e.value.trim():""}
+
+// ----- security -----
+async function setPassword(){
+  const p=val("secPass"),p2=val("secPass2");
+  if(p.length<8){toast("Password must be at least 8 characters");return}
+  if(p!==p2){toast("Passwords do not match");return}
+  const{error}=await sb.auth.updateUser({password:p});
+  if(error){toast(error.message);return}
+  document.getElementById("secPass").value="";document.getElementById("secPass2").value="";
+  toast("Password set — you can now sign in with email + password");
+}
+async function changeEmail(){
+  const e=val("secEmail");if(!/.+@.+\..+/.test(e)){toast("Enter a valid email");return}
+  const{error}=await sb.auth.updateUser({email:e});
+  if(error){toast(error.message);return}
+  toast("Confirmation sent — check both inboxes to finish the change");
+}
+async function signOutEverywhere(){
+  const{error}=await sb.auth.signOut({scope:"global"});
+  if(error){toast(error.message);return}
+  toast("Signed out on all devices");go("");
+}
+async function mfaStart(){
+  const box=document.getElementById("mfaBox");box.innerHTML='<p class="muted">Loading…</p>';
+  try{
+    const{data,error}=await sb.auth.mfa.listFactors();
+    if(error)throw error;
+    const totp=(data&&data.totp)||[];
+    if(totp.length){
+      box.innerHTML=totp.map(f=>`<div class="t8pick"><b>Authenticator</b>
+        <span class="muted">${esc(f.friendly_name||f.id.slice(0,8))} · ${esc(f.status)}</span>
+        <button class="btn sm danger" style="margin-left:auto" onclick="mfaRemove('${f.id}')">Remove</button></div>`).join("");
+    }else{
+      const en=await sb.auth.mfa.enroll({factorType:"totp"});
+      if(en.error)throw en.error;
+      const t=en.data.totp;
+      box.innerHTML=`<p class="muted">Scan this in your authenticator app, then enter the 6-digit code to confirm.</p>
+        <div class="qrbox"><img src="${t.qr_code}" alt="TOTP QR">
+        <div><label>Secret (manual entry)</label><input value="${esc(t.secret)}" readonly>
+        <label>6-digit code</label><input id="mfaCode" inputmode="numeric" placeholder="000000">
+        <button class="btn sm" style="margin-top:8px" onclick="mfaVerify('${en.data.id}')">Confirm</button></div></div>`;
+    }
+  }catch(e){box.innerHTML=`<p class="muted">Two-factor is not available: ${esc(e.message||"enable TOTP in the Supabase project first")}.</p>
+    <button class="btn sm sec" onclick="mfaStart()">Try again</button>`;}
+}
+async function mfaVerify(factorId){
+  const code=val("mfaCode");
+  try{
+    const ch=await sb.auth.mfa.challenge({factorId});if(ch.error)throw ch.error;
+    const v=await sb.auth.mfa.verify({factorId,challengeId:ch.data.id,code});if(v.error)throw v.error;
+    toast("Two-factor enabled");mfaStart();
+  }catch(e){toast(e.message||"Wrong code")}
+}
+async function mfaRemove(factorId){
+  const{error}=await sb.auth.mfa.unenroll({factorId});
+  if(error){toast(error.message);return}
+  toast("Two-factor removed");mfaStart();
+}
+async function exportMyData(){
+  toast("Preparing your data…");
+  const uid=session.user.id;
+  const out={exported_at:new Date().toISOString(),account:myProfile};
+  const ids=myPersonas.map(p=>p.id);
+  out.personas=myPersonas;
+  out.ai_backends=(myBackends||[]).map(b=>Object.assign({},b,{api_key:"[removed from export]"}));
+  out.ai_tasks=myTasks;out.drafts=myDrafts;
+  if(ids.length){
+    const[{data:posts},{data:links},{data:albums}]=await Promise.all([
+      sb.from("posts").select("*").in("persona_id",ids),
+      sb.from("persona_links").select("*").in("persona_id",ids),
+      sb.from("albums").select("*").in("persona_id",ids)]);
+    out.posts=posts||[];out.persona_links=links||[];out.albums=albums||[];
+  }
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="mypersonas-data-"+new Date().toISOString().slice(0,10)+".json";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function deleteAllContent(){
+  if(!confirm("Delete ALL your personas, pages, posts, albums, drafts, tasks and linked models? This cannot be undone. Your sign-in record is not removed by this action."))return;
+  const uid=session.user.id;
+  await sb.from("ai_tasks").delete().eq("owner",uid);
+  await sb.from("ai_backends").delete().eq("owner",uid);
+  await sb.from("drafts").delete().eq("owner",uid);
+  await sb.from("blocks").delete().eq("blocker",uid);
+  await sb.from("personas").delete().eq("owner",uid);
+  await sb.from("profiles").update({prefs:{}}).eq("id",uid);
+  await loadMine();toast("Your content was deleted");go("");
+}
+
+// ----- astrology engine (validated against reference charts) -----
+const D2R=Math.PI/180,R2D=180/Math.PI,normDeg=d=>((d%360)+360)%360;
+let __astroP=null;
+function loadAstro(){
+  if(window.Astronomy)return Promise.resolve(window.Astronomy);
+  if(__astroP)return __astroP;
+  __astroP=new Promise((res,rej)=>{const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js";
+    s.onload=()=>res(window.Astronomy);s.onerror=()=>rej(new Error("could not load the astronomy library"));
+    document.head.appendChild(s);});
+  return __astroP;
+}
+function signOfLon(l){l=normDeg(l);const i=Math.floor(l/30);return{sign:SIGNS[i],si:i,deg:l%30,lon:l}}
+function bodyLon(Astro,body,date){
+  if(body==="Moon")return normDeg(Astro.EclipticGeoMoon(date).lon);
+  const v=Astro.GeoVector(body,date,true),e=Astro.RotateVector(Astro.Rotation_EQJ_ECT(date),v);
+  return normDeg(Math.atan2(e.y,e.x)*R2D);
+}
+function bodyRaDec(Astro,body,date){
+  if(body==="Moon"){const v=Astro.GeoVector("Moon",date,true);const eq=Astro.EquatorFromVector(v);return{ra:eq.ra,dec:eq.dec};}
+  const v=Astro.GeoVector(body,date,true);const eq=Astro.EquatorFromVector(v);return{ra:eq.ra,dec:eq.dec};
+}
+function obliquity(Astro,date){const T=Astro.MakeTime(date).tt/36525;return(84381.406-46.836769*T)/3600}
+function meanNode(Astro,date){const T=Astro.MakeTime(date).tt/36525;
+  return normDeg(125.0445479-1934.1362891*T+0.0020754*T*T+T*T*T/467441)}
+function lahiriAyan(Astro,date){const T=Astro.MakeTime(date).tt/36525;return 23.853+1.3970*T+0.000308*T*T}
+function chartAngles(Astro,date,lat,lon){
+  const gst=Astro.SiderealTime(date),ramc=normDeg((gst+lon/15)*15),eps=obliquity(Astro,date);
+  const r=ramc*D2R,e=eps*D2R,phi=lat*D2R;
+  let mc=normDeg(Math.atan2(Math.sin(r),Math.cos(r)*Math.cos(e))*R2D);
+  let asc=normDeg(Math.atan2(-Math.cos(r),Math.sin(r)*Math.cos(e)+Math.tan(phi)*Math.sin(e))*R2D);
+  if(!(normDeg(asc-mc)>0&&normDeg(asc-mc)<180))asc=normDeg(asc+180);
+  return{asc,mc};
+}
+const ASPECTS=[["conjunction",0,8],["sextile",60,4],["square",90,6],["trine",120,6],["opposition",180,8]];
+const NAKSHATRA=["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"];
+const CN_ANIMALS=["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+const CN_ELEM=["Wood","Fire","Earth","Metal","Water"];
+const CN_HOUR=["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+const MAYA_SIGN=["Imix","Ik","Akbal","Kan","Chikchan","Kimi","Manik","Lamat","Muluk","Ok","Chuwen","Eb","Ben","Ix","Men","Kib","Kaban","Etznab","Kawak","Ahau"];
+function jdnOf(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045}
+function chineseOf(y,mo,d,hourKnown,h){
+  let Y=y;if(mo<2||(mo===2&&d<4))Y=y-1;
+  const animal=CN_ANIMALS[((Y-4)%12+12)%12];
+  const elem=CN_ELEM[Math.floor((((Y-4)%10+10)%10)/2)];
+  const yy=(((Y%2)+2)%2===0)?"Yang":"Yin";
+  const monthAnimal=CN_ANIMALS[((mo)%12)];
+  let hourAnimal=null;
+  if(hourKnown){const idx=Math.floor(((h+1)%24)/2);hourAnimal=CN_HOUR[idx];}
+  return{year:yy+" "+elem+" "+animal,animal,element:elem,yinyang:yy,monthAnimal,hourAnimal};
+}
+function mayanOf(y,m,d){const days=jdnOf(y,m,d)-584283;const tone=(((days+3)%13)+13)%13+1;const sign=MAYA_SIGN[(((days+19)%20)+20)%20];return{tone,sign,text:tone+" "+sign};}
+function phaseName(elong){const p=normDeg(elong);const names=["New Moon","Waxing Crescent","First Quarter","Waxing Gibbous","Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"];return names[Math.floor(((p+22.5)%360)/45)];}
+function computeNatal(Astro,date,lat,lon,timeKnown,birth){
+  const bodies=["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"];
+  const points={};
+  for(const b of bodies){const p=signOfLon(bodyLon(Astro,b,date));const rd=bodyRaDec(Astro,b,date);
+    p.iau=Astro.Constellation(rd.ra,rd.dec).name;points[b]=p;}
+  const nd=signOfLon(meanNode(Astro,date));const rdn=bodyRaDec(Astro,"Moon",date);
+  points["North Node"]=nd; // node has no body; leave iau off
+  let asc=null,mc=null;
+  if(timeKnown){const a=chartAngles(Astro,date,lat,lon);asc=signOfLon(a.asc);mc=signOfLon(a.mc);}
+  const keys=Object.keys(points),aspects=[];
+  for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
+    let sep=Math.abs(points[keys[i]].lon-points[keys[j]].lon);if(sep>180)sep=360-sep;
+    for(const[name,ang,orb]of ASPECTS){if(Math.abs(sep-ang)<=orb){
+      aspects.push({a:keys[i],b:keys[j],type:name,orb:+Math.abs(sep-ang).toFixed(1)});break;}}}
+  const sunL=points.Sun.lon,moonL=points.Moon.lon;
+  const elong=normDeg(moonL-sunL);
+  const ill=Astro.Illumination("Moon",date).phase_fraction;
+  const nat={points,asc,mc,aspects,ayanLahiri:lahiriAyan(Astro,date),
+    moon:{phase:phaseName(Astro.MoonPhase(date)),illum:+(ill*100).toFixed(0),tithi:Math.floor(elong/12)+1,
+      waxing:elong<180},
+    chinese:chineseOf(birth.y,birth.mo,birth.d,timeKnown,birth.h),
+    mayan:mayanOf(birth.y,birth.mo,birth.d)};
+  return nat;
+}
+function tzOffsetMin(tz,date){
+  try{const dtf=new Intl.DateTimeFormat("en-US",{timeZone:tz,hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    const p={};dtf.formatToParts(date).forEach(x=>p[x.type]=x.value);
+    const hh=p.hour==="24"?"00":p.hour;
+    return(Date.UTC(+p.year,+p.month-1,+p.day,+hh,+p.minute,+p.second)-date.getTime())/60000;
+  }catch(e){return 0}
+}
+function localToUTC(y,mo,d,h,mi,tz){
+  const guess=Date.UTC(y,mo-1,d,h,mi,0);
+  let off=tzOffsetMin(tz,new Date(guess));
+  off=tzOffsetMin(tz,new Date(guess-off*60000));return new Date(guess-off*60000);
+}
+async function natalGeocode(){
+  const q=val("natPlace"),el=document.getElementById("natGeoOut");
+  if(!q){toast("Enter a birth city");return}
+  el.textContent="Searching…";
+  try{
+    const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&name="+encodeURIComponent(q));
+    const j=await r.json(),g=(j.results||[])[0];
+    if(!g){el.textContent="No match — try 'City, Country'";return}
+    window.__natGeo={lat:g.latitude,lng:g.longitude,tz:g.timezone,label:[g.name,g.admin1,g.country].filter(Boolean).join(", ")};
+    el.textContent="Found: "+window.__natGeo.label+"  ("+g.latitude.toFixed(2)+", "+g.longitude.toFixed(2)+", "+g.timezone+")";
+  }catch(e){el.textContent="Lookup failed — check your connection and try again"}
+}
+async function computeChart(){
+  const date=val("natDate");if(!date){toast("Enter your birth date");return}
+  const timeKnown=!document.getElementById("natUnknown").checked;
+  const time=val("natTime");
+  if(timeKnown&&!time){toast("Enter your birth time, or check 'I don't know my exact birth time'");return}
+  const P=prefsObj(),saved=P.natal;
+  let geo=window.__natGeo;
+  if(!geo&&saved&&saved.lat!=null)geo={lat:saved.lat,lng:saved.lng,tz:saved.tz,label:saved.place};
+  if(!geo){toast("Find your birth place first");return}
+  const systems=[...document.querySelectorAll(".sysBox:checked")].map(b=>b.value);
+  const astro={systems:systems.length?systems:["western"],ayanamsa:val("astAyan")||"lahiri",houses:val("astHouse")||"whole"};
+  const btn=event&&event.target;if(btn){btn.disabled=true;btn.textContent="Computing…"}
+  let Astro;
+  try{Astro=await loadAstro()}catch(e){toast(e.message);if(btn){btn.disabled=false;btn.textContent="Calculate my chart"}return}
+  const[y,mo,d]=date.split("-").map(Number);
+  let h=12,mi=0;if(timeKnown){const t=time.split(":");h=+t[0];mi=+t[1]}
+  const when=localToUTC(y,mo,d,h,mi,geo.tz);
+  const nat=computeNatal(Astro,when,geo.lat,geo.lng,timeKnown,{y,mo,d,h,mi});
+  nat.date=date;nat.time=timeKnown?time:null;nat.unknownTime=!timeKnown;
+  nat.place=geo.label;nat.lat=geo.lat;nat.lng=geo.lng;nat.tz=geo.tz;nat.computedAt=new Date().toISOString();
+  if(await patchPrefs({natal:nat,astro})){toast("Chart saved");renderStudio()}
+  else if(btn){btn.disabled=false;btn.textContent="Calculate my chart"}
+}
+function houseOf(lon,si,asc,houses){
+  if(!asc)return null;
+  if(houses==="equal")return Math.floor(normDeg(lon-asc.lon)/30)+1;
+  return ((si-asc.si+12)%12)+1; // whole sign
+}
+function renderAstro(nat,cfg){
+  if(!nat||!nat.points)return"";
+  let out="";
+  for(const sys of cfg.systems){
+    if(sys==="western")out+=westernBlock(nat,cfg);
+    else if(sys==="vedic")out+=vedicBlock(nat,cfg);
+    else if(sys==="iau13")out+=iauBlock(nat);
+    else if(sys==="chinese")out+=chineseBlock(nat);
+    else if(sys==="mayan")out+=mayanBlock(nat);
+    else if(sys==="lunar")out+=lunarBlock(nat);
+  }
+  return out;
+}
+function westernBlock(nat,cfg){
+  const P=nat.points,fmt=p=>p.sign+" "+p.deg.toFixed(1)+"°";
+  const three=nat.asc?`<div class="b3">
+    <div class="c"><i>Sun</i><b>${P.Sun.sign}</b><span>identity</span></div>
+    <div class="c"><i>Moon</i><b>${P.Moon.sign}</b><span>inner world</span></div>
+    <div class="c"><i>Rising</i><b>${nat.asc.sign}</b><span>how you meet the world</span></div></div>`
+    :`<div class="b3"><div class="c"><i>Sun</i><b>${P.Sun.sign}</b></div>
+      <div class="c"><i>Moon</i><b>${P.Moon.sign}</b></div>
+      <div class="c"><i>Rising</i><b>—</b><span>needs birth time</span></div></div>`;
+  const rows=Object.keys(P).map(k=>{const hs=houseOf(P[k].lon,P[k].si,nat.asc,cfg.houses);
+    return `<tr><td>${PLABEL[k]}</td><td>${fmt(P[k])}</td><td>${hs?("House "+hs):"—"}</td></tr>`}).join("");
+  const angRows=nat.asc?`<tr><td>Ascendant</td><td>${fmt(nat.asc)}</td><td>House 1</td></tr>
+    <tr><td>Midheaven</td><td>${fmt(nat.mc)}</td><td>House 10</td></tr>`:"";
+  const asp=(nat.aspects||[]).map(a=>`<span class="chip">${PSHORT[a.a]} ${a.type} ${PSHORT[a.b]} <span class="muted">${a.orb}°</span></span>`).join("")||'<span class="muted">No major aspects within orb.</span>';
+  return `<div class="astblk"><div class="acctsub">${ico("star")}Western (Tropical) · ${cfg.houses==="equal"?"equal houses":"whole-sign houses"}</div>
+    ${three}${natalWheel(nat)}
+    <table class="ptable"><tr><th>Point</th><th>Sign &amp; degree</th><th>House</th></tr>${rows}${angRows}</table>
+    <div class="acctsub">Major aspects</div><div class="asplist">${asp}</div></div>`;
+}
+function vedicBlock(nat,cfg){
+  const off=(AYAN[cfg.ayanamsa]||AYAN.lahiri).off;const ay=nat.ayanLahiri+off;
+  const P=nat.points;
+  const sid=lon=>signOfLon(lon-ay);
+  const rows=Object.keys(P).map(k=>{const s=sid(P[k].lon);const hs=nat.asc?(cfg.houses==="equal"?Math.floor(normDeg((P[k].lon-ay)-(nat.asc.lon-ay))/30)+1:((s.si-sid(nat.asc.lon).si+12)%12)+1):null;
+    return `<tr><td>${PLABEL[k]}</td><td>${s.sign} ${s.deg.toFixed(1)}°</td><td>${hs?("House "+hs):"—"}</td></tr>`}).join("");
+  const moonSid=normDeg(P.Moon.lon-ay);
+  const ni=Math.floor(moonSid/(360/27)),pada=Math.floor((moonSid%(360/27))/(360/108))+1;
+  const ascRow=nat.asc?`<tr><td>Ascendant (Lagna)</td><td>${sid(nat.asc.lon).sign} ${sid(nat.asc.lon).deg.toFixed(1)}°</td><td>House 1</td></tr>`:"";
+  return `<div class="astblk"><div class="acctsub">${ico("moon")}Vedic (Sidereal) · ${esc((AYAN[cfg.ayanamsa]||AYAN.lahiri).name)} ayanamsa ${ay.toFixed(2)}°</div>
+    <div class="b3"><div class="c"><i>Surya (Sun)</i><b>${sid(P.Sun.lon).sign}</b></div>
+      <div class="c"><i>Chandra (Moon)</i><b>${sid(P.Moon.lon).sign}</b></div>
+      <div class="c"><i>Nakshatra</i><b>${NAKSHATRA[ni]}</b><span>pada ${pada}</span></div></div>
+    <table class="ptable"><tr><th>Graha</th><th>Rashi</th><th>Bhava</th></tr>${rows}${ascRow}</table></div>`;
+}
+function iauBlock(nat){
+  const P=nat.points;
+  const rows=Object.keys(P).filter(k=>P[k].iau).map(k=>`<tr><td>${PLABEL[k]}</td><td>${esc(P[k].iau)}</td></tr>`).join("");
+  return `<div class="astblk"><div class="acctsub">${ico("compass")}13-Sign (astronomical / IAU)</div>
+    <div class="b3"><div class="c"><i>Sun sits in</i><b>${esc(P.Sun.iau||"—")}</b><span>your true constellation</span></div>
+      <div class="c"><i>Moon</i><b>${esc(P.Moon.iau||"—")}</b></div>
+      <div class="c"><i>Includes</i><b>Ophiuchus</b><span>the 13th</span></div></div>
+    <table class="ptable"><tr><th>Body</th><th>Constellation</th></tr>${rows}</table>
+    <p class="muted">Where each body actually falls against the IAU constellation boundaries — the "astronomical zodiac," with all 13 constellations the ecliptic crosses.</p></div>`;
+}
+function chineseBlock(nat){
+  const c=nat.chinese;
+  return `<div class="astblk"><div class="acctsub">${ico("crown")}Chinese zodiac</div>
+    <div class="b3"><div class="c"><i>Year</i><b>${esc(c.animal)}</b><span>${esc(c.yinyang)} ${esc(c.element)}</span></div>
+      <div class="c"><i>Inner (month)</i><b>${esc(c.monthAnimal)}</b></div>
+      <div class="c"><i>Secret (hour)</i><b>${esc(c.hourAnimal||"—")}</b><span>${c.hourAnimal?"":"needs birth time"}</span></div></div>
+    <p class="muted">Full year sign: <b>${esc(c.year)}</b>. Year boundary uses the solar term Li Chun (~Feb 4), the BaZi convention.</p></div>`;
+}
+function mayanBlock(nat){
+  const m=nat.mayan;
+  return `<div class="astblk"><div class="acctsub">${ico("spark")}Mayan (Tzolk'in)</div>
+    <div class="b3"><div class="c"><i>Day sign</i><b>${esc(m.sign)}</b></div>
+      <div class="c"><i>Galactic tone</i><b>${m.tone}</b></div>
+      <div class="c"><i>Kin</i><b>${m.tone} ${esc(m.sign)}</b></div></div>
+    <p class="muted">Your day in the 260-day sacred count (GMT correlation).</p></div>`;
+}
+function lunarBlock(nat){
+  const mo=nat.moon,P=nat.points;
+  return `<div class="astblk"><div class="acctsub">${ico("moon")}Lunar &amp; Moon</div>
+    <div class="b3"><div class="c"><i>Moon phase</i><b>${esc(mo.phase)}</b><span>${mo.illum}% lit</span></div>
+      <div class="c"><i>Moon sign</i><b>${P.Moon.sign}</b></div>
+      <div class="c"><i>Lunar day</i><b>Tithi ${mo.tithi}</b><span>${mo.waxing?"waxing":"waning"}</span></div></div></div>`;
+}
+function natalWheel(nat){
+  const S=340,cx=S/2,cy=S/2,rOut=162,rZodInner=128,rPlanet=98;
+  const rot=nat.asc?nat.asc.lon:0;
+  const pos=(lon,r)=>{const ang=(180+(lon-rot))*D2R;return[cx+r*Math.cos(ang),cy-r*Math.sin(ang)]};
+  let svg=`<svg class="natalwheel" viewBox="0 0 ${S} ${S}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${cx}" cy="${cy}" r="${rOut}" fill="#fff" stroke="#d7dee6"/>
+    <circle cx="${cx}" cy="${cy}" r="${rZodInner}" fill="none" stroke="#d7dee6"/>
+    <circle cx="${cx}" cy="${cy}" r="${rPlanet-14}" fill="none" stroke="#eef2f6"/>`;
+  for(let i=0;i<12;i++){
+    const bnd=i*30,[x1,y1]=pos(bnd,rZodInner),[x2,y2]=pos(bnd,rOut);
+    svg+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#d7dee6"/>`;
+    const[lx,ly]=pos(bnd+15,(rZodInner+rOut)/2);
+    svg+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="10" fill="#5b6b7d" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">${SIGNS[i].slice(0,3)}</text>`;
+  }
+  if(nat.asc){const[ax1,ay1]=pos(nat.asc.lon,0),[ax2,ay2]=pos(nat.asc.lon,rZodInner);
+    svg+=`<line x1="${ax1.toFixed(1)}" y1="${ay1.toFixed(1)}" x2="${ax2.toFixed(1)}" y2="${ay2.toFixed(1)}" stroke="#1f8bff" stroke-width="1.5"/>
+      <text x="${(ax2-2).toFixed(1)}" y="${(ay2+12).toFixed(1)}" font-size="9" fill="#1f8bff" font-family="sans-serif">ASC</text>`;
+    const[mx1,my1]=pos(nat.mc.lon,0),[mx2,my2]=pos(nat.mc.lon,rZodInner);
+    svg+=`<line x1="${mx1.toFixed(1)}" y1="${my1.toFixed(1)}" x2="${mx2.toFixed(1)}" y2="${my2.toFixed(1)}" stroke="#1f8bff" stroke-width="1.5"/>
+      <text x="${mx2.toFixed(1)}" y="${(my2-4).toFixed(1)}" font-size="9" fill="#1f8bff" text-anchor="middle" font-family="sans-serif">MC</text>`;
+  }
+  Object.keys(nat.points).forEach(k=>{const[px,py]=pos(nat.points[k].lon,rPlanet);
+    svg+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="#1f8bff"/>
+      <text x="${px.toFixed(1)}" y="${(py-6).toFixed(1)}" font-size="9" fill="#26313d" text-anchor="middle" font-family="sans-serif">${PSHORT[k]}</text>`;});
+  svg+=`</svg>`;return svg;
+}
+
 </script>
 </body>
 </html>
