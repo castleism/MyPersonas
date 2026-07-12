@@ -381,7 +381,6 @@ async function route(){
   if(view==="studio")return renderStudio();
   if(view==="edit")return renderEdit(arg,myEpoch);
   if(view==="signin")return renderSignin();
-  if(view==="tag")return renderTag(arg);
   if(view==="search")return renderDiscover(arg,myEpoch);
   return renderDiscover("",myEpoch);
 }
@@ -609,7 +608,7 @@ function postHtml(x,p,owner){
     ${x.title?`<h4>${esc(x.title)}</h4>`:""}
     <p style="white-space:pre-wrap;margin-top:4px">${esc(x.body)}</p>
     ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind):""}
-    <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="go('tag/'+encodeURIComponent('${esc(t.trim())}'))">#${esc(t.trim())}</span>`).join("")}
+    <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="pageSearch('${esc(t.trim())}')">#${esc(t.trim())}</span>`).join("")}
     <span class="muted" style="float:right">${new Date(x.created_at).toLocaleDateString()}</span></div>
     <div class="pactions"><button class="btn sec sm" onclick="toggleComments('${x.id}')">Comments</button></div>
     <div class="pcx" id="cx_${x.id}" style="display:none"></div>
@@ -2175,21 +2174,6 @@ function siteGo(h){closeSiteMenu();go(h);}
 function goAccount(){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById('acctTabs');if(el){if(window.switchAcctTab)switchAcctTab('profile');el.scrollIntoView({behavior:'smooth',block:'start'});}},90);}
 function goStudioScroll(id){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},90);}
 document.addEventListener('click',()=>closeSiteMenu());
-
-
-// ----- hashtag browse pages -----
-async function renderTag(tag){
-  setMeta("#"+tag+" — MyPersonas","Posts across the network tagged #"+tag);
-  app.innerHTML='<div class="empty">Loading…</div>';
-  const {data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
-    .eq("personas.visibility","public").ilike("tags","%"+tag+"%").order("created_at",{ascending:false}).limit(60);
-  const f=getFilters();
-  const posts=(data||[]).filter(r=>!(f.hideNsfw&&r.personas.nsfw)&&!isHidden(r.personas.id));
-  app.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    <h3 class="secthead" style="margin:0">#${esc(tag)}</h3>
-    <button class="btn sec sm" onclick="go('')">Back to discover</button></div>
-    ${posts.map(x=>postHtml(x,x.personas,false)).join("")||`<div class="empty">No public posts tagged #${esc(tag)} yet.</div>`}`;
-}
 
 </script>
 </body>
