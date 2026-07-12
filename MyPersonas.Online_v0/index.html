@@ -174,6 +174,17 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .cmt b{font-size:13px}
 .cbox{display:flex;gap:6px;margin-top:8px}
 .cbox textarea{min-height:38px}
+
+.tabbar{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--border);margin:4px 0 14px}
+.tabbar .tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px;color:var(--dim);font-family:inherit}
+.tabbar .tab:hover{color:var(--text)}
+.tabbar .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.menuwrap{position:relative;display:inline-block}
+#siteMenu{position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:210px;z-index:120;display:none;overflow:hidden}
+#siteMenu.open{display:block}
+#siteMenu button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px 14px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit}
+#siteMenu button:hover{background:var(--bg);color:var(--accent)}
+#siteMenu .sep{border-top:1px solid var(--border);margin:4px 0}
 </style>
 </head>
 <body>
@@ -207,6 +218,19 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <nav>
     <button onclick="go('')">Entangle</button>
     <button onclick="go('studio')">Matrix<span id="reqBadge" class="badge" style="display:none"></span></button>
+    <span class="menuwrap">
+      <button onclick="toggleSiteMenu(event)">Menu ▾</button>
+      <div id="siteMenu">
+        <button onclick="siteGo('')">Discover (Entangle)</button>
+        <button onclick="siteGo('studio')">Your studio (Matrix)</button>
+        <button onclick="closeSiteMenu();go('edit/new')">+ New persona</button>
+        <button onclick="closeSiteMenu();openHQ()">HQ Assistant</button>
+        <button onclick="goAccount()">Account &amp; settings</button>
+        <button onclick="goStudioScroll('extList')">Apps &amp; extensions</button>
+        <div class="sep"></div>
+        <button onclick="closeSiteMenu();authAction()">Sign in / out</button>
+      </div>
+    </span>
     <button id="authBtn" onclick="authAction()">Sign in</button>
   </nav>
 </header>
@@ -781,7 +805,6 @@ function renderStudio(){
       <a class="btn sm" style="margin-left:auto;text-decoration:none;white-space:nowrap" href="assets/Downloads/Personas/" target="_blank">Get the app</a></div>
     <div id="extList"><p class="muted">Loading extensions…</p></div>
   </div>
-  ${settingsCard()}
   ${accountArea()}
   <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
   loadExtensions();
@@ -1538,106 +1561,140 @@ async function patchPrefs(partial){
   await loadMine();return true;
 }
 
+let acctTab="profile";
+function switchAcctTab(t){
+  acctTab=t;
+  document.querySelectorAll('#acctTabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.querySelectorAll('#acctPanels .tabpanel').forEach(p=>p.style.display=(p.dataset.p===t?'block':'none'));
+}
 function accountArea(){
   const P=prefsObj(),acc=P.account||{},mb=P.mbti||{},nat=P.natal||null,eco=P.eco||{};
+  const f=getFilters();
   const tzGuess=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
   const emailVerified=session&&session.user&&session.user.email;
   const cfg=astroCfg();
-  return `
-  <div class="card"><h3>${ico("user")}Account details</h3>
+  const TABS=[["profile","Profile"],["security","Security"],["ecosystem","Ecosystem"],["personality","Personality"],["astrology","Astrology"],["prefs","Preferences"]];
+  const show=k=>`style="display:${acctTab===k?"block":"none"}"`;
+  return `<div class="card">
+    <h3>${ico("user")}Account</h3>
     <p class="muted">Private to you — never shown on any persona page.</p>
-    <div class="row">
-      <div><label>Full name</label><input id="acFull" value="${esc(acc.fullName||"")}"></div>
-      <div><label>Pronouns</label><input id="acPro" value="${esc(acc.pronouns||"")}" placeholder="she/her, he/him, they/them"></div>
-    </div>
-    <div class="row">
-      <div><label>Date of birth</label><input id="acDob" type="date" value="${esc(acc.dob||"")}"></div>
-      <div><label>Gender (optional)</label><input id="acGender" value="${esc(acc.gender||"")}"></div>
-    </div>
-    <div class="row">
-      <div><label>Country</label><input id="acCountry" value="${esc(acc.country||"")}"></div>
-      <div><label>City / region</label><input id="acCity" value="${esc(acc.city||"")}"></div>
-    </div>
-    <div class="row">
-      <div><label>Phone (optional)</label><input id="acPhone" value="${esc(acc.phone||"")}" placeholder="+1 555 000 0000"></div>
-      <div><label>Time zone</label><input id="acTz" value="${esc(acc.tz||tzGuess)}"></div>
-    </div>
-    <button class="btn sm" style="margin-top:12px" onclick="saveAccount()">Save account details</button></div>
+    <div class="tabbar" id="acctTabs">${TABS.map(([k,label])=>`<button class="tab${k===acctTab?" on":""}" data-t="${k}" onclick="switchAcctTab('${k}')">${label}</button>`).join("")}</div>
+    <div id="acctPanels">
 
-  <div class="card"><h3>${ico("lock")}Sign-in &amp; security</h3>
-    <p class="muted">You are signed in as <b>${esc(emailVerified||"")}</b>. MyPersonas never shows your email anywhere.</p>
-    <div class="acctsub">Password</div>
-    <p class="muted">You can sign in with Google or a magic link with no password at all. Set one here if you also want email + password sign-in.</p>
-    <div class="row">
-      <div><label>New password</label><input id="secPass" type="password" placeholder="at least 8 characters" autocomplete="new-password"></div>
-      <div><label>Confirm password</label><input id="secPass2" type="password" autocomplete="new-password"></div>
+    <div class="tabpanel" data-p="profile" ${show("profile")}>
+      <div class="row">
+        <div><label>Full name</label><input id="acFull" value="${esc(acc.fullName||"")}"></div>
+        <div><label>Pronouns</label><input id="acPro" value="${esc(acc.pronouns||"")}" placeholder="she/her, he/him, they/them"></div>
+      </div>
+      <div class="row">
+        <div><label>Date of birth</label><input id="acDob" type="date" value="${esc(acc.dob||"")}"></div>
+        <div><label>Gender (optional)</label><input id="acGender" value="${esc(acc.gender||"")}"></div>
+      </div>
+      <div class="row">
+        <div><label>Country</label><input id="acCountry" value="${esc(acc.country||"")}"></div>
+        <div><label>City / region</label><input id="acCity" value="${esc(acc.city||"")}"></div>
+      </div>
+      <div class="row">
+        <div><label>Phone (optional)</label><input id="acPhone" value="${esc(acc.phone||"")}" placeholder="+1 555 000 0000"></div>
+        <div><label>Time zone</label><input id="acTz" value="${esc(acc.tz||tzGuess)}"></div>
+      </div>
+      <button class="btn sm" style="margin-top:12px" onclick="saveAccount()">Save account details</button>
     </div>
-    <button class="btn sm" style="margin-top:10px" onclick="setPassword()">Set / change password</button>
-    <div class="acctsub">Email</div>
-    <div class="row"><div><label>Change email (a confirmation link is sent to both addresses)</label>
-      <input id="secEmail" type="email" placeholder="new@email.com"></div></div>
-    <button class="btn sm" style="margin-top:10px" onclick="changeEmail()">Update email</button>
-    <div class="acctsub">Two-factor authentication (TOTP)</div>
-    <p class="muted">Add an authenticator app (Google Authenticator, Authy, 1Password) for a second layer.</p>
-    <div id="mfaBox"><button class="btn sm sec" onclick="mfaStart()">Manage two-factor</button></div>
-    <div class="acctsub">Sessions &amp; data</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-      <button class="btn sm sec" onclick="signOutEverywhere()">Sign out of all devices</button>
-      <button class="btn sm sec" onclick="exportMyData()">Download my data (JSON)</button>
-      <button class="btn sm danger" onclick="deleteAllContent()">Delete all my content</button>
-    </div>
-    <p class="muted" style="margin-top:6px">Deleting content removes every persona, page, post, album, draft, task and linked model. Your sign-in record (email/identity) is removed separately — see Privacy below.</p></div>
 
-  <div class="card"><h3>${ico("node")}Castleborn ecosystem</h3>
-    <p class="muted">One account across the Castleborn family. Connect each product and jump between them. Your connection details are private to you.</p>
-    ${CASTLEBORN.map(pr=>{const c=eco[pr.key]||{};return `<div class="ecorow">
-      <div style="min-width:0"><b>${esc(pr.name)}</b> <span class="muted">${esc(pr.desc)}</span><br>
-        <input id="eco_${pr.key}" value="${esc(c.handle||"")}" placeholder="your ${esc(pr.name)} handle / ID (optional)" style="max-width:320px;margin-top:4px"></div>
-      <div style="display:flex;gap:6px;align-items:center;white-space:nowrap">
-        <span class="pill ${c.connected?"live":"priv"}">${c.connected?"Connected":"Not connected"}</span>
-        <button class="btn sm sec" onclick="toggleEco('${pr.key}')">${c.connected?"Disconnect":"Connect"}</button>
-        <a class="btn sm" style="text-decoration:none" href="${esc(pr.url)}" target="_blank" rel="noopener">Open ↗</a>
-      </div></div>`;}).join("")}
-    <p class="muted" style="margin-top:8px">Note: these product links are placeholders — confirm the real URLs. Full single sign-on across Castleborn products is on the roadmap; for now this stores your handle and a connected flag.</p></div>
+    <div class="tabpanel" data-p="security" ${show("security")}>
+      <p class="muted">You are signed in as <b>${esc(emailVerified||"")}</b>. MyPersonas never shows your email anywhere.</p>
+      <div class="acctsub">Password</div>
+      <p class="muted">You can sign in with Google or a magic link with no password at all. Set one here for email + password sign-in too.</p>
+      <div class="row">
+        <div><label>New password</label><input id="secPass" type="password" placeholder="at least 8 characters" autocomplete="new-password"></div>
+        <div><label>Confirm password</label><input id="secPass2" type="password" autocomplete="new-password"></div>
+      </div>
+      <button class="btn sm" style="margin-top:10px" onclick="setPassword()">Set / change password</button>
+      <div class="acctsub">Email</div>
+      <div class="row"><div><label>Change email (a confirmation link is sent to both addresses)</label>
+        <input id="secEmail" type="email" placeholder="new@email.com"></div></div>
+      <button class="btn sm" style="margin-top:10px" onclick="changeEmail()">Update email</button>
+      <div class="acctsub">Two-factor authentication (TOTP)</div>
+      <p class="muted">Add an authenticator app (Google Authenticator, Authy, 1Password) for a second layer.</p>
+      <div id="mfaBox"><button class="btn sm sec" onclick="mfaStart()">Manage two-factor</button></div>
+      <div class="acctsub">Sessions &amp; data</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn sm sec" onclick="signOutEverywhere()">Sign out of all devices</button>
+        <button class="btn sm sec" onclick="exportMyData()">Download my data (JSON)</button>
+        <button class="btn sm danger" onclick="deleteAllContent()">Delete all my content</button>
+      </div>
+      <p class="muted" style="margin-top:6px">Deleting content removes every persona, page, post, album, draft, task and linked model. Your sign-in record is removed separately.</p>
+    </div>
 
-  <div class="card"><h3>${ico("mask")}Personality — Myers-Briggs</h3>
-    <p class="muted">Optional and private. Record your type, or take a free test if you do not know it.</p>
-    <div class="row">
-      <div><label>Your type</label><select id="mbType"><option value="">— select —</option>
-        ${Object.entries(MBTI_TYPES).map(([k,v])=>`<option value="${k}" ${mb.type===k?"selected":""}>${k} — ${v}</option>`).join("")}</select></div>
-      <div><label>&nbsp;</label><a class="btn sm sec" style="text-decoration:none;display:inline-block" href="https://www.16personalities.com/free-personality-test" target="_blank" rel="noopener">Take the free test ↗</a></div>
+    <div class="tabpanel" data-p="ecosystem" ${show("ecosystem")}>
+      <p class="muted">One account across the Castleborn family. Connect each product and jump between them. Connection details are private to you.</p>
+      ${CASTLEBORN.map(pr=>{const c=eco[pr.key]||{};return `<div class="ecorow">
+        <div style="min-width:0"><b>${esc(pr.name)}</b> <span class="muted">${esc(pr.desc)}</span><br>
+          <input id="eco_${pr.key}" value="${esc(c.handle||"")}" placeholder="your ${esc(pr.name)} handle / ID (optional)" style="max-width:320px;margin-top:4px"></div>
+        <div style="display:flex;gap:6px;align-items:center;white-space:nowrap">
+          <span class="pill ${c.connected?"live":"priv"}">${c.connected?"Connected":"Not connected"}</span>
+          <button class="btn sm sec" onclick="toggleEco('${pr.key}')">${c.connected?"Disconnect":"Connect"}</button>
+          <a class="btn sm" style="text-decoration:none" href="${esc(pr.url)}" target="_blank" rel="noopener">Open ↗</a>
+        </div></div>`;}).join("")}
+      <p class="muted" style="margin-top:8px">Product links are placeholders pending the real URLs. Full single sign-on is on the roadmap.</p>
     </div>
-    ${mb.type?`<p class="muted" style="margin-top:8px">${esc(mb.type)} — <b>${esc(MBTI_TYPES[mb.type]||"")}</b>. ${mbtiBlurb(mb.type)}</p>`:""}
-    <label>Notes (strengths, what fits, what doesn't)</label>
-    <textarea id="mbNotes" placeholder="Optional">${esc(mb.notes||"")}</textarea>
-    <button class="btn sm" style="margin-top:10px" onclick="saveMbti()">Save personality</button></div>
 
-  <div class="card"><h3>${ico("star")}Astrology &amp; natal chart</h3>
-    <p class="muted">Private to you. Choose which systems and traditions to include, then calculate. Birth details are stored only under your account and never shown publicly. Houses and rising sign need an exact birth time.</p>
-    <div class="row">
-      <div><label>Birth date</label><input id="natDate" type="date" value="${esc(nat?nat.date:(acc.dob||""))}"></div>
-      <div><label>Birth time</label><input id="natTime" type="time" value="${esc(nat&&nat.time?nat.time:"")}"></div>
+    <div class="tabpanel" data-p="personality" ${show("personality")}>
+      <p class="muted">Optional and private. Record your Myers-Briggs type, or take a free test if you do not know it.</p>
+      <div class="row">
+        <div><label>Your type</label><select id="mbType"><option value="">— select —</option>
+          ${Object.entries(MBTI_TYPES).map(([k,v])=>`<option value="${k}" ${mb.type===k?"selected":""}>${k} — ${v}</option>`).join("")}</select></div>
+        <div><label>&nbsp;</label><a class="btn sm sec" style="text-decoration:none;display:inline-block" href="https://www.16personalities.com/free-personality-test" target="_blank" rel="noopener">Take the free test ↗</a></div>
+      </div>
+      ${mb.type?`<p class="muted" style="margin-top:8px">${esc(mb.type)} — <b>${esc(MBTI_TYPES[mb.type]||"")}</b>. ${mbtiBlurb(mb.type)}</p>`:""}
+      <label>Notes (strengths, what fits, what doesn't)</label>
+      <textarea id="mbNotes" placeholder="Optional">${esc(mb.notes||"")}</textarea>
+      <button class="btn sm" style="margin-top:10px" onclick="saveMbti()">Save personality</button>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:400;color:var(--text);font-size:14px;margin-top:6px">
-      <input type="checkbox" id="natUnknown" ${nat&&nat.unknownTime?"checked":""}> I don't know my exact birth time</label>
-    <div class="row" style="margin-top:6px">
-      <div><label>Birth place (city, country)</label><input id="natPlace" value="${esc(nat?nat.place:"")}" placeholder="Ulm, Germany"></div>
-      <div style="max-width:150px;flex:0 0 150px"><label>&nbsp;</label><button class="btn sm sec" style="width:100%" onclick="natalGeocode()">Find place</button></div>
+
+    <div class="tabpanel" data-p="astrology" ${show("astrology")}>
+      <p class="muted">Choose which systems to include, then calculate. Birth details are stored only under your account and never shown publicly. Houses and rising sign need an exact birth time.</p>
+      <div class="row">
+        <div><label>Birth date</label><input id="natDate" type="date" value="${esc(nat?nat.date:(acc.dob||""))}"></div>
+        <div><label>Birth time</label><input id="natTime" type="time" value="${esc(nat&&nat.time?nat.time:"")}"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;color:var(--text);font-size:14px;margin-top:6px">
+        <input type="checkbox" id="natUnknown" ${nat&&nat.unknownTime?"checked":""}> I don't know my exact birth time</label>
+      <div class="row" style="margin-top:6px">
+        <div><label>Birth place (city, country)</label><input id="natPlace" value="${esc(nat?nat.place:"")}" placeholder="Ulm, Germany"></div>
+        <div style="max-width:150px;flex:0 0 150px"><label>&nbsp;</label><button class="btn sm sec" style="width:100%" onclick="natalGeocode()">Find place</button></div>
+      </div>
+      <p class="muted" id="natGeoOut">${nat?("Saved: "+esc(nat.place)+"  ("+(+nat.lat).toFixed(2)+", "+(+nat.lng).toFixed(2)+", "+esc(nat.tz)+")"):"We look up coordinates and time zone from a free geocoder — no account needed."}</p>
+      <div class="acctsub">Systems &amp; beliefs</div>
+      <div class="sysgrid">
+        ${ASTRO_SYSTEMS.map(s=>`<label class="syschip"><input type="checkbox" class="sysBox" value="${s.key}" ${cfg.systems.includes(s.key)?"checked":""}> <b>${esc(s.name)}</b><span>${esc(s.desc)}</span></label>`).join("")}
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>Sidereal ayanamsa (Vedic)</label><select id="astAyan">${Object.entries(AYAN).map(([k,v])=>`<option value="${k}" ${cfg.ayanamsa===k?"selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
+        <div><label>House system</label><select id="astHouse"><option value="whole" ${cfg.houses==="whole"?"selected":""}>Whole sign</option><option value="equal" ${cfg.houses==="equal"?"selected":""}>Equal</option></select></div>
+      </div>
+      <button class="btn sm" style="margin-top:10px" onclick="computeChart()">Calculate my chart</button>
+      <button class="btn sm sec" style="margin-top:10px" onclick="saveAstroCfg()">Save systems (re-render)</button>
+      ${nat?renderAstro(nat,cfg):""}
+      <p class="muted" style="margin-top:10px">Astronomical positions of date. Cultural systems are offered for personalization; educational and for fun.</p>
     </div>
-    <p class="muted" id="natGeoOut">${nat?("Saved: "+esc(nat.place)+"  ("+(+nat.lat).toFixed(2)+", "+(+nat.lng).toFixed(2)+", "+esc(nat.tz)+")"):"We look up coordinates and time zone from a free geocoder — no account needed."}</p>
-    <div class="acctsub">Systems &amp; beliefs</div>
-    <div class="sysgrid">
-      ${ASTRO_SYSTEMS.map(s=>`<label class="syschip"><input type="checkbox" class="sysBox" value="${s.key}" ${cfg.systems.includes(s.key)?"checked":""}> <b>${esc(s.name)}</b><span>${esc(s.desc)}</span></label>`).join("")}
+
+    <div class="tabpanel" data-p="prefs" ${show("prefs")}>
+      <div class="row">
+        <div><label>Account name (for your own reference)</label><input id="setName" value="${esc(myProfile?myProfile.display_name:"")}"></div>
+        <div><label>Signed in as</label><input value="${esc(session?session.user.email:"")}" disabled></div>
+      </div>
+      <label style="margin-top:14px">Content filters</label>
+      <label style="margin:6px 0;display:flex;align-items:center;gap:8px;color:var(--text);font-weight:400;font-size:14px">
+        <input type="checkbox" id="setNsfw" ${f.hideNsfw?"checked":""}> Hide 18+ profiles and posts from my view (on by default)</label>
+      <label>Hide topics containing (comma-separated)</label>
+      <input id="setTopics" value="${esc(f.hideTopics)}" placeholder="e.g. politics, crypto">
+      <button class="btn sm" style="margin-top:12px" onclick="saveSettings()">Save preferences</button>
     </div>
-    <div class="row" style="margin-top:8px">
-      <div><label>Sidereal ayanamsa (Vedic)</label><select id="astAyan">${Object.entries(AYAN).map(([k,v])=>`<option value="${k}" ${cfg.ayanamsa===k?"selected":""}>${esc(v.name)}</option>`).join("")}</select></div>
-      <div><label>House system</label><select id="astHouse"><option value="whole" ${cfg.houses==="whole"?"selected":""}>Whole sign</option><option value="equal" ${cfg.houses==="equal"?"selected":""}>Equal</option></select></div>
-    </div>
-    <button class="btn sm" style="margin-top:10px" onclick="computeChart()">Calculate my chart</button>
-    <button class="btn sm sec" style="margin-top:10px" onclick="saveAstroCfg()">Save systems (re-render)</button>
-    ${nat?renderAstro(nat,cfg):""}
-    <p class="muted" style="margin-top:10px">Astronomical positions of date (astronomy-engine). Cultural systems are offered for personalization; educational and for fun.</p></div>`;
+
+    </div></div>`;
 }
+
 function mbtiBlurb(t){
   const ie=t[0]==="I"?"draws energy from the inner world":"draws energy from the outer world";
   const ns=t[1]==="N"?"focuses on patterns and possibilities":"focuses on concrete facts and details";
@@ -2108,6 +2165,15 @@ async function handleOAuthReturn(){
     await loadMine();toast("OpenRouter connected");go("studio");
   }catch(e){/* never break page load */}
 }
+
+
+// ----- top nav site menu -----
+function toggleSiteMenu(e){if(e)e.stopPropagation();const m=document.getElementById('siteMenu');if(m)m.classList.toggle('open');}
+function closeSiteMenu(){const m=document.getElementById('siteMenu');if(m)m.classList.remove('open');}
+function siteGo(h){closeSiteMenu();go(h);}
+function goAccount(){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById('acctTabs');if(el){if(window.switchAcctTab)switchAcctTab('profile');el.scrollIntoView({behavior:'smooth',block:'start'});}},90);}
+function goStudioScroll(id){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},90);}
+document.addEventListener('click',()=>closeSiteMenu());
 
 </script>
 </body>
