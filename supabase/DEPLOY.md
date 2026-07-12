@@ -5,7 +5,11 @@ GitHub Pages; the Edge Functions run on Supabase. You deploy them; I can't from 
 
 ## 0. One-time setup
 ```
-npm i -g supabase
+# Install the Supabase CLI (a global `npm i -g supabase` is NOT supported).
+# Windows (scoop):  scoop install supabase
+#   no scoop yet?   irm get.scoop.sh | iex   then run the line above
+# macOS / Linux:    brew install supabase/tap/supabase
+# Or install nothing and prefix each command below with `npx`, e.g. `npx supabase login`.
 supabase login
 supabase link --project-ref nwsqyuucwzihruszocge
 ```

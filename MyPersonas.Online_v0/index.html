@@ -1160,6 +1160,27 @@ function personaBlockFull(p){
 async function callAI(backendId,messages){
   const b=myBackends.find(x=>x.id===backendId)||myBackends[0];
   if(!b)throw new Error("No AI model linked. Add one in Matrix → AI Models.");
+  // Prefer the server proxy so model API keys never touch the browser.
+  const tok=session&&session.access_token;
+  if(tok){
+    try{
+      const pr=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/ai-proxy",{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
+        body:JSON.stringify({backendId:b.id,messages,max_tokens:2500})});
+      if(pr.ok){const pj=await pr.json();return pj.content;}
+      // Fall back to a direct call ONLY when the proxy isn't deployed/available.
+      // A 502 here is a real provider error from the proxy — surface it.
+      if(pr.status!==404&&pr.status!==503&&pr.status!==546){
+        let em="HTTP "+pr.status;
+        try{const ej=await pr.json();em=(ej&&(ej.error&&ej.error.message||ej.error))||em;}catch(e){}
+        throw new Error(em);
+      }
+    }catch(e){
+      if(e&&e.message&&!/Failed to fetch|NetworkError|load failed/i.test(e.message))throw e;
+      // transport error reaching the proxy -> fall through to direct call
+    }
+  }
+  // Direct fallback (key used in-browser) — only when the proxy is unreachable.
   const r=await fetch(b.base_url.replace(/\/$/,"")+"/chat/completions",{method:"POST",
     headers:{"Content-Type":"application/json","Authorization":"Bearer "+b.api_key},
     body:JSON.stringify({model:b.model,messages,max_tokens:2500})});
