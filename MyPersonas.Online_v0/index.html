@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyPersonas — every persona, one home</title>
+<title>AliaSpaces — every persona, one home</title>
 <meta name="description" content="A home page for every side of you. Create anonymous persona pages with feeds, albums, music, Top 8 friends and every account you live on — never linked to your identity.">
 <meta name="keywords" content="personas, anonymous social network, creator page, link in bio, virtual influencer, persona pages, AI personas, creator hub">
-<link rel="canonical" href="https://mypersonas.online/">
+<link rel="canonical" href="https://aliaspaces.com/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="MyPersonas">
-<meta property="og:title" content="MyPersonas — every persona, one home">
+<meta property="og:site_name" content="AliaSpaces">
+<meta property="og:title" content="AliaSpaces — every persona, one home">
 <meta property="og:description" content="A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.">
-<meta property="og:image" content="https://mypersonas.online/assets/hero.png">
-<meta property="og:url" content="https://mypersonas.online/">
+<meta property="og:image" content="https://aliaspaces.com/assets/hero.png">
+<meta property="og:url" content="https://aliaspaces.com/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MyPersonas — every persona, one home">
+<meta name="twitter:title" content="AliaSpaces — every persona, one home">
 <meta name="twitter:description" content="A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.">
-<meta name="twitter:image" content="https://mypersonas.online/assets/hero.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"MyPersonas","url":"https://mypersonas.online/","description":"A home page for every side of you — anonymous persona pages with feeds, albums, music and links."}</script>
+<meta name="twitter:image" content="https://aliaspaces.com/assets/hero.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"AliaSpaces","url":"https://aliaspaces.com/","description":"A home page for every side of you — anonymous persona pages with feeds, albums, music and links."}</script>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -213,7 +213,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8 8 0 1 1 9.4 4 6.5 6.5 0 0 0 20 14.6Z"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol></svg>
 <header>
-  <h1 onclick="go('')">MyPersonas</h1>
+  <h1 onclick="go('')">AliaSpaces</h1>
   <input id="gsearch" placeholder="find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
   <nav>
     <button onclick="go('')">Entangle</button>
@@ -390,7 +390,7 @@ async function route(){
 function renderSignin(){
   if(session){go("studio");return}
   app.innerHTML=`<div class="card authbox">
-    <h3 class="center">Welcome to MyPersonas</h3>
+    <h3 class="center">Welcome to AliaSpaces</h3>
     <p class="muted center">One account, many personas. Your identity stays private — pages never show who owns them.</p>
     <button class="btn" style="width:100%;margin-top:14px" onclick="googleSignin()">Continue with Google</button>
     <hr>
@@ -438,8 +438,37 @@ async function saveSettings(){
   // on the welcome/onboarding page, collapse the card after a successful save
   if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
+// ---------- network feed pagination ----------
+const FEED_PAGE=12;
+let netFeed={mode:null,tag:null,offset:0,busy:false,done:false};
+function netFeedQuery(from,to){
+  let base=sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
+    .eq("personas.visibility","public").order("created_at",{ascending:false}).range(from,to);
+  if(netFeed.mode==="tag")base=base.ilike("tags","%"+netFeed.tag+"%");
+  return base;
+}
+function netFeedFilter(rows){
+  const f=getFilters();
+  return (rows||[]).filter(r=>r.personas&&!(f.hideNsfw&&r.personas.nsfw)&&!isHidden(r.personas.id));
+}
+async function loadMoreNetFeed(){
+  if(netFeed.busy||netFeed.done)return;
+  netFeed.busy=true;
+  const btn=document.getElementById("feedMoreBtn");
+  if(btn){btn.disabled=true;btn.textContent="Loading…";}
+  const from=netFeed.offset,to=from+FEED_PAGE-1;
+  const{data}=await netFeedQuery(from,to);
+  const rows=netFeedFilter(data);
+  const wrap=document.getElementById("netFeed");
+  if(wrap&&rows.length)wrap.insertAdjacentHTML("beforeend",rows.map(r=>postHtml(r,r.personas,false)).join(""));
+  netFeed.offset+=(data?data.length:0);
+  if(!data||data.length<FEED_PAGE)netFeed.done=true;
+  netFeed.busy=false;
+  const b2=document.getElementById("feedMoreBtn");
+  if(b2){if(netFeed.done)b2.remove();else{b2.disabled=false;b2.textContent="Load more posts";}}
+}
 async function renderDiscover(q,epoch=++renderEpoch){
-  setMeta("MyPersonas — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
+  setMeta("AliaSpaces — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
   const f=getFilters();
   let query=sb.from("personas").select("*").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
@@ -450,14 +479,16 @@ async function renderDiscover(q,epoch=++renderEpoch){
     .filter(p=>!(f.hideNsfw&&p.nsfw))
     .filter(p=>!hideT.some(t=>((p.topics||"")+" "+(p.tagline||"")+" "+(p.name||"")).toLowerCase().includes(t)));
   let recent=[];
-  if(!q){const{data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
-    .eq("personas.visibility","public").order("created_at",{ascending:false}).limit(12);
-    recent=(data||[]).filter(r=>!r.personas.nsfw&&!isHidden(r.personas.id))}
+  if(!q){netFeed={mode:"recent",tag:null,offset:0,busy:false,done:false};
+    const{data}=await netFeedQuery(0,FEED_PAGE-1);
+    recent=netFeedFilter(data);
+    netFeed.offset=data?data.length:0;
+    if(!data||data.length<FEED_PAGE)netFeed.done=true;}
   if(epoch!==renderEpoch)return;
-  const whatIs=`<h3 class="secthead">What is MyPersonas?</h3>
+  const whatIs=`<h3 class="secthead">What is AliaSpaces?</h3>
     <div class="feat3">
       <div class="card"><h3>${ico("mask")}A page for every side of you</h3>
-        <p class="muted" style="font-size:14px">The artist. The gamer. The reviewer. The creator. The internet let us express our many personas — MyPersonas gives each one its own home page, with its own look, feed, albums, music, and friends.</p></div>
+        <p class="muted" style="font-size:14px">The artist. The gamer. The reviewer. The creator. The internet let us express our many personas — AliaSpaces gives each one its own home page, with its own look, feed, albums, music, and friends.</p></div>
       <div class="card"><h3>${ico("shield")}Anonymous by design</h3>
         <p class="muted" style="font-size:14px">Your personas are never linked to your identity or to each other. Share what you choose, where you choose. Private and unlisted pages, blocking, and content filters keep every space one you can find peace in.</p></div>
       <div class="card"><h3>${ico("spark")}Bring them to life</h3>
@@ -466,7 +497,7 @@ async function renderDiscover(q,epoch=++renderEpoch){
   if(session&&!myPersonas.length&&!q){ // onboarding: no personas yet
     app.innerHTML=`<div class="card hero">
       <div class="ht">
-        <h2>Welcome to MyPersonas</h2>
+        <h2>Welcome to AliaSpaces</h2>
         <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
         <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('edit/new')">Create your first persona</button>
       </div>
@@ -478,7 +509,7 @@ async function renderDiscover(q,epoch=++renderEpoch){
   app.innerHTML=`
     ${!session&&!q?`<div class="card hero">
       <div class="ht">
-        <h2>Welcome to MyPersonas</h2>
+        <h2>Welcome to AliaSpaces</h2>
         <p>Eight billion people — and not one of us is just one thing. Every person carries a whole cast of personalities, and each one deserves a space where it can breathe.</p>
         <button class="btn" style="font-size:17px;padding:12px 32px" onclick="go('signin')">Get started</button>
       </div>
@@ -486,8 +517,9 @@ async function renderDiscover(q,epoch=++renderEpoch){
     ${whatIs}`:""}
     ${q?`<h3 class="secthead">Results for “${esc(q)}”</h3>`:""}
     <div class="pgrid">${ps.map(pCard).join("")||'<div class="empty">Nothing here yet — be the first to create a page.</div>'}</div>
-    ${recent.length?`<h3 class="secthead" style="margin-top:26px">Recent posts</h3>
-    ${recent.map(r=>postHtml(r,r.personas,false)).join("")}`:""}`;
+    ${!q?`<h3 class="secthead" style="margin-top:26px">Recent posts</h3>
+    <div id="netFeed">${recent.map(r=>postHtml(r,r.personas,false)).join("")||'<div class="empty">No public posts yet — create a persona and post something.</div>'}</div>
+    ${netFeed.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`:""}`;
 }
 function pCard(p){
   return `<div class="pcard" style="--pc:${esc(p.theme||"#ff4fa3")}" onclick="go('p/${esc(p.handle)}')">
@@ -540,7 +572,7 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
     linkedP=data||[]}
   if(epoch!==renderEpoch)return;
   pageState={p,posts:posts||[],isOwner,feedKind:"all"};
-  setMeta(`${p.name} (@${p.handle}) — MyPersonas`,(p.tagline||p.bio||"A persona on MyPersonas").slice(0,160));
+  setMeta(`${p.name} (@${p.handle}) — AliaSpaces`,(p.tagline||p.bio||"A persona on AliaSpaces").slice(0,160));
   if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
   const blocked=isHidden(p.id);
   let relBtn="";
@@ -632,11 +664,29 @@ async function pageSearch(q){
 }
 
 // ---------- friends / blocks ----------
-async function pickMine(){
-  if(myPersonas.length===1)return myPersonas[0].id;
-  const pick=prompt("Act as which of your personas?\n"+myPersonas.map((m,i)=>`${i+1}. ${m.name}`).join("\n"),"1");
-  const idx=parseInt(pick)-1;
-  return (!isNaN(idx)&&myPersonas[idx])?myPersonas[idx].id:null;
+function pickMine(){
+  if(!myPersonas.length)return Promise.resolve(null);
+  if(myPersonas.length===1)return Promise.resolve(myPersonas[0].id);
+  return new Promise(resolve=>{
+    const o=document.createElement("div");o.className="overlay";
+    o.innerHTML=`<div class="gate" style="max-width:420px;text-align:left">
+      <h2 style="margin-bottom:4px">Act as…</h2>
+      <p class="muted" style="margin-bottom:12px">Which of your personas should do this?</p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto">
+        ${myPersonas.map(m=>`<button class="btn sec" data-id="${esc(m.id)}" style="display:flex;align-items:center;gap:10px;justify-content:flex-start;text-align:left;padding:8px 12px">
+          <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e4e6eb center/cover;${m.avatar_url?`background-image:url('${esc(m.avatar_url)}')`:""}"></span>
+          <span><b>${esc(m.name)}</b> <span class="muted" style="font-size:12px">@${esc(m.handle)}</span></span></button>`).join("")}
+      </div>
+      <div style="margin-top:14px;text-align:right"><button class="btn sec sm" data-cancel="1">Cancel</button></div>
+    </div>`;
+    const done=v=>{o.remove();resolve(v);};
+    o.addEventListener("click",e=>{
+      if(e.target===o||e.target.closest("[data-cancel]")){done(null);return;}
+      const b=e.target.closest("[data-id]");
+      if(b)done(b.getAttribute("data-id"));
+    });
+    document.body.appendChild(o);
+  });
 }
 async function sendRequest(targetId){
   const follower=await pickMine();if(!follower)return;
@@ -815,8 +865,8 @@ async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);awai
 function promoTexts(p,url){
   const tag=(p.hashtags||"").trim();
   return [
-    `Come see what ${p.name} is all about${p.tagline?" — "+p.tagline:""}. My feed, albums, and every place I post, all in one page: ${url} #MyPersonas ${tag}`.trim(),
-    `One page, all of me. Follow ${p.name} and never lose track of where I post next: ${url} #MyPersonas`,
+    `Come see what ${p.name} is all about${p.tagline?" — "+p.tagline:""}. My feed, albums, and every place I post, all in one page: ${url} #AliaSpaces ${tag}`.trim(),
+    `One page, all of me. Follow ${p.name} and never lose track of where I post next: ${url} #AliaSpaces`,
     `New home page for ${p.name}${p.topics?" — "+p.topics.split(",")[0].trim()+" and more":""}. Everything I make, one link: ${url}`
   ];
 }
@@ -839,7 +889,7 @@ function openPromo(pid){
       <a class="chip" target="_blank" rel="noopener" href="https://t.me/share/url?url=${eU}&text=${encodeURIComponent(texts[1])}">Telegram</a>
       <a class="chip" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(texts[1])}">WhatsApp</a>
       <a class="chip" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=${eU}">LinkedIn</a>
-      <a class="chip" target="_blank" rel="noopener" href="mailto:?subject=${encodeURIComponent(p.name+" on MyPersonas")}&body=${encodeURIComponent(texts[0])}">Email</a>
+      <a class="chip" target="_blank" rel="noopener" href="mailto:?subject=${encodeURIComponent(p.name+" on AliaSpaces")}&body=${encodeURIComponent(texts[0])}">Email</a>
     </div>
     <p class="muted" style="margin-top:8px">Instagram, TikTok, Snapchat and OnlyFans don't accept pre-filled posts — use Copy and paste there.</p>
     <div style="margin-top:14px;text-align:right"><button class="btn sec" onclick="document.getElementById('promoOv').remove()">Close</button></div>
@@ -1560,7 +1610,7 @@ const PLABEL={Sun:"Sun",Moon:"Moon",Mercury:"Mercury",Venus:"Venus",Mars:"Mars",
 const PSHORT={Sun:"Sun",Moon:"Moon",Mercury:"Mer",Venus:"Ven",Mars:"Mar",Jupiter:"Jup",Saturn:"Sat",Uranus:"Ura",Neptune:"Nep",Pluto:"Plu","North Node":"Node"};
 // Castleborn ecosystem — PLACEHOLDER URLs; confirm/replace with the real product links.
 const CASTLEBORN=[
-  {key:"castleborn",name:"Castleborn",url:"https://castleborn.com",desc:"The Castleborn home — the studio behind MyPersonas and its sibling products."},
+  {key:"castleborn",name:"Castleborn",url:"https://castleborn.com",desc:"The Castleborn home — the studio behind AliaSpaces and its sibling products."},
   {key:"trainify",name:"trAInify",url:"https://trainify.app",desc:"AI product in the Castleborn family (models, assistants, automation)."}
 ];
 const ASTRO_SYSTEMS=[
@@ -1624,7 +1674,7 @@ function accountArea(){
     </div>
 
     <div class="tabpanel" data-p="security" ${show("security")}>
-      <p class="muted">You are signed in as <b>${esc(emailVerified||"")}</b>. MyPersonas never shows your email anywhere.</p>
+      <p class="muted">You are signed in as <b>${esc(emailVerified||"")}</b>. AliaSpaces never shows your email anywhere.</p>
       <div class="acctsub">Password</div>
       <p class="muted">You can sign in with Google or a magic link with no password at all. Set one here for email + password sign-in too.</p>
       <div class="row">
@@ -2200,16 +2250,18 @@ document.addEventListener('click',()=>closeSiteMenu());
 
 // ----- hashtag browse pages -----
 async function renderTag(tag){
-  setMeta("#"+tag+" — MyPersonas","Posts across the network tagged #"+tag);
+  setMeta("#"+tag+" — AliaSpaces","Posts across the network tagged #"+tag);
   app.innerHTML='<div class="empty">Loading…</div>';
-  const {data}=await sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
-    .eq("personas.visibility","public").ilike("tags","%"+tag+"%").order("created_at",{ascending:false}).limit(60);
-  const f=getFilters();
-  const posts=(data||[]).filter(r=>!(f.hideNsfw&&r.personas.nsfw)&&!isHidden(r.personas.id));
+  netFeed={mode:"tag",tag:tag,offset:0,busy:false,done:false};
+  const{data}=await netFeedQuery(0,FEED_PAGE-1);
+  const posts=netFeedFilter(data);
+  netFeed.offset=data?data.length:0;
+  if(!data||data.length<FEED_PAGE)netFeed.done=true;
   app.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
     <h3 class="secthead" style="margin:0">#${esc(tag)}</h3>
     <button class="btn sec sm" onclick="go('')">Back to discover</button></div>
-    ${posts.map(x=>postHtml(x,x.personas,false)).join("")||`<div class="empty">No public posts tagged #${esc(tag)} yet.</div>`}`;
+    <div id="netFeed">${posts.map(x=>postHtml(x,x.personas,false)).join("")||`<div class="empty">No public posts tagged #${esc(tag)} yet.</div>`}</div>
+    ${netFeed.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`;
 }
 
 </script>

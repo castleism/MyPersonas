@@ -9,8 +9,8 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 
 ## Setup & shell
 - [x] 1. SQL updates 001-004 applied — ✅ (004 added this round: persona-create RLS fix)
-- [x] 2. https://mypersonas.online loads with padlock; favicon shows the blue P — ✅ (favicon.svg served 200)
-- [ ] 3. Signed out (incognito): welcome hero + 3 "What is MyPersonas" cards + Get started — ⬜ needs signed-out browser (Christian)
+- [x] 2. https://aliaspaces.com loads with padlock; favicon shows the blue P — ✅ (favicon.svg served 200)
+- [ ] 3. Signed out (incognito): welcome hero + 3 "What is AliaSpaces" cards + Get started — ⬜ needs signed-out browser (Christian)
 - [x] 4. Signed in: DNA background appears behind pages — ✅
 - [x] 5. Nav reads Entangle / Matrix; no emojis anywhere; blue glowing icons on card headings — ✅
 
@@ -29,9 +29,9 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 - [x] 13. Quick setup: step 1 multi-select; suggestions merge from multiple categories; platform placeholders added to links — ✅ (Product reviewer + Gamer merged into topics/voice/purpose; 9 platform link placeholders added)
 - [x] 14. Persona SAVES without RLS error — ✅ after sql-updates/004. ROOT CAUSE (was ❌): insert().select() returns the new row; the returned row must pass the personas SELECT policy; persona_visible() (security definer, STABLE) re-queries personas and cannot see the row inserted in the same statement → 42501. Edits worked (no representation requested), creates always failed — hence "intermittent". NOT a session-expiry bug.
 - [x] 15. Page looks: Choose file → upload → preview updates; Clear empties the slot — ✅ (avatar uploaded to media/<uid>/ folder, preview updated, Clear emptied, avatar persisted after save; OS picker itself un-automatable but the full pipeline verified)
-- [ ] 16. SD panel docks bottom-right; generates via local A1111/Forge — ⏭ needs Christian's local SD with --api --cors-allow-origins=https://mypersonas.online
+- [ ] 16. SD panel docks bottom-right; generates via local A1111/Forge — ⏭ needs Christian's local SD with --api --cors-allow-origins=https://aliaspaces.com
 - [x] 17. Saved page renders: banner, avatar, song player, link chips, Top 8, theme color — ✅ (theme-gradient banner fallback + avatar placeholder with no images; YouTube song player; 9 link chips; Top 8 empty → section hidden; theme color applied)
-- [x] 18. Share button copies a working page link — ✅ copies https://mypersonas.online/#/p/nova_qa
+- [x] 18. Share button copies a working page link — ✅ copies https://aliaspaces.com/#/p/nova_qa
 
 ## Content
 - [x] 19. Publish a post and a reel (reel displays vertical; Reels chip filters) — ✅ both published; reel badge + vertical video + page-URL overlay; Reels chip filters correctly

@@ -1,6 +1,6 @@
 # MyPersonas.Online
 
-Source for https://mypersonas.online — the persona network.
+Source for https://aliaspaces.com — the persona network.
 
 ## Structure
 

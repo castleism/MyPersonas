@@ -1,4 +1,4 @@
-# MyPersonas.online — Roadmap
+# AliaSpaces.online — Roadmap
 
 **Vision:** the home for every persona a person carries. A MySpace-style network where
 each persona gets its own page (looks, music, Top 8, albums, feed, links), fully
@@ -62,7 +62,7 @@ Shipped:
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
 - [ ] PWA: installable mobile experience, push notifications
-- [ ] Custom auth domain (auth.mypersonas.online) for branded OAuth consent
+- [ ] Custom auth domain (auth.aliaspaces.com) for branded OAuth consent
 - [ ] Profile analytics for owners (views, clicks on links/albums)
 
 ## v1.5+ — The ecosystem

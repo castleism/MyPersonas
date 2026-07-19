@@ -1,0 +1,33 @@
+rebrand to AliaSpaces + roll app toward aliaspaces.com (+ feed/modal)
+
+Brand
+- MyPersonas -> AliaSpaces across the app UI, <title>, OpenGraph/Twitter/JSON-LD,
+  wordmark, welcome copy, share text, and internal prose docs. The product is now
+  AliaSpaces; "MyPersonas" is retired as the live brand and kept only as a reserve
+  name/domain. (Repo + MyPersonas.Online_v0/ deploy folder names left unchanged;
+  they are invisible to users and renaming them would break the Pages workflow.)
+
+Domain rollover (staged; DNS-gated)
+- index.html canonical / og:url / og:image / twitter:image / JSON-LD url ->
+  https://aliaspaces.com.
+- ai-proxy + delete-account Edge Functions: replaced the single fixed
+  Access-Control-Allow-Origin with an ORIGIN ALLOWLIST (aliaspaces.com, www, app,
+  and mypersonas.online reserve) reflected per-request with Vary: Origin, so AI and
+  account deletion keep working before, during, and after the cutover.
+- sitemap Edge Function SITE -> https://aliaspaces.com.
+- CNAME deliberately NOT changed here: it stays mypersonas.online until Cloudflare
+  DNS for aliaspaces.com is live and the GitHub Pages custom domain verifies, so the
+  site never drops. Flip CNAME -> aliaspaces.com as the final rollover step.
+- After deploy, REDEPLOY the two CORS Edge Functions (supabase functions deploy
+  ai-proxy ; supabase functions deploy delete-account).
+
+Also in this commit (previously staged, not yet pushed)
+- Feed pagination: Discover "Recent posts" + #hashtag pages load in pages of 12 via
+  Supabase .range() with a "Load more" button (shared netFeed pager).
+- Act-as-persona picker: replaced the blocking window.prompt() with an overlay modal
+  listing personas by avatar + @handle.
+
+Verified: inline script passes node --check; CRLF preserved.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BxUcNtqNCN7j81MHrXkoR5

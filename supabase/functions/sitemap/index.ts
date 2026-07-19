@@ -3,12 +3,12 @@
 // as its own URL so search engines can discover them.
 //
 // Deploy:  supabase functions deploy sitemap --no-verify-jwt
-// Then point https://mypersonas.online/sitemap.xml at it (see DEPLOY.md) or submit
+// Then point https://aliaspaces.com/sitemap.xml at it (see DEPLOY.md) or submit
 // the function URL directly in Search Console.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SITE = "https://mypersonas.online";
+const SITE = "https://aliaspaces.com";
 
 serve(async () => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
