@@ -15,10 +15,12 @@ supabase link --project-ref nwsqyuucwzihruszocge
 ```
 
 ## 1. SQL migrations (Supabase Dashboard -> SQL Editor)
-Run in order. Both are additive and safe:
+Run in order. These migrations are additive and safe:
 - `sql-updates/005-comments-reactions.sql` — comments + reactions tables + RLS.
 - `sql-updates/006-privacy-owner-uuid.sql` — Phase A only (adds RPCs). Do NOT run the
   Phase B `revoke` yet; it needs the client change in step 4.
+- `sql-updates/008-account-ledger.sql` — owner-only external-account inventory used by
+  Account → Accounts batch mode. Stores metadata only; no credential columns.
 
 ## 2. Function secrets
 ```

@@ -50,6 +50,7 @@ serve(async (req) => {
   await admin.from("ai_tasks").delete().eq("owner", uid);
   await admin.from("ai_backends").delete().eq("owner", uid);
   await admin.from("drafts").delete().eq("owner", uid);
+  await admin.from("account_ledger").delete().eq("owner", uid);
   await admin.from("blocks").delete().eq("blocker", uid);
   if (personaIds.length) {
     // follows reference personas; remove any where this owner's persona is follower or target
