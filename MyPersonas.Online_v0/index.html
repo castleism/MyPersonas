@@ -267,6 +267,7 @@ trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlo
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
 let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0;
+let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
 let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
 const app=document.getElementById("app");
 const errBuf=[];
@@ -338,6 +339,7 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   <p>This app needs its Supabase backend connected. Open <b>index.html</b> and paste your <b>Project URL</b> and <b>anon key</b> into the CONFIG block at the top of the script. See SETUP-GUIDE.md.</p></div>`;
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  handleGmailReturn();
   handleOAuthReturn();
   let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
   sb.auth.onAuthStateChange((ev,s)=>{
@@ -346,7 +348,7 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
     const uid=s&&s.user?s.user.id:null;
     if(uid===loadedUid)return; // already loaded for this user (startup double-fire, tab refocus)
     loadedUid=uid;
-    loadMine().then(route);
+    loadMine().then(async()=>{await finishPendingGmail();route()});
   });
   window.addEventListener("hashchange",route);
 }
@@ -390,7 +392,13 @@ async function route(){
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
   if(view==="p")return renderPersonaPage(arg,false,myEpoch);
-  if(view==="studio")return renderStudio();
+  if(view==="studio"){
+    const notice=gmailOAuthNotice;
+    if(notice){acctTab="accounts";gmailOAuthNotice=null}
+    renderStudio();
+    if(notice)setTimeout(()=>toast(notice.message),40);
+    return;
+  }
   if(view==="edit")return renderEdit(arg,myEpoch);
   if(view==="signin")return renderSignin();
   if(view==="tag")return renderTag(arg);
@@ -421,6 +429,32 @@ async function magicLink(){
   if(!email){toast("Enter your email");return}
   const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
   toast(error?error.message:"Check your email for the link!");
+}
+function handleGmailReturn(){
+  const u=new URL(location.href),result=u.searchParams.get("gmail");
+  if(!result)return;
+  const reason=u.searchParams.get("reason")||"";
+  const reasons={
+    cancelled:"Gmail authorization was cancelled.",
+    email_mismatch:"That Google account does not match the Gmail address recorded here.",
+    invalid_state:"The Gmail authorization expired. Please try again.",
+    scope_missing:"Gmail read-only permission was not granted.",
+    already_connected:"That Gmail account is already connected elsewhere.",
+    refresh_token_missing:"Google did not provide ongoing access. Please try again.",
+    secure_storage_failed:"Gmail authorization could not be stored securely.",
+    token_exchange_failed:"Google could not complete authorization. Please try again.",
+    profile_check_failed:"The selected Gmail account could not be verified.",
+    connection_save_failed:"Gmail authorized, but its connection record could not be saved."
+  };
+  if(result==="finish"){
+    const state=u.searchParams.get("state")||"",code=u.searchParams.get("code")||"",providerError=u.searchParams.get("provider_error")||"";
+    const browserNonce=/^[A-Za-z0-9_-]{32,200}$/.test(state)?sessionStorage.getItem("gmail_oauth_"+state)||"":"";
+    if(state)sessionStorage.removeItem("gmail_oauth_"+state);
+    if(browserNonce)gmailOAuthPending={state,code,browserNonce,providerError};
+    else gmailOAuthNotice={message:"This Gmail authorization was not started in this browser tab. Please try again."};
+  }else gmailOAuthNotice={message:reasons[reason]||"Gmail authorization did not complete."};
+  ["gmail","reason","state","code","provider_error"].forEach(k=>u.searchParams.delete(k));
+  history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
 }
 
 // ---------- discover ----------
@@ -1837,8 +1871,10 @@ function ledgerAuthPanel(a,info){
   const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
   const verify=info.state==="recorded"?`<button class="btn sm" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Verify ownership</button>`:"";
   const why=!accountConnectionsReady?"Verification setup is not available yet.":!target?"Add a login email before ownership can be verified.":current!==target?`Sign in to AliaSpaces as ${esc(target)} to verify this account.`:!confirmed?"Confirm your AliaSpaces sign-in email first.":"This compares the recorded email with your confirmed AliaSpaces sign-in.";
-  const gmail=a.provider==="gmail"&&info.state!=="connected"?`<button class="btn sm sec" disabled title="Requires a separate server-side Google OAuth connection">Connect Gmail · setup required</button>`:"";
-  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Gmail inbox access requires a separate read-only Google permission and never your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
+  const gmail=a.provider!=="gmail"?"":info.state==="connected"
+    ?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">Disconnect Gmail</button>`
+    :`<button class="btn sm" onclick="connectGmail('${a.id}')">Authenticate Gmail</button>`;
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
 }
 function accountLedgerHtml(){
   const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);return `<div class="ledgeritem">
@@ -1941,8 +1977,52 @@ async function verifyLedgerOwnership(id){
   }
   await loadMine();acctTab="accounts";renderStudio();toast("Ownership verified. Inbox/API access is still not connected.");
 }
+async function gmailOAuthAction(action,id,extra={}){
+  const{data}=await sb.auth.getSession(),s=data&&data.session;
+  if(!s)return{error:"Sign in again before connecting Gmail."};
+  try{
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/gmail-oauth",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
+      body:JSON.stringify(Object.assign({action,ledgerId:id},extra))});
+    const j=await r.json().catch(()=>({}));
+    return r.ok?{data:j}:{error:j.error||("Gmail authorization failed (HTTP "+r.status+")")};
+  }catch(e){return{error:"Could not reach Gmail authorization: "+(e.message||e)}}
+}
+async function connectGmail(id){
+  toast("Opening Google authorization…");
+  const result=await gmailOAuthAction("start",id);
+  if(result.error){toast(result.error);return}
+  try{
+    const destination=new URL(result.data.authorizationUrl);
+    if(destination.origin!=="https://accounts.google.com")throw new Error("Unexpected authorization destination");
+    const state=destination.searchParams.get("state")||"",browserNonce=result.data.browserNonce||"";
+    if(!/^[A-Za-z0-9_-]{32,200}$/.test(state)||!/^[A-Za-z0-9_-]{32,200}$/.test(browserNonce))throw new Error("Invalid Gmail authorization binding");
+    sessionStorage.setItem("gmail_oauth_"+state,browserNonce);
+    location.assign(destination.toString());
+  }catch(e){toast(e.message||"Invalid Google authorization link")}
+}
+async function finishPendingGmail(){
+  if(!gmailOAuthPending||gmailOAuthCompleting)return;
+  const pending=gmailOAuthPending;gmailOAuthPending=null;
+  if(!session){gmailOAuthNotice={message:"Sign in to the same AliaSpaces account and try Gmail authorization again."};return}
+  gmailOAuthCompleting=true;
+  const result=await gmailOAuthAction("complete",null,pending);
+  gmailOAuthCompleting=false;
+  if(result.error){gmailOAuthNotice={message:result.error};return}
+  gmailOAuthNotice={message:"Gmail connected with read-only access."};
+  await loadMine();
+}
+async function disconnectGmail(id){
+  if(!confirm("Disconnect Gmail and revoke AliaSpaces read-only access? Your Gmail account and messages will not be deleted."))return;
+  const result=await gmailOAuthAction("disconnect",id);
+  if(result.error){toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();
+  toast(result.data.googleRevocationConfirmed?"Gmail disconnected and access revoked.":"Gmail disconnected locally. Review Google Account permissions to confirm revocation.");
+}
 async function deleteLedgerAccount(id){
-  if(!confirm("Remove this account from your private ledger? This does not delete the external account."))return;
+  const account=myAccounts.find(a=>a.id===id),isGmail=account&&account.provider==="gmail";
+  if(!confirm(isGmail?"Remove this account from your private ledger and revoke any stored Gmail access? The external Gmail account and messages will not be deleted.":"Remove this account from your private ledger? This does not delete the external account."))return;
+  if(isGmail){const disconnected=await gmailOAuthAction("disconnect",id);if(disconnected.error){toast(disconnected.error);return}}
   const{error}=await sb.from("account_ledger").delete().eq("id",id);if(error){toast(error.message);return}
   await loadMine();acctTab="accounts";renderStudio();toast("Account removed from ledger");
 }
@@ -2027,13 +2107,16 @@ async function exportMyData(){
 async function deleteAllContent(){
   if(!confirm("Delete ALL your personas, pages, posts, albums, account ledger, drafts, tasks and linked models? This cannot be undone. Your sign-in record is not removed by this action."))return;
   const uid=session.user.id;
-  await sb.from("ai_tasks").delete().eq("owner",uid);
-  await sb.from("ai_backends").delete().eq("owner",uid);
-  await sb.from("drafts").delete().eq("owner",uid);
-  if(accountLedgerReady)await sb.from("account_ledger").delete().eq("owner",uid);
-  await sb.from("blocks").delete().eq("blocker",uid);
-  await sb.from("personas").delete().eq("owner",uid);
-  await sb.from("profiles").update({prefs:{}}).eq("id",uid);
+  for(const account of myAccounts.filter(a=>a.provider==="gmail")){
+    const disconnected=await gmailOAuthAction("disconnect",account.id);
+    if(disconnected.error){toast("Content deletion stopped; earlier Gmail connections may already have been disconnected: "+disconnected.error);return}
+  }
+  const deletes=[["ai_tasks","owner"],["ai_backends","owner"],["drafts","owner"]];
+  if(accountLedgerReady)deletes.push(["account_ledger","owner"]);
+  deletes.push(["blocks","blocker"],["personas","owner"]);
+  for(const [table,column] of deletes){const{error}=await sb.from(table).delete().eq(column,uid);if(error){toast("Deletion stopped: "+error.message);return}}
+  const{error:profileError}=await sb.from("profiles").update({prefs:{}}).eq("id",uid);
+  if(profileError){toast("Content was removed, but account preferences could not be cleared: "+profileError.message);return}
   await loadMine();toast("Your content was deleted");go("");
 }
 

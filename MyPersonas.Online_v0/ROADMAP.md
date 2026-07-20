@@ -13,7 +13,8 @@ carries personas beyond the site onto every platform they live on.
 
 Shipped:
 
-- Auth: Google OAuth + email magic link; profiles private, no public linkage to personas
+- Auth: Google OAuth + email magic link for AliaSpaces sign-in; profiles private, no
+  public linkage to personas (mailbox authorization is a separate connector)
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
 - Pages: banner/background/avatar/feed images (file picker + preview + SD generate),
@@ -38,9 +39,10 @@ Shipped:
 - [x] Private Account Ledger batch mode: add many external accounts, keep them
       unassigned or bind each to an existing/quick-created private persona. Deployed
       with owner-only storage, saved-row Quick Create, and explicit connection states.
-- [ ] Provider OAuth connections: begin with separate, read-only Gmail authorization;
-      store refresh credentials only in server-side secret storage and expose only
-      server-attested connection state to the browser.
+- [x] Provider OAuth connections: separate, read-only Gmail authorization with
+      single-use state + PKCE, exact-mailbox validation, refresh credentials encrypted
+      in Supabase Vault, and only server-attested connection state exposed to the
+      browser. Ownership verification remains distinct from API connection.
 - [ ] Auto-running scheduled tasks: Supabase Edge Function + pg_cron; results land
       in drafts automatically each morning
 - [ ] Server-side AI proxy (Edge Function) so model API keys never touch the browser
@@ -85,8 +87,9 @@ Shipped:
 
 1. **Single-file app** — one index.html, no framework/bundler. Fastest iteration;
    revisit when the file's size hurts (split modules + build step).
-2. **No server layer** — browser ↔ Supabase directly; all security is RLS.
-   Fine for v0; Edge Functions arrive in v0.5 for AI proxy + cron.
+2. **Limited server layer** — most ordinary app data still flows browser ↔ Supabase
+   under RLS; sensitive integrations use Edge Functions. Gmail OAuth now keeps its
+   client secret, state exchange, and refresh credentials server-side.
 3. **AI keys stored in DB and used from the browser** — protected by owner-only RLS
    but visible to the owner's browser. v0.5 proxy removes browser exposure.
 4. **Scheduled tasks are manual** — ▶ Run opens a chat; no background execution yet.

@@ -17,6 +17,18 @@ trailing letters are hotfixes. Releases are git tags.
 - Added server-attested email ownership verification in migration 009. Browsers can
   read their connection state but cannot write it or self-assert authentication;
   credentials and OAuth tokens remain outside the public schema.
+- Added a dedicated Gmail authorization action after ownership verification. The
+  server-side OAuth flow uses short-lived, single-use state plus PKCE, requires the
+  exact recorded mailbox, and requests read-only Gmail access.
+- Bound OAuth completion to the same signed-in user, site origin, and browser tab that
+  started it, and isolated Gmail authorization in a separate Google Cloud project so
+  project-wide revocation cannot disturb ordinary AliaSpaces Google sign-in.
+- Added migration 010 and the `gmail-oauth` Edge Function. Gmail refresh tokens are
+  encrypted in Supabase Vault, available only to the service role, and removed when
+  the connection is disconnected or its ledger record is deleted.
+- Added explicit **Authenticate Gmail** / **Disconnect Gmail** controls and callback
+  status handling. **Ownership verified** remains an identity check; only a completed
+  Google consent flow produces **API connected**.
 
 ## v0b — Route render race guard (2026-07-10)
 

@@ -25,6 +25,21 @@ const cors = (req: Request) => {
   };
 };
 
+async function revokeGoogleToken(token: string) {
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token }),
+    });
+    if (response.ok) return true;
+    const failure = await response.json().catch(() => ({})) as { error?: string };
+    return failure.error === "invalid_token";
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   const CORS = cors(req);
   const json = (b: unknown, s = 200) =>
@@ -42,6 +57,39 @@ serve(async (req) => {
   const { data: u, error: uErr } = await admin.auth.getUser(jwt);
   if (uErr || !u?.user) return json({ error: "invalid session" }, 401);
   const uid = u.user.id;
+
+  // Revoke Gmail grants before deleting anything. The database blocks ledger
+  // deletion while a Vault credential still exists so an external grant can
+  // never be orphaned by account erasure.
+  const { data: gmailLedgers, error: gmailListError } = await admin.from("account_ledger")
+    .select("id")
+    .eq("owner", uid)
+    .eq("provider", "gmail");
+  if (gmailListError) return json({ error: "could not inspect Gmail connections" }, 500);
+  for (const ledger of gmailLedgers || []) {
+    const { data: credential, error: credentialLookupError } = await admin.from("gmail_credentials")
+      .select("ledger_id")
+      .eq("ledger_id", ledger.id)
+      .eq("owner", uid)
+      .maybeSingle();
+    if (credentialLookupError) return json({ error: "could not inspect a stored Gmail authorization" }, 500);
+    if (!credential) continue;
+    const { data: refreshToken, error: tokenError } = await admin.rpc("gmail_get_refresh_token", {
+      p_ledger_id: ledger.id,
+      p_owner: uid,
+    });
+    if (tokenError || typeof refreshToken !== "string" || !refreshToken) {
+      return json({ error: "could not read a stored Gmail authorization safely" }, 500);
+    }
+    if (!await revokeGoogleToken(refreshToken)) {
+      return json({ error: "Google did not confirm Gmail revocation; account deletion stopped, but earlier Gmail grants in this request may already have been revoked" }, 502);
+    }
+    const { error: credentialError } = await admin.rpc("gmail_delete_refresh_token", {
+      p_ledger_id: ledger.id,
+      p_owner: uid,
+    });
+    if (credentialError) return json({ error: "could not remove a stored Gmail authorization" }, 500);
+  }
 
   // Personas cascade to posts/albums/links/notes via FK. Delete the rest explicitly.
   const { data: myPersonas } = await admin.from("personas").select("id").eq("owner", uid);
