@@ -23,12 +23,21 @@ Observed in this release:
   `mypersonas_cron_secret`; stored cron commands contain only the Vault lookup.
 - ✅ With both jobs paused, production requests 50 and 51 called the final workers through
   `pg_net` using the Vault secret. Both returned HTTP 200 with zero due work; the two
-  five-minute jobs were then resumed and independently read back as active.
+  five-minute jobs were then resumed and independently read back as active. Their first
+  scheduled runs at 15:55 UTC succeeded, and resulting requests 52 and 53 also returned
+  HTTP 200 with zero due work.
 - ✅ Final inline application JavaScript, JSON-LD, eight touched Edge functions, SQL parser,
   all-zone time conversion, migration 014 transactional rollback, and Git whitespace
   checks passed. Supabase's advisor warning for the authenticated atomic-save function is
   expected: that security-definer RPC is intentionally authenticated-only and performs
   owner checks with an empty search path.
+- ✅ Commit `9de2a78` reached `mypersonas.online` at 2026-07-20 15:51:56 UTC. A signed-in
+  smoke check loaded the owner Matrix, all six control-center tabs, the manual cadence,
+  batch account picker, quick-create persona option, and connected Gmail state with no
+  browser-console errors. No persona, account, schedule, draft, or connection was changed.
+- ✅ The live Pages artifact serves the app and runtime assets, while verification/setup
+  notes, the consolidated schema, individual migrations, and Supabase deployment notes
+  each return HTTP 404.
 
 Prerequisites: the new Edge code staged while both workers are paused; migrations 001–014
 applied in order; `erase-content` deployed before the compatible `index.html`;
@@ -72,7 +81,8 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
 ### Direction and safety controls
 
 - [ ] A8. Matrix shows Direction, Targets, Schedule, Queue, Fan inbox, and Audit on phone
-      and desktop widths; a database-not-ready state appears cleanly before migration — ⬜
+      and desktop widths; a database-not-ready state appears cleanly before migration —
+      ✅ live signed-in desktop tabs; ⬜ final real-phone width check remains
 - [ ] A9. Direction fields persist and are present in a generated draft's server-built
       prompt; persona hard rules remain authoritative — ⬜
 - [ ] A10. L0 allows co-writing only; L1 enables scheduled drafts; L2 exact approval waits
@@ -91,7 +101,8 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
 - [x] A14. Both stored cron commands read `mypersonas_cron_secret` from
       `vault.decrypted_secrets` and contain no literal credential. Both endpoints reject a
       missing/wrong `X-Cron-Secret` with HTTP 403 — ✅ final workers probed while paused:
-      both HTTP 200 with zero due work; jobs then resumed and read back active
+      both HTTP 200 with zero due work; jobs then resumed, ran on schedule, and produced
+      two more HTTP 200 responses
 - [ ] A15. `run-tasks` ignores future, inactive, paused, L0, invalid-claim, mismatched, and
       quiet-hour tasks and records a useful status/audit reason — ⬜
 - [ ] A16. Concurrent calls for one due task produce only one UUID lease, one reserved
@@ -149,9 +160,10 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
       removes every owned persona/post/media/ledger/model/automation/chat row plus profile
       display name and preferences. Gmail revocation happens first, and any OpenRouter
       backend requires provider-side key-revocation acknowledgment — ⬜
-- [ ] A36. The Pages artifact contains only `index.html`, runtime assets, CNAME,
+- [x] A36. The Pages artifact contains only `index.html`, runtime assets, CNAME,
       `.nojekyll`, robots, and sitemap; it contains no setup guides, SQL, verification
-      notes, source snapshots, or private mailbox addresses — ⬜
+      notes, source snapshots, or private mailbox addresses — ✅ workflow allowlist plus
+      live 200 checks for app/assets and 404 checks for representative internal files
 - [ ] A37. A persona with more than 30 posts exposes Load more; repeated loads use stable
       newest-first created-at/id ordering, and Posts/Reels/search filters continue through
       older pages without duplicates or silently stopping at 50 — ⬜
