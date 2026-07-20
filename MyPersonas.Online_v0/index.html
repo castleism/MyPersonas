@@ -1891,7 +1891,7 @@ function clearLedgerRowDetails(row){
   [".lrUser",".lrEmail",".lrUrl",".lrNotes",".lrNewName",".lrNewHandle"].forEach(s=>{const e=row.querySelector(s);if(e)e.value=""});
   const persona=row.querySelector(".lrPersona");if(persona){persona.value="";toggleLedgerQuick(persona)}
 }
-function ledgerRowDetailsSnapshot(row){return [".lrUser",".lrEmail",".lrUrl",".lrNotes"].map(s=>row.querySelector(s).value.trim())}
+function ledgerRowDetailsSnapshot(row){return [".lrUser",".lrEmail",".lrUrl",".lrNotes",".lrPersona",".lrNewName",".lrNewHandle"].map(s=>row.querySelector(s).value.trim())}
 function ledgerSavedRowDirty(row){
   if(!row.dataset.savedSnapshot)return false;
   try{return JSON.stringify(ledgerRowDetailsSnapshot(row))!==row.dataset.savedSnapshot}catch(e){return true}
@@ -1923,7 +1923,7 @@ function applyLedgerSavedAccount(picker){
   row.querySelector(".lrEmail").disabled=ledgerIdentityLocked(a);row.dataset.savedSnapshot=JSON.stringify(ledgerRowDetailsSnapshot(row));setLedgerSavedHelp(row,a);
 }
 function ledgerConnectionInfo(a){
-  const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row&&!(row.connection_state==="verified"&&normalizeLedgerEmail(row.provider_email)!==normalizeLedgerEmail(a.login_email))?row.connection_state:"recorded";
+  const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row&&row.provider===a.provider&&!(row.connection_state==="verified"&&normalizeLedgerEmail(row.provider_email)!==normalizeLedgerEmail(a.login_email))?row.connection_state:"recorded";
   if(state==="connected")return{row,state,label:a.provider==="gmail"?"API connected · read-only":"API connected",klass:"connected",note:"External API access is active."};
   if(state==="verified")return{row,state,label:"Ownership verified",klass:"verified",note:"Ownership is verified; inbox/API access is not connected."};
   if(state==="error")return{row,state,label:"Needs reconnect",klass:"attention",note:"The external connection needs attention."};
