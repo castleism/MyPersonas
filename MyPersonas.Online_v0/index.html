@@ -166,6 +166,8 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .ledgerrow{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(150px,1fr) minmax(170px,1.1fr) minmax(180px,1.2fr) auto;gap:8px;align-items:end;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:8px}
 .ledgerrow label{margin-top:0}.ledgernew{grid-column:1/-1;display:none}.ledgernew.on{display:flex;gap:8px;flex-wrap:wrap}.ledgernew>*{flex:1;min-width:170px}
 .ledgerlist{display:grid;gap:8px;margin:10px 0}.ledgeritem{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:10px 12px}.ledgeritem .ledgerwho{min-width:180px;flex:1}.ledgeritem select{width:auto;min-width:170px}
+.ledgerstate{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px}.pill.recorded{background:#fff4cc;color:#795d00}.pill.verified{background:#e7f6ec;color:#23733b}.pill.connected{background:#dff7f5;color:#086c66}.pill.attention{background:#fde8ec;color:#a52744}
+.ledgerassignnew,.ledgerauth{display:none;flex:1 0 100%;width:100%;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}.ledgerassignnew.on,.ledgerauth.on{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ledgerassignnew>div{flex:1;min-width:170px}.ledgerauth.on{align-items:center}.ledgerauth p{flex:1 1 420px;margin:0}
 @media(max-width:900px){.ledgerrow{grid-template-columns:1fr 1fr}.ledgerrow .ledgerwide,.ledgerrow .ledgernew{grid-column:1/-1}}
 @media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}}
 
@@ -263,8 +265,8 @@ legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{na
 amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
-let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[];
-let accountLedgerReady=true,ledgerRowSeq=0;
+let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
+let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0;
 let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
 const app=document.getElementById("app");
 const errBuf=[];
@@ -350,19 +352,21 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
 }
 function updateAuthBtn(){document.getElementById("authBtn").textContent=session?"Sign out":"Sign in"}
 async function loadMine(){
-  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];myAccounts=[];accountLedgerReady=true;
+  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];myAccounts=[];myAccountConnections=[];accountLedgerReady=true;accountConnectionsReady=true;
   if(!session){updateBadge();return}
-  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof},{data:dr},acctRes]=await Promise.all([
+  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof},{data:dr},acctRes,connRes]=await Promise.all([
     sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("blocks").select("*").eq("blocker",session.user.id),
     sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at"),
     sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle(),
     sb.from("drafts").select("*").eq("owner",session.user.id).order("created_at",{ascending:false}).limit(100),
-    sb.from("account_ledger").select("*").eq("owner",session.user.id).order("created_at",{ascending:false})
+    sb.from("account_ledger").select("*").eq("owner",session.user.id).order("created_at",{ascending:false}),
+    sb.from("account_connections").select("*").eq("owner",session.user.id)
   ]);
   myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];myProfile=prof||null;myDrafts=dr||[];
   if(acctRes.error){accountLedgerReady=false;myAccounts=[]}else myAccounts=acctRes.data||[];
+  if(connRes.error){accountConnectionsReady=false;myAccountConnections=[]}else myAccountConnections=connRes.data||[];
   if(myProfile&&myProfile.prefs&&Object.keys(myProfile.prefs).length)localStorage.setItem("ps_filters",JSON.stringify(myProfile.prefs));
   if(myPersonas.length){
     const{data:reqs}=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
@@ -1820,21 +1824,45 @@ function ledgerProviderOptions(selected=""){
 function ledgerPersonaOptions(selected="",allowQuick=false){
   return `<option value="">Unassigned</option>${myPersonas.map(p=>`<option value="${p.id}" ${selected===p.id?"selected":""}>${esc(p.name)} (@${esc(p.handle)})</option>`).join("")}${allowQuick?'<option value="__new__">+ Quick create persona</option>':""}`;
 }
+function ledgerConnectionInfo(a){
+  const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row?row.connection_state:"recorded";
+  if(state==="connected")return{row,state,label:a.provider==="gmail"?"API connected · read-only":"API connected",klass:"connected",note:"External API access is active."};
+  if(state==="verified")return{row,state,label:"Ownership verified",klass:"verified",note:"Ownership is verified; inbox/API access is not connected."};
+  if(state==="error")return{row,state,label:"Needs reconnect",klass:"attention",note:"The external connection needs attention."};
+  if(state==="disconnected")return{row,state,label:"Disconnected",klass:"attention",note:"External access is disconnected."};
+  return{row:null,state:"recorded",label:"Recorded · not authenticated",klass:"recorded",note:"This is a private inventory record only."};
+}
+function ledgerAuthPanel(a,info){
+  const current=(session&&session.user&&session.user.email||"").toLowerCase(),target=(a.login_email||"").trim().toLowerCase();
+  const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
+  const verify=info.state==="recorded"?`<button class="btn sm" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Verify ownership</button>`:"";
+  const why=!accountConnectionsReady?"Verification setup is not available yet.":!target?"Add a login email before ownership can be verified.":current!==target?`Sign in to AliaSpaces as ${esc(target)} to verify this account.`:!confirmed?"Confirm your AliaSpaces sign-in email first.":"This compares the recorded email with your confirmed AliaSpaces sign-in.";
+  const gmail=a.provider==="gmail"&&info.state!=="connected"?`<button class="btn sm sec" disabled title="Requires a separate server-side Google OAuth connection">Connect Gmail · setup required</button>`:"";
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Gmail inbox access requires a separate read-only Google permission and never your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
+}
 function accountLedgerHtml(){
-  const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id);return `<div class="ledgeritem">
+  const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);return `<div class="ledgeritem">
     <div class="ledgerwho"><b>${esc((PLATS[a.provider]||{}).name||a.provider)}${a.username?" · "+esc(a.username):""}</b><br>
-      <span class="muted">${esc(a.login_email||"")}${/^https?:\/\//i.test(a.url||"")?`${a.login_email?" · ":""}<a href="${esc(a.url)}" target="_blank" rel="noopener">open account ↗</a>`:""}</span></div>
-    <select id="ledgerPersona_${a.id}" aria-label="Assigned persona">${ledgerPersonaOptions(a.persona_id||"")}</select>
+      <span class="muted">${esc(a.login_email||"")}${/^https?:\/\//i.test(a.url||"")?`${a.login_email?" · ":""}<a href="${esc(a.url)}" target="_blank" rel="noopener">open account ↗</a>`:""}</span>
+      <span class="ledgerstate"><span class="pill ${info.klass}">${esc(info.label)}</span></span></div>
+    <select id="ledgerPersona_${a.id}" data-current="${esc(a.persona_id||"")}" aria-label="Assigned persona" onchange="toggleSavedLedgerQuick('${a.id}',this)">${ledgerPersonaOptions(a.persona_id||"",true)}</select>
     <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save</button>
+    <button class="btn sm sec" onclick="toggleLedgerAuth('${a.id}')">Authentication</button>
     <button class="btn sm danger" onclick="deleteLedgerAccount('${a.id}')">Delete</button>
-    ${p?`<span class="pill priv">${esc(p.name)}</span>`:'<span class="pill priv">Unassigned</span>'}</div>`}).join("")||'<p class="muted">No accounts recorded yet.</p>';
+    ${p?`<span class="pill priv">${esc(p.name)}</span>`:'<span class="pill priv">Unassigned</span>'}
+    <div class="ledgerassignnew" id="ledgerQuick_${a.id}"><div><label>New persona name</label><input id="ledgerNewName_${a.id}" placeholder="Display name"></div>
+      <div><label>New persona handle</label><input id="ledgerNewHandle_${a.id}" placeholder="lowercase_handle"></div>
+      <button class="btn sm" onclick="createAndAssignLedgerPersona('${a.id}')">Create & assign</button>
+      <button class="btn sm sec" onclick="cancelSavedLedgerQuick('${a.id}')">Cancel</button></div>
+    ${ledgerAuthPanel(a,info)}</div>`}).join("")||'<p class="muted">No accounts recorded yet.</p>';
   return `<div class="acctsub">Your accounts (${myAccounts.length})</div><div class="ledgerlist">${existing}</div>
     <div class="acctsub">Batch add accounts</div>
-    <p class="muted">Add as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while saving.</p>
+    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Authentication on the saved row to see and advance its connection state.</span></div></div>
+    <p class="muted">Add as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while recording.</p>
     <div id="ledgerBatch"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn sm sec" onclick="addLedgerRow()">+ Add another row</button>
-      <button class="btn sm" onclick="saveLedgerBatch()">Save all accounts</button></div>
+      <button class="btn sm" onclick="saveLedgerBatch()">Record accounts</button></div>
     <p class="muted" style="margin-top:8px">Quick-created personas start private. Open the persona editor later to add its voice, bio, visuals, safety rules, and publishing settings.</p>`;
 }
 function addLedgerRow(seed={}){
@@ -1852,6 +1880,12 @@ function addLedgerRow(seed={}){
   box.appendChild(row);
 }
 function toggleLedgerQuick(sel){const q=sel.closest(".ledgerrow").querySelector(".ledgernew");q.classList.toggle("on",sel.value==="__new__")}
+function toggleSavedLedgerQuick(id,sel){document.getElementById("ledgerQuick_"+id).classList.toggle("on",sel.value==="__new__")}
+function cancelSavedLedgerQuick(id){const s=document.getElementById("ledgerPersona_"+id);s.value=s.dataset.current||"";toggleSavedLedgerQuick(id,s)}
+function toggleLedgerAuth(id){document.getElementById("ledgerAuth_"+id).classList.toggle("on")}
+async function createPrivatePersona(name,handle){
+  return sb.from("personas").insert({owner:session.user.id,name,handle,visibility:"private"}).select().single();
+}
 async function saveLedgerBatch(){
   const rows=[...document.querySelectorAll("#ledgerBatch .ledgerrow")];
   if(!rows.length){toast("Add at least one account row");return}
@@ -1869,7 +1903,7 @@ async function saveLedgerBatch(){
     if(pid==="__new__"){
       pid=made.get(x.newHandle)||null;
       if(!pid){
-        const{data,error}=await sb.from("personas").insert({owner:session.user.id,name:x.newName,handle:x.newHandle,visibility:"private"}).select().single();
+        const{data,error}=await createPrivatePersona(x.newName,x.newHandle);
         if(error){toast("Persona @"+x.newHandle+": "+(error.message.includes("duplicate")?"handle already exists":error.message));return}
         pid=data.id;made.set(x.newHandle,pid);
       }
@@ -1878,12 +1912,34 @@ async function saveLedgerBatch(){
     if(error){toast("Saved "+saved+" accounts; stopped: "+error.message);await loadMine();renderStudio();return}
     saved++;
   }
-  await loadMine();acctTab="accounts";renderStudio();toast("Saved "+saved+" account"+(saved===1?"":"s"));
+  await loadMine();acctTab="accounts";renderStudio();toast("Recorded "+saved+" account"+(saved===1?"":"s")+". No external access was granted.");
 }
 async function updateLedgerPersona(id){
   const persona_id=val("ledgerPersona_"+id)||null;
+  if(persona_id==="__new__"){toast("Enter the new persona name and handle, then choose Create & assign");return}
   const{error}=await sb.from("account_ledger").update({persona_id,updated_at:new Date().toISOString()}).eq("id",id);
   if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account assignment saved");
+}
+async function createAndAssignLedgerPersona(id){
+  const name=val("ledgerNewName_"+id),handle=val("ledgerNewHandle_"+id).toLowerCase();
+  if(!name||!/^[a-z0-9._]{3,30}$/.test(handle)){toast("Enter a name and a valid 3–30 character lowercase handle");return}
+  const{data,error}=await createPrivatePersona(name,handle);
+  if(error){toast(error.message.includes("duplicate")?"That persona handle already exists":error.message);return}
+  const assigned=await sb.from("account_ledger").update({persona_id:data.id,updated_at:new Date().toISOString()}).eq("id",id);
+  if(assigned.error){
+    const cleanup=await sb.from("personas").delete().eq("id",data.id);
+    toast(cleanup.error?"Persona was created, but assignment failed: "+assigned.error.message:"Could not assign the new persona: "+assigned.error.message);return;
+  }
+  await loadMine();acctTab="accounts";renderStudio();toast("Private persona created and assigned");
+}
+async function verifyLedgerOwnership(id){
+  if(!accountConnectionsReady){toast("Account verification setup is not available yet");return}
+  const{error}=await sb.rpc("verify_account_ledger_email",{p_ledger_id:id});
+  if(error){
+    const m=error.message||"";
+    toast(/does not match/i.test(m)?"The recorded email does not match your signed-in AliaSpaces email.":/login email/i.test(m)?"Add a login email before verifying ownership.":m);return;
+  }
+  await loadMine();acctTab="accounts";renderStudio();toast("Ownership verified. Inbox/API access is still not connected.");
 }
 async function deleteLedgerAccount(id){
   if(!confirm("Remove this account from your private ledger? This does not delete the external account."))return;
@@ -1955,7 +2011,7 @@ async function exportMyData(){
   const ids=myPersonas.map(p=>p.id);
   out.personas=myPersonas;
   out.ai_backends=(myBackends||[]).map(b=>Object.assign({},b,{api_key:"[removed from export]"}));
-  out.ai_tasks=myTasks;out.drafts=myDrafts;out.account_ledger=myAccounts;
+  out.ai_tasks=myTasks;out.drafts=myDrafts;out.account_ledger=myAccounts;out.account_connections=myAccountConnections;
   if(ids.length){
     const[{data:posts},{data:links},{data:albums}]=await Promise.all([
       sb.from("posts").select("*").in("persona_id",ids),

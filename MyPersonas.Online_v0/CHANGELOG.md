@@ -10,6 +10,13 @@ trailing letters are hotfixes. Releases are git tags.
   a minimal private persona during the batch save.
 - Added the owner-only `account_ledger` migration and included ledger data in account
   export and deletion. The ledger stores metadata only and has no credential fields.
+- Fixed saved-account persona assignment so `+ Quick create persona` is available
+  after recording an account, with a private persona created and assigned in place.
+- Account rows now distinguish **Recorded**, **Ownership verified**, and **API
+  connected** instead of implying that saving metadata authenticated the account.
+- Added server-attested email ownership verification in migration 009. Browsers can
+  read their connection state but cannot write it or self-assert authentication;
+  credentials and OAuth tokens remain outside the public schema.
 
 ## v0b — Route render race guard (2026-07-10)
 

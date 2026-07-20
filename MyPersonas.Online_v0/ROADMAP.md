@@ -35,9 +35,12 @@ Shipped:
 
 ## v0.5 — Live network (roadmap items)
 
-- [ ] Private Account Ledger batch mode: add many external accounts, keep them
-      unassigned or bind each to an existing/quick-created private persona. Client
-      and migration 008 are authored; Supabase migration + live verification pending.
+- [x] Private Account Ledger batch mode: add many external accounts, keep them
+      unassigned or bind each to an existing/quick-created private persona. Deployed
+      with owner-only storage, saved-row Quick Create, and explicit connection states.
+- [ ] Provider OAuth connections: begin with separate, read-only Gmail authorization;
+      store refresh credentials only in server-side secret storage and expose only
+      server-attested connection state to the browser.
 - [ ] Auto-running scheduled tasks: Supabase Edge Function + pg_cron; results land
       in drafts automatically each morning
 - [ ] Server-side AI proxy (Edge Function) so model API keys never touch the browser
