@@ -42,7 +42,9 @@ returns table (
   limit greatest(1, least(coalesce(lim,80), 200));
 $$;
 
--- One public persona page by handle, WITHOUT owner (public or unlisted).
+-- One visible persona page by handle, WITHOUT owner. persona_visible() keeps
+-- private pages available to their owner/accepted friends without exposing the
+-- owner's UUID.
 create or replace function public.persona_by_handle(h text)
 returns table (
   id uuid, handle text, name text, tagline text, bio text, nsfw boolean,
@@ -55,7 +57,7 @@ returns table (
          bg_url, feed_img_url, music_url, live_url, theme, topics, purpose, voice,
          audience, hashtags, dont, top8, modules, linked, ai_backend, created_at
   from public.personas
-  where handle = h and visibility in ('public','unlisted')
+  where handle = h and persona_visible(id)
   limit 1;
 $$;
 
@@ -65,7 +67,14 @@ grant execute on function public.persona_by_handle(text) to anon, authenticated;
 
 -- ===== Phase B: DO NOT RUN until the client is updated (see DEPLOY.md) =====
 -- Once the client reads via the RPCs above and never selects personas.owner
--- directly, run this line to close the leak:
+-- directly, replace the broad table SELECT grant with an explicit safe-column
+-- grant. A column-level revoke by itself does not override table-level SELECT:
+--   revoke select on public.personas from anon, authenticated;
 --   revoke select (owner) on public.personas from anon, authenticated;
+--   grant select (
+--     id, handle, name, tagline, bio, nsfw, visibility, avatar_url, banner_url,
+--     bg_url, feed_img_url, music_url, live_url, theme, topics, purpose, voice,
+--     audience, hashtags, dont, top8, modules, linked, ai_backend, created_at
+--   ) on public.personas to anon, authenticated;
 -- Owners still reach their own rows via my_personas(); RLS policy expressions may
 -- reference owner regardless of this column grant.

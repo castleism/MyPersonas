@@ -1,194 +1,305 @@
-# MyPersonas — server tier deploy guide
+# AliaSpaces / MyPersonas — server deployment
 
-This bundle stands up the v0.5 "live network" server tier. Nothing here is served by
-GitHub Pages; the Edge Functions run on Supabase. You deploy them; I can't from here.
+The browser app is hosted by GitHub Pages. Supabase provides authentication, the
+database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
+This is a deployment runbook for the repository state; it does not assert that a live
+deployment or browser verification has completed.
 
-## 0. One-time setup
-```
-# Install the Supabase CLI (a global `npm i -g supabase` is NOT supported).
-# Windows (scoop):  scoop install supabase
-#   no scoop yet?   irm get.scoop.sh | iex   then run the line above
-# macOS / Linux:    brew install supabase/tap/supabase
-# Or install nothing and prefix each command below with `npx`, e.g. `npx supabase login`.
+## 1. Link the Supabase project
+
+```powershell
 supabase login
 supabase link --project-ref nwsqyuucwzihruszocge
 ```
 
-## 1. SQL migrations (Supabase Dashboard -> SQL Editor)
-Run in order. These migrations are additive and safe:
-- `sql-updates/005-comments-reactions.sql` — comments + reactions tables + RLS.
-- `sql-updates/006-privacy-owner-uuid.sql` — Phase A only (adds RPCs). Do NOT run the
-  Phase B `revoke` yet; it needs the client change in step 4.
-- `sql-updates/008-account-ledger.sql` — owner-only external-account inventory used by
-  Account → Accounts batch mode. Stores metadata only; no credential columns.
-- `sql-updates/009-external-account-connections.sql` — server-attested ownership and
-  provider-connection state. A row marked `verified` proves the ledger email matches
-  the signed-in AliaSpaces email; it does not grant Gmail or inbox access.
-- `sql-updates/010-gmail-oauth.sql` — single-use OAuth state, PKCE verification, and
-  service-only Gmail refresh-token storage in Supabase Vault.
+Use a Supabase-supported CLI installation method. Do not install the CLI globally with
+`npm install -g supabase`.
 
-## 2. Function secrets
+## 2. Pause workers and apply migrations 013–014 before the release
+
+Migration 011 moves existing plaintext model keys into Supabase Vault, clears the legacy
+`ai_backends.api_key` values, and revokes direct browser writes to `ai_backends`. Deploy
+the new Edge code first. Its model-key resolver accepts the legacy column before the
+migration and the service-only Vault RPC afterward, so the transition does not strand an
+existing model connection.
+
+Migrations 011 and 012 are already applied on the current production project and must
+remain immutable. Migration 013 adds service-only least-recently-served generation,
+change-aware prompt-input limits, deterministic input blocking, and a 100-active-schedule
+cap. Migration 014 adds the authenticated, atomic persona/profile bundle save used by
+the new page. Pause/unschedule both workers before applying the migrations or replacing
+their code.
+
+```sql
+select cron.unschedule(jobid)
+from cron.job
+where jobname in ('mypersonas-run-tasks', 'mypersonas-run-publish-queue');
 ```
-supabase secrets set CRON_SECRET=$(openssl rand -hex 24)
-supabase secrets set GOOGLE_GMAIL_CLIENT_ID="373519662305-05bnlabe18i89efnhec9inpt36al7lc6.apps.googleusercontent.com"
-supabase secrets set GOOGLE_GMAIL_CLIENT_SECRET="<new Google OAuth client secret>"
-```
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
-Never put the Google client secret in `index.html`, a migration, a commit, or a
-browser-readable table. It belongs only in Supabase Edge Function secrets.
 
-### Gmail connector — Google Cloud setup
+If `pg_cron` or the named jobs do not exist yet, skip that statement. Existing projects
+must apply `013-fair-generation-queue.sql` before deploying the matching `run-tasks`,
+because that worker consumes the new service-only candidate RPC. Other functions may be
+deployed while the workers remain paused:
 
-Use the isolated Google Cloud project **MyPersonas Gmail Connector**
-(`genial-union-503010-q5`) and its Web application OAuth client
-`373519662305-05bnlabe18i89efnhec9inpt36al7lc6.apps.googleusercontent.com`.
-Do not place this connector in the Google Cloud project used for normal AliaSpaces
-sign-in. Google token revocation can affect grants project-wide, so a separate OAuth
-client inside the same project is not sufficient isolation; the Gmail connector must
-remain in its own Cloud project.
-
-1. Enable the **Gmail API**.
-2. In **Google Auth Platform → Audience**, keep the app External/Testing while
-   developing and add each mailbox owner as a test user (currently
-   `christiancodyak@gmail.com`). Only listed test users can authorize a Testing app.
-3. In **Data Access**, add `openid`, `email`, and
-   `https://www.googleapis.com/auth/gmail.readonly`. The Gmail scope permits reading
-   mailbox data but not sending, changing, or deleting mail.
-4. On the Web OAuth client in **MyPersonas Gmail Connector**, use only this authorized
-   redirect URI:
-   `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth`.
-   A JavaScript origin is not required because token exchange happens server-side.
-5. Create a new client secret if the existing value is no longer available, copy it
-   directly into the Supabase `GOOGLE_GMAIL_CLIENT_SECRET` secret, then disable the
-   old secret after the new flow succeeds.
-
-These are two separate authorizations. Google sign-in authenticates a person to
-AliaSpaces through Supabase. The Gmail connector separately asks Google for read-only
-mailbox API access. Saving an account or seeing **Ownership verified** does not create
-that API connection; the user must select **Authenticate Gmail**, choose the exact
-recorded mailbox, and approve the consent screen. Only then should the account show
-**API connected**.
-
-`gmail.readonly` is a restricted Google scope. Testing is limited to configured test
-users. Before broad public release, complete Google's OAuth verification process and
-any restricted-scope security assessment Google requires for the production design.
-
-## 3. Deploy the functions
-```
+```powershell
 supabase functions deploy ai-proxy
-supabase functions deploy delete-account
+supabase functions deploy post-bridge
+supabase functions deploy run-publish-queue --no-verify-jwt
+supabase functions deploy fan-chat --no-verify-jwt
 supabase functions deploy gmail-oauth --no-verify-jwt
-supabase functions deploy run-tasks --no-verify-jwt
-supabase functions deploy sitemap   --no-verify-jwt
 ```
 
-`gmail-oauth` must be deployed with `--no-verify-jwt` because Google returns to its
-public GET callback without an AliaSpaces bearer token. The callback only relays the
-short-lived Google code to the originating site. Finalization requires the same
-signed-in Supabase user plus a one-time browser-tab secret, state, and PKCE; the
-start/complete/disconnect POST actions validate the user's access token in code.
+Apply all pending migrations through 014 while the workers remain paused, then deploy the
+new generator:
 
-### Schedule run-tasks (daily 8am, results land in drafts)
-In the SQL Editor, enable cron + net once, then schedule:
+```powershell
+supabase functions deploy run-tasks --no-verify-jwt
+```
+
+Deploy the content-erasure pair before publishing the matching GitHub Pages client. The
+client refuses to erase content unless `erase-content` reports protocol v2 with immutable
+content-only semantics, so reversing this order leaves the control unavailable rather than
+risking the older full-account path.
+
+```powershell
+supabase functions deploy delete-account
+supabase functions deploy erase-content
+```
+
+For a fresh project, also deploy the unchanged sitemap function:
+
+```powershell
+supabase functions deploy sitemap --no-verify-jwt
+```
+
+`ai-proxy`, `post-bridge`, `delete-account`, and `erase-content` receive signed-in browser
+JWTs. The two cron workers use `X-Cron-Secret`. `fan-chat`, `gmail-oauth`, and `sitemap`
+are public at the gateway by design and enforce their applicable checks in code.
+
+## 3. Apply the database changes
+
+For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
+snapshot contains the base schema (including the 008–010 account-ledger, connection, and
+Gmail structures) plus the immutable 001–012 history and migrations 013–014. For the existing
+project, run every unapplied file in `MyPersonas.Online_v0/sql-updates` in numeric order.
+The automation release requires:
+
+- `008-account-ledger.sql` — private external-account inventory; no passwords or tokens.
+- `009-external-account-connections.sql` — server-attested ownership/connection state.
+- `010-gmail-oauth.sql` — one-time OAuth state and Vault-backed Gmail refresh tokens.
+- `011-agent-automation.sql` — agent controls, Vault-backed model credentials, direction,
+  destinations, schedules, leases, atomic quotas, approval/publish state, synchronized
+  owner chat, audit records, fan-chat inbox, and privacy-safe persona reads.
+- `012-agent-automation-hardening.sql` — bounded schedule retries, fair native publish
+  due-times, exact approval invalidation after consent/target changes, durable chat ids,
+  owner-safe backend readiness, narrower persona/session reads, and content-erasure
+  support RPCs.
+- `013-fair-generation-queue.sql` — service-only least-recently-served generation
+  candidates, durable claim state, per-field provider-input bounds, deterministic task
+  pausing for oversized input, and a grandfather-safe 100-active-schedule cap.
+- `014-atomic-persona-save.sql` — owner-authenticated, transactional persona/profile,
+  public-link, and private-note saving so a partial request cannot erase child data.
+
+Migration 011 enables `supabase_vault`, creates an owner-authenticated model-management
+surface, migrates every non-empty legacy model key into Vault, and then clears the legacy
+column. Browser model operations use these RPCs:
+
+- `create_ai_backend` accepts a key once and writes it into Vault.
+- `update_ai_backend` edits non-secret connection metadata.
+- `delete_ai_backend` and `delete_my_ai_backends` remove records and their Vault secrets.
+- `ai_backend_get_key` is service-role only; browser sessions cannot call it.
+
+The browser cannot select Vault mappings or read a saved key back. Model keys are held in
+Edge Function request memory only while calling the configured provider. Migration 011
+also removes owner UUIDs from public/general persona reads; owners load their own roster
+through the owner-scoped `my_personas` RPC. Migration 012 explicitly removes legacy
+column grants for private persona direction/model fields and repairs queued approvals
+that no longer have valid L3 native-auto consent.
+
+## 4. Set secrets and optional host allowlists
+
+```powershell
+supabase secrets set CRON_SECRET="<long random value>"
+supabase secrets set FAN_CHAT_SALT="<at least 32 random characters>"
+supabase secrets set GOOGLE_GMAIL_CLIENT_ID="<Google Gmail OAuth client ID>"
+supabase secrets set GOOGLE_GMAIL_CLIENT_SECRET="<Google Gmail OAuth client secret>"
+```
+
+Store the exact same `CRON_SECRET` value in Supabase Vault under the name
+`mypersonas_cron_secret` (Dashboard → Vault). The Edge workers compare their function
+secret, while pg_cron retrieves the Vault copy at execution time. Rotate both copies
+together. Do not paste the secret into the stored cron SQL.
+
+Supabase injects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never put a secret,
+refresh token, password, or provider key in `index.html`, a migration, or documentation.
+
+The scheduled worker and fan chat have separate outbound model-host allowlists. Their
+built-in lists cover the supported hosted providers and Azure OpenAI subdomains. Add only
+hostnames you operate or explicitly trust:
+
+```powershell
+supabase secrets set SCHEDULE_AI_HOSTS="models.example.com,another.example.com"
+supabase secrets set FAN_CHAT_AI_HOSTS="models.example.com,another.example.com"
+```
+
+- `SCHEDULE_AI_HOSTS` extends only `run-tasks` scheduled generation.
+- `FAN_CHAT_AI_HOSTS` extends only public fan-chat generation.
+- `FAN_CHAT_ALLOWED_ORIGINS` optionally adds comma-separated browser origins.
+- `FAN_CHAT_HOURLY_LIMIT` optionally changes the per-visitor hourly cap; default 12.
+
+Do not add a broad domain merely to make a request pass. The two model-host settings are
+separate because public fan chat has a different risk boundary from owner schedules. A
+custom hostname must be both allowlisted here and explicitly confirmed for the matching
+surface in Matrix; schedule confirmation never authorizes fan chat, or vice versa.
+
+## 5. Runtime safety model
+
+### Scheduled generation
+
+`run-tasks` asks the service-only `due_ai_generation_tasks` RPC for due work. It returns
+one due task per owner before any owner's second task and prioritizes owners least recently
+served. A successful `claim_ai_task_generation` call records that owner's turn and creates
+a five-minute lease, stopping overlapping cron invocations from sending duplicate model
+requests. Owners cannot read or reset the fairness state.
+
+New or re-enabled schedules are limited to 100 active rows per owner; already-active rows
+are grandfathered and remain editable. Provider-input fields have UTF-8 byte limits at the
+database boundary, and the worker enforces a 32 KiB aggregate system-plus-prompt limit
+before loading a credential or reserving quota. A deterministic size violation is audited,
+the task is paused, and its lease is released; content is never silently truncated.
+
+Immediately before a provider call, `reserve_agent_generation` locks the owner's local
+calendar-day usage row, rechecks the owner pause and persona binding, and atomically
+reserves one daily model-call unit. The cap counts reserved calls, including a provider
+failure, because the request may already incur cost. A unique task/time-slot index
+separately prevents duplicate drafts.
+
+Scheduled generation creates a draft only. It never approves content.
+
+### Approval and native publishing
+
+Approval hashes the exact text, media, persona, destination, platform, format, and publish
+time. Editing any protected field invalidates the approval and removes the draft from the
+queue. Native publication then rechecks the current pause, claim, binding, autonomy,
+destination mode, content type, quiet hours, daily cap, and hash in one database
+transaction that inserts the post, finalizes the draft, and writes audit history.
+
+- **L2 / approval target:** exact approval prepares the draft, but the queue worker waits.
+  The owner must press **Publish now**, which calls the authenticated `post-bridge`.
+- **L3 / auto target:** an exact owner-approved native draft may publish automatically
+  when its scheduled time is due. L3 still cannot approve its own draft.
+
+`run-publish-queue` processes only due, exact-approved native drafts on enabled L3 `auto`
+targets. It deliberately defers L2 `approval` targets.
+
+### Fan chat
+
+Fan chat is off by default. `reserve_fan_chat_message` atomically validates the public or
+unlisted persona, active binding, owner pause, session identity, per-visitor hourly quota,
+persona daily quota, fan-message insert, audit insert, and a 90-second response UUID lease.
+Only the holder of that lease can save the corresponding assistant response, preventing
+concurrent replies and quota races.
+
+NSFW personas are unavailable to fan chat until AliaSpaces has server-verifiable age
+assurance. The existing client-side 18+ acknowledgment is not sufficient for this public
+AI endpoint.
+
+Commercial requests, disputes, self-harm signals, and persona hard-rule topics are flagged
+for owner review. Escalation means the transcript appears in the owner's review inbox; it
+does not promise that the owner will reply, take over the conversation, or perform an
+action. The fixed AI/owner-review disclosure cannot be removed.
+
+## 6. Schedule both workers every five minutes
+
+Five-minute polling gives due work a maximum normal dispatch delay of about five minutes.
+The functions themselves select only rows whose `next_run_at` or `publish_at` is due.
+
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
-select cron.schedule('mypersonas-run-tasks','0 8 * * *', $$
+
+select cron.unschedule(jobid)
+from cron.job
+where jobname in ('mypersonas-run-tasks', 'mypersonas-run-publish-queue');
+
+select cron.schedule('mypersonas-run-tasks', '*/5 * * * *', $$
   select net.http_post(
-    url    := 'https://nwsqyuucwzihruszocge.supabase.co/functions/v1/run-tasks',
-    headers:= jsonb_build_object('X-Cron-Secret', '<the CRON_SECRET you set>'),
-    body   := '{}'::jsonb
+    url := 'https://nwsqyuucwzihruszocge.supabase.co/functions/v1/run-tasks',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'X-Cron-Secret', (
+        select decrypted_secret
+        from vault.decrypted_secrets
+        where name = 'mypersonas_cron_secret'
+        limit 1
+      )
+    ),
+    body := '{}'::jsonb
+  );
+$$);
+
+select cron.schedule('mypersonas-run-publish-queue', '*/5 * * * *', $$
+  select net.http_post(
+    url := 'https://nwsqyuucwzihruszocge.supabase.co/functions/v1/run-publish-queue',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'X-Cron-Secret', (
+        select decrypted_secret
+        from vault.decrypted_secrets
+        where name = 'mypersonas_cron_secret'
+        limit 1
+      )
+    ),
+    body := '{}'::jsonb
   );
 $$);
 ```
 
-## 4. Client wiring (small edits to MyPersonas.Online_v0/index.html)
-These are the only app changes; apply them and redeploy Pages. Each is a drop-in
-replacement of an existing function.
+Before scheduling, confirm Vault has exactly one secret named
+`mypersonas_cron_secret`. Check `cron.job`, `cron.job_run_details`, and both worker logs
+after scheduling. Resume only after direct authenticated worker probes return HTTP 200;
+zero due work is a valid result.
 
-### 4a. Route AI through the proxy (keys leave the browser)
-Replace `callAI(backendId, messages)` with:
-```js
-async function callAI(backendId, messages){
-  const {data:{session}} = await sb.auth.getSession();
-  if(!session) throw new Error("Sign in first.");
-  const r = await fetch("https://nwsqyuucwzihruszocge.supabase.co/functions/v1/ai-proxy",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+session.access_token },
-    body: JSON.stringify({ backendId, messages, max_tokens:2500 })
-  });
-  const j = await r.json();
-  if(!r.ok) throw new Error(j.error || ("HTTP "+r.status));
-  return j.content;
-}
-```
-After this ships, you can stop storing api_key in the browser-readable path — the key
-is only ever read server-side by ai-proxy.
+## 7. Gmail remains a read-only connector
 
-### 4b. Real account deletion (wire the existing "Delete all my content" or add a button)
-```js
-async function deleteAccountFully(){
-  if(!confirm("Permanently delete your entire account, all personas, and sign-in? This cannot be undone."))return;
-  const {data:{session}} = await sb.auth.getSession();
-  const r = await fetch("https://nwsqyuucwzihruszocge.supabase.co/functions/v1/delete-account",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+session.access_token },
-    body: JSON.stringify({ confirm:true })
-  });
-  const j = await r.json();
-  if(!r.ok){ toast(j.error||"Deletion failed"); return; }
-  await sb.auth.signOut(); toast("Account deleted"); go("");
-}
+Gmail authorization is separate from AliaSpaces sign-in and from social posting
+permission. Keep it in the isolated Google Cloud project **MyPersonas Gmail Connector**
+(`genial-union-503010-q5`) and request only `openid`, `email`, and
+`https://www.googleapis.com/auth/gmail.readonly`.
+
+Authorized callback:
+
+```text
+https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth
 ```
 
-### 4c. Privacy fix — use the RPCs, then run Phase B
-Change these three reads, then (and only then) run the `revoke` at the bottom of 006:
-```js
-// loadMine(): replace  sb.from("personas").select("*").eq("owner",session.user.id)...
-const { data: ps } = await sb.rpc("my_personas");
+The Testing app must list each mailbox owner as a Google test user. Production use of
+`gmail.readonly` requires Google's applicable verification and restricted-scope review.
+Ownership verified means the ledger address matches the signed-in AliaSpaces email. API
+connected means the read-only Gmail consent flow completed. Neither grants posting access.
 
-// renderDiscover(): replace the personas select with
-const { data: psRaw } = await sb.rpc("discover_personas", { q: q || null, lim: 80 });
+## 8. External publishing remains locked
 
-// renderPersonaPage(): replace the by-handle select with
-const { data: rows } = await sb.rpc("persona_by_handle", { h: handle });
-const p = rows && rows[0];
-```
-Deploy Pages with these, verify the site still loads and your own studio shows your
-personas, THEN in SQL Editor run:
-```sql
-revoke select (owner) on public.personas from anon, authenticated;
-```
-Now the owner uuid is unreadable by any client and the anonymity promise holds at the API.
+Direct publishing currently supports only the native AliaSpaces feed. External account
+rows can be planning/manual targets, but `post-bridge` and `run-publish-queue` return
+`writeAccess: false` for every external destination.
 
-### 4d. Realtime notifications (optional, no server needed — pure client)
-Add after loadMine() so friend requests appear without reload:
-```js
-function subscribeNotifs(){
-  if(!session || !myPersonas.length) return;
-  sb.channel("notifs")
-    .on("postgres_changes",
-       { event:"INSERT", schema:"public", table:"follows",
-         filter:"target=in.("+myPersonas.map(p=>p.id).join(",")+")" },
-       () => { loadMine().then(updateBadge); })
-    .subscribe();
-}
-```
-(Enable Realtime on the `follows` table in the Supabase dashboard: Database ->
-Replication -> add `follows`.)
+An external destination remains locked until it has an official provider-specific write
+connector, verified persona/account claim, exact assignment, required write scopes and app
+approval, destination limits, and an auditable reconciliation path. Read-only Gmail OAuth
+is not reusable as a write connector. Do not substitute passwords, cookies, scraping, or
+browser-driving automation.
 
-## What this unblocks on the roadmap
-- v0.5 server-side AI proxy (keys off the browser) — ai-proxy
-- v0.5 auto-running scheduled tasks -> drafts each morning — run-tasks + cron
-- v0.5 comments and reactions — 005
-- v0.5 per-persona sitemap — sitemap function
-- v0.5 realtime notifications — 4d
-- Privacy finding 10 (owner-uuid leak) — 006
-- GDPR/CCPA erasure gap — delete-account
+## 9. Release verification
 
-## Not runtime-tested here
-These functions are authored against the Supabase Edge (Deno) runtime, which isn't
-available in my sandbox, so treat the first deploy as the smoke test: deploy, hit each
-once (ai-proxy from the app, sitemap in a browser, run-tasks with the cron secret), and
-check the function logs. The logic is straightforward and reviewed; I just can't run
-Deno here to prove it.
+After the staged code rollout, migration, secrets, cron jobs, and Pages release complete,
+perform the unchecked automation section in
+`MyPersonas.Online_v0/VERIFICATION.md`. A type check or deploy does not prove signed-in,
+real-database, real-cron, quota-race, or live-browser behavior.
+
+Before Pages goes live, call `erase-content` with `{"action":"capabilities"}` and a valid
+JWT. It must report `protocolVersion: 2`, `contentOnly: true`, and `fullAccount: false`.
+Exercise `keepAccount: true` only with a disposable test owner: its auth login must remain,
+while its personas, posts, media, ledger, model keys, automation/chat data, profile display
+name, and preferences are removed. If any OpenRouter backend exists, erasure must require
+acknowledgment that every corresponding provider-side key was revoked first.

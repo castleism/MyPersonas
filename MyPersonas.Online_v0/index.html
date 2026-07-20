@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://aliaspaces.com/assets/hero.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"AliaSpaces","url":"https://aliaspaces.com/","description":"A home page for every side of you — anonymous persona pages with feeds, albums, music and links."}</script>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,39 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .ledgersaved{grid-column:1/-1;background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px}.ledgersaved .muted{display:block;margin-top:4px}
 .ledgerassignnew,.ledgerauth,.ledgeredit{display:none;flex:1 0 100%;width:100%;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}.ledgerassignnew.on,.ledgerauth.on,.ledgeredit.on{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ledgerassignnew>div,.ledgeredit>div{flex:1;min-width:170px}.ledgerauth.on{align-items:center}.ledgerauth p{flex:1 1 420px;margin:0}.ledgeredit .ledgereditactions{flex:1 0 100%;display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.ledgerrow{grid-template-columns:1fr 1fr}.ledgerrow .ledgerwide,.ledgerrow .ledgernew{grid-column:1/-1}}
-@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}.ledgerrow input,.ledgerrow select,.ledgeredit input{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}}
+@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}.ledgerrow input,.ledgerrow select,.ledgeredit input,.autocard input,.autocard select,.autocard textarea,.wizbox input,.wizbox select,.wizbox textarea,#chatov textarea,.fanbox textarea{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}.targetactions select{width:100%!important;max-width:100%}}
+
+.autocard{border:1px solid #cfe2ff;box-shadow:0 4px 18px rgba(24,119,242,.09)}
+.autohead{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.autohead>div:first-child{flex:1;min-width:230px}.autohead select{max-width:340px}
+.autokill{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff4cc;border:1px solid #ecd98a;border-radius:10px;padding:8px 10px}
+.autokill.paused{background:#fde8ec;border-color:#efb7c3;color:#9e2340}
+.autostats{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:8px;margin:12px 0}
+.autostat{background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.autostat b{display:block;font-size:19px}.autostat span{font-size:12px;color:var(--dim)}
+.autonav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--border);margin:6px 0 14px;padding-bottom:1px}
+.autonav button{background:none;border:none;border-bottom:3px solid transparent;padding:9px 12px;white-space:nowrap;color:var(--dim);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.autonav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.autogrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.autofull{grid-column:1/-1}
+.autocallout{background:#eef6ff;border:1px solid #cfe2ff;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px}
+.autocallout.warn{background:#fff4cc;border-color:#ecd98a}.autocallout.stop{background:#fde8ec;border-color:#efb7c3}
+.levelgrid{display:grid;grid-template-columns:repeat(4,minmax(135px,1fr));gap:8px;margin:8px 0}
+.levelcard{border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff;cursor:pointer;min-height:116px}
+.levelcard.on{border:2px solid var(--accent);background:#eef6ff}.levelcard b{display:block;margin-bottom:4px}.levelcard span{font-size:12px;color:var(--dim)}
+.targetlist,.schedulelist,.queuelist,.auditlist,.faninbox{display:grid;gap:8px;margin:8px 0}
+.weekgrid{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));gap:6px;margin:8px 0 14px}.weekday{background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:8px;min-height:92px}.weekday>strong{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}.weekslot{background:#fff;border-left:3px solid var(--accent);border-radius:7px;padding:6px;margin-bottom:5px;font-size:11px}.weekslot b{display:block;font-size:12px}.weekslot span{display:block;margin-top:2px}
+.targetitem,.scheduleitem,.queueitem,.audititem,.fanthread{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.targettop,.scheduletop,.queuetop{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.targetactions,.scheduleactions,.queueactions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.autoformactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.daypick{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.daypick button{width:42px;height:42px;border:1px solid var(--border);background:#fff;border-radius:50%;font-weight:700;cursor:pointer}.daypick button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.queuebody{white-space:pre-wrap;max-height:110px;overflow:hidden;margin-top:6px;color:#34373b}.queuebody.open{max-height:none}
+.audititem{font-size:13px}.audititem time{color:var(--dim);font-size:12px}.audititem b{display:block}
+.statusline{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.statusdot{width:8px;height:8px;border-radius:50%;background:#98a0aa}.statusdot.ok{background:var(--green)}.statusdot.wait{background:#e5a400}.statusdot.stop{background:var(--red)}
+.fanbox{position:fixed;right:16px;bottom:16px;width:410px;max-width:96vw;height:540px;max-height:85vh;background:#fff;border-radius:12px;z-index:181;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.fanbox .fanh{padding:12px 14px;background:#0b2545;color:#fff;border-radius:12px 12px 0 0}.fanbox .fandisc{padding:8px 12px;background:#eef6ff;border-bottom:1px solid #cfe2ff;font-size:12px}.fanbox .fanmsgs{flex:1;overflow-y:auto;padding:12px}.fanbox .faninput{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
+@media(max-width:760px){.autostats{grid-template-columns:1fr 1fr}.autogrid{grid-template-columns:1fr}.autofull{grid-column:1}.levelgrid{grid-template-columns:1fr 1fr}.autohead select{max-width:none}.autonav button{min-height:44px}.scheduleactions .btn,.queueactions .btn,.targetactions .btn{min-height:42px}.weekgrid{display:flex;overflow-x:auto;padding-bottom:5px}.weekday{min-width:145px}}
+@media(max-width:440px){.autostats,.levelgrid{grid-template-columns:1fr}.fanbox{inset:8px;width:auto;height:auto;max-width:none;max-height:none}.autokill .btn{width:100%}}
 
 .pactions{margin-top:8px}
 .pcx{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
@@ -267,15 +299,20 @@ amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},ye
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
+let myBackendCredentialIds=new Set();
+let myAgentSettings=null,myAgentBindings=[],myAgentDestinations=[],myContentPlans=[],myAgentActions=[],myAgentActionTotal=0,agentActionLoading=false,myFanSessions=[],myFanMessages=[];
 let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBatchSaving=false;
+let automationReady=true,agentMessagesReady=true,fanInboxReady=true,autoPersonaId="",autoTab="direction",autoTaskEditId="";
 let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
-let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
+let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and account loads discard stale completions
+let pageState={},editLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
 const app=document.getElementById("app");
 const errBuf=[];
 function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
 window.addEventListener("error",e=>logErr("js",e.message+" @ "+e.filename+":"+e.lineno));
 window.addEventListener("unhandledrejection",e=>logErr("promise",e.reason&&e.reason.message||e.reason));
 function toast(m){logErr("toast",m);const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
+function inputsWithinUtf8Limits(rules){for(const rule of rules){const[id,max,label,original]=rule,el=document.getElementById(id),value=el?.value||"",size=new TextEncoder().encode(value).length,unchangedLegacy=rule.length>3&&value===String(original??"");if(size>max&&!unchangedLegacy){toast(`${label} is ${size} bytes; shorten it to ${max} UTF-8 bytes or less`);el?.focus();return false}}return true}
 async function reportError(){
   const note=prompt("What were you doing when it broke? (optional)")||"";
   try{
@@ -288,6 +325,14 @@ async function reportError(){
   }catch(e){toast("Couldn't send report: "+e.message)}
 }
 function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function parsedHttpUrl(raw){
+  try{const u=new URL(String(raw||"").trim());if(!["http:","https:"].includes(u.protocol)||u.username||u.password)return null;return u}catch(e){return null}
+}
+function safeHttpUrl(raw){const u=parsedHttpUrl(raw);return u?u.href:""}
+function fixedSessionClient(accessToken){return supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY,{global:{headers:{Authorization:"Bearer "+accessToken}},auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})}
+function isOpenRouterBackend(b){const provider=String(b?.provider||"").trim().toLowerCase();if(provider.includes("openrouter"))return true;const u=parsedHttpUrl(b?.base_url),host=u?.hostname.toLowerCase().replace(/\.$/,"")||"";return !!u&&(host==="openrouter.ai"||host.endsWith(".openrouter.ai"))}
+function safeBgStyle(raw){const u=safeHttpUrl(raw);return u?esc(`background-image:url("${u}")`):""}
+function safeTheme(raw){const c=String(raw||"").trim();return /^#[0-9a-f]{6}$/i.test(c)?c:"#ff4fa3"}
 function go(h){location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
@@ -304,34 +349,34 @@ function setMeta(title,desc){
 // ---------- embeds ----------
 function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
 function mediaHtml(u,handle,kind){
-  if(!u)return "";
+  const safe=safeHttpUrl(u);if(!safe)return "";
   const wm=`<div class="wm-diag"><span>${esc(pageUrl(handle))}</span></div><div class="wm-tag">@${esc(handle)}</div>`;
-  const y=ytId(u);const cls="media"+(kind==="reel"?" reel":"");
+  const y=ytId(safe),parsed=parsedHttpUrl(safe),cls="media"+(kind==="reel"?" reel":"");
   const guard=`oncontextmenu="return false"`;
   if(y)return `<div class="${cls}" ${guard}><iframe src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe></div>`;
-  if(/open\.spotify\.com/.test(u))return `<div class="${cls}" ${guard}><iframe src="${esc(u.replace("open.spotify.com/","open.spotify.com/embed/"))}" style="height:152px"></iframe></div>`;
-  if(/\.(mp4|webm|mov)(\?|$)/i.test(u))return `<div class="${cls}" ${guard}><video src="${esc(u)}" controls controlslist="nodownload" draggable="false"></video>${wm}</div>`;
-  if(/\.(mp3|ogg|wav)(\?|$)/i.test(u))return `<div class="${cls}" ${guard}><audio src="${esc(u)}" controls></audio></div>`;
-  return `<div class="${cls}" ${guard}><img src="${esc(u)}" loading="lazy" draggable="false" alt="">${wm}</div>`;
+  if(parsed.hostname==="open.spotify.com")return `<div class="${cls}" ${guard}><iframe src="${esc("https://open.spotify.com/embed"+parsed.pathname+parsed.search)}" style="height:152px"></iframe></div>`;
+  if(/\.(mp4|webm|mov)$/i.test(parsed.pathname))return `<div class="${cls}" ${guard}><video src="${esc(safe)}" controls controlslist="nodownload" draggable="false"></video>${wm}</div>`;
+  if(/\.(mp3|ogg|wav)$/i.test(parsed.pathname))return `<div class="${cls}" ${guard}><audio src="${esc(safe)}" controls></audio></div>`;
+  return `<div class="${cls}" ${guard}><img src="${esc(safe)}" loading="lazy" draggable="false" alt="">${wm}</div>`;
 }
 function musicHtml(u){
-  if(!u)return "";
-  const y=ytId(u);
+  const safe=safeHttpUrl(u),parsed=parsedHttpUrl(u);if(!safe||!parsed)return "";
+  const y=ytId(safe);
   if(y)return `<iframe style="aspect-ratio:16/9" src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe>`;
-  if(/open\.spotify\.com/.test(u))return `<iframe src="${esc(u.replace("open.spotify.com/","open.spotify.com/embed/"))}" style="height:152px"></iframe>`;
-  if(/soundcloud\.com/.test(u))return `<iframe style="height:120px" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%23ff4fa3"></iframe>`;
-  if(/\.(mp3|ogg|wav)(\?|$)/i.test(u))return `<audio src="${esc(u)}" controls loop></audio>`;
-  return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`;
+  if(parsed.hostname==="open.spotify.com")return `<iframe src="${esc("https://open.spotify.com/embed"+parsed.pathname+parsed.search)}" style="height:152px"></iframe>`;
+  if(parsed.hostname==="soundcloud.com"||parsed.hostname.endsWith(".soundcloud.com"))return `<iframe style="height:120px" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(safe)}&color=%23ff4fa3"></iframe>`;
+  if(/\.(mp3|ogg|wav)$/i.test(parsed.pathname))return `<audio src="${esc(safe)}" controls loop></audio>`;
+  return `<a href="${esc(safe)}" target="_blank" rel="noopener">${esc(safe)}</a>`;
 }
 function liveHtml(u){
-  if(!u)return "";
-  let tw=u.match(/twitch\.tv\/([\w_]+)/);
+  const safe=safeHttpUrl(u),parsed=parsedHttpUrl(u);if(!safe||!parsed)return "";
+  let tw=(parsed.hostname==="twitch.tv"||parsed.hostname.endsWith(".twitch.tv"))&&parsed.pathname.match(/^\/([\w_]+)/);
   if(tw)return `<iframe src="https://player.twitch.tv/?channel=${tw[1]}&parent=${location.hostname}" allowfullscreen></iframe>`;
-  const y=ytId(u);
+  const y=ytId(safe);
   if(y)return `<iframe src="https://www.youtube.com/embed/${y}?autoplay=0" allowfullscreen></iframe>`;
-  let kk=u.match(/kick\.com\/([\w_-]+)/);
+  let kk=(parsed.hostname==="kick.com"||parsed.hostname.endsWith(".kick.com"))&&parsed.pathname.match(/^\/([\w_-]+)/);
   if(kk)return `<iframe src="https://player.kick.com/${kk[1]}" allowfullscreen></iframe>`;
-  return `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Watch live ↗</a>`;
+  return `<a class="btn" href="${esc(safe)}" target="_blank" rel="noopener">Watch live ↗</a>`;
 }
 
 // ---------- init ----------
@@ -344,39 +389,98 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   handleOAuthReturn();
   let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
   sb.auth.onAuthStateChange((ev,s)=>{
-    session=s;updateAuthBtn();
+    const previousUid=session?.user?.id||null;session=s;const uid=s&&s.user?s.user.id:null;
+    updateAuthBtn();
     if(ev==="TOKEN_REFRESHED")return; // don't re-render (would wipe forms in progress)
-    const uid=s&&s.user?s.user.id:null;
     if(uid===loadedUid)return; // already loaded for this user (startup double-fire, tab refocus)
     loadedUid=uid;
-    loadMine().then(async()=>{await finishPendingGmail();route()});
+    const generation=++authLoadGeneration;
+    if(previousUid!==uid){
+      renderEpoch++;mineLoadRequest++;app.innerHTML='<div class="empty">Loading this account…</div>';localStorage.removeItem("ps_filters");closeChat();closePublicFanChat();
+      document.querySelectorAll(".overlay").forEach(o=>o.remove());resetPrivateUiState();resetMineState();
+    }
+    loadMine(uid,generation).then(async loaded=>{
+      if(!loaded||generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      await finishPendingGmail(uid,generation);
+      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      route();
+    });
   });
   window.addEventListener("hashchange",route);
 }
 function updateAuthBtn(){document.getElementById("authBtn").textContent=session?"Sign out":"Sign in"}
-async function loadMine(){
-  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myTasks=[];myAccounts=[];myAccountConnections=[];accountLedgerReady=true;accountConnectionsReady=true;
-  if(!session){updateBadge();return}
-  const[{data:ps},{data:bl},{data:be},{data:tk},{data:prof},{data:dr},acctRes,connRes]=await Promise.all([
-    sb.from("personas").select("*").eq("owner",session.user.id).order("created_at"),
-    sb.from("blocks").select("*").eq("blocker",session.user.id),
-    sb.from("ai_backends").select("*").eq("owner",session.user.id).order("created_at"),
-    sb.from("ai_tasks").select("*").eq("owner",session.user.id).order("created_at"),
-    sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle(),
-    sb.from("drafts").select("*").eq("owner",session.user.id).order("created_at",{ascending:false}).limit(100),
-    sb.from("account_ledger").select("*").eq("owner",session.user.id).order("created_at",{ascending:false}),
-    sb.from("account_connections").select("*").eq("owner",session.user.id)
+async function loadOwnerPersonaRows(){
+  return fetchAllPages((from,to)=>sb.rpc("my_personas",{},{count:"exact"}).order("id",{ascending:true}).range(from,to));
+}
+async function fetchAllPages(makeQuery){
+  const rows=[];let from=0,total=null;const pageSize=500;
+  for(;;){const res=await makeQuery(from,from+pageSize-1);if(res.error)return{data:null,error:res.error};const page=res.data||[];rows.push(...page);if(total===null&&Number.isInteger(res.count))total=res.count;if(!page.length||(total!==null&&rows.length>=total)||(total===null&&page.length<pageSize))return{data:rows,error:null,count:total};from+=page.length}
+}
+function loadOwnedPages(table,columns="*",orderColumn="created_at",ascending=true,owner=session?.user?.id){
+  return fetchAllPages((from,to)=>{let q=sb.from(table).select(columns,{count:"exact"}).eq("owner",owner);if(orderColumn)q=q.order(orderColumn,{ascending});return q.range(from,to)})
+}
+function loadPersonaPages(table,personaIds,columns="*"){return loadValuePages(table,"persona_id",personaIds,columns)}
+async function loadValuePages(table,column,values,columns="*"){
+  if(!values.length)return{data:[],error:null,count:0};const rows=[];for(let start=0;start<values.length;start+=100){const chunk=values.slice(start,start+100),result=await fetchAllPages((from,to)=>sb.from(table).select(columns,{count:"exact"}).in(column,chunk).order("id",{ascending:true}).range(from,to));if(result.error)return{data:null,error:result.error,count:null};rows.push(...(result.data||[]))}return{data:rows,error:null,count:rows.length}
+}
+async function loadFanSessionRows(owner=session?.user?.id){
+  const columns="id,owner,persona_id,escalated,escalation_reason,inbox_state,created_at,last_seen_at";
+  const[priority,recent]=await Promise.all([
+    fetchAllPages((from,to)=>sb.from("fan_chat_sessions").select(columns,{count:"exact"}).eq("owner",owner).or("inbox_state.neq.resolved,escalated.eq.true").order("last_seen_at",{ascending:false}).range(from,to)),
+    sb.from("fan_chat_sessions").select(columns).eq("owner",owner).order("last_seen_at",{ascending:false}).limit(50)
   ]);
-  myPersonas=ps||[];myBlocks=bl||[];myBackends=be||[];myTasks=tk||[];myProfile=prof||null;myDrafts=dr||[];
+  if(priority.error||recent.error)return{data:null,error:priority.error||recent.error};const unique=new Map();[...(priority.data||[]),...(recent.data||[])].forEach(row=>unique.set(row.id,row));return{data:[...unique.values()].sort((a,b)=>new Date(b.last_seen_at)-new Date(a.last_seen_at)),error:null}
+}
+function resetMineState(){
+  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myAgentSettings=null;
+  accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
+  updateBadge();
+}
+function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId=""}
+function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
+async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
+  const requestId=++mineLoadRequest;
+  if(!expectedUid){const current=mineLoadCurrent(null,generation,requestId);if(current)resetMineState();return current}
+  if(!mineLoadCurrent(expectedUid,generation,requestId))return false;
+  const[psRes,blRes,beRes,beStatusRes,tkRes,profRes,drRes,acctRes,connRes,setRes,bindRes,destRes,planRes,actionRes,fanSessionRes,fanMessageRes,msgProbe]=await Promise.all([
+    loadOwnerPersonaRows(),
+    sb.from("blocks").select("*").eq("blocker",expectedUid),
+    loadOwnedPages("ai_backends","id,owner,name,base_url,model,provider,extra,created_at","created_at",true,expectedUid),
+    sb.rpc("my_ai_backend_status"),
+    loadOwnedPages("ai_tasks","*","created_at",true,expectedUid),
+    sb.from("profiles").select("*").eq("id",expectedUid).maybeSingle(),
+    loadOwnedPages("drafts","*","created_at",false,expectedUid),
+    loadOwnedPages("account_ledger","*","created_at",false,expectedUid),
+    loadOwnedPages("account_connections","*","created_at",false,expectedUid),
+    sb.from("agent_owner_settings").select("*").eq("owner",expectedUid).maybeSingle(),
+    loadOwnedPages("agent_bindings","*","created_at",true,expectedUid),
+    loadOwnedPages("agent_destinations","*","created_at",true,expectedUid),
+    loadOwnedPages("persona_content_plans","*","created_at",true,expectedUid),
+    sb.from("agent_actions").select("*",{count:"exact"}).eq("owner",expectedUid).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(100),
+    loadFanSessionRows(expectedUid),
+    sb.from("fan_chat_messages").select("*").eq("owner",expectedUid).order("created_at",{ascending:false}).limit(300),
+    sb.from("agent_messages").select("id").eq("owner",expectedUid).limit(1)
+  ]);
+  const personaRows=psRes.data||[];let reqs=[];
+  if(personaRows.length){
+    const pending=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
+      .eq("status","pending").in("target",personaRows.map(m=>m.id));
+    reqs=pending.data||[];
+  }
+  if(!mineLoadCurrent(expectedUid,generation,requestId))return false;
+  resetMineState();
+  myPersonas=psRes.data||[];myBlocks=blRes.data||[];myBackends=beRes.data||[];myBackendCredentialIds=new Set((beStatusRes.data||[]).filter(row=>row.has_credential===true).map(row=>row.backend_id));myTasks=tkRes.data||[];myProfile=profRes.data||null;myDrafts=drRes.data||[];
   if(acctRes.error){accountLedgerReady=false;myAccounts=[]}else myAccounts=acctRes.data||[];
   if(connRes.error){accountConnectionsReady=false;myAccountConnections=[]}else myAccountConnections=connRes.data||[];
-  if(myProfile&&myProfile.prefs&&Object.keys(myProfile.prefs).length)localStorage.setItem("ps_filters",JSON.stringify(myProfile.prefs));
-  if(myPersonas.length){
-    const{data:reqs}=await sb.from("follows").select("*, personas!follows_follower_fkey(id,handle,name,avatar_url)")
-      .eq("status","pending").in("target",myPersonas.map(m=>m.id));
-    pendingIn=reqs||[];
+  if(setRes.error||bindRes.error||destRes.error||planRes.error||actionRes.error){automationReady=false}else{
+    myAgentSettings=setRes.data||null;myAgentBindings=bindRes.data||[];myAgentDestinations=destRes.data||[];myContentPlans=planRes.data||[];myAgentActions=actionRes.data||[];myAgentActionTotal=Number.isInteger(actionRes.count)?actionRes.count:myAgentActions.length;
   }
+  if(fanSessionRes.error||fanMessageRes.error){fanInboxReady=false}else{myFanSessions=fanSessionRes.data||[];myFanMessages=(fanMessageRes.data||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
+  if(msgProbe.error)agentMessagesReady=false;
+  if(!autoPersonaId||!myPersonas.some(p=>p.id===autoPersonaId))autoPersonaId=myPersonas[0]?.id||"";
+  pendingIn=reqs;
   updateBadge();
+  return true;
 }
 function updateBadge(){
   const b=document.getElementById("reqBadge");
@@ -402,7 +506,7 @@ async function route(){
   }
   if(view==="edit")return renderEdit(arg,myEpoch);
   if(view==="signin")return renderSignin();
-  if(view==="tag")return renderTag(arg);
+  if(view==="tag")return renderTag(arg,myEpoch);
   if(view==="search")return renderDiscover(arg,myEpoch);
   return renderDiscover("",myEpoch);
 }
@@ -459,7 +563,7 @@ function handleGmailReturn(){
 }
 
 // ---------- discover ----------
-function getFilters(){try{const f=JSON.parse(localStorage.getItem("ps_filters"))||{};return{hideNsfw:f.hideNsfw!==false,hideTopics:f.hideTopics||""}}catch(e){return{hideNsfw:true,hideTopics:""}}}
+function getFilters(){const f=session&&myProfile&&myProfile.prefs?myProfile.prefs:{};return{hideNsfw:f.hideNsfw!==false,hideTopics:typeof f.hideTopics==="string"?f.hideTopics:""}}
 function settingsCard(){
   const f=getFilters();
   return `<div class="card" style="margin-top:20px"><h3>${ico("gear")}Account settings</h3>
@@ -476,8 +580,7 @@ function settingsCard(){
     <button class="btn sm" style="margin-top:12px" onclick="saveSettings()">Save settings</button></div>`;
 }
 async function saveSettings(){
-  const prefs={hideNsfw:document.getElementById("setNsfw").checked,hideTopics:document.getElementById("setTopics").value.trim(),saved:true};
-  localStorage.setItem("ps_filters",JSON.stringify(prefs));
+  const prefs=Object.assign({},prefsObj(),{hideNsfw:document.getElementById("setNsfw").checked,hideTopics:document.getElementById("setTopics").value.trim(),saved:true});
   const btn=event&&event.target?event.target:null;
   const{error}=await sb.from("profiles").update({display_name:document.getElementById("setName").value.trim(),prefs}).eq("id",session.user.id);
   if(error){toast(error.message);return}
@@ -487,50 +590,54 @@ async function saveSettings(){
 }
 // ---------- network feed pagination ----------
 const FEED_PAGE=12;
-let netFeed={mode:null,tag:null,offset:0,busy:false,done:false};
-function netFeedQuery(from,to){
+function logicAndFilter(query,groups){const active=groups.filter(Boolean);if(!active.length)return query;if(active.length===1)return query.or(active[0]);return query.or(`and(${active.map(g=>`or(${g})`).join(",")})`)}
+function descendingCursorGroup(createdAt,id){return createdAt&&id?`created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${id})`:""}
+function advanceDescendingCursor(state,rows){const last=rows&&rows[rows.length-1];if(last){state.cursorCreatedAt=last.created_at;state.cursorId=last.id}}
+function newNetFeed(mode,tag,epoch){return{mode,tag,cursorCreatedAt:null,cursorId:null,busy:false,done:false,requestId:0,seenIds:new Set(),epoch}}
+let netFeed=newNetFeed(null,null,renderEpoch);
+function netFeedQuery(state){
   let base=sb.from("posts").select("*, personas!inner(id,name,handle,avatar_url,nsfw,theme,visibility)")
-    .eq("personas.visibility","public").order("created_at",{ascending:false}).range(from,to);
-  if(netFeed.mode==="tag")base=base.ilike("tags","%"+netFeed.tag+"%");
-  return base;
+    .eq("personas.visibility","public").order("created_at",{ascending:false}).order("id",{ascending:false});
+  if(state.mode==="tag")base=base.ilike("tags","%"+state.tag+"%");
+  return logicAndFilter(base,[descendingCursorGroup(state.cursorCreatedAt,state.cursorId)]).limit(FEED_PAGE);
 }
 function netFeedFilter(rows){
   const f=getFilters();
   return (rows||[]).filter(r=>r.personas&&!(f.hideNsfw&&r.personas.nsfw)&&!isHidden(r.personas.id));
 }
 async function loadMoreNetFeed(){
-  if(netFeed.busy||netFeed.done)return;
-  netFeed.busy=true;
+  const state=netFeed;if(state.busy||state.done)return;
+  state.busy=true;const requestId=++state.requestId;
   const btn=document.getElementById("feedMoreBtn");
   if(btn){btn.disabled=true;btn.textContent="Loading…";}
-  const from=netFeed.offset,to=from+FEED_PAGE-1;
-  const{data}=await netFeedQuery(from,to);
-  const rows=netFeedFilter(data);
+  const{data,error}=await netFeedQuery(state);
+  if(netFeed!==state||state.requestId!==requestId||state.epoch!==renderEpoch)return;
+  state.busy=false;
+  if(error){const b=document.getElementById("feedMoreBtn");if(b){b.disabled=false;b.textContent="Try loading again"}return}
+  const raw=data||[],rows=netFeedFilter(raw).filter(row=>!state.seenIds.has(row.id));
+  raw.forEach(row=>state.seenIds.add(row.id));advanceDescendingCursor(state,raw);
   const wrap=document.getElementById("netFeed");
   if(wrap&&rows.length)wrap.insertAdjacentHTML("beforeend",rows.map(r=>postHtml(r,r.personas,false)).join(""));
-  netFeed.offset+=(data?data.length:0);
-  if(!data||data.length<FEED_PAGE)netFeed.done=true;
-  netFeed.busy=false;
+  if(raw.length<FEED_PAGE)state.done=true;
   const b2=document.getElementById("feedMoreBtn");
-  if(b2){if(netFeed.done)b2.remove();else{b2.disabled=false;b2.textContent="Load more posts";}}
+  if(b2){if(state.done)b2.remove();else{b2.disabled=false;b2.textContent="Load more posts";}}
 }
+const PUBLIC_PERSONA_FIELDS="id,handle,name,tagline,bio,nsfw,visibility,avatar_url,banner_url,bg_url,feed_img_url,music_url,live_url,theme,topics,hashtags,top8,modules,linked,created_at";
+const DISCOVERY_PAGE=40;
+function newPersonaDiscovery(rawSearch,epoch){return{search:normalizedFeedSearch(rawSearch),rows:[],cursorCreatedAt:null,cursorId:null,done:false,busy:false,error:"",requestId:0,seenIds:new Set(),epoch}}
+let personaDiscovery=newPersonaDiscovery("",renderEpoch);
+function publicPersonaQuery(state){let query=sb.from("personas").select(PUBLIC_PERSONA_FIELDS).eq("visibility","public").order("created_at",{ascending:false}).order("id",{ascending:false}),searchGroup=state.search?`name.ilike.%${state.search}%,handle.ilike.%${state.search}%,topics.ilike.%${state.search}%,tagline.ilike.%${state.search}%`:"";return logicAndFilter(query,[searchGroup,descendingCursorGroup(state.cursorCreatedAt,state.cursorId)]).limit(DISCOVERY_PAGE)}
+function filteredPersonaDiscovery(rows){const f=getFilters(),hideT=f.hideTopics.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean);return(rows||[]).filter(p=>!isHidden(p.id)).filter(p=>!(f.hideNsfw&&p.nsfw)).filter(p=>!hideT.some(t=>((p.topics||"")+" "+(p.tagline||"")+" "+(p.name||"")).toLowerCase().includes(t)))}
+function acceptPersonaDiscoveryPage(state,raw){const fresh=(raw||[]).filter(row=>!state.seenIds.has(row.id));fresh.forEach(row=>state.seenIds.add(row.id));state.rows.push(...fresh);advanceDescendingCursor(state,raw||[]);if((raw||[]).length<DISCOVERY_PAGE)state.done=true}
+function renderPersonaDiscoveryGrid(){const state=personaDiscovery,grid=document.getElementById("personaDiscoveryGrid"),wrap=document.getElementById("personaDiscoveryMoreWrap");if(!grid||state.epoch!==renderEpoch)return;const rows=filteredPersonaDiscovery(state.rows);grid.innerHTML=state.error&&!state.rows.length?'<div class="empty">Public personas could not be loaded. Try again.</div>':rows.map(pCard).join("")||'<div class="empty">Nothing here yet — be the first to create a page.</div>';if(wrap)wrap.innerHTML=state.done?"":`<button class="btn sec" onclick="loadMorePersonaDiscovery()" ${state.busy?"disabled":""}>${state.busy?"Loading…":state.error?"Try loading again":"Load more personas"}</button>`}
+async function loadMorePersonaDiscovery(){const state=personaDiscovery;if(state.busy||state.done)return;state.busy=true;state.error="";const requestId=++state.requestId;renderPersonaDiscoveryGrid();const result=await publicPersonaQuery(state);if(personaDiscovery!==state||state.epoch!==renderEpoch||requestId!==state.requestId)return;state.busy=false;if(result.error)state.error=result.error.message;else acceptPersonaDiscoveryPage(state,result.data||[]);renderPersonaDiscoveryGrid()}
 async function renderDiscover(q,epoch=++renderEpoch){
   setMeta("AliaSpaces — every persona, one home","A home page for every side of you. Anonymous persona pages with feeds, albums, music, Top 8 and all your links.");
   app.innerHTML='<div class="empty">Loading…</div>';
-  const f=getFilters();
-  let query=sb.from("personas").select("*").eq("visibility","public").order("created_at",{ascending:false}).limit(80);
-  if(q)query=query.or(`name.ilike.%${q}%,handle.ilike.%${q}%,topics.ilike.%${q}%,tagline.ilike.%${q}%`);
-  const{data:psRaw}=await query;
-  const hideT=f.hideTopics.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean);
-  const ps=(psRaw||[]).filter(p=>!isHidden(p.id))
-    .filter(p=>!(f.hideNsfw&&p.nsfw))
-    .filter(p=>!hideT.some(t=>((p.topics||"")+" "+(p.tagline||"")+" "+(p.name||"")).toLowerCase().includes(t)));
-  let recent=[];
-  if(!q){netFeed={mode:"recent",tag:null,offset:0,busy:false,done:false};
-    const{data}=await netFeedQuery(0,FEED_PAGE-1);
-    recent=netFeedFilter(data);
-    netFeed.offset=data?data.length:0;
-    if(!data||data.length<FEED_PAGE)netFeed.done=true;}
+  const state=personaDiscovery=newPersonaDiscovery(q,epoch),discovery=await publicPersonaQuery(state);if(epoch!==renderEpoch||personaDiscovery!==state)return;if(discovery.error)state.error=discovery.error.message;else acceptPersonaDiscoveryPage(state,discovery.data||[]);const ps=filteredPersonaDiscovery(state.rows);
+  let recent=[],recentError=false;
+  if(!q){const state=netFeed=newNetFeed("recent",null,epoch),result=await netFeedQuery(state);if(epoch!==renderEpoch||netFeed!==state)return;
+    recentError=!!result.error;const raw=result.data||[];recent=netFeedFilter(raw);raw.forEach(row=>state.seenIds.add(row.id));advanceDescendingCursor(state,raw);if(result.error||raw.length<FEED_PAGE)state.done=true;}
   if(epoch!==renderEpoch)return;
   const whatIs=`<h3 class="secthead">What is AliaSpaces?</h3>
     <div class="feat3">
@@ -563,24 +670,30 @@ async function renderDiscover(q,epoch=++renderEpoch){
     </div>
     ${whatIs}`:""}
     ${q?`<h3 class="secthead">Results for “${esc(q)}”</h3>`:""}
-    <div class="pgrid">${ps.map(pCard).join("")||'<div class="empty">Nothing here yet — be the first to create a page.</div>'}</div>
+    <div class="pgrid" id="personaDiscoveryGrid">${state.error?'<div class="empty">Public personas could not be loaded. Try again.</div>':ps.map(pCard).join("")||'<div class="empty">Nothing here yet — be the first to create a page.</div>'}</div>
+    <div id="personaDiscoveryMoreWrap" style="text-align:center;margin-top:16px">${state.done?"":`<button class="btn sec" onclick="loadMorePersonaDiscovery()">${state.error?"Try loading again":"Load more personas"}</button>`}</div>
     ${!q?`<h3 class="secthead" style="margin-top:26px">Recent posts</h3>
-    <div id="netFeed">${recent.map(r=>postHtml(r,r.personas,false)).join("")||'<div class="empty">No public posts yet — create a persona and post something.</div>'}</div>
+    <div id="netFeed">${recentError?'<div class="empty">Recent posts could not be loaded. Try again.</div>':recent.map(r=>postHtml(r,r.personas,false)).join("")||'<div class="empty">No public posts yet — create a persona and post something.</div>'}</div>
     ${netFeed.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`:""}`;
 }
 function pCard(p){
-  return `<div class="pcard" style="--pc:${esc(p.theme||"#ff4fa3")}" onclick="go('p/${esc(p.handle)}')">
-    <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
-    <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+  return `<div class="pcard" style="--pc:${safeTheme(p.theme)}" data-handle="${esc(p.handle)}" onclick="go('p/'+this.dataset.handle)">
+    <div class="ph" style="${safeBgStyle(p.banner_url)}"></div>
+    <div class="pb"><div class="av" style="${safeBgStyle(p.avatar_url)}"></div>
     <b>${esc(p.name)}</b><span class="muted">@${esc(p.handle)}</span> ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">LIVE</span>':""}
     <div class="muted" style="margin-top:4px">${esc(p.tagline)}</div></div></div>`;
 }
 
 // ---------- persona page ----------
-let pageState={};
+const PERSONA_FEED_PAGE_SIZE=30;
+async function publicFanChatStatus(personaId){
+  try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"status",personaId})}),j=await r.json().catch(()=>({}));return r.ok&&j.available===true}catch(e){return false}
+}
 async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   app.innerHTML='<div class="empty">Loading…</div>';
-  const{data:p}=await sb.from("personas").select("*").eq("handle",handle).maybeSingle();
+  let pageResult=await sb.rpc("persona_by_handle",{h:handle}),p=pageResult.data&&pageResult.data[0];
+  if(pageResult.error){const fallback=await sb.from("personas").select("id,handle,name,tagline,bio,nsfw,visibility,avatar_url,banner_url,bg_url,feed_img_url,music_url,live_url,theme,topics,hashtags,top8,modules,linked,created_at").eq("handle",handle).maybeSingle();p=fallback.data}
+  const owned=myPersonas.find(x=>x.handle===handle);if(owned)p=owned;
   if(epoch!==renderEpoch)return;
   if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
@@ -592,13 +705,15 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
     document.body.appendChild(o);return;
   }
   document.querySelectorAll(".overlay").forEach(o=>o.remove());
-  const isOwner=session&&p.owner===session.user.id;
-  const[{data:links},{data:posts},{data:fr},{data:albums}]=await Promise.all([
+  const isOwner=!!myPersonas.some(x=>x.id===p.id);
+  const[{data:links},{data:posts,error:postsError},{data:fr},{data:albums},fanRes]=await Promise.all([
     sb.from("persona_links").select("*").eq("persona_id",p.id).order("sort"),
-    sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).limit(50),
+    sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).order("id",{ascending:false}).range(0,PERSONA_FEED_PAGE_SIZE-1),
     sb.from("follows").select("*").or(`target.eq.${p.id},follower.eq.${p.id}`),
-    sb.from("albums").select("*").eq("persona_id",p.id).order("sort")
+    sb.from("albums").select("*").eq("persona_id",p.id).order("sort"),
+    publicFanChatStatus(p.id)
   ]);
+  const fanAvailable=fanRes===true;
   if(albums&&albums.length){
     const{data:aitems}=await sb.from("album_items").select("*").in("album_id",albums.map(a=>a.id)).order("sort");
     albums.forEach(a=>a.items=(aitems||[]).filter(i=>i.album_id===a.id));
@@ -618,9 +733,10 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   if((p.linked||[]).length){const{data}=await sb.from("personas").select("id,handle,name,avatar_url,tagline").in("id",p.linked);
     linkedP=data||[]}
   if(epoch!==renderEpoch)return;
-  pageState={p,posts:posts||[],isOwner,feedKind:"all"};
+  pageState={p,posts:posts||[],isOwner,feedKind:"all",feedQuery:"",cursorCreatedAt:null,cursorId:null,feedDone:(posts||[]).length<PERSONA_FEED_PAGE_SIZE,feedLoading:false,feedRequestId:0,feedError:postsError?.message||""};
+  advanceDescendingCursor(pageState,posts||[]);
   setMeta(`${p.name} (@${p.handle}) — AliaSpaces`,(p.tagline||p.bio||"A persona on AliaSpaces").slice(0,160));
-  if(p.bg_url){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url('${p.bg_url}')`}
+  const safeBackground=safeHttpUrl(p.bg_url);if(safeBackground){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url(${JSON.stringify(safeBackground)})`}
   const blocked=isHidden(p.id);
   let relBtn="";
   if(isOwner)relBtn=`<button class="btn sec" onclick="go('edit/${p.id}')">Edit page</button>`;
@@ -631,9 +747,9 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   else if(rel&&rel.status==="pending")relBtn=`<button class="btn" onclick="acceptReq('${rel.id}')">Accept friend request</button>`;
   else relBtn=`<button class="btn" onclick="sendRequest('${p.id}')">Add friend</button>`;
   app.innerHTML=`
-  <div class="banner" style="--pc:${esc(p.theme)};${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
+  <div class="banner" style="--pc:${safeTheme(p.theme)};${safeBgStyle(p.banner_url)}"></div>
   <div class="pp-head">
-    <div class="pp-av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+    <div class="pp-av" style="${safeBgStyle(p.avatar_url)}"></div>
     <div style="flex:1;padding-bottom:6px">
       <div class="pp-name">${esc(p.name)} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">LIVE</span>':""}</div>
       <div class="muted" style="background:rgba(255,255,255,.8);display:inline-block;padding:2px 8px;border-radius:8px">@${esc(p.handle)} · ${friends.length} friend${friends.length===1?"":"s"} — ${esc(p.tagline)}</div>
@@ -651,14 +767,15 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
       ${M("live")&&p.live_url?`<div class="card livebox"><h3>${ico("live")}Live now</h3>${liveHtml(p.live_url)}</div>`:""}
       ${M("music")&&p.music_url?`<div class="card music"><h3>${ico("music")}Profile song</h3>${musicHtml(p.music_url)}</div>`:""}
       ${M("about")?`<div class="card"><h3>${ico("spark")}About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
-        ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="pageSearch('${esc(t.trim())}')">${esc(t.trim())}</span>`).join("")}</div>`:""}</div>`:""}
+        ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" data-page-search="${esc(t.trim())}" onclick="pageSearch(this.dataset.pageSearch)">${esc(t.trim())}</span>`).join("")}</div>`:""}</div>`:""}
+      ${fanAvailable?`<div class="card"><h3>${ico("spark")}Chat with ${esc(p.name)}'s AI</h3><p class="muted">This is an AI assistant speaking in ${esc(p.name)}'s configured voice—not the human owner. The owner can review escalated conversations in their private inbox.</p><button class="btn sm" onclick="openPublicFanChat('${p.id}')">Start AI chat</button></div>`:""}
       ${M("links")&&(links||[]).length?`<div class="card"><h3>${ico("link")}Find me on</h3>${links.map(l=>{
         const pl=PLATS[l.platform]||PLATS.other;
-        return l.url?`<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
+        const url=safeHttpUrl(l.url);return url?`<a class="chip" href="${esc(url)}" target="_blank" rel="noopener">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
       ${M("top8")&&top8.length?`<div class="card"><h3>${ico("crown")}Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>
-        `<div class="t8" onclick="go('p/${esc(t.handle)}')"><div class="av8" style="${t.avatar_url?`background-image:url('${esc(t.avatar_url)}')`:""}"></div>${esc(t.name)}</div>`).join("")}</div></div>`:""}
+        `<div class="t8" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)"><div class="av8" style="${safeBgStyle(t.avatar_url)}"></div>${esc(t.name)}</div>`).join("")}</div></div>`:""}
       ${M("linked")&&linkedP.length?`<div class="card"><h3>${ico("mask")}More of me</h3>${linkedP.map(t=>
-        `<div class="t8pick" style="cursor:pointer" onclick="go('p/${esc(t.handle)}')"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'">
+        `<div class="t8pick" style="cursor:pointer" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)"><img src="${esc(safeHttpUrl(t.avatar_url))}" onerror="this.style.visibility='hidden'">
         <div><b>${esc(t.name)}</b><br><span class="muted">${esc(t.tagline||"@"+t.handle)}</span></div></div>`).join("")}</div>`:""}
     </div>
     <div>
@@ -666,10 +783,10 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
       ${M("albums")?(albums||[]).filter(a=>(a.items||[]).length||isOwner).map(a=>`
         <div class="card"><h3>${ico(a.kind==="affiliate"?"cart":"album")}${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3>
         <div class="albgrid">${(a.items||[]).map(it=>{
-          const inner=`<img src="${esc(it.thumb_url)}" loading="lazy" draggable="false"><span class="cap">${esc(it.caption)||"&nbsp;"}</span>${it.link_url?'<span class="goicon">↗</span>':""}`;
-          return it.link_url?`<a class="albitem" href="${esc(it.link_url)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join(""):""}
+          const link=safeHttpUrl(it.link_url),inner=`<img src="${esc(safeHttpUrl(it.thumb_url))}" loading="lazy" draggable="false"><span class="cap">${esc(it.caption)||"&nbsp;"}</span>${link?'<span class="goicon">↗</span>':""}`;
+          return link?`<a class="albitem" href="${esc(link)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join(""):""}
       ${M("feed")?`<div class="card">
-        ${p.feed_img_url?`<img src="${esc(p.feed_img_url)}" style="width:100%;border-radius:12px;margin-bottom:10px" alt="">`:""}
+        ${safeHttpUrl(p.feed_img_url)?`<img src="${esc(safeHttpUrl(p.feed_img_url))}" style="width:100%;border-radius:12px;margin-bottom:10px" alt="">`:""}
         <h3>${ico("feed")}${esc(p.name)}'s feed</h3>
         <input id="feedSearch" placeholder="search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)">
         <div class="feedchips">
@@ -678,17 +795,18 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
           <span class="chip" id="fk_reel" onclick="setFeedKind('reel')">Reels</span>
         </div>
       </div>
-      <div id="feedList">${(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet</div>'}</div>`:""}
+      <div id="feedList">${postsError?'<div class="empty">The feed could not be loaded.</div>':(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet</div>'}</div>
+      <div id="personaFeedMoreWrap" style="text-align:center;margin-top:16px">${!postsError&&!pageState.feedDone?'<button class="btn sec" id="personaFeedMoreBtn" onclick="loadMorePersonaFeed()">Load more posts</button>':""}</div>`:""}
     </div>
   </div>`;
 }
 function postHtml(x,p,owner){
-  return `<div class="post" style="--pc:${esc((p&&p.theme)||"#ff4fa3")}">
+  return `<div class="post" style="--pc:${safeTheme(p&&p.theme)}">
     ${p&&p.handle?`<div class="muted" style="margin-bottom:4px;cursor:pointer" onclick="go('p/${esc(p.handle)}')">${esc(p.name)} @${esc(p.handle)} ${x.kind==="reel"?"· reel":""}</div>`:""}
     ${x.title?`<h4>${esc(x.title)}</h4>`:""}
     <p style="white-space:pre-wrap;margin-top:4px">${esc(x.body)}</p>
     ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind):""}
-    <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" onclick="go('tag/'+encodeURIComponent('${esc(t.trim())}'))">#${esc(t.trim())}</span>`).join("")}
+    <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" data-tag="${esc(t.trim())}" onclick="go('tag/'+encodeURIComponent(this.dataset.tag))">#${esc(t.trim())}</span>`).join("")}
     <span class="muted" style="float:right">${new Date(x.created_at).toLocaleDateString()}</span></div>
     <div class="pactions"><button class="btn sec sm" onclick="toggleComments('${x.id}')">Comments</button></div>
     <div class="pcx" id="cx_${x.id}" style="display:none"></div>
@@ -700,14 +818,47 @@ function setFeedKind(k){
   ["all","post","reel"].forEach(x=>document.getElementById("fk_"+x).classList.toggle("on",x===k));
   pageSearch(document.getElementById("feedSearch").value);
 }
+function normalizedFeedSearch(raw){return String(raw||"").trim().slice(0,120).replace(/[,%()*"\\]/g," ").replace(/\s+/g," ").trim()}
+function renderPersonaFeed(){
+  const state=pageState,list=document.getElementById("feedList"),more=document.getElementById("personaFeedMoreWrap");if(!state.p||!list)return;
+  const query=state.feedQuery||"";
+  list.innerHTML=state.feedError&&state.posts.length===0?'<div class="empty">The feed could not be loaded. Try again.</div>':state.posts.map(x=>postHtml(x,state.p,state.isOwner)).join("")||`<div class="empty">No posts${query?` matching “${esc(query)}”`:""}</div>`;
+  if(more)more.innerHTML=state.feedDone?"":`<button class="btn sec" id="personaFeedMoreBtn" onclick="loadMorePersonaFeed()" ${state.feedLoading?"disabled":""}>${state.feedLoading?"Loading…":"Load more posts"}</button>`;
+}
+async function loadMorePersonaFeed(reset=false,requestedQuery=null){
+  const state=pageState,p=state.p;if(!p||(!reset&&(state.feedLoading||state.feedDone)))return;
+  if(reset){state.feedQuery=String(requestedQuery||"").trim().slice(0,120);state.posts=[];state.cursorCreatedAt=null;state.cursorId=null;state.feedDone=false;state.feedError=""}
+  state.feedLoading=true;const requestId=++state.feedRequestId;renderPersonaFeed();
+  let query=sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).order("id",{ascending:false});
+  if(state.feedKind&&state.feedKind!=="all")query=query.eq("kind",state.feedKind);
+  const search=normalizedFeedSearch(state.feedQuery),searchGroup=search?`title.ilike.%${search}%,body.ilike.%${search}%,tags.ilike.%${search}%`:"";
+  query=logicAndFilter(query,[searchGroup,descendingCursorGroup(state.cursorCreatedAt,state.cursorId)]).limit(PERSONA_FEED_PAGE_SIZE);
+  const{data,error}=await query;if(pageState!==state||state.feedRequestId!==requestId)return;
+  state.feedLoading=false;if(error){state.feedError=error.message;renderPersonaFeed();return}
+  const rows=data||[],seen=new Set(state.posts.map(x=>x.id));state.posts.push(...rows.filter(x=>!seen.has(x.id)));advanceDescendingCursor(state,rows);state.feedDone=rows.length<PERSONA_FEED_PAGE_SIZE;state.feedError="";renderPersonaFeed();
+}
 async function pageSearch(q){
-  const p=pageState.p;if(!p)return;
   const el=document.getElementById("feedSearch");if(el)el.value=q||"";
-  let query=sb.from("posts").select("*").eq("persona_id",p.id).order("created_at",{ascending:false}).limit(50);
-  if(pageState.feedKind&&pageState.feedKind!=="all")query=query.eq("kind",pageState.feedKind);
-  if(q&&q.trim())query=query.or(`title.ilike.%${q.trim()}%,body.ilike.%${q.trim()}%,tags.ilike.%${q.trim()}%`);
-  const{data}=await query;
-  document.getElementById("feedList").innerHTML=(data||[]).map(x=>postHtml(x,p,pageState.isOwner)).join("")||`<div class="empty">No posts${q?` matching “${esc(q)}”`:""}</div>`;
+  await loadMorePersonaFeed(true,q||"");
+}
+
+function fanVisitorToken(pid){
+  const key="fan_visitor_"+pid;let tok=sessionStorage.getItem(key);if(tok)return tok;
+  const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);tok=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");sessionStorage.setItem(key,tok);return tok;
+}
+function openPublicFanChat(personaId){
+  const name=pageState?.p?.id===personaId?pageState.p.name:"Persona";
+  closePublicFanChat();publicFanCtx={personaId,name,sessionId:crypto.randomUUID(),visitorToken:fanVisitorToken(personaId),busy:false,messages:[]};
+  const d=document.createElement("div");d.className="fanbox";d.id="publicFanChat";d.innerHTML=`<div class="fanh"><b>${esc(name)} · AI chat</b><button class="btn sm" style="float:right;background:rgba(255,255,255,.2)" onclick="closePublicFanChat()">✕</button></div><div class="fandisc"><b>AI disclosure:</b> This assistant uses ${esc(name)}'s configured persona voice. It is not the human owner. The owner may review escalated transcripts in their private inbox; this chat does not promise a live human reply.</div><div class="fanmsgs" id="publicFanMsgs"><div class="cmsg a">Hi! I’m ${esc(name)}’s AI assistant. What would you like to talk about?</div></div><div class="faninput"><textarea id="publicFanIn" maxlength="2000" placeholder="Message the AI assistant…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();publicFanSend()}"></textarea><button class="btn" onclick="publicFanSend()">Send</button></div>`;document.body.appendChild(d);document.getElementById("publicFanIn")?.focus();
+}
+function closePublicFanChat(){document.getElementById("publicFanChat")?.remove();publicFanCtx=null}
+function renderPublicFanMsgs(){
+  const el=document.getElementById("publicFanMsgs");if(!el||!publicFanCtx)return;el.innerHTML=publicFanCtx.messages.map(m=>`<div class="cmsg ${m.role==="fan"?"u":"a"}">${esc(m.content)}</div>`).join("")+(publicFanCtx.busy?'<div class="cmsg a">…thinking</div>':"");el.scrollTop=el.scrollHeight;
+}
+async function publicFanSend(){
+  if(!publicFanCtx||publicFanCtx.busy)return;const ctx=publicFanCtx,inp=document.getElementById("publicFanIn"),message=inp?.value.trim();if(!message)return;inp.value="";ctx.messages.push({role:"fan",content:message});ctx.busy=true;renderPublicFanMsgs();
+  try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({personaId:ctx.personaId,sessionId:ctx.sessionId,visitorToken:ctx.visitorToken,message})}),j=await r.json().catch(()=>({}));if(publicFanCtx!==ctx)return;if(!r.ok&&!j.reply)throw new Error(j.error||"Fan chat is unavailable right now");ctx.messages.push({role:"assistant",content:j.reply||j.content||"The assistant could not answer."});if(j.escalated)ctx.messages.push({role:"assistant",content:"This conversation was flagged for the human owner to review."});}
+  catch(e){if(publicFanCtx===ctx)ctx.messages.push({role:"assistant",content:"Error: "+e.message})}if(publicFanCtx===ctx){ctx.busy=false;renderPublicFanMsgs()}
 }
 
 // ---------- friends / blocks ----------
@@ -721,7 +872,7 @@ function pickMine(){
       <p class="muted" style="margin-bottom:12px">Which of your personas should do this?</p>
       <div style="display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto">
         ${myPersonas.map(m=>`<button class="btn sec" data-id="${esc(m.id)}" style="display:flex;align-items:center;gap:10px;justify-content:flex-start;text-align:left;padding:8px 12px">
-          <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e4e6eb center/cover;${m.avatar_url?`background-image:url('${esc(m.avatar_url)}')`:""}"></span>
+          <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e4e6eb center/cover;${safeBgStyle(m.avatar_url)}"></span>
           <span><b>${esc(m.name)}</b> <span class="muted" style="font-size:12px">@${esc(m.handle)}</span></span></button>`).join("")}
       </div>
       <div style="margin-top:14px;text-align:right"><button class="btn sec sm" data-cancel="1">Cancel</button></div>
@@ -806,12 +957,248 @@ function aiPrompt(){
   copyText(`You are the social media manager for this persona.\n\n${personaBlockFull(p)}\n\nTASK: Write a blog-style feed post for this persona's page${document.getElementById("npTitle").value?` titled "${document.getElementById("npTitle").value}"`:""}. Match the personality exactly. Include a suggested title and 3-6 tags.`);
 }
 
+// ---------- MyPersonas agent control center ----------
+const AUTO_LEVELS=[
+  {n:0,name:"L0 · Co-writer",desc:"Chat, brainstorm, and save drafts. Nothing runs by itself."},
+  {n:1,name:"L1 · Scheduled drafts",desc:"Create private drafts on your schedule. You review every one."},
+  {n:2,name:"L2 · Owner-published",desc:"Approve the exact native draft, then press Publish now yourself."},
+  {n:3,name:"L3 · Bounded autopost",desc:"Publishes only exact drafts you approved, when due, on enabled native targets. External accounts stay locked."}
+];
+const AUTO_DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const HOSTED_TEXT_UNSUPPORTED=new Set(["elevenlabs","ollama","lmstudio"]);
+const BUILTIN_AUTOMATION_AI_HOSTS=new Set(["api.openai.com","openrouter.ai","api.anthropic.com","api.x.ai","generativelanguage.googleapis.com","api.groq.com","api.mistral.ai","api.deepseek.com","api.together.xyz","api.fireworks.ai","api.perplexity.ai","api.cohere.ai"]);
+function backendProvider(b){return String(b?.provider||"").trim().toLowerCase()}
+function backendAgentReady(b){
+  if(!b||!myBackendCredentialIds.has(b.id)||HOSTED_TEXT_UNSUPPORTED.has(backendProvider(b))||!String(b.model||"").trim())return false;
+  try{return new URL(String(b.base_url||"")).protocol==="https:"}catch(e){return false}
+}
+function readyAgentBackends(){return myBackends.filter(backendAgentReady)}
+function backendBuiltInAutomation(b){try{const host=new URL(String(b?.base_url||"")).hostname.toLowerCase();return BUILTIN_AUTOMATION_AI_HOSTS.has(host)||host.endsWith(".openai.azure.com")}catch(e){return false}}
+function backendAutomationReady(b,surface="schedule"){
+  if(!backendAgentReady(b))return false;if(backendBuiltInAutomation(b))return true;return b.extra?.[surface==="fan"?"fan_host_confirmed":"schedule_host_confirmed"]===true
+}
+function readyAutomationBackends(surface="schedule"){return myBackends.filter(b=>backendAutomationReady(b,surface))}
+function backendOptions(selected="",automationOnly=false){
+  return myBackends.map(b=>{const agentReady=backendAgentReady(b),automationReady=backendAutomationReady(b),ready=automationOnly?automationReady:agentReady,chosen=selected===b.id;return `<option value="${b.id}" data-agent-ready="${agentReady}" data-automation-ready="${automationReady}" ${chosen?"selected":""} ${ready?"":"disabled"}>${esc(b.name)}${ready?"":agentReady&&automationOnly?" · owner chat only":" · needs setup"}</option>`}).join("");
+}
+function autoPersona(){return myPersonas.find(p=>p.id===autoPersonaId)||myPersonas[0]||null}
+function autoBinding(pid){return myAgentBindings.find(b=>b.persona_id===pid)||null}
+function autoPlan(pid){return myContentPlans.find(p=>p.persona_id===pid)||null}
+function autoDestination(pid,accountId=null){return myAgentDestinations.find(d=>d.persona_id===pid&&(d.account_id||null)===(accountId||null))||null}
+function autoAssignedAccounts(pid){return myAccounts.filter(a=>a.persona_id===pid)}
+function autoTz(){return myAgentSettings?.default_timezone||prefsObj().account?.tz||Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}
+function autoDate(v,withTime=true){if(!v)return "not scheduled";try{return new Date(v).toLocaleString([],{dateStyle:"medium",...(withTime?{timeStyle:"short"}:{})})}catch(e){return v}}
+function autoTaskDate(v,tz){if(!v)return "not scheduled";const zone=validTimezone(tz)?tz:"UTC";try{return new Intl.DateTimeFormat([],{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:zone,timeZoneName:"short"}).format(new Date(v))}catch(e){return v}}
+function zonedParts(date,tz){const parts=new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(date),out={};parts.forEach(part=>{if(part.type!=="literal")out[part.type]=Number(part.value)});return out}
+function autoZonedInput(v,tz=autoTz()){if(!v)return "";try{const p=zonedParts(new Date(v),tz),z=n=>String(n).padStart(2,"0");return `${p.year}-${z(p.month)}-${z(p.day)}T${z(p.hour)}:${z(p.minute)}`}catch(e){return ""}}
+function zonedInputToIso(value,tz=autoTz()){const m=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);if(!m||!validTimezone(tz))return null;const wanted=m.slice(1).map(Number),wall=Date.UTC(wanted[0],wanted[1]-1,wanted[2],wanted[3],wanted[4]);let guess=new Date(wall);for(let i=0;i<3;i++){const p=zonedParts(guess,tz),shown=Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute);guess=new Date(guess.getTime()+wall-shown)}const check=zonedParts(guess,tz);return [check.year,check.month,check.day,check.hour,check.minute].every((n,i)=>n===wanted[i])?guess.toISOString():null}
+function autoConn(a){return ledgerConnectionInfo(a)}
+function autoNormalizedDestination(destination="aliaspaces"){const raw=String(destination||"aliaspaces").trim()||"aliaspaces";return raw.toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/\/$/,"")}
+function autoIsNativeDestination(accountId,destination="aliaspaces"){return !accountId&&["aliaspaces","aliaspaces.com","mypersonas","mypersonas.online"].includes(autoNormalizedDestination(destination))}
+function autoTargetName(accountId,destination="aliaspaces"){
+  if(!accountId){if(autoIsNativeDestination(null,destination))return "AliaSpaces native feed";const normalized=autoNormalizedDestination(destination);return (PLATS[normalized]||{}).name||`${normalized||"Unknown"} · external target`}
+  const a=myAccounts.find(x=>x.id===accountId);return a?`${(PLATS[a.provider]||{}).name||a.provider}${a.username?" · "+a.username:a.login_email?" · "+a.login_email:""}`:((PLATS[destination]||{}).name||destination||"External account");
+}
+function autoTargetReadiness(a){
+  if(!a)return{klass:"ok",label:"Native publishing available",note:"Every draft needs exact owner approval. L2 waits for you to press Publish now; L3 can publish that approved draft automatically when due."};
+  const info=autoConn(a),scopes=(info.row?.granted_scopes||[]).map(x=>String(x).toLowerCase());
+  if(a.provider==="gmail")return{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?"Connected read-only":"Planning only",note:"Gmail can supply research context, but it is not a social publishing destination."};
+  if(info.state!=="connected")return{klass:"stop",label:info.state==="verified"?"Ownership only":"Planning / manual only",note:"Connect this platform with an official publishing permission before any API post can run."};
+  const write=scopes.some(s=>/write|publish|manage_posts|content_publish|tweet\.write|submit|w_member_social|upload/.test(s));
+  return{klass:write?"wait":"stop",label:write?"Write grant recorded · connector pending":"Connected without write access",note:write?"The official posting adapter still has to be installed and approved before this target can publish.":"Reconnect with the platform's exact publishing permission when that connector is available."};
+}
+function switchAutomationPersona(pid){autoPersonaId=pid;autoTaskEditId="";renderStudio()}
+function switchAutoTab(tab){autoTab=tab;autoTaskEditId="";renderStudio();setTimeout(()=>document.getElementById("autoStudio")?.scrollIntoView({block:"start"}),0)}
+
+function automationStudioHtml(){
+  if(!myPersonas.length)return `<div class="card autocard"><h3>${ico("spark")}MyPersonas automation</h3><p class="muted">Create a persona first. Its voice card becomes the source of truth for direction, safety rules, schedules, and connected-account assignments.</p></div>`;
+  if(!automationReady)return `<div class="card autocard" id="autoStudio"><h3>${ico("clock")}MyPersonas automation setup</h3><div class="autocallout warn"><b>The control-center database update is not live yet.</b><br>Your personas and accounts are safe. Direction, scheduling, approvals, audit, and synced chat will appear here as soon as the additive setup finishes.</div></div>`;
+  const p=autoPersona(),binding=autoBinding(p.id),plan=autoPlan(p.id),accounts=autoAssignedAccounts(p.id),tasks=myTasks.filter(t=>t.persona_id===p.id),drafts=myDrafts.filter(d=>d.persona_id===p.id),pending=drafts.filter(d=>(d.approval_state||"draft")==="pending").length;
+  const paused=!!myAgentSettings?.automation_paused,level=binding?.autonomy_level||0;
+  const tabs=[
+    ["direction","Direction",""],["targets","Targets",String(accounts.length+1)],["schedule","Schedule",String(tasks.filter(t=>t.active!==false).length)],
+    ["queue","Queue",pending?String(pending):""],["chats","Fan inbox",String(myFanSessions.filter(s=>s.persona_id===p.id&&s.inbox_state==="unread").length||"")],["audit","Audit",""]
+  ];
+  let panel="";
+  if(autoTab==="targets")panel=automationTargetsHtml(p,binding);
+  else if(autoTab==="schedule")panel=automationScheduleHtml(p,binding);
+  else if(autoTab==="queue")panel=automationQueueHtml(p,binding);
+  else if(autoTab==="chats")panel=automationChatsHtml(p,binding);
+  else if(autoTab==="audit")panel=automationAuditHtml(p,binding);
+  else panel=automationDirectionHtml(p,binding,plan);
+  return `<div class="card autocard" id="autoStudio">
+    <div class="autohead"><div><h3 style="margin-bottom:3px">${ico("spark")}MyPersonas control center</h3><p class="muted">Set the direction once, then review what each agent prepares and where it is allowed to go.</p></div>
+      <select aria-label="Persona to manage" onchange="switchAutomationPersona(this.value)">${myPersonas.map(x=>`<option value="${x.id}" ${x.id===p.id?"selected":""}>${esc(x.name)} (@${esc(x.handle)})</option>`).join("")}</select>
+      <div class="autokill ${paused?"paused":""}"><b>${paused?"All agents paused":"Global safety switch ready"}</b><button class="btn ${paused?"":"danger"} sm" onclick="toggleGlobalAutomation()">${paused?"Resume all":"Pause all"}</button></div></div>
+    <div class="autostats"><div class="autostat"><b>L${level}</b><span>${AUTO_LEVELS[level].name.split(" · ")[1]}</span></div><div class="autostat"><b>${accounts.length}</b><span>assigned external accounts</span></div><div class="autostat"><b>${tasks.filter(t=>t.active!==false).length}</b><span>active content slots</span></div><div class="autostat"><b>${pending}</b><span>waiting for review</span></div></div>
+    <div class="autonav">${tabs.map(([k,l,b])=>`<button class="${autoTab===k?"on":""}" onclick="switchAutoTab('${k}')">${l}${b?` · ${b}`:""}</button>`).join("")}</div>
+    ${panel}</div>`;
+}
+
+function automationDirectionHtml(p,binding,plan){
+  plan=plan||{};const level=binding?.autonomy_level||0,status=binding?.status||"active";
+  return `<div class="autogrid">
+    <div class="autofull autocallout"><b>Voice card + operating brief</b><br>The persona's purpose, voice, audience, topics, hashtags, and “never do” rules stay canonical in its profile. This brief tells the agent what matters now without weakening those rules. <button class="btn sec sm" onclick="go('edit/${p.id}')">Edit voice card</button></div>
+    <div><label>Primary outcome</label><input id="apGoal" maxlength="768" value="${esc(plan.primary_goal||p.purpose||"")}" placeholder="What should this persona accomplish?"></div>
+    <div><label>How you will measure progress</label><input id="apMetric" maxlength="512" value="${esc(plan.success_metric||"")}" placeholder="e.g. qualified clicks, replies, weekly subscribers"></div>
+    <div><label>Audience focus right now</label><textarea id="apAudience" maxlength="768" placeholder="Who is this cycle for?">${esc(plan.audience_focus||p.audience||"")}</textarea></div>
+    <div><label>Content pillars</label><textarea id="apPillars" maxlength="1024" placeholder="3–5 repeatable themes">${esc(plan.content_pillars||p.topics||"")}</textarea></div>
+    <div><label>Current campaign / this week's focus</label><textarea id="apCampaign" maxlength="768" placeholder="Launch, theme, story, offer, or event">${esc(plan.current_campaign||"")}</textarea></div>
+    <div><label>Calls to action</label><textarea id="apCta" maxlength="768" placeholder="What should followers do next?">${esc(plan.calls_to_action||"")}</textarea></div>
+    <div><label>Offers, products & affiliate links</label><textarea id="apOffers" maxlength="1536" placeholder="URLs and what each one is for — never passwords or secrets">${esc(plan.offers_and_links||"")}</textarea></div>
+    <div><label>Affiliate / sponsor disclosure</label><textarea id="apDisclosure" maxlength="512" placeholder="Disclosure text the agent must include when relevant">${esc(plan.affiliate_disclosure||"")}</textarea></div>
+    <div><label>Sources and idea inbox</label><textarea id="apSources" maxlength="1536" placeholder="Trusted sites, recurring inputs, notes, news sources">${esc(plan.source_notes||"")}</textarea></div>
+    <div><label>Platform guidance</label><textarea id="apPlatform" maxlength="1024" placeholder="What changes between TikTok, LinkedIn, the native feed, etc.?">${esc(plan.platform_guidance||"")}</textarea></div>
+    <div class="autofull autoformactions"><button class="btn" onclick="saveAutomationDirection()">Save direction</button><button class="btn sec" onclick="openPersonaChat('${p.id}')">Plan with this persona</button></div>
+    <div class="autofull"><hr><h3>Autonomy & safety</h3><div class="levelgrid">${AUTO_LEVELS.map(x=>`<div class="levelcard ${level===x.n?"on":""}" onclick="setAgentAutonomy(${x.n})"><b>${x.name}</b><span>${x.desc}</span></div>`).join("")}</div>
+      <div class="autocallout ${status==="active"?"":"stop"}"><b>Binding: ${esc(status)} · ${esc(binding?.claim_state==="verified"?"verified claim":"self-attested owner")}</b><br>${binding?.claim_state==="verified"?"This alias has an authoritative verified claim.":"Native co-writing, drafting, and approved native posts are available. External L3 stays locked until the AliaSpaces claim layer verifies the alias."}</div>
+      <div class="row"><div><label>Agent state</label><select id="abStatus"><option value="active" ${status==="active"?"selected":""}>Active</option><option value="paused" ${status==="paused"?"selected":""}>Paused</option><option value="withdrawn" ${status==="withdrawn"?"selected":""}>Withdrawn</option></select></div><div><label>Fan chat daily message cap</label><input id="abFanCap" type="number" min="1" max="500" value="${binding?.fan_daily_message_limit||30}"></div></div>
+      <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-weight:500"><input type="checkbox" id="abFan" ${binding?.fan_chat_enabled?"checked":""}> Let followers chat with this persona's AI (always disclosed as AI; owner inbox and escalation enabled)</label>
+      <button class="btn sm" style="margin-top:8px" onclick="saveAgentSafety()">Save agent controls</button></div>
+    <div class="autofull"><hr><h3>Owner-wide limits</h3><div class="row"><div><label>Default time zone</label><input id="aoTz" value="${esc(autoTz())}" placeholder="America/Anchorage"></div><div><label>Maximum AI draft requests per local day</label><input id="aoDraftCap" type="number" min="1" max="100" value="${myAgentSettings?.daily_draft_limit||12}"></div><div><label>Quiet hours start (optional)</label><input id="aoQuietStart" type="time" value="${esc((myAgentSettings?.quiet_hours_start||"").slice(0,5))}"></div><div><label>Quiet hours end (optional)</label><input id="aoQuietEnd" type="time" value="${esc((myAgentSettings?.quiet_hours_end||"").slice(0,5))}"></div></div><button class="btn sm" style="margin-top:8px" onclick="saveOwnerAutomationSettings()">Save owner limits</button></div>
+  </div>`;
+}
+
+function automationTargetsHtml(p,binding){
+  const rows=[null,...autoAssignedAccounts(p.id)];
+  return `<div class="autocallout"><b>Assignment is deliberate.</b> MyPersonas sees only the accounts assigned to this persona. Recorded or ownership-verified accounts are planning targets, not API permissions.</div>
+    <div class="targetlist">${rows.map(a=>{const d=autoDestination(p.id,a?.id||null),ready=autoTargetReadiness(a),info=a?autoConn(a):null,mode=d?.mode||(!a?"approval":"manual"),canAuto=!a&&binding?.autonomy_level>=3,accountUrl=safeHttpUrl(a?.url);return `<div class="targetitem"><div class="targettop"><div><b>${esc(autoTargetName(a?.id||null))}</b><div class="statusline"><span class="statusdot ${ready.klass}"></span><span class="muted">${esc(ready.label)}${a&&info?` · ${esc(info.label)}`:""}</span></div></div><span class="pill ${ready.klass==="ok"?"connected":ready.klass==="wait"?"verified":"attention"}">${esc(mode)}</span></div><p class="muted" style="margin-top:5px">${esc(ready.note)}</p><div class="targetactions"><select id="destMode_${a?.id||"native"}" style="width:auto">${a?`<option value="manual" ${mode==="manual"?"selected":""}>Manual / copy</option>`:mode==="manual"?'<option value="manual" selected disabled>Copy only — choose a publishing mode</option>':""}<option value="approval" ${mode==="approval"?"selected":""}>${a?"Approve, then post manually":"Approve, then Publish now"}</option>${a?"":`<option value="auto" ${mode==="auto"?"selected":""} ${canAuto?"":"disabled"}>Auto after approval (L3)</option>`}</select><input id="destCap_${a?.id||"native"}" type="number" min="1" max="100" value="${d?.daily_publish_limit||3}" aria-label="Daily post cap" style="width:90px"><button class="btn sm sec" onclick="saveAutomationDestination('${a?.id||""}')">Save target</button>${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}</div></div>`}).join("")}</div>
+    <div class="autocallout warn"><b>External automatic publishing is intentionally locked.</b> It unlocks per destination only after a verified persona claim, an official connector, an eligible account type, the provider's exact write permission, and any required platform review. Gmail is read-only research access.</div>
+    <button class="btn sec" onclick="acctTab='accounts';renderStudio();setTimeout(()=>document.getElementById('acctTabs')?.scrollIntoView({behavior:'smooth'}),0)">Manage account connections</button>`;
+}
+
+function automationWeekHtml(tasks){
+  const active=tasks.filter(t=>t.active!==false&&t.cadence!=="manual");
+  return `<h3 style="margin-top:14px">Weekly posting map</h3><div class="weekgrid">${AUTO_DAYS.map((day,i)=>{const slots=active.filter(t=>t.cadence==="daily"||t.schedule_day===i).sort((a,b)=>String(a.schedule_time).localeCompare(String(b.schedule_time)));return `<div class="weekday"><strong>${day}</strong>${slots.map(t=>`<div class="weekslot"><b>${esc((t.schedule_time||"09:00").slice(0,5))} · ${esc(t.name)}</b>${esc(autoTargetName(t.account_id,t.destination))}<span class="muted">Time zone: ${esc(t.timezone||autoTz())}</span></div>`).join("")||'<span class="muted">open</span>'}</div>`}).join("")}</div>`;
+}
+function updateScheduleCadenceUi(select){const cadence=select?.value||"weekly",scheduled=cadence!=="manual";const day=document.getElementById("asDayWrap"),time=document.getElementById("asTimeWrap"),lead=document.getElementById("asLeadWrap"),backend=document.getElementById("asBackend");if(day)day.style.display=cadence==="weekly"?"":"none";if(time)time.style.display=scheduled?"":"none";if(lead)lead.style.display=scheduled?"":"none";backend?.querySelectorAll("option[value]:not([value=''])").forEach(option=>{option.disabled=(scheduled?option.dataset.automationReady:option.dataset.agentReady)!=="true"});if(backend?.selectedOptions[0]?.disabled)backend.value=""}
+function automationScheduleHtml(p,binding){
+  const tasks=myTasks.filter(t=>t.persona_id===p.id),unassigned=myTasks.filter(t=>!t.persona_id),editing=tasks.find(t=>t.id===autoTaskEditId)||null,assigned=autoAssignedAccounts(p.id),missingTarget=!!editing&&!autoIsNativeDestination(editing.account_id,editing.destination)&&!assigned.some(a=>a.id===editing.account_id),tz=editing?.timezone||autoTz(),cad=editing?.cadence||"weekly",day=editing?.schedule_day??new Date().getDay(),lead=editing?.lead_minutes??1440;
+  return `<div class="autocallout"><b>Each content slot has two times.</b> “Post at” is the public slot; “Prepare ahead” tells the agent when to create the draft so you have time to review it.</div>${automationWeekHtml(tasks)}
+    <div class="schedulelist">${tasks.map(t=>{const a=myAccounts.find(x=>x.id===t.account_id),next=t.next_publish_at?autoTaskDate(t.next_publish_at,t.timezone):t.cadence==="manual"?"manual":"calculating after save";return `<div class="scheduleitem"><div class="scheduletop"><div><b>${esc(t.name)}</b><div class="muted">${esc(autoTargetName(t.account_id,t.destination))} · ${esc(t.task_type)} · ${esc(t.content_kind||"post")}</div><div class="statusline"><span class="statusdot ${t.active===false?"stop":t.last_error?"wait":"ok"}"></span><span class="muted">${t.active===false?"Paused":`Next post ${next}`}${t.next_run_at?` · prepares ${autoTaskDate(t.next_run_at,t.timezone)}`:""}</span></div>${t.last_error?`<div class="muted" style="color:var(--red)">${esc(t.last_error)}</div>`:""}</div><span class="pill verified">review</span></div><div class="scheduleactions"><button class="btn sm sec" onclick="editAutomationTask('${t.id}')">Edit</button><button class="btn sm sec" onclick="toggleAutomationTask('${t.id}',${t.active===false?"true":"false"})">${t.active===false?"Resume":"Pause"}</button><button class="btn sm sec" onclick="runTask('${t.id}')">Run with me</button><button class="btn sm danger" onclick="deleteTask('${t.id}')">Delete</button></div></div>`}).join("")||'<p class="muted">No content slots yet. Add the first one below.</p>'}</div>
+    ${unassigned.length?`<hr><h3>Unassigned schedules</h3><div class="autocallout warn">These older schedules are paused. Assign one to <b>${esc(p.name)}</b>, review its settings, then resume it when ready.</div><div class="schedulelist">${unassigned.map(t=>`<div class="scheduleitem"><div class="scheduletop"><div><b>${esc(t.name||"Untitled schedule")}</b><div class="muted">${esc(t.task_type||"custom")} · ${esc(t.content_kind||"post")}</div></div><span class="pill attention">needs persona</span></div><div class="scheduleactions"><button class="btn sm" onclick="assignTaskToPersona('${t.id}','${p.id}')">Assign to ${esc(p.name)}</button><button class="btn sm danger" onclick="deleteTask('${t.id}')">Delete</button></div></div>`).join("")}</div>`:""}
+    <hr><h3>${editing?"Edit content slot":"Add a content slot"}</h3>
+    <div class="autogrid"><div><label>Slot name</label><input id="asName" maxlength="256" value="${esc(editing?.name||"")}" placeholder="Monday product tip"></div><div><label>Destination</label><select id="asTarget"><option value="" ${!editing?.account_id&&!missingTarget?"selected":""}>AliaSpaces native feed</option>${missingTarget?`<option value="__missing__" selected>${esc(autoTargetName(null,editing.destination))} · account missing; choose a destination</option>`:""}${assigned.map(a=>`<option value="${a.id}" ${editing?.account_id===a.id?"selected":""}>${esc(autoTargetName(a.id))} · ${esc(autoTargetReadiness(a).label)}</option>`).join("")}</select></div>
+      <div><label>Job</label><select id="asType">${Object.keys(TASK_TYPES).map(k=>`<option value="${k}" ${editing?.task_type===k?"selected":""}>${esc(k)}</option>`).join("")}</select></div><div><label>Content format</label><select id="asKind">${["post","reel","article","image","newsletter","promo"].map(k=>`<option ${editing?.content_kind===k?"selected":""}>${k}</option>`).join("")}</select></div>
+      <div><label>Repeat</label><select id="asCad" onchange="updateScheduleCadenceUi(this)"><option value="manual" ${cad==="manual"?"selected":""}>Manual / on demand</option><option value="daily" ${cad==="daily"?"selected":""}>Every day</option><option value="weekly" ${cad==="weekly"?"selected":""}>Every week</option></select></div><div id="asDayWrap" style="display:${cad==="weekly"?"":"none"}"><label>Post day</label><select id="asDay">${AUTO_DAYS.map((d,i)=>`<option value="${i}" ${day===i?"selected":""}>${d}</option>`).join("")}</select></div>
+      <div id="asTimeWrap" style="display:${cad==="manual"?"none":""}"><label>Post at</label><input id="asTime" type="time" value="${esc((editing?.schedule_time||"09:00").slice(0,5))}"></div><div><label>Time zone</label><input id="asTz" value="${esc(tz)}" placeholder="America/Anchorage"></div>
+      <div id="asLeadWrap" style="display:${cad==="manual"?"none":""}"><label>Prepare ahead</label><select id="asLead">${[[0,"At post time"],[120,"2 hours"],[1440,"1 day"],[2880,"2 days"],[10080,"1 week"]].map(([v,l])=>`<option value="${v}" ${lead===v?"selected":""}>${l}</option>`).join("")}</select></div><div><label>AI model</label><select id="asBackend"><option value="">Persona default, then first ready</option>${backendOptions(editing?.backend_id||"",cad!=="manual")}</select></div>
+      <div class="autofull"><label>Extra instructions for this slot</label><textarea id="asInstr" maxlength="4000" placeholder="Specific angle, length, asset, offer, or source">${esc(editing?.instructions||"")}</textarea></div>
+      <div class="autofull"><div class="autocallout"><b>Owner approval is always required.</b> L3 can publish an exact approved native draft when its time arrives; generation never approves itself.</div><label style="display:flex;align-items:center;gap:8px;color:var(--text);font-weight:500"><input type="checkbox" id="asActive" ${editing?.active===false?"":"checked"}> Slot active</label></div></div>
+    <div class="autoformactions"><button class="btn" onclick="saveAutomationTask()">${editing?"Save changes":"Add schedule"}</button>${editing?'<button class="btn sec" onclick="autoTaskEditId=\'\';renderStudio()">Cancel</button>':""}</div>
+    ${binding?.autonomy_level<1?'<div class="autocallout warn">Set this persona to L1 or higher in Direction before scheduled generation can run.</div>':""}`;
+}
+
+function automationQueueHtml(p,binding){
+  const drafts=myDrafts.filter(d=>d.persona_id===p.id).sort((a,b)=>new Date(a.publish_at||a.created_at)-new Date(b.publish_at||b.created_at)),unassigned=myDrafts.filter(d=>!d.persona_id),bindingActive=binding?.status==="active"&&["self_attested","verified"].includes(binding?.claim_state),level=Number(binding?.autonomy_level||0);
+  return `<div class="autocallout"><b>Review is content-bound.</b> Approval locks the persona, exact text, media, destination, platform, and time. Editing any locked field clears approval. Published history cannot be edited or requeued.</div><div class="queuelist">${drafts.map(d=>{
+    const a=myAccounts.find(x=>x.id===d.account_id),native=autoIsNativeDestination(d.account_id,d.platform),target=native?autoDestination(d.persona_id,null):d.account_id?autoDestination(d.persona_id,d.account_id):null,mode=target?.mode||(native?"approval":"manual"),approval=d.approval_state||"draft",pub=d.publish_state||"not_queued",terminal=pub==="publishing"||pub==="published",levelReady=mode==="auto"?level>=3:level>=2,canApprove=!terminal&&bindingActive&&levelReady&&mode!=="manual"&&approval!=="approved"&&approval!=="rejected",canQueueApproved=!terminal&&bindingActive&&level>=3&&native&&mode==="auto"&&approval==="approved"&&pub!=="queued",accountUrl=safeHttpUrl(a?.url);
+    return `<div class="queueitem"><div class="queuetop"><div><b>${esc(d.title||(d.body||"").slice(0,60)||"Untitled draft")}</b><div class="muted">${esc(autoTargetName(d.account_id,d.platform))} · ${esc(d.content_kind||"post")} · ${d.publish_at?autoTaskDate(d.publish_at,autoTz()):"no post time"}</div></div><div><span class="pill ${approval==="approved"?"connected":approval==="pending"?"verified":approval==="rejected"?"attention":"recorded"}">${esc(approval)}</span> <span class="pill ${pub==="published"?"connected":pub==="failed"||pub==="blocked"?"attention":"recorded"}">${esc(pub.replace(/_/g," "))}</span></div></div><div class="queuebody" onclick="this.classList.toggle('open')">${esc(d.body||"")}</div>${d.publish_error?`<div class="muted" style="color:var(--red);margin-top:5px">${esc(d.publish_error)}</div>`:""}${!bindingActive?'<div class="muted" style="margin-top:5px">Activate this persona agent in Direction before approving or publishing.</div>':level<2?'<div class="muted" style="margin-top:5px">Set this persona to L2 or L3 before approval.</div>':mode==="auto"&&level<3?'<div class="muted" style="margin-top:5px">This auto target needs L3 before it can be queued.</div>':""}${!native&&!a?'<div class="muted" style="margin-top:5px">The original account link is missing. Choose a current destination when editing, or copy the text and mark it manually posted.</div>':""}${native&&mode==="manual"?'<div class="muted" style="margin-top:5px">This native target is copy-only until you choose and save Approval or L3 Auto in Targets.</div>':""}${terminal?'<div class="muted" style="margin-top:5px">Published history is locked. Copy the text to start a new draft.</div>':""}<div class="queueactions">${terminal?"":`<button class="btn sm sec" onclick="openDraftEditor('${d.id}')">Edit</button>`}<button class="btn sm sec" onclick="copyDraft('${d.id}')">Copy text</button>${canApprove?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">${native?"Approve & schedule":"Approve for manual post"}</button>`:""}${canQueueApproved?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">Queue approved draft for L3</button>`:""}${!terminal&&approval!=="rejected"?`<button class="btn sm danger" onclick="rejectAutomationDraft('${d.id}')">Skip</button>`:""}${!terminal&&bindingActive&&level>=2&&native&&mode==="approval"&&approval==="approved"?`<button class="btn sm" onclick="publishAutomationDraft('${d.id}')">Publish now</button>`:""}${!terminal&&!native?`<button class="btn sm sec" onclick="markManualDraftPosted('${d.id}')">Mark manually posted</button>`:""}${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}${terminal?"":`<button class="btn sm danger" onclick="deleteDraft('${d.id}')">Delete</button>`}</div></div>`;
+  }).join("")||'<p class="muted">No drafts for this persona yet.</p>'}</div>
+    ${unassigned.length?`<hr><h3>Unassigned drafts</h3><div class="autocallout warn">Choose where each older or HQ-created draft belongs before approval.</div><div class="queuelist">${unassigned.map(d=>{const terminal=["publishing","published"].includes(d.publish_state);return `<div class="queueitem"><div class="queuetop"><div><b>${esc(d.title||(d.body||"").slice(0,60)||"Untitled draft")}</b><div class="muted">${esc(d.content_kind||"post")} · created ${autoDate(d.created_at)}</div></div><span class="pill attention">needs persona</span></div><div class="queuebody" onclick="this.classList.toggle('open')">${esc(d.body||"")}</div>${terminal?'<div class="muted" style="margin-top:5px">Published history is locked, but you can copy its text.</div>':""}<div class="queueactions">${terminal?"":`<button class="btn sm" onclick="assignDraftToPersona('${d.id}','${p.id}')">Assign to ${esc(p.name)}</button>`}<button class="btn sm sec" onclick="copyDraft('${d.id}')">Copy text</button>${terminal?"":`<button class="btn sm danger" onclick="deleteDraft('${d.id}')">Delete</button>`}</div></div>`}).join("")}</div>`:""}
+    <hr><h3>Add a manual draft</h3><div class="autogrid"><div><label>Destination</label><select id="aqTarget"><option value="">AliaSpaces native feed</option>${autoAssignedAccounts(p.id).map(a=>`<option value="${a.id}">${esc(autoTargetName(a.id))}</option>`).join("")}</select></div><div><label>Format</label><select id="aqKind">${["post","reel","article","image","newsletter","promo"].map(k=>`<option>${k}</option>`).join("")}</select></div><div><label>Title</label><input id="aqTitle"></div><div><label>Planned time</label><input id="aqAt" type="datetime-local"></div><div class="autofull"><label>Text</label><textarea id="aqBody"></textarea></div><div><label>Tags</label><input id="aqTags"></div><div><label>Media URL</label><input id="aqMedia" type="url"></div></div><button class="btn sm" style="margin-top:8px" onclick="createAutomationDraft()">Save manual draft</button>`;
+}
+
+function automationChatsHtml(p,binding){
+  if(!fanInboxReady)return '<div class="autocallout warn">Fan inbox setup is not available yet.</div>';
+  const sessions=myFanSessions.filter(s=>s.persona_id===p.id);
+  return `<div class="autocallout"><b>AI disclosure cannot be removed.</b> Fan chat starts off, uses session-scoped memory, keeps an owner-visible transcript, and escalates commercial asks, disputes, self-harm signals, or never-do topics.</div><div class="faninbox">${sessions.map(s=>{const ms=myFanMessages.filter(m=>m.session_id===s.id),last=ms.slice(-1)[0];return `<div class="fanthread"><div class="targettop"><b>${s.escalated?"⚠ Escalated conversation":"Fan conversation"}</b><span class="pill ${s.inbox_state==="unread"?"attention":"recorded"}">${esc(s.inbox_state)}</span></div><p class="muted">${autoDate(s.last_seen_at)}${s.escalation_reason?" · "+esc(s.escalation_reason):""}</p><p style="margin-top:5px">${esc(last?.content||"Open transcript to load messages")}</p><div class="targetactions"><button class="btn sm sec" onclick="openFanTranscript('${s.id}')">View transcript</button><button class="btn sm" onclick="setFanThreadState('${s.id}','read')">Mark read</button><button class="btn sm sec" onclick="setFanThreadState('${s.id}','resolved')">Resolve</button></div></div>`}).join("")||'<p class="muted">No fan conversations yet.</p>'}</div>${binding?.fan_chat_enabled?'<div class="statusline"><span class="statusdot ok"></span><span>Fan chat is enabled for this persona.</span></div>':'<div class="statusline"><span class="statusdot stop"></span><span>Fan chat is off. Enable it in Direction when the model and caps are ready.</span></div>'}`;
+}
+
+function automationAuditHtml(p){
+  const rows=myAgentActions.filter(a=>!a.persona_id||a.persona_id===p.id);
+  return `<div class="autocallout">This append-only timeline records agent control changes, generation, approval, publishing, failures, and safety events.</div><div class="auditlist">${rows.map(a=>`<div class="audititem"><b>${esc((a.action_type||"event").replace(/\./g," · "))}</b><time>${autoDate(a.created_at)}</time>${a.outcome&&a.outcome!=="ok"?` <span class="pill attention">${esc(a.outcome)}</span>`:""}${a.detail&&Object.keys(a.detail).length?`<div class="muted">${esc(Object.entries(a.detail).slice(0,4).map(([k,v])=>`${k}: ${typeof v==="object"?JSON.stringify(v):v}`).join(" · "))}</div>`:""}</div>`).join("")||'<p class="muted">No agent actions in the loaded history for this persona.</p>'}</div>${myAgentActions.length<myAgentActionTotal?`<div style="text-align:center;margin-top:12px"><button class="btn sec" onclick="loadMoreAgentActions()" ${agentActionLoading?"disabled":""}>${agentActionLoading?"Loading…":"Load older audit history"}</button></div>`:""}`;
+}
+
+async function loadMoreAgentActions(){if(agentActionLoading||myAgentActions.length>=myAgentActionTotal||!session)return;const uid=session.user.id,last=myAgentActions[myAgentActions.length-1];agentActionLoading=true;renderStudio();let query=sb.from("agent_actions").select("*").eq("owner",uid).order("created_at",{ascending:false}).order("id",{ascending:false});query=logicAndFilter(query,[descendingCursorGroup(last?.created_at,last?.id)]).limit(100);const result=await query;if(session?.user?.id!==uid)return;agentActionLoading=false;if(result.error){toast("Older audit history could not be loaded: "+result.error.message);renderStudio();return}const seen=new Set(myAgentActions.map(a=>a.id)),raw=result.data||[],rows=raw.filter(a=>!seen.has(a.id));myAgentActions.push(...rows);if(raw.length<100)myAgentActionTotal=myAgentActions.length;renderStudio()}
+
+async function saveAutomationDirection(){
+  const p=autoPersona();if(!p)return;const existing=autoPlan(p.id)||{};
+  if(!inputsWithinUtf8Limits([["apGoal",768,"Primary outcome",existing.primary_goal],["apMetric",512,"Success metric",existing.success_metric],["apAudience",768,"Audience focus",existing.audience_focus],["apPillars",1024,"Content pillars",existing.content_pillars],["apCampaign",768,"Current campaign",existing.current_campaign],["apCta",768,"Calls to action",existing.calls_to_action],["apOffers",1536,"Offers and links",existing.offers_and_links],["apDisclosure",512,"Affiliate disclosure",existing.affiliate_disclosure],["apSources",1536,"Sources and idea inbox",existing.source_notes],["apPlatform",1024,"Platform guidance",existing.platform_guidance]]))return;
+  const row={owner:session.user.id,persona_id:p.id,primary_goal:val("apGoal"),success_metric:val("apMetric"),audience_focus:val("apAudience"),content_pillars:val("apPillars"),current_campaign:val("apCampaign"),calls_to_action:val("apCta"),offers_and_links:val("apOffers"),affiliate_disclosure:val("apDisclosure"),source_notes:val("apSources"),platform_guidance:val("apPlatform")};
+  const{error}=await sb.from("persona_content_plans").upsert(row,{onConflict:"persona_id"});if(error){toast(error.message);return}await loadMine();autoTab="direction";renderStudio();toast("Direction saved");
+}
+async function setAgentAutonomy(level){
+  const p=autoPersona(),b=autoBinding(p.id);if(!b)return;
+  if(level===3&&!confirm("Enable L3 for this persona? External posting remains locked. Native auto mode will publish only exact drafts you approved, using the separate target switch and limits."))return;
+  const{error}=await sb.from("agent_bindings").update({autonomy_level:level}).eq("id",b.id);if(error){toast(error.message);return}await loadMine();autoTab="direction";renderStudio();toast(`Autonomy set to L${level}`);
+}
+async function saveAgentSafety(){
+  const p=autoPersona(),b=autoBinding(p.id);if(!b)return;const fanCap=Number(val("abFanCap")),fanEnabled=!!document.getElementById("abFan")?.checked,personaBackend=myBackends.find(x=>x.id===p.ai_backend),fanBackend=backendAutomationReady(personaBackend,"fan")?personaBackend:readyAutomationBackends("fan")[0];
+  if(!Number.isInteger(fanCap)||fanCap<1||fanCap>500){toast("Fan-chat cap must be a whole number from 1 to 500");return}
+  if(fanEnabled&&!fanBackend){toast("Link a ready hosted AI model before enabling fan chat");return}
+  if(fanEnabled&&p.ai_backend!==fanBackend.id){if(!confirm(`Use ${fanBackend.name} as this persona's default model for fan chat?`))return;const{error:modelError}=await sb.from("personas").update({ai_backend:fanBackend.id}).eq("id",p.id);if(modelError){toast(modelError.message);return}}
+  const{error}=await sb.from("agent_bindings").update({status:val("abStatus"),fan_chat_enabled:fanEnabled,fan_daily_message_limit:fanCap}).eq("id",b.id);if(error){toast(error.message);return}await loadMine();autoTab="direction";renderStudio();toast("Agent controls saved");
+}
+function validTimezone(tz){try{Intl.DateTimeFormat(undefined,{timeZone:tz}).format();return true}catch(e){return false}}
+async function saveOwnerAutomationSettings(){
+  const timezone=val("aoTz"),daily_draft_limit=Number(val("aoDraftCap")),quiet_hours_start=val("aoQuietStart")||null,quiet_hours_end=val("aoQuietEnd")||null;if(!validTimezone(timezone)){toast("Enter a valid time zone such as America/Anchorage");return}
+  if(!Number.isInteger(daily_draft_limit)||daily_draft_limit<1||daily_draft_limit>100){toast("Draft cap must be a whole number from 1 to 100");return}
+  if((quiet_hours_start&&!quiet_hours_end)||(!quiet_hours_start&&quiet_hours_end)){toast("Set both quiet-hour times, or leave both blank");return}
+  const row={owner:session.user.id,default_timezone:timezone,daily_draft_limit,quiet_hours_start,quiet_hours_end};const{error}=await sb.from("agent_owner_settings").upsert(row,{onConflict:"owner"});if(error){toast(error.message);return}await loadMine();renderStudio();toast("Owner limits saved");
+}
+async function toggleGlobalAutomation(){
+  const paused=!!myAgentSettings?.automation_paused;if(!paused&&!confirm("Pause every persona agent, scheduled draft, publish queue, and new fan-chat response? You can resume at any time."))return;
+  const reason=paused?"":(prompt("Optional reason for the pause:")||"");const row={owner:session.user.id,automation_paused:!paused,pause_reason:reason,paused_at:paused?null:new Date().toISOString(),default_timezone:autoTz(),daily_draft_limit:myAgentSettings?.daily_draft_limit||12};
+  const{error}=await sb.from("agent_owner_settings").upsert(row,{onConflict:"owner"});if(error){toast(error.message);return}await loadMine();renderStudio();toast(paused?"All agents resumed":"All agents paused");
+}
+async function saveAutomationDestination(accountId){
+  const p=autoPersona(),b=autoBinding(p.id);if(!b)return;const key=accountId||"native",mode=val("destMode_"+key),daily_publish_limit=Number(val("destCap_"+key)),existing=autoDestination(p.id,accountId||null),account=accountId?myAccounts.find(a=>a.id===accountId):null;
+  if(!Number.isInteger(daily_publish_limit)||daily_publish_limit<1||daily_publish_limit>100){toast("Daily post cap must be a whole number from 1 to 100");return}
+  if(mode==="auto"&&(account||b.autonomy_level<3)){toast(account?"External autopost stays locked until a verified claim and official write connector are live.":"Set this persona to L3 before enabling bounded native autopost.");return}
+  const row={owner:session.user.id,binding_id:b.id,persona_id:p.id,account_id:accountId||null,destination:account?.provider||"aliaspaces",mode,daily_publish_limit,enabled:true};
+  const q=existing?sb.from("agent_destinations").update(row).eq("id",existing.id):sb.from("agent_destinations").insert(row);const{error}=await q;if(error){toast(error.message);return}await loadMine();autoTab="targets";renderStudio();toast("Target policy saved");
+}
+function editAutomationTask(id){autoTaskEditId=id;autoTab="schedule";renderStudio();setTimeout(()=>document.getElementById("asName")?.scrollIntoView({behavior:"smooth",block:"center"}),0)}
+async function saveAutomationTask(){
+  const p=autoPersona(),b=autoBinding(p.id),target=val("asTarget"),account=target&&target!=="__missing__"?myAccounts.find(a=>a.id===target):null,cadence=val("asCad"),timezone=val("asTz"),name=val("asName");if(!name){toast("Give this content slot a name");return}if(!validTimezone(timezone)){toast("Enter a valid time zone such as America/Anchorage");return}if(target&&!account){toast("Choose a current destination assigned to this persona");return}const targetPolicy=autoDestination(p.id,target||null);if(!targetPolicy||!targetPolicy.enabled){autoTab="targets";renderStudio();toast("Save this destination in Targets before adding its schedule");return}
+  const existing=autoTaskEditId?myTasks.find(t=>t.id===autoTaskEditId)||{}:{};if(!inputsWithinUtf8Limits([["asName",256,"Slot name",...(autoTaskEditId?[existing.name]:[])],["asInstr",4096,"Extra instructions",...(autoTaskEditId?[existing.instructions]:[])]]))return;
+  const scheduleTime=val("asTime"),scheduleDay=Number(val("asDay")),leadMinutes=Number(val("asLead"));if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(scheduleTime)){toast("Choose a valid posting time");return}if(cadence==="weekly"&&(!Number.isInteger(scheduleDay)||scheduleDay<0||scheduleDay>6)){toast("Choose a valid posting day");return}if(![0,120,1440,2880,10080].includes(leadMinutes)){toast("Choose a valid preparation window");return}
+  let backendId=val("asBackend")||null;const active=!!document.getElementById("asActive")?.checked,manual=cadence==="manual",personaBackend=myBackends.find(x=>x.id===p.ai_backend),ready=manual?backendAgentReady:backendAutomationReady,candidates=manual?readyAgentBackends():readyAutomationBackends();if(active&&!backendId&&!ready(personaBackend))backendId=candidates[0]?.id||null;const selectedBackend=backendId?myBackends.find(x=>x.id===backendId):personaBackend;if(active&&!ready(selectedBackend)){toast(manual?"Choose a ready hosted text model for this on-demand slot.":"Choose a hosted automation model. Custom hosts remain owner-chat-only until the server operator allowlists them.");return}
+  const row={persona_id:p.id,backend_id:backendId,name,task_type:val("asType"),instructions:val("asInstr"),cadence,active,destination:account?.provider||"aliaspaces",account_id:target||null,content_kind:val("asKind"),schedule_day:cadence==="weekly"?scheduleDay:null,schedule_time:scheduleTime,timezone,lead_minutes:leadMinutes,approval_required:true};
+  const q=autoTaskEditId?sb.from("ai_tasks").update(row).eq("id",autoTaskEditId):sb.from("ai_tasks").insert({...row,owner:session.user.id});const{error}=await q;if(error){toast(error.message);return}autoTaskEditId="";await loadMine();autoTab="schedule";renderStudio();toast("Content schedule saved");
+}
+async function assignTaskToPersona(id,personaId){
+  const persona=myPersonas.find(p=>p.id===personaId);if(!persona)return;const{error}=await sb.from("ai_tasks").update({persona_id:personaId,active:false}).eq("id",id).eq("owner",session.user.id);if(error){toast(error.message);return}await loadMine();autoPersonaId=personaId;autoTab="schedule";renderStudio();toast(`Schedule assigned to ${persona.name} and kept paused for review`)
+}
+async function toggleAutomationTask(id,active){const task=myTasks.find(t=>t.id===id);if(!task)return;const persona=myPersonas.find(p=>p.id===task.persona_id),personaBackend=myBackends.find(b=>b.id===persona?.ai_backend),manual=task.cadence==="manual",ready=manual?backendAgentReady:backendAutomationReady,candidates=manual?readyAgentBackends():readyAutomationBackends();let backendId=task.backend_id||null;if(active&&!backendId&&!ready(personaBackend))backendId=candidates[0]?.id||null;const chosen=backendId?myBackends.find(b=>b.id===backendId):personaBackend;if(active&&!ready(chosen)){toast(manual?"Choose a ready hosted text model before resuming this on-demand slot":"Choose a hosted automation model before resuming this schedule");return}const{error}=await sb.from("ai_tasks").update({active,...(backendId&&!task.backend_id?{backend_id:backendId}:{})}).eq("id",id);if(error){toast(error.message);return}await loadMine();autoTab="schedule";renderStudio();toast(active?"Schedule resumed":"Schedule paused")}
+async function createAutomationDraft(){
+  const p=autoPersona(),target=val("aqTarget"),a=target?myAccounts.find(x=>x.id===target):null,body=val("aqBody"),title=val("aqTitle"),media_url=val("aqMedia");if(!body&&!title&&!media_url){toast("Add text, a title, or media first");return}const at=val("aqAt");
+  const publishAt=at?zonedInputToIso(at,autoTz()):null;if(at&&!publishAt){toast(`That wall-clock time does not exist in ${autoTz()} because of a daylight-saving change`);return}const row={owner:session.user.id,persona_id:p.id,account_id:target||null,platform:a?.provider||"aliaspaces",content_kind:val("aqKind"),title,body,tags:val("aqTags"),media_url,publish_at:publishAt,status:"idea"};
+  const{error}=await sb.from("drafts").insert(row);if(error){toast(error.message);return}await loadMine();autoTab="queue";renderStudio();toast("Draft saved");
+}
+async function assignDraftToPersona(id,personaId){
+  const persona=myPersonas.find(p=>p.id===personaId);if(!persona)return;const{error}=await sb.from("drafts").update({persona_id:personaId}).eq("id",id).eq("owner",session.user.id);if(error){toast(error.message);return}await loadMine();autoPersonaId=personaId;autoTab="queue";renderStudio();toast(`Draft assigned to ${persona.name}; review it before approval`)
+}
+function openDraftEditor(id){
+  const d=myDrafts.find(x=>x.id===id),p=autoPersona();if(!d)return;const assigned=autoAssignedAccounts(p.id),missingTarget=!autoIsNativeDestination(d.account_id,d.platform)&&!assigned.some(a=>a.id===d.account_id),zone=autoTz(),o=document.createElement("div");o.className="overlay";o.id="draftEditOv";o.innerHTML=`<div class="wizbox"><h2>Edit draft</h2><p class="muted">Changing content, destination, or time clears any prior approval.</p><label>Destination</label><select id="deTarget"><option value="" ${!d.account_id&&!missingTarget?"selected":""}>AliaSpaces native feed</option>${missingTarget?`<option value="__missing__" selected>${esc(autoTargetName(null,d.platform))} · account missing; choose a destination</option>`:""}${assigned.map(a=>`<option value="${a.id}" ${d.account_id===a.id?"selected":""}>${esc(autoTargetName(a.id))}</option>`).join("")}</select><div class="row"><div><label>Format</label><select id="deKind">${["post","reel","article","image","newsletter","promo"].map(k=>`<option ${d.content_kind===k?"selected":""}>${k}</option>`).join("")}</select></div><div><label>Post time · ${esc(zone)}</label><input id="deAt" type="datetime-local" value="${autoZonedInput(d.publish_at,zone)}"></div></div><label>Title</label><input id="deTitle" value="${esc(d.title||"")}"><label>Text</label><textarea id="deBody" style="min-height:170px">${esc(d.body||"")}</textarea><div class="row"><div><label>Tags</label><input id="deTags" value="${esc(d.tags||"")}"></div><div><label>Media URL</label><input id="deMedia" value="${esc(d.media_url||"")}"></div></div><div class="autoformactions"><button class="btn" onclick="saveDraftEditor('${d.id}')">Save draft</button><button class="btn sec" onclick="document.getElementById('draftEditOv').remove()">Cancel</button></div></div>`;document.body.appendChild(o);
+}
+async function saveDraftEditor(id){
+  const target=val("deTarget");if(target==="__missing__"){toast("Choose a current assigned account or the native feed");return}const a=target?myAccounts.find(x=>x.id===target):null,at=val("deAt"),publishAt=at?zonedInputToIso(at,autoTz()):null;if(at&&!publishAt){toast(`That wall-clock time does not exist in ${autoTz()} because of a daylight-saving change`);return}const row={account_id:target||null,platform:a?.provider||"aliaspaces",content_kind:val("deKind"),title:val("deTitle"),body:val("deBody"),tags:val("deTags"),media_url:val("deMedia"),publish_at:publishAt};const{error}=await sb.from("drafts").update(row).eq("id",id);if(error){toast(error.message);return}document.getElementById("draftEditOv")?.remove();await loadMine();autoTab="queue";renderStudio();toast("Draft saved; review approval state")
+}
+async function approveAutomationDraft(id){
+  const d=myDrafts.find(x=>x.id===id);if(!d)return;const external=!autoIsNativeDestination(d.account_id,d.platform),target=external?(d.account_id?autoDestination(d.persona_id,d.account_id):null):autoDestination(d.persona_id,null),nativeAuto=!external&&target?.mode==="auto";
+  const outcome=external?"It will remain in your Queue for manual posting on the external platform.":nativeAuto?"At L3 auto mode, the exact approved draft may publish on the next five-minute run.":"It will wait for you to press Publish now.";
+  if(!d.publish_at&&!confirm(`No future time is set. Approve this for now? ${outcome}`))return;const{error}=await sb.rpc("approve_agent_draft",{p_draft_id:id,p_publish_at:d.publish_at||new Date().toISOString()});if(error){toast(error.message);return}await loadMine();autoTab="queue";renderStudio();toast(external?"Approved for manual posting":nativeAuto?"Approved and scheduled":"Approved; press Publish now when ready")
+}
+async function rejectAutomationDraft(id){const{error}=await sb.rpc("reject_agent_draft",{p_draft_id:id});if(error){toast(error.message);return}await loadMine();autoTab="queue";renderStudio();toast("Draft skipped")}
+async function publishAutomationDraft(id){
+  const{data:{session:s}}=await sb.auth.getSession();if(!s){toast("Sign in again");return}try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/post-bridge",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},body:JSON.stringify({draftId:id})}),j=await r.json().catch(()=>({}));if(!r.ok){toast(j.error||j.message||"Publishing is not available for this target yet");await loadMine();autoTab="queue";renderStudio();return}await loadMine();autoTab="queue";renderStudio();toast("Published to the AliaSpaces feed")}catch(e){toast("Could not reach the publishing bridge: "+e.message)}
+}
+async function markManualDraftPosted(id){if(!confirm("Confirm that you posted this yourself on the external platform?"))return;const{error}=await sb.rpc("mark_manual_draft_posted",{p_draft_id:id});if(error){toast(error.message);return}await loadMine();autoTab="queue";renderStudio();toast("Marked as manually posted")}
+async function openFanTranscript(id){
+  const s=myFanSessions.find(x=>x.id===id);if(!s)return;toast("Loading the full conversation…");const result=await fetchAllPages((from,to)=>sb.from("fan_chat_messages").select("*",{count:"exact"}).eq("owner",session.user.id).eq("session_id",id).order("created_at",{ascending:true}).range(from,to));if(result.error){toast("Could not load this conversation: "+result.error.message);return}const ms=result.data||[],o=document.createElement("div");o.className="overlay";o.id="fanTranscriptOv";o.innerHTML=`<div class="wizbox"><h2>${s.escalated?"Escalated fan conversation":"Fan conversation"}</h2><p class="muted">${esc(s.escalation_reason||"AI disclosure was shown before the conversation.")}</p>${ms.map(m=>`<div class="cmsg ${m.role==="fan"?"u":"a"}">${esc(m.content)}</div>`).join("")||'<p class="muted">No messages.</p>'}<div class="autoformactions"><button class="btn danger" onclick="deleteFanConversation('${s.id}')">Delete conversation</button><button class="btn sec" onclick="document.getElementById('fanTranscriptOv').remove()">Close</button></div></div>`;document.body.appendChild(o);
+}
+async function setFanThreadState(id,state){const{error}=await sb.from("fan_chat_sessions").update({inbox_state:state}).eq("id",id);if(error){toast(error.message);return}await loadMine();autoTab="chats";renderStudio()}
+async function deleteFanConversation(id){if(!confirm("Delete this full fan conversation and transcript? This cannot be undone."))return;const{data,error}=await sb.rpc("delete_my_fan_chat_session",{p_session_id:id});if(error||data!==true){toast(error?.message||"Conversation could not be deleted");return}document.getElementById("fanTranscriptOv")?.remove();await loadMine();autoTab="chats";renderStudio();toast("Conversation deleted")}
+
 // ---------- studio ----------
 function renderStudio(){
   if(!session){renderSignin();return}
+  const automationHtml=automationStudioHtml();
   const reqHtml=pendingIn.length?`<div class="card"><h3>${ico("mail")}Friend requests (${pendingIn.length})</h3>
     ${pendingIn.map(r=>{const f=r.personas;const mine=myPersonas.find(m=>m.id===r.target);
-      return `<div class="t8pick"><img src="${esc(f?f.avatar_url:"")}" onerror="this.style.visibility='hidden'">
+      return `<div class="t8pick"><img src="${esc(safeHttpUrl(f?f.avatar_url:""))}" onerror="this.style.visibility='hidden'">
       <b>${esc(f?f.name:"?")}</b><span class="muted">wants to be friends with ${esc(mine?mine.name:"you")}</span>
       <span style="margin-left:auto"><button class="btn sm" onclick="acceptReq('${r.id}')">Accept</button>
       <button class="btn danger sm" onclick="declineReq('${r.id}')">✕</button></span></div>`}).join("")}</div>`:"";
@@ -820,9 +1207,9 @@ function renderStudio(){
     <button class="btn danger sm" onclick="removeBlock('${b.id}')">✕</button></span>`).join("")}
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
   const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
-    <p class="muted">Any OpenAI-compatible API: OpenRouter, xAI Grok, local Ollama. Assign models per-persona and per-task. Keys are stored under your account only — never visible to anyone else.</p>
-    ${myBackends.map(b=>`<div class="t8pick"><b>${esc(b.name)}</b><span class="muted">${esc(b.model)} · ${esc(b.base_url)}</span>
-      <button class="btn danger sm" style="margin-left:auto" onclick="deleteBackend('${b.id}')">✕</button></div>`).join("")||""}
+    <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
+    ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),builtIn=backendBuiltInAutomation(b),status=scheduleReady&&fanReady?"automation ready":scheduleReady?"schedule ready":fanReady?"fan-chat ready":backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${status}</span>${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
+      <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${!builtIn&&backendAgentReady(b)?`<button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','schedule')">${scheduleReady?"Unconfirm schedule host":"Confirm schedule host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','fan')">${fanReady?"Unconfirm fan host":"Confirm fan host"}</button>`:""}<button class="btn sec sm" onclick="editBackend('${b.id}')">Edit</button><button class="btn danger sm" onclick="deleteBackend('${b.id}')">✕</button></span></div>`}).join("")||""}
     <label style="margin-top:10px">Provider</label>
     <select id="nbProvider" onchange="onProviderPick()">${Object.entries(AI_PROVIDERS).map(([k,v],i)=>`<option value="${k}" ${i===0?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
     <div class="row" style="margin-top:6px">
@@ -836,48 +1223,6 @@ function renderStudio(){
     <div id="nbExtra"></div>
     <div id="nbOAuth" style="margin-top:6px"><button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span></div>
     <button class="btn sm" style="margin-top:10px" onclick="addBackend()">+ Save model</button></div>`;
-  const tkHtml=`<div class="card"><h3>${ico("clock")}Scheduled tasks (persona + model + job)</h3>
-    ${myTasks.map(t=>{const p=myPersonas.find(x=>x.id===t.persona_id);const b=myBackends.find(x=>x.id===t.backend_id);
-      return `<div class="t8pick"><b>${esc(t.name)}</b>
-      <span class="muted">${p?""+esc(p.name):"(no persona)"} · ${esc(t.task_type)} · ${esc(t.cadence)} · ${b?""+esc(b.name):"default"}${t.last_run?" · last run "+new Date(t.last_run).toLocaleDateString():""}</span>
-      <span style="margin-left:auto"><button class="btn sm" onclick="runTask('${t.id}')">▶ Run</button>
-      <button class="btn danger sm" onclick="deleteTask('${t.id}')">✕</button></span></div>`}).join("")||'<p class="muted">No tasks yet.</p>'}
-    <hr>
-    <div class="row">
-      <div><label>Task name</label><input id="tkName" placeholder="Morning news scan — Sophia"></div>
-      <div><label>Persona</label><select id="tkPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
-      <div><label>Job type</label><select id="tkType">${Object.keys(TASK_TYPES).map(k=>`<option value="${k}">${k}</option>`).join("")}</select></div>
-    </div>
-    <div class="row">
-      <div><label>AI model</label><select id="tkBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("")}</select></div>
-      <div><label>Cadence</label><select id="tkCad"><option>manual</option><option>daily</option><option>weekly</option></select></div>
-    </div>
-    <label>Extra instructions (optional)</label><textarea id="tkInstr" placeholder="e.g. focus on budget laptops this month"></textarea>
-    <button class="btn sm" style="margin-top:8px" onclick="createTask()">+ Save task</button>
-    <p class="muted" style="margin-top:6px">▶ Run works now (opens the task's chat with the right persona + model). Daily/weekly auto-runs are phase 2 — they need a small server function; for now hit ▶ or ask Claude to schedule it.</p></div>`;
-  const stNext={idea:"ready",ready:"posted",posted:"idea"};
-  const drHtml=`<div class="card"><h3>${ico("pen")}Content drafts (write here, post on your platforms)</h3>
-    ${["idea","ready","posted"].map(st=>{
-      const list=myDrafts.filter(d=>d.status===st);
-      return `<label style="margin-top:10px;text-transform:capitalize">${st} (${list.length})</label>`+
-        (list.map(d=>{const p=myPersonas.find(x=>x.id===d.persona_id);
-        return `<div class="t8pick"><div style="min-width:0"><b>${esc(d.title||(d.body||"").slice(0,50)||"untitled")}</b>
-          <span class="muted">${p?esc(p.name)+" · ":""}${esc((PLATS[d.platform]||{}).name||d.platform||"any platform")}</span><br>
-          <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:480px">${esc((d.body||"").slice(0,120))}</span></div>
-          <span style="margin-left:auto;display:flex;gap:4px;white-space:nowrap">
-          <button class="btn sec sm" onclick="copyDraft('${d.id}')">Copy</button>
-          <button class="btn sm" onclick="advanceDraft('${d.id}','${stNext[st]}')">→ ${stNext[st]}</button>
-          <button class="btn danger sm" onclick="deleteDraft('${d.id}')">✕</button></span></div>`}).join("")||'<p class="muted">—</p>')
-    }).join("")}
-    <hr>
-    <div class="row">
-      <div><label>Persona</label><select id="ndPersona"><option value="">(none)</option>${myPersonas.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
-      <div><label>Platform it's for</label><select id="ndPlat"><option value="">(any)</option>${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select></div>
-      <div><label>Title</label><input id="ndTitle"></div>
-    </div>
-    <label>Text</label><textarea id="ndBody"></textarea>
-    <button class="btn sm" style="margin-top:8px" onclick="createDraftQuick()">+ Save draft</button>
-    <p class="muted" style="margin-top:6px">Drafts are private to you. Write or generate them here (persona chats and task runs have a "Save draft" button), then Copy and post on the platform itself. Idea → ready → posted.</p></div>`;
   app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h3 class="secthead" style="margin:0">Matrix</h3>
     <div style="display:flex;gap:8px">
@@ -885,17 +1230,16 @@ function renderStudio(){
       <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
   ${reqHtml}
   <div class="pgrid">${myPersonas.map(p=>`
-    <div class="pcard" style="--pc:${esc(p.theme)}">
-      <div class="ph" style="${p.banner_url?`background-image:url('${esc(p.banner_url)}')`:""}"></div>
-      <div class="pb"><div class="av" style="${p.avatar_url?`background-image:url('${esc(p.avatar_url)}')`:""}"></div>
+    <div class="pcard" style="--pc:${safeTheme(p.theme)}">
+      <div class="ph" style="${safeBgStyle(p.banner_url)}"></div>
+      <div class="pb"><div class="av" style="${safeBgStyle(p.avatar_url)}"></div>
       <b>${esc(p.name)}</b><span class="muted">@${esc(p.handle)} · ${esc(p.visibility)}</span>
       <div style="margin-top:8px"><button class="btn sm" onclick="go('p/${esc(p.handle)}')">View</button>
       <button class="btn sec sm" onclick="go('edit/${p.id}')">Edit</button>
       <button class="btn sec sm" onclick="openPersonaChat('${p.id}')">Chat</button></div></div>
     </div>`).join("")||'<div class="empty">No personas yet — create your first!</div>'}</div>
+  ${automationHtml}
   ${beHtml}
-  ${tkHtml}
-  ${drHtml}
   ${blockHtml}
   <div class="card"><h3>${ico("node")}Apps &amp; extensions</h3>
     <div class="t8pick"><div><b>Personas — desktop companion</b><br>
@@ -928,7 +1272,7 @@ function openPromo(pid){
     <h2>Promote this page</h2>
     <p class="muted">Pick an ad post, copy it (or share straight to a platform), and post it from your linked accounts.</p>
     ${texts.map((t,i)=>`<div class="t8pick" style="align-items:flex-start"><span style="font-size:13px;white-space:pre-wrap">${esc(t)}</span>
-      <button class="btn sm" style="margin-left:auto;white-space:nowrap" onclick='copyText(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Copy</button></div>`).join("")}
+      <button class="btn sm" data-promo-copy="${i}" style="margin-left:auto;white-space:nowrap">Copy</button></div>`).join("")}
     <label>Share directly</label>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <a class="chip" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(texts[0])}">X / Twitter</a>
@@ -943,37 +1287,37 @@ function openPromo(pid){
     <div style="margin-top:14px;text-align:right"><button class="btn sec" onclick="document.getElementById('promoOv').remove()">Close</button></div>
   </div>`;
   document.body.appendChild(o);
+  o.querySelectorAll("[data-promo-copy]").forEach(button=>button.addEventListener("click",()=>copyText(texts[Number(button.dataset.promoCopy)]||"")));
 }
 // ----- content drafts (for external platforms) -----
 function copyDraft(id){const d=myDrafts.find(x=>x.id===id);if(d)copyText((d.title?d.title+"\n\n":"")+(d.body||""))}
-async function createDraftQuick(){
-  const body=document.getElementById("ndBody").value.trim();
-  if(!body){toast("Write something first");return}
-  const{error}=await sb.from("drafts").insert({owner:session.user.id,
-    persona_id:document.getElementById("ndPersona").value||null,
-    platform:document.getElementById("ndPlat").value,
-    title:document.getElementById("ndTitle").value.trim(),body});
-  if(error){toast(error.message);return}
-  await loadMine();renderStudio();toast("Draft saved");
-}
-async function advanceDraft(id,st){
-  await sb.from("drafts").update({status:st}).eq("id",id);
-  await loadMine();renderStudio();
-}
 async function deleteDraft(id){
   if(!confirm("Delete this draft?"))return;
-  await sb.from("drafts").delete().eq("id",id);
+  const result=automationReady?await sb.rpc("delete_my_draft",{p_draft_id:id}):await sb.from("drafts").delete().eq("id",id);
+  if(result.error){toast(result.error.message);return}
   await loadMine();renderStudio();
+}
+async function chooseChatDraftPersona(){
+  if(!myPersonas.length){toast("Create a persona before saving this draft");return null}
+  if(myPersonas.length===1)return myPersonas[0].id;
+  return await new Promise(resolve=>{
+    const o=document.createElement("div");o.className="overlay";o.id="chatDraftPersonaOv";
+    o.innerHTML=`<div class="wizbox"><h2>Choose a persona</h2><p class="muted">This puts the assistant's latest answer in that persona's review Queue. Nothing will publish automatically.</p><label>Save draft for</label><select id="chatDraftPersonaPick">${myPersonas.map(p=>`<option value="${p.id}" ${p.id===autoPersona()?.id?"selected":""}>${esc(p.name)} (@${esc(p.handle)})</option>`).join("")}</select><div class="autoformactions"><button class="btn" data-save>Save to Queue</button><button class="btn sec" data-cancel>Cancel</button></div></div>`;
+    const finish=value=>{o.remove();resolve(value)};o.querySelector("[data-save]").addEventListener("click",()=>finish(o.querySelector("#chatDraftPersonaPick").value||null));o.querySelector("[data-cancel]").addEventListener("click",()=>finish(null));document.body.appendChild(o);
+  });
 }
 async function saveChatDraft(){
   if(!chatCtx)return;
-  const last=chatCtx.messages.filter(m=>m.role==="assistant").slice(-1)[0];
+  const context=chatCtx,uid=session?.user?.id,last=context.messages.filter(m=>m.role==="assistant").slice(-1)[0];
   if(!last){toast("Nothing to save yet");return}
-  const{error}=await sb.from("drafts").insert({owner:session.user.id,
-    persona_id:chatCtx.personaId||null,platform:"",
-    title:(chatCtx.title||"chat").slice(0,60),body:last.content});
+  const personaId=context.personaId||await chooseChatDraftPersona();if(!personaId)return;const persona=myPersonas.find(p=>p.id===personaId);
+  if(chatCtx!==context||session?.user?.id!==uid||context.ownerUid!==uid)return;
+  const{error}=await sb.from("drafts").insert({owner:uid,
+    persona_id:personaId,platform:"aliaspaces",content_kind:"post",status:"idea",
+    title:(context.title||"chat").slice(0,60),body:last.content});
+  if(chatCtx!==context||session?.user?.id!==uid)return;
   if(error){toast(error.message);return}
-  await loadMine();toast("Saved to drafts (Matrix)");
+  await loadMine();toast(`Saved to ${persona?.name||"the persona"}'s Queue`);
 }
 // ----- extensions catalog: manifest/release driven (git tags + GitHub Releases) -----
 async function loadExtensions(){
@@ -1007,34 +1351,36 @@ async function loadExtensions(){
     const name=(man&&man.name)||x.id;
     const desc=(man&&man.description)||"";
     const ver=(rel&&rel.version)||(man&&man.version)||"";
-    const openUrl=(man&&man.host&&man.host.url)||x.open||"";
+    const openUrl=safeHttpUrl((man&&man.host&&man.host.url)||x.open||"");
+    const downloadUrl=safeHttpUrl(rel&&rel.zipUrl);
     return `<div class="t8pick"><div><b>${esc(name)}</b> ${ver?`<span class="muted">v${esc(ver)}</span>`:""}<br>
       <span class="muted">${esc(desc)}</span></div>
       <span style="margin-left:auto;display:flex;gap:6px;white-space:nowrap">
-      ${rel&&rel.zipUrl?`<a class="btn sec sm" style="text-decoration:none" href="${esc(rel.zipUrl)}">Download</a>`:""}
-      ${openUrl?`<a class="btn sm" style="text-decoration:none" href="${esc(openUrl)}" target="_blank">Open</a>`:""}</span></div>`;
+      ${downloadUrl?`<a class="btn sec sm" style="text-decoration:none" href="${esc(downloadUrl)}">Download</a>`:""}
+      ${openUrl?`<a class="btn sm" style="text-decoration:none" href="${esc(openUrl)}" target="_blank" rel="noopener">Open</a>`:""}</span></div>`;
   }).join("")||'<p class="muted">No extensions registered.</p>';
 }
 
 // ---------- edit persona ----------
-let editLinks=[],editT8=[],editId=null;
 async function renderEdit(id,epoch=++renderEpoch){
   if(!session){renderSignin();return}
-  editId=id==="new"?null:id;
-  let p={theme:"#ff4fa3",visibility:"public"},notes={content:""};
-  if(editId){
-    p=myPersonas.find(x=>x.id===editId)||p;
-    const{data:ls}=await sb.from("persona_links").select("*").eq("persona_id",editId).order("sort");
-    editLinks=ls||[];
-    const{data:n}=await sb.from("private_notes").select("*").eq("persona_id",editId).maybeSingle();
-    if(n)notes=n;
-    if((p.top8||[]).length){const{data:t}=await sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8);
-      editT8=(p.top8||[]).map(tid=>(t||[]).find(x=>x.id===tid)).filter(Boolean)}else editT8=[];
-  }else{editLinks=[];editT8=[]}
-  if(epoch!==renderEpoch)return;
+  const ownerUid=session.user.id,targetId=id==="new"?null:id;let p={theme:"#ff4fa3",visibility:"public"},notes={content:""},links=[],top8=[];
+  if(targetId){
+    const owned=myPersonas.find(x=>x.id===targetId);if(!owned){if(epoch===renderEpoch&&session?.user?.id===ownerUid){toast("That persona is not available in this account");go("studio")}return}p=owned;
+    const[linksResult,noteResult,topResult]=await Promise.all([
+      sb.from("persona_links").select("*").eq("persona_id",targetId).order("sort"),
+      sb.from("private_notes").select("*").eq("persona_id",targetId).maybeSingle(),
+      (p.top8||[]).length?sb.from("personas").select("id,handle,name,avatar_url").in("id",p.top8):Promise.resolve({data:[],error:null})
+    ]);
+    if(epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
+    if(linksResult.error||noteResult.error||topResult.error){toast("This persona's complete edit data could not be loaded. Nothing was changed.");go("studio");return}
+    links=linksResult.data||[];notes=noteResult.data||notes;top8=(p.top8||[]).map(tid=>(topResult.data||[]).find(x=>x.id===tid)).filter(Boolean);
+  }
+  if(epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
+  editId=targetId;editLinks=links;editT8=top8;t8ResultRows=[];
   app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
     <div class="row">
-      <div><label>Name</label><input id="eName" value="${esc(p.name||"")}"></div>
+      <div><label>Name</label><input id="eName" maxlength="256" value="${esc(p.name||"")}"></div>
       <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}"></div>
     </div>
     <div class="row">
@@ -1044,10 +1390,10 @@ async function renderEdit(id,epoch=++renderEpoch){
         <option value="unlisted" ${p.visibility==="unlisted"?"selected":""}>Unlisted — only via direct link</option>
         <option value="private" ${p.visibility==="private"?"selected":""}>Private — accepted friends only</option>
       </select></div>
-      <div><label>Theme color</label><input id="eTheme" type="color" value="${esc(p.theme||"#ff4fa3")}" style="height:38px;padding:2px"></div>
+      <div><label>Theme color</label><input id="eTheme" type="color" value="${safeTheme(p.theme)}" style="height:38px;padding:2px"></div>
     </div>
-    <label>Tagline</label><input id="eTagline" value="${esc(p.tagline||"")}">
-    <label>Bio / About (shown on page)</label><textarea id="eBio">${esc(p.bio||"")}</textarea>
+    <label>Tagline</label><input id="eTagline" maxlength="512" value="${esc(p.tagline||"")}">
+    <label>Bio / About (shown on page)</label><textarea id="eBio" maxlength="2048">${esc(p.bio||"")}</textarea>
     <div id="advGate" class="card" style="margin-top:14px;${(p.purpose||p.voice||p.topics)?"display:none":""}">
       <h3>Flesh out this persona</h3>
       <p class="muted">Two quick questions — we'll suggest topics, a voice, and which accounts this kind of persona usually needs. You can adjust everything after.</p>
@@ -1063,7 +1409,7 @@ async function renderEdit(id,epoch=++renderEpoch){
     ${[["avatar_url","Profile image"],["banner_url","Banner (wide)"],["bg_url","Page background"],["feed_img_url","Feed header"]].map(([k,lbl])=>`
       <div class="looktile">
         <label style="margin-top:0">${lbl}</label>
-        <div class="lookprev" id="prev_${k}" style="${p[k]?`background-image:url('${esc(p[k])}')`:""}">${p[k]?"":'<span class="muted">no image</span>'}</div>
+        <div class="lookprev" id="prev_${k}" style="${safeBgStyle(p[k])}">${safeHttpUrl(p[k])?"":'<span class="muted">no image</span>'}</div>
         <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}">
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
           <button class="btn sec sm" onclick="uploadTo('e_${k}',false)">Choose file</button>
@@ -1083,16 +1429,16 @@ async function renderEdit(id,epoch=++renderEpoch){
     </div>
     <hr>
     <h3>Personality (drives AI content and your page's vibe)</h3>
-    <label>Purpose</label><textarea id="ePurpose">${esc(p.purpose||"")}</textarea>
-    <label>Personality / voice</label><textarea id="eVoice">${esc(p.voice||"")}</textarea>
+    <label>Purpose</label><textarea id="ePurpose" maxlength="1024">${esc(p.purpose||"")}</textarea>
+    <label>Personality / voice</label><textarea id="eVoice" maxlength="2048">${esc(p.voice||"")}</textarea>
     <div class="row">
-      <div><label>Core topics (comma-separated)</label><input id="eTopics" value="${esc(p.topics||"")}"></div>
-      <div><label>Audience</label><input id="eAudience" value="${esc(p.audience||"")}"></div>
+      <div><label>Core topics (comma-separated)</label><input id="eTopics" maxlength="1024" value="${esc(p.topics||"")}"></div>
+      <div><label>Audience</label><input id="eAudience" maxlength="1024" value="${esc(p.audience||"")}"></div>
     </div>
-    <label>Default hashtags</label><input id="eHashtags" value="${esc(p.hashtags||"")}">
-    <label>Never do (hard rules)</label><textarea id="eDont">${esc(p.dont||"")}</textarea>
+    <label>Default hashtags</label><input id="eHashtags" maxlength="1024" value="${esc(p.hashtags||"")}">
+    <label>Never do (hard rules)</label><textarea id="eDont" maxlength="3072">${esc(p.dont||"")}</textarea>
     <label>Dedicated AI model for this persona's chatbot &amp; tasks</label>
-    <select id="eBackend"><option value="">(first linked model)</option>${myBackends.map(b=>`<option value="${b.id}" ${p.ai_backend===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select>
+    <select id="eBackend"><option value="">(first ready hosted model)</option>${backendOptions(p.ai_backend||"")}</select>
     <hr>
     <h3>Social &amp; gaming links (public — shown on your page)</h3>
     <div id="eLinks"></div>
@@ -1136,17 +1482,17 @@ async function renderEdit(id,epoch=++renderEpoch){
       </div>
     </div></div>`;
   renderEditLinks();renderT8();
-  if(editId)loadEditAlbums();
+  if(editId)loadEditAlbums(editId,epoch,ownerUid);
 }
 // ----- album manager -----
-let editAlbums=[];
-async function loadEditAlbums(){
-  const{data:als}=await sb.from("albums").select("*").eq("persona_id",editId).order("sort");
-  editAlbums=als||[];
-  if(editAlbums.length){
-    const{data:items}=await sb.from("album_items").select("*").in("album_id",editAlbums.map(a=>a.id)).order("sort");
-    editAlbums.forEach(a=>a.items=(items||[]).filter(i=>i.album_id===a.id));
+async function loadEditAlbums(targetId=editId,epoch=renderEpoch,ownerUid=session?.user?.id){
+  const{data:als,error}=await sb.from("albums").select("*").eq("persona_id",targetId).order("sort");if(error||editId!==targetId||epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
+  const localAlbums=als||[];
+  if(localAlbums.length){
+    const{data:items,error:itemError}=await sb.from("album_items").select("*").in("album_id",localAlbums.map(a=>a.id)).order("sort");if(itemError||editId!==targetId||epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
+    localAlbums.forEach(a=>a.items=(items||[]).filter(i=>i.album_id===a.id));
   }
+  editAlbums=localAlbums;
   renderEditAlbums();
 }
 function renderEditAlbums(){
@@ -1156,7 +1502,7 @@ function renderEditAlbums(){
       <div style="display:flex;align-items:center;gap:8px"><b>${esc(a.title)}</b>
       ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}
       <button class="btn danger sm" style="margin-left:auto" onclick="deleteAlbum('${a.id}')">Delete album</button></div>
-      <div class="albgrid">${(a.items||[]).map(it=>`<span class="albitem"><img src="${esc(it.thumb_url)}" onerror="this.style.opacity=.2">
+      <div class="albgrid">${(a.items||[]).map(it=>`<span class="albitem"><img src="${esc(safeHttpUrl(it.thumb_url))}" onerror="this.style.opacity=.2">
         <span class="cap">${esc(it.caption)||"&nbsp;"}</span>
         <span class="goicon" style="cursor:pointer" onclick="deleteAlbumItem('${it.id}')">✕</span></span>`).join("")}</div>
       <div class="linkrow" style="margin-top:8px">
@@ -1203,24 +1549,26 @@ function addLink(){
 }
 function renderT8(){
   document.getElementById("eT8").innerHTML=editT8.map((t,i)=>`
-    <div class="t8pick"><img src="${esc(t.avatar_url||"")}" onerror="this.style.visibility='hidden'"><b>${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
+    <div class="t8pick"><img src="${esc(safeHttpUrl(t.avatar_url))}" onerror="this.style.visibility='hidden'"><b>${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
     <span style="margin-left:auto">
     <button class="btn sec sm" ${i===0?"disabled":""} onclick="[editT8[${i-1}],editT8[${i}]]=[editT8[${i}],editT8[${i-1}]];renderT8()">▲</button>
     <button class="btn danger sm" onclick="editT8.splice(${i},1);renderT8()">✕</button></span></div>`).join("")||'<p class="muted">Empty — search below to add up to 8.</p>';
 }
 async function t8Search(){
-  const q=document.getElementById("t8q").value.trim();if(!q)return;
+  const targetId=editId,epoch=renderEpoch,uid=session?.user?.id,q=normalizedFeedSearch(document.getElementById("t8q").value);if(!q)return;
   const{data}=await sb.from("personas").select("id,handle,name,avatar_url").or(`name.ilike.%${q}%,handle.ilike.%${q}%`).limit(8);
-  document.getElementById("t8results").innerHTML=(data||[]).filter(d=>!editT8.some(t=>t.id===d.id)&&d.id!==editId).map(d=>
-    `<span class="chip" onclick='t8Add(${JSON.stringify(d).replace(/'/g,"&#39;")})'>+ ${esc(d.name)} @${esc(d.handle)}</span>`).join("")||'<p class="muted">No matches.</p>';
+  if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
+  t8ResultRows=(data||[]).filter(d=>!editT8.some(t=>t.id===d.id)&&d.id!==editId);const results=document.getElementById("t8results");if(!results)return;
+  results.innerHTML=t8ResultRows.map(d=>`<button class="chip" type="button" data-t8-result="${esc(d.id)}">+ ${esc(d.name)} @${esc(d.handle)}</button>`).join("")||'<p class="muted">No matches.</p>';
+  results.querySelectorAll("[data-t8-result]").forEach(button=>button.addEventListener("click",()=>{const row=t8ResultRows.find(d=>d.id===button.dataset.t8Result);if(row)t8Add(row)}));
 }
 function t8Add(d){if(editT8.length>=8){toast("Top 8 is full!");return}editT8.push(d);document.getElementById("t8results").innerHTML="";renderT8()}
 async function savePersona(){
-  const handle=document.getElementById("eHandle").value.trim().toLowerCase();
+  const targetId=editId,epoch=renderEpoch,uid=session?.user?.id,accessToken=session?.access_token,handle=document.getElementById("eHandle").value.trim().toLowerCase();
   if(!/^[a-z0-9._]{3,30}$/.test(handle)){toast("Handle: 3-30 chars, lowercase letters/numbers/dots/underscores");return}
-  const{data:au}=await sb.auth.getUser();
-  if(!au||!au.user){toast("Your session expired — sign in again (your form is still here)");return}
-  const d={owner:au.user.id,handle,name:document.getElementById("eName").value.trim(),
+  if(!uid||!accessToken){toast("Your session expired — sign in again (your form is still here)");return}
+  const existing=targetId?myPersonas.find(p=>p.id===targetId)||{}:{};if(!inputsWithinUtf8Limits([["eName",256,"Name",...(targetId?[existing.name]:[])],["eTagline",512,"Tagline",...(targetId?[existing.tagline]:[])],["eBio",2048,"Bio",...(targetId?[existing.bio]:[])],["ePurpose",1024,"Purpose",...(targetId?[existing.purpose]:[])],["eVoice",2048,"Personality and voice",...(targetId?[existing.voice]:[])],["eTopics",1024,"Core topics",...(targetId?[existing.topics]:[])],["eAudience",1024,"Audience",...(targetId?[existing.audience]:[])],["eHashtags",1024,"Default hashtags",...(targetId?[existing.hashtags]:[])],["eDont",3072,"Never-do rules",...(targetId?[existing.dont]:[])]]))return;
+  const d={handle,name:document.getElementById("eName").value.trim(),
     nsfw:document.getElementById("eNsfw").value==="1",visibility:document.getElementById("eVis").value,
     tagline:document.getElementById("eTagline").value.trim(),
     theme:document.getElementById("eTheme").value,bio:document.getElementById("eBio").value,
@@ -1233,76 +1581,129 @@ async function savePersona(){
     dont:document.getElementById("eDont").value,ai_backend:document.getElementById("eBackend").value||null,top8:editT8.map(t=>t.id),
     linked:[...document.querySelectorAll("#eLinked input:checked")].map(i=>i.dataset.lp),
     modules:Object.fromEntries([...document.querySelectorAll("#eMods input")].map(i=>[i.dataset.k,i.checked]))};
+  const links=editLinks.map((l,i)=>({platform:l.platform,handle:l.handle,url:l.url,sort:i})),note=document.getElementById("eNotes").value.trim();
   if(!d.name){toast("Name required");return}
-  let pid=editId,err;
-  if(editId){({error:err}=await sb.from("personas").update(d).eq("id",editId))}
-  else{const{data,error}=await sb.from("personas").insert(d).select().single();err=error;if(data)pid=data.id}
-  if(err){toast(err.message.includes("duplicate")?"That handle is taken!":err.message);return}
-  await sb.from("persona_links").delete().eq("persona_id",pid);
-  if(editLinks.length)await sb.from("persona_links").insert(editLinks.map((l,i)=>({persona_id:pid,platform:l.platform,handle:l.handle,url:l.url,sort:i})));
-  await sb.from("private_notes").delete().eq("persona_id",pid);
-  const nc=document.getElementById("eNotes").value.trim();
-  if(nc)await sb.from("private_notes").insert({persona_id:pid,content:nc});
-  await loadMine();toast("Saved");go("p/"+handle);
+  const{error}=await fixedSessionClient(accessToken).rpc("save_persona_bundle",{p_persona_id:targetId,p_persona:d,p_links:links,p_note:note});
+  if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
+  if(error){toast(error.message.includes("duplicate")?"That handle is taken!":error.message);return}
+  await loadMine(uid,authLoadGeneration);if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;toast("Saved");go("p/"+handle);
 }
 async function deletePersona(){
-  if(!confirm("Delete this persona, its page, links and all its posts? This cannot be undone."))return;
-  await sb.from("personas").delete().eq("id",editId);
-  await loadMine();go("studio");
+  const targetId=editId,uid=session?.user?.id,epoch=renderEpoch;if(!targetId||!confirm("Delete this persona, its page, links and all its posts? This cannot be undone."))return;
+  const{error}=await sb.from("personas").delete().eq("id",targetId);if(editId!==targetId||session?.user?.id!==uid||epoch!==renderEpoch)return;if(error){toast(error.message);return}
+  await loadMine(uid,authLoadGeneration);if(session?.user?.id===uid)go("studio");
 }
 
 // ---------- AI: backends, chat, HQ, per-persona bots, tasks ----------
 function personaBlockFull(p){
   return `PERSONA PROFILE\nName: ${p.name}\nHandle: @${p.handle}\nTagline: ${p.tagline||"n/a"}\nBio: ${p.bio||"n/a"}\nPurpose: ${p.purpose||"n/a"}\nPersonality/voice: ${p.voice||"n/a"}\nCore topics: ${p.topics||"n/a"}\nAudience: ${p.audience||"n/a"}\nDefault hashtags: ${p.hashtags||"n/a"}\nHard rules — never do: ${p.dont||"n/a"}\nContent rating: ${p.nsfw?"NSFW/18+":"SFW"}`;
 }
-async function callAI(backendId,messages){
-  const b=myBackends.find(x=>x.id===backendId)||myBackends[0];
+async function callAI(backendId,messages,context={}){
+  const b=backendId?myBackends.find(x=>x.id===backendId):readyAgentBackends()[0];
   if(!b)throw new Error("No AI model linked. Add one in Matrix → AI Models.");
-  // Prefer the server proxy so model API keys never touch the browser.
+  if(!backendAgentReady(b))throw new Error("That model connection needs a hosted text provider and model id before it can run.");
   const tok=session&&session.access_token;
-  if(tok){
-    try{
-      const pr=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/ai-proxy",{method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
-        body:JSON.stringify({backendId:b.id,messages,max_tokens:2500})});
-      if(pr.ok){const pj=await pr.json();return pj.content;}
-      // Fall back to a direct call ONLY when the proxy isn't deployed/available.
-      // A 502 here is a real provider error from the proxy — surface it.
-      if(pr.status!==404&&pr.status!==503&&pr.status!==546){
-        let em="HTTP "+pr.status;
-        try{const ej=await pr.json();em=(ej&&(ej.error&&ej.error.message||ej.error))||em;}catch(e){}
-        throw new Error(em);
-      }
-    }catch(e){
-      if(e&&e.message&&!/Failed to fetch|NetworkError|load failed/i.test(e.message))throw e;
-      // transport error reaching the proxy -> fall through to direct call
-    }
-  }
-  // Direct fallback (key used in-browser) — only when the proxy is unreachable.
-  const r=await fetch(b.base_url.replace(/\/$/,"")+"/chat/completions",{method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":"Bearer "+b.api_key},
-    body:JSON.stringify({model:b.model,messages,max_tokens:2500})});
-  const j=await r.json();
-  if(!r.ok)throw new Error(j.error?.message||("HTTP "+r.status));
-  return j.choices[0].message.content;
+  if(!tok)throw new Error("Sign in again before using an AI model.");
+  let pr;
+  try{pr=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/ai-proxy",{method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
+    body:JSON.stringify({backendId:b.id,messages,max_tokens:2500,personaId:context.personaId||null,mode:context.mode||"owner_chat"})});}
+  catch(e){throw new Error("The secure AI service could not be reached. Direct browser calls are disabled so model keys and agent safety controls cannot be bypassed.")}
+  const pj=await pr.json().catch(()=>({}));
+  if(!pr.ok)throw new Error(pj.error?.message||pj.error||("Secure AI service HTTP "+pr.status));
+  return pj.content||"";
 }
-let chatCtx=null;
+function normalizeLocalChatRows(rows){
+  const list=Array.isArray(rows)?rows:[],base=Date.now()-list.length;
+  return list.filter(m=>m&&["user","assistant","system"].includes(m.role)&&typeof m.content==="string"&&m.content).map((m,i)=>({
+    role:m.role,content:m.content,legacy_client_id:m.legacy_client_id===true||!m.client_message_id,client_message_id:m.client_message_id||crypto.randomUUID(),
+    created_at:Number.isFinite(Date.parse(m.created_at))?new Date(m.created_at).toISOString():new Date(base+i).toISOString(),
+    pending:m.pending!==false
+  }));
+}
+function readLocalChatRows(key){try{return normalizeLocalChatRows(JSON.parse(localStorage.getItem(key)||"[]"))}catch(e){return[]}}
+function persistChatRows(ctx){try{localStorage.setItem(ctx.scopedKey,JSON.stringify(ctx.messages.slice(-200)))}catch(e){toast("This device could not save the chat backup")}}
+function mergeChatRows(serverRows,localRows){
+  const server=(serverRows||[]).map(m=>({role:m.role,content:m.content,client_message_id:m.client_message_id||null,created_at:m.created_at,pending:false}));
+  const ids=new Set(server.filter(m=>m.client_message_id).map(m=>m.client_message_id)),counts=new Map();
+  server.forEach(m=>{const f=m.role+"\u0000"+m.content;counts.set(f,(counts.get(f)||0)+1)});
+  const pending=[];
+  normalizeLocalChatRows(localRows).forEach(m=>{
+    const f=m.role+"\u0000"+m.content;
+    if(!m.legacy_client_id&&m.client_message_id){if(ids.has(m.client_message_id))return;if(m.pending)pending.push({...m,pending:true});return}
+    if((counts.get(f)||0)>0){counts.set(f,counts.get(f)-1);return}
+    if(m.pending)pending.push({...m,pending:true});
+  });
+  return [...server,...pending].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(-200);
+}
+function localChatExport(uid){
+  const prefix="ps_chat_"+uid+"_",out=[];
+  for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!key||!key.startsWith(prefix))continue;out.push({conversation_key:key.slice(prefix.length),messages:readLocalChatRows(key)})}
+  return out;
+}
+function legacyLocalChatExport(){
+  const out=[],legacy=/^(ps_hq_chat|ps_chat_[0-9a-f-]{36}|ps_build_(?:new|[0-9a-f-]{36})|ps_task_[0-9a-f-]{36})$/i;
+  for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&legacy.test(key))out.push({storage_key:key,ownership:"ambiguous_unscoped_device_cache",messages:readLocalChatRows(key)})}
+  return out;
+}
+function clearLegacyLocalChatData(){const keys=legacyLocalChatExport().map(row=>row.storage_key);keys.forEach(key=>localStorage.removeItem(key))}
+function clearLocalChatData(uid){
+  const prefix="ps_chat_"+uid+"_",keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key.startsWith(prefix))keys.push(key)}keys.forEach(key=>localStorage.removeItem(key));
+  if(chatCtx&&chatCtx.ownerUid===uid){chatCtx.messages=[];renderChatMsgs()}
+}
 function openChat(opts){
   closeChat();
-  chatCtx={...opts,busy:false,messages:JSON.parse(localStorage.getItem(opts.storeKey)||"[]")};
+  const ownerUid=session?.user?.id||null;if(!ownerUid)return;
+  const scopedKey="ps_chat_"+ownerUid+"_"+opts.storeKey;
+  const cached=readLocalChatRows(scopedKey);
+  chatCtx={...opts,ownerUid,busy:false,conversationKey:opts.storeKey,scopedKey,messages:cached};
   const d=document.createElement("div");d.id="chatov";
   d.innerHTML=`<div class="ch">${esc(opts.title)}
     <span style="margin-left:auto;display:flex;gap:6px">
     ${opts.extract?`<button class="btn sm" style="background:#fff;color:var(--accent2)" onclick="chatExtract()">Apply to profile</button>`:""}
     ${opts.extract?"":`<button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="saveChatDraft()">Save draft</button>`}
-    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="localStorage.removeItem(chatCtx.storeKey);chatCtx.messages=[];renderChatMsgs()">Clear</button>
+    <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="clearChatHistory()">Clear</button>
     <button class="btn sm" style="background:rgba(255,255,255,.25);box-shadow:none" onclick="closeChat()">✕</button></span></div>
     <div class="cm" id="chatMsgs"></div>
     <div class="ci"><textarea id="chatIn" placeholder="type…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
     <button class="btn" onclick="chatSend()">➤</button></div>`;
   document.body.appendChild(d);
   renderChatMsgs();
-  if(opts.autoSend&&!chatCtx.messages.length){document.getElementById("chatIn").value=opts.autoSend;chatSend()}
+  loadChatHistory(opts.autoSend||"");
+}
+async function loadChatHistory(autoSend=""){
+  if(!chatCtx)return;const ctx=chatCtx,key=ctx.conversationKey,uid=ctx.ownerUid;
+  if(agentMessagesReady){
+    let{data,error}=await sb.from("agent_messages").select("role,content,client_message_id,created_at").eq("owner",uid).eq("conversation_key",key).order("created_at",{ascending:false}).limit(200);
+    if(chatCtx!==ctx||session?.user?.id!==uid)return;
+    if(!error){
+      let merged=mergeChatRows((data||[]).reverse(),ctx.messages),pending=merged.filter(m=>m.pending);
+      if(pending.length){
+        const rows=pending.map(m=>({owner:uid,persona_id:ctx.personaId||null,conversation_key:key,client_message_id:m.client_message_id,role:m.role,content:m.content,created_at:m.created_at}));
+        const sync=await sb.from("agent_messages").upsert(rows,{onConflict:"owner,client_message_id",ignoreDuplicates:true});
+        if(chatCtx!==ctx||session?.user?.id!==uid)return;
+        if(sync.error){toast("Chat backup is still waiting to sync: "+sync.error.message)}else{
+          merged=merged.map(m=>m.pending?{...m,pending:false}:m);
+          const refreshed=await sb.from("agent_messages").select("role,content,client_message_id,created_at").eq("owner",uid).eq("conversation_key",key).order("created_at",{ascending:false}).limit(200);
+          if(chatCtx!==ctx||session?.user?.id!==uid)return;
+          if(!refreshed.error)merged=mergeChatRows((refreshed.data||[]).reverse(),[]);
+        }
+      }
+      if(chatCtx===ctx){ctx.messages=merged;persistChatRows(ctx);renderChatMsgs()}
+    }else if(chatCtx===ctx){agentMessagesReady=false;toast("Cloud chat history is unavailable; this device will keep a local backup");renderChatMsgs()}
+  }
+  if(chatCtx===ctx&&session?.user?.id===uid&&autoSend&&!ctx.messages.length){const input=document.getElementById("chatIn");if(input){input.value=autoSend;chatSend()}}
+}
+async function storeChatMessage(ctx,uid,role,content){
+  if(!ctx||!uid||!content)return false;
+  const message=[...ctx.messages].reverse().find(m=>m.role===role&&m.content===content&&!m.client_message_id);
+  if(message){message.client_message_id=crypto.randomUUID();message.created_at=new Date().toISOString();message.pending=true}
+  if(agentMessagesReady){const row=message||{role,content,client_message_id:crypto.randomUUID(),created_at:new Date().toISOString(),pending:true};const{error}=await sb.from("agent_messages").upsert({owner:uid,persona_id:ctx.personaId||null,conversation_key:ctx.conversationKey,client_message_id:row.client_message_id,role,content,created_at:row.created_at},{onConflict:"owner,client_message_id",ignoreDuplicates:true});if(chatCtx!==ctx||session?.user?.id!==uid){persistChatRows(ctx);return false}if(error){agentMessagesReady=false;toast("Chat sync paused: "+error.message)}else row.pending=false}
+  persistChatRows(ctx);return chatCtx===ctx&&session?.user?.id===uid;
+}
+async function clearChatHistory(){
+  if(!chatCtx)return;const ctx=chatCtx,uid=ctx.ownerUid,key=ctx.conversationKey,localKey=ctx.scopedKey;const{error}=await sb.from("agent_messages").delete().eq("owner",uid).eq("conversation_key",key);if(chatCtx!==ctx||session?.user?.id!==uid)return;if(error){toast("Cloud history could not be cleared, so the device backup was kept: "+error.message);return}
+  localStorage.removeItem(localKey);ctx.messages=[];renderChatMsgs();toast("Chat history cleared");
 }
 function closeChat(){const d=document.getElementById("chatov");if(d)d.remove();chatCtx=null}
 function renderChatMsgs(){
@@ -1314,23 +1715,27 @@ function renderChatMsgs(){
 }
 async function chatSend(){
   if(!chatCtx||chatCtx.busy)return;
-  const inp=document.getElementById("chatIn");const text=inp.value.trim();if(!text)return;
-  inp.value="";chatCtx.messages.push({role:"user",content:text});chatCtx.busy=true;renderChatMsgs();
+  const ctx=chatCtx,uid=ctx.ownerUid,inp=document.getElementById("chatIn"),text=inp?.value.trim();if(!text||session?.user?.id!==uid)return;
+  inp.value="";ctx.messages.push({role:"user",content:text});ctx.busy=true;renderChatMsgs();
+  if(!await storeChatMessage(ctx,uid,"user",text)){ctx.busy=false;persistChatRows(ctx);return}
   try{
-    const reply=await callAI(chatCtx.backendId,[{role:"system",content:chatCtx.system},...chatCtx.messages]);
-    chatCtx.messages.push({role:"assistant",content:reply});
-  }catch(e){chatCtx.messages.push({role:"assistant",content:"Error: "+e.message})}
-  chatCtx.busy=false;localStorage.setItem(chatCtx.storeKey,JSON.stringify(chatCtx.messages.slice(-40)));renderChatMsgs();
+    const reply=await callAI(ctx.backendId,[{role:"system",content:ctx.system},...ctx.messages],{personaId:ctx.personaId||null,mode:ctx.extract?"persona_builder":"owner_chat"});
+    if(chatCtx!==ctx||session?.user?.id!==uid){ctx.busy=false;persistChatRows(ctx);return}
+    ctx.messages.push({role:"assistant",content:reply});
+    await storeChatMessage(ctx,uid,"assistant",reply);
+  }catch(e){if(chatCtx===ctx&&session?.user?.id===uid)ctx.messages.push({role:"assistant",content:"Error: "+e.message})}
+  ctx.busy=false;persistChatRows(ctx);if(chatCtx===ctx&&session?.user?.id===uid)renderChatMsgs();
 }
 function openHQ(){
-  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
+  if(!readyAgentBackends().length){toast("Link a ready hosted text model first (Matrix → AI Models)");return}
   const summary=myPersonas.map(p=>`- ${p.name} (@${p.handle}, ${p.nsfw?"NSFW":"SFW"}): ${p.purpose||p.tagline||"no purpose yet"} | topics: ${p.topics||"?"}`).join("\n");
   openChat({title:"HQ Assistant",backendId:null,storeKey:"ps_hq_chat",
     system:`You are the HQ manager AI for a creator running a network of online personas. You help plan content strategy, coordinate across personas, spot opportunities, and keep each persona consistent. Be concise and practical.\n\nTHE PERSONA ROSTER:\n${summary||"(none created yet)"}`});
 }
 function openPersonaChat(pid){
   const p=myPersonas.find(x=>x.id===pid);if(!p)return;
-  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
+  if(p.ai_backend&&!backendAgentReady(myBackends.find(x=>x.id===p.ai_backend))){toast("This persona's selected model needs setup. Edit it in Matrix → AI Models.");return}
+  if(!readyAgentBackends().length){toast("Link a ready hosted text model first (Matrix → AI Models)");return}
   openChat({title:p.name+" — persona bot",backendId:p.ai_backend,storeKey:"ps_chat_"+pid,personaId:pid,
     system:`You are the dedicated AI for the persona below. You draft content in their exact voice, brainstorm ideas on their topics, and always respect their hard rules.\n\n${personaBlockFull(p)}`});
 }
@@ -1409,19 +1814,22 @@ function wizApply(){
   renderEditLinks();wizClose();toast("Persona drafted Tweak anything, then Save!");
 }
 function openBuilder(){
-  if(!myBackends.length){toast("Link an AI model first (Matrix → AI Models)");return}
+  const picked=document.getElementById("eBackend")?.value||null;if(picked&&!backendAgentReady(myBackends.find(x=>x.id===picked))){toast("Choose a ready hosted text model first");return}
+  if(!readyAgentBackends().length){toast("Link a ready hosted text model first (Matrix → AI Models)");return}
   const name=document.getElementById("eName")?.value||"this persona";
   openChat({title:"Persona builder — "+name,backendId:document.getElementById("eBackend")?.value||null,
-    storeKey:"ps_build_"+(editId||"new"),extract:true,
+    storeKey:"ps_build_"+(editId||"new"),personaId:editId||null,extract:true,
     system:`You are a persona-building interviewer for a MySpace-style persona network. The user is creating a persona named "${name}". Ask short, friendly questions ONE at a time to flesh out: what the persona covers (purpose), personality & voice, core topics, target audience, hashtags, hard rules (never-do), a tagline and a short bio. Keep it fun and quick — 6-8 questions max, then summarize what you've got.`,
     autoSend:"Hi! Help me flesh out this persona. Ask me your first question."});
 }
 async function chatExtract(){
   if(!chatCtx)return;
+  const ctx=chatCtx,uid=ctx.ownerUid;
   toast("Extracting profile…");
   try{
-    const raw=await callAI(chatCtx.backendId,[{role:"system",content:chatCtx.system},...chatCtx.messages,
-      {role:"user",content:"Based on our whole conversation, output ONLY a JSON object (no code fences, no commentary) with these string keys: tagline, bio, purpose, voice, topics, audience, hashtags, dont. topics and hashtags are comma-separated lists. Make every field complete and usable, inferring sensibly where needed."}]);
+    const raw=await callAI(ctx.backendId,[{role:"system",content:ctx.system},...ctx.messages,
+      {role:"user",content:"Based on our whole conversation, output ONLY a JSON object (no code fences, no commentary) with these string keys: tagline, bio, purpose, voice, topics, audience, hashtags, dont. topics and hashtags are comma-separated lists. Make every field complete and usable, inferring sensibly where needed."}],{personaId:ctx.personaId||null,mode:"persona_builder"});
+    if(chatCtx!==ctx||session?.user?.id!==uid)return;
     const j=JSON.parse(raw.replace(/^```json?\s*/i,"").replace(/```\s*$/,"").trim());
     const map={tagline:"eTagline",bio:"eBio",purpose:"ePurpose",voice:"eVoice",topics:"eTopics",audience:"eAudience",hashtags:"eHashtags",dont:"eDont"};
     for(const k in map){const el=document.getElementById(map[k]);if(el&&j[k])el.value=j[k]}
@@ -1440,49 +1848,44 @@ image:"Write 3 detailed image-generation prompts (style, composition, lighting, 
 newsletter:"Write a newsletter email: 3 subject lines, punchy intro, 2-4 short sections, sign-off with call-to-action.",
 promo:"Write 3 promo posts for a product/offer in the persona's voice with clear call-to-action.",
 custom:""};
-async function createTask(){
-  const d={owner:session.user.id,name:document.getElementById("tkName").value.trim(),
-    persona_id:document.getElementById("tkPersona").value||null,
-    backend_id:document.getElementById("tkBackend").value||null,
-    task_type:document.getElementById("tkType").value,
-    instructions:document.getElementById("tkInstr").value.trim(),
-    cadence:document.getElementById("tkCad").value};
-  if(!d.name){toast("Task name required");return}
-  const{error}=await sb.from("ai_tasks").insert(d);
-  if(error){toast(error.message);return}
-  await loadMine();renderStudio();toast("Task saved");
-}
-async function deleteTask(id){await sb.from("ai_tasks").delete().eq("id",id);await loadMine();renderStudio()}
+async function deleteTask(id){if(!confirm("Delete this content schedule? Existing drafts stay in the queue."))return;const{error}=await sb.from("ai_tasks").delete().eq("id",id);if(error){toast(error.message);return}await loadMine();autoTab="schedule";renderStudio();toast("Content schedule deleted")}
 async function runTask(id){
   const t=myTasks.find(x=>x.id===id);if(!t)return;
   const p=myPersonas.find(x=>x.id===t.persona_id);
   const sys=p?`You are the dedicated AI for this persona. Stay perfectly in character and respect the hard rules.\n\n${personaBlockFull(p)}`:
     "You are a helpful content assistant for a creator managing multiple online personas.";
   const instr=(TASK_TYPES[t.task_type]||"")+(t.instructions?"\n\nAdditional instructions: "+t.instructions:"");
-  sb.from("ai_tasks").update({last_run:new Date().toISOString()}).eq("id",id).then(()=>{});
-  openChat({title:"▶ "+t.name,backendId:t.backend_id,storeKey:"ps_task_"+id,personaId:t.persona_id,system:sys,autoSend:instr||"Run this task."});
+  const personaBackend=myBackends.find(x=>x.id===p?.ai_backend),backendId=t.backend_id||(backendAgentReady(personaBackend)?personaBackend.id:readyAgentBackends()[0]?.id)||null;
+  openChat({title:"▶ "+t.name,backendId,storeKey:"ps_task_"+id,personaId:t.persona_id,system:sys,autoSend:instr||"Run this task."});
 }
 // ----- backends CRUD -----
 async function addBackend(){
   const sel=document.getElementById("nbProvider");const provider=sel?sel.value:"custom";
   const pdef=AI_PROVIDERS[provider]||{};const extra={};
+  if(pdef.unsupported){toast("That provider cannot run hosted text automation. Choose a hosted text model provider.");return}
   (pdef.extra||[]).forEach(f=>{const el=document.getElementById("nbx_"+f.key);if(el&&el.value.trim())extra[f.key]=el.value.trim();});
   const d={owner:session.user.id,provider,name:document.getElementById("nbName").value.trim()||pdef.name||"Model",
     base_url:document.getElementById("nbUrl").value.trim(),api_key:document.getElementById("nbKey").value.trim(),
     model:document.getElementById("nbModel").value.trim(),extra};
-  if(!d.base_url){toast("Base URL required");return}
-  let ins=await sb.from("ai_backends").insert(d);
-  if(ins.error&&/column/i.test(ins.error.message)){delete d.provider;delete d.extra;ins=await sb.from("ai_backends").insert(d);}
-  if(ins.error){toast(ins.error.message);return}
+  if(!d.base_url||!/^https:\/\//i.test(d.base_url)){toast("A hosted HTTPS base URL is required");return}
+  if(!d.model){toast("Enter the model id you want this connection to use");return}
+  if(!d.api_key){toast("Enter the API key for this hosted model. It will be stored in the secure Vault, not in the browser database.");return}
+  let ins=await sb.rpc("create_ai_backend",{p_provider:d.provider,p_name:d.name,p_base_url:d.base_url,p_api_key:d.api_key,p_model:d.model,p_extra:d.extra});
+  if(ins.error){toast(/schema cache|could not find the function|pgrst202/i.test(ins.error.message||"")?"Secure model storage is not ready yet. No key was saved; try again after setup finishes.":ins.error.message);return}
   await loadMine();renderStudio();toast("Model linked");
 }
-async function deleteBackend(id){await sb.from("ai_backends").delete().eq("id",id);await loadMine();renderStudio()}
+async function editBackend(id){
+  const b=myBackends.find(x=>x.id===id);if(!b)return;const name=prompt("Connection label",b.name||"");if(name===null)return;const model=prompt("Model id",b.model||"");if(model===null)return;if(!name.trim()||!model.trim()){toast("Both a label and model id are required");return}
+  let res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:name.trim(),p_model:model.trim(),p_extra:b.extra||{}});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").update({name:name.trim(),model:model.trim(),extra:b.extra||{}}).eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();toast("Model updated")
+}
+async function toggleBackendHostConfirmation(id,surface){const b=myBackends.find(x=>x.id===id);if(!b||backendBuiltInAutomation(b))return;const key=surface==="fan"?"fan_host_confirmed":"schedule_host_confirmed",next=b.extra?.[key]!==true,secret=surface==="fan"?"FAN_CHAT_AI_HOSTS":"SCHEDULE_AI_HOSTS";if(next&&!confirm(`Confirm only after this hostname was added to the deployed ${secret} secret. The server will still reject it if the allowlist is missing or unsafe.`))return;const extra={...(b.extra||{}),[key]:next};const res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:b.name,p_model:b.model,p_extra:extra});if(res.error){toast(res.error.message);return}await loadMine();renderStudio();toast(next?`${surface==="fan"?"Fan-chat":"Schedule"} host confirmation saved`:`${surface==="fan"?"Fan-chat":"Schedule"} host confirmation removed`)}
+async function deleteBackend(id){const b=myBackends.find(x=>x.id===id);if(!b)return;const oauth=b.provider==="openrouter"&&b.extra?.auth_method==="openrouter_oauth";if(!confirm(oauth?"Remove this model and its encrypted key from AliaSpaces? You must also revoke the key on OpenRouter.":"Remove this model and its encrypted key from AliaSpaces? This does not revoke a key at the provider."))return;let res=await sb.rpc("delete_ai_backend",{p_backend_id:id});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").delete().eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();if(oauth)showOpenRouterKeyWarning("The encrypted AliaSpaces copy was removed. OpenRouter still controls the issued key; revoke it there now.");else toast("Model connection removed from AliaSpaces")}
 
 // ---------- image previews + Stable Diffusion character tool ----------
 function setPrev(k,url){
   const inp=document.getElementById("e_"+k);if(inp)inp.value=url||"";
   const pv=document.getElementById("prev_"+k);
-  if(pv){pv.style.backgroundImage=url?`url('${url}')`:"";pv.innerHTML=url?"":'<span class="muted">no image</span>'}
+  const safe=safeHttpUrl(url);if(pv){pv.style.backgroundImage=safe?`url(${JSON.stringify(safe)})`:"";pv.innerHTML=safe?"":'<span class="muted">no image</span>'}
 }
 const SD_SIZES={avatar_url:[768,768],banner_url:[1152,640],bg_url:[1152,768],feed_img_url:[1152,512]};
 let sdTarget=null;
@@ -1930,13 +2333,16 @@ function ledgerConnectionInfo(a){
   if(state==="disconnected")return{row,state,label:"Disconnected",klass:"attention",note:"External access is disconnected."};
   return{row:null,state:"recorded",label:"Recorded · not authenticated",klass:"recorded",note:"This is a private inventory record only."};
 }
+function gmailResetOnlyError(code){return["gmail_already_connected","shared_grant_cleanup_failed","local_credential_cleanup_failed"].includes(String(code||""))}
 function ledgerAuthPanel(a,info){
   const current=(session&&session.user&&session.user.email||"").toLowerCase(),target=(a.login_email||"").trim().toLowerCase();
   const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
   const verify=info.state==="recorded"?`<button class="btn sm" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Verify ownership</button>`:"";
   const why=!accountConnectionsReady?"Verification setup is not available yet.":!target?"Add a login email before ownership can be verified.":current!==target?`Sign in to AliaSpaces as ${esc(target)} to verify this account.`:!confirmed?"Confirm your AliaSpaces sign-in email first.":"This compares the recorded email with your confirmed AliaSpaces sign-in.";
-  const gmail=a.provider!=="gmail"?"":info.state==="connected"
-    ?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">Disconnect Gmail</button>`
+  const gmailError=String(info.row&&info.row.error_code||""),gmailResetOnly=gmailResetOnlyError(gmailError),gmailMustDisconnect=info.state==="connected"||["google_revoke_required","google_revoke_failed"].includes(gmailError);
+  const gmail=a.provider!=="gmail"?"":gmailResetOnly
+    ?`<button class="btn sm sec" onclick="resetGmailAttempt('${a.id}')">Reset Gmail attempt</button>`
+    :gmailMustDisconnect?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">${info.state==="connected"?"Disconnect Gmail":"Revoke & reset Gmail"}</button>`
     :`<button class="btn sm" onclick="connectGmail('${a.id}')">Authenticate Gmail</button>`;
   return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
 }
@@ -1952,7 +2358,7 @@ function ledgerEditPanel(a){
 function accountLedgerHtml(){
   const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);return `<div class="ledgeritem">
     <div class="ledgerwho"><b>${esc((PLATS[a.provider]||{}).name||a.provider)}${a.username?" · "+esc(a.username):""}</b><br>
-      <span class="muted">${esc(a.login_email||"")}${/^https?:\/\//i.test(a.url||"")?`${a.login_email?" · ":""}<a href="${esc(a.url)}" target="_blank" rel="noopener">open account ↗</a>`:""}</span>
+      <span class="muted">${esc(a.login_email||"")}${safeHttpUrl(a.url)?`${a.login_email?" · ":""}<a href="${esc(safeHttpUrl(a.url))}" target="_blank" rel="noopener">open account ↗</a>`:""}</span>
       <span class="ledgerstate"><span class="pill ${info.klass}">${esc(info.label)}</span></span></div>
     <select id="ledgerPersona_${a.id}" data-current="${esc(a.persona_id||"")}" aria-label="Assigned persona" onchange="toggleSavedLedgerQuick('${a.id}',this)">${ledgerPersonaOptions(a.persona_id||"",true)}</select>
     <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save persona</button>
@@ -2016,7 +2422,7 @@ async function saveLedgerDetails(id){
   if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account details saved. You can open Authentication now.");
 }
 async function createPrivatePersona(name,handle){
-  return sb.from("personas").insert({owner:session.user.id,name,handle,visibility:"private"}).select().single();
+  return sb.from("personas").insert({owner:session.user.id,name,handle,visibility:"private"}).select("id").single();
 }
 async function saveLedgerBatch(){
   if(ledgerBatchSaving)return;
@@ -2116,16 +2522,16 @@ async function connectGmail(id){
     location.assign(destination.toString());
   }catch(e){toast(e.message||"Invalid Google authorization link")}
 }
-async function finishPendingGmail(){
+async function finishPendingGmail(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   if(!gmailOAuthPending||gmailOAuthCompleting)return;
+  if(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
   const pending=gmailOAuthPending;gmailOAuthPending=null;
-  if(!session){gmailOAuthNotice={message:"Sign in to the same AliaSpaces account and try Gmail authorization again."};return}
   gmailOAuthCompleting=true;
   const result=await gmailOAuthAction("complete",null,pending);
   gmailOAuthCompleting=false;
-  if(result.error){gmailOAuthNotice={message:result.error};return}
-  gmailOAuthNotice={message:"Gmail connected with read-only access."};
-  await loadMine();
+  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
+  gmailOAuthNotice={message:result.error||"Gmail connected with read-only access."};
+  await loadMine(expectedUid,generation);
 }
 async function disconnectGmail(id){
   if(!confirm("Disconnect Gmail and revoke AliaSpaces read-only access? Your Gmail account and messages will not be deleted."))return;
@@ -2134,10 +2540,17 @@ async function disconnectGmail(id){
   await loadMine();acctTab="accounts";renderStudio();
   toast(result.data.googleRevocationConfirmed?"Gmail disconnected and access revoked.":"Gmail disconnected locally. Review Google Account permissions to confirm revocation.");
 }
+async function resetGmailAttempt(id){
+  if(!confirm("Clear this failed local Gmail attempt? This will not revoke the Google grant used by the Gmail account that is already connected elsewhere."))return;
+  const result=await gmailOAuthAction("reset",id);
+  if(result.error){toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();toast("Failed Gmail attempt reset. The other connected Gmail account was not changed.");
+}
 async function deleteLedgerAccount(id){
-  const account=myAccounts.find(a=>a.id===id),isGmail=account&&account.provider==="gmail";
-  if(!confirm(isGmail?"Remove this account from your private ledger and revoke any stored Gmail access? The external Gmail account and messages will not be deleted.":"Remove this account from your private ledger? This does not delete the external account."))return;
-  if(isGmail){const disconnected=await gmailOAuthAction("disconnect",id);if(disconnected.error){toast(disconnected.error);return}}
+  const account=myAccounts.find(a=>a.id===id),isGmail=account&&account.provider==="gmail",connection=isGmail&&myAccountConnections.find(c=>c.ledger_id===id),resetOnly=isGmail&&gmailResetOnlyError(connection&&connection.error_code);
+  const warning=resetOnly?"Remove this failed Gmail ledger entry and its local token copy? The Google grant used by the account connected elsewhere will not be revoked.":isGmail?"Remove this account from your private ledger and revoke any stored Gmail access? The external Gmail account and messages will not be deleted.":"Remove this account from your private ledger? This does not delete the external account.";
+  if(!confirm(warning))return;
+  if(isGmail){const disconnected=await gmailOAuthAction(resetOnly?"reset":"disconnect",id);if(disconnected.error){toast(disconnected.error);return}}
   const{error}=await sb.from("account_ledger").delete().eq("id",id);if(error){toast(error.message);return}
   await loadMine();acctTab="accounts";renderStudio();toast("Account removed from ledger");
 }
@@ -2201,37 +2614,38 @@ async function mfaRemove(factorId){
 }
 async function exportMyData(){
   toast("Preparing your data…");
-  const uid=session.user.id;
-  const out={exported_at:new Date().toISOString(),account:myProfile};
-  const ids=myPersonas.map(p=>p.id);
-  out.personas=myPersonas;
-  out.ai_backends=(myBackends||[]).map(b=>Object.assign({},b,{api_key:"[removed from export]"}));
-  out.ai_tasks=myTasks;out.drafts=myDrafts;out.account_ledger=myAccounts;out.account_connections=myAccountConnections;
-  if(ids.length){
-    const[{data:posts},{data:links},{data:albums}]=await Promise.all([
-      sb.from("posts").select("*").in("persona_id",ids),
-      sb.from("persona_links").select("*").in("persona_id",ids),
-      sb.from("albums").select("*").in("persona_id",ids)]);
-    out.posts=posts||[];out.persona_links=links||[];out.albums=albums||[];
-  }
+  const uid=session.user.id,generation=authLoadGeneration;
+  const[profileRes,personaRes]=await Promise.all([sb.from("profiles").select("*").eq("id",uid).maybeSingle(),loadOwnerPersonaRows()]);if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}
+  const datasets=await Promise.all([
+    loadOwnedPages("ai_backends","id,owner,name,base_url,model,provider,extra,created_at","created_at",true,uid),loadOwnedPages("ai_tasks","*","created_at",true,uid),loadOwnedPages("drafts","*","created_at",true,uid),loadOwnedPages("account_ledger","*","created_at",true,uid),loadOwnedPages("account_connections","*","created_at",true,uid),loadOwnedPages("agent_owner_settings","*","created_at",true,uid),loadOwnedPages("agent_bindings","*","created_at",true,uid),loadOwnedPages("agent_destinations","*","created_at",true,uid),loadOwnedPages("persona_content_plans","*","created_at",true,uid),loadOwnedPages("agent_actions","*","created_at",true,uid),loadOwnedPages("fan_chat_sessions","id,owner,persona_id,escalated,escalation_reason,inbox_state,created_at,last_seen_at","created_at",true,uid),loadOwnedPages("fan_chat_messages","*","created_at",true,uid),loadOwnedPages("agent_messages","*","created_at",true,uid),fetchAllPages((from,to)=>sb.rpc("my_error_logs",{},{count:"exact"}).order("created_at",{ascending:true}).range(from,to))
+  ]);
+  if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}
+  const firstError=profileRes.error||personaRes.error||datasets.find(result=>result.error)?.error;if(firstError){toast("Your download was stopped because every section could not be loaded. Nothing incomplete was saved.");return}
+  const[backends,tasks,drafts,accounts,connections,settings,bindings,destinations,plans,actions,fanSessions,fanMessages,agentMessages,errorLogs]=datasets,personas=personaRes.data||[],ids=personas.map(p=>p.id),[posts,links,albums,notes,comments,reactions,followsFrom,followsTo,blocks]=await Promise.all([loadPersonaPages("posts",ids),loadPersonaPages("persona_links",ids),loadPersonaPages("albums",ids),loadPersonaPages("private_notes",ids),loadPersonaPages("comments",ids),loadPersonaPages("reactions",ids),loadValuePages("follows","follower",ids),loadValuePages("follows","target",ids),fetchAllPages((from,to)=>sb.from("blocks").select("*",{count:"exact"}).eq("blocker",uid).order("id",{ascending:true}).range(from,to))]);if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}const albumIds=(albums.data||[]).map(a=>a.id),albumItems=await loadValuePages("album_items","album_id",albumIds),contentResults=[posts,links,albums,notes,comments,reactions,followsFrom,followsTo,blocks,albumItems],contentError=contentResults.find(result=>result.error)?.error;if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}if(contentError){toast("Your download was stopped because every content section could not be loaded. Nothing incomplete was saved.");return}
+  const followMap=new Map();[...(followsFrom.data||[]),...(followsTo.data||[])].forEach(row=>followMap.set(row.id,row));const out={exported_at:new Date().toISOString(),account:profileRes.data,personas,ai_backends:(backends.data||[]).map(b=>Object.assign({},b,{api_key:"[stored securely and excluded]"})),ai_tasks:tasks.data||[],drafts:drafts.data||[],account_ledger:accounts.data||[],account_connections:connections.data||[],agent_owner_settings:(settings.data||[])[0]||null,agent_bindings:bindings.data||[],agent_destinations:destinations.data||[],persona_content_plans:plans.data||[],agent_actions:actions.data||[],fan_chat_sessions:fanSessions.data||[],fan_chat_messages:fanMessages.data||[],agent_messages:agentMessages.data||[],locally_cached_agent_messages:localChatExport(uid),legacy_unscoped_device_chat_backups:{notice:"These older browser-only caches were not account-scoped, so ownership is ambiguous. They are exported separately and are not attributed to this account.",items:legacyLocalChatExport()},error_logs:errorLogs.data||[],blocks:blocks.data||[],follows:[...followMap.values()],private_notes:notes.data||[],posts:posts.data||[],comments:comments.data||[],reactions:reactions.data||[],persona_links:links.data||[],albums:albums.data||[],album_items:albumItems.data||[]};
   const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
   a.download="mypersonas-data-"+new Date().toISOString().slice(0,10)+".json";a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 async function deleteAllContent(){
-  if(!confirm("Delete ALL your personas, pages, posts, albums, account ledger, drafts, tasks and linked models? This cannot be undone. Your sign-in record is not removed by this action."))return;
-  const uid=session.user.id;
-  for(const account of myAccounts.filter(a=>a.provider==="gmail")){
-    const disconnected=await gmailOAuthAction("disconnect",account.id);
-    if(disconnected.error){toast("Content deletion stopped; earlier Gmail connections may already have been disconnected: "+disconnected.error);return}
-  }
-  const deletes=[["ai_tasks","owner"],["ai_backends","owner"],["drafts","owner"]];
-  if(accountLedgerReady)deletes.push(["account_ledger","owner"]);
-  deletes.push(["blocks","blocker"],["personas","owner"]);
-  for(const [table,column] of deletes){const{error}=await sb.from(table).delete().eq(column,uid);if(error){toast("Deletion stopped: "+error.message);return}}
-  const{error:profileError}=await sb.from("profiles").update({prefs:{}}).eq("id",uid);
-  if(profileError){toast("Content was removed, but account preferences could not be cleared: "+profileError.message);return}
+  if(!confirm("Delete ALL your personas, pages, posts, albums, account ledger, drafts, tasks and linked models? This cannot be undone. Your sign-in record stays. Model keys are removed from AliaSpaces, but pasted provider keys are not revoked at their provider."))return;
+  const hasOpenRouter=myBackends.some(isOpenRouterBackend);
+  if(hasOpenRouter){const o=document.createElement("div");o.className="overlay";o.id="eraseProviderWarning";o.innerHTML=`<div class="wizbox"><h2>Revoke OpenRouter first</h2><p>Deleting a local model connection cannot revoke its key at OpenRouter, including keys connected before AliaSpaces began recording how they were authorized. Open your OpenRouter Keys page, revoke every key used here, then continue.</p><div class="autoformactions"><a class="btn" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Open OpenRouter Keys ↗</a><button class="btn danger" onclick="document.getElementById('eraseProviderWarning').remove();deleteAllContentConfirmed(true)">I revoked them — continue</button><button class="btn sec" onclick="document.getElementById('eraseProviderWarning').remove()">Cancel</button></div></div>`;document.body.appendChild(o);return}
+  deleteAllContentConfirmed(false);
+}
+async function deleteAllContentConfirmed(externalRevocationsAcknowledged){
+  const uid=session.user.id,generation=authLoadGeneration;
+  toast("Removing content, media, and connected grants…");
+  const endpoint=CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/erase-content",headers={"Content-Type":"application/json","Authorization":"Bearer "+session.access_token};let capability;
+  try{capability=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({action:"capabilities"})})}catch(e){toast("The safe content-deletion service could not be reached. Nothing was deleted.");return}
+  if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. Nothing was deleted.");return}
+  const capabilityBody=await capability.json().catch(()=>({}));if(!capability.ok||capabilityBody.protocolVersion!==2||capabilityBody.keepAccount!==true||capabilityBody.contentOnly!==true||capabilityBody.fullAccount!==false){toast("Safe content deletion is not available yet. Nothing was deleted.");return}
+  let response;
+  try{response=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({confirm:true,keepAccount:true,protocolVersion:2,externalRevocationsAcknowledged})})}catch(e){toast("Deletion service could not be reached. Nothing can be confirmed deleted.");return}
+  const result=await response.json().catch(()=>({}));if(!response.ok||result.deleted!==true||result.accountDeleted!==false){toast(result.error||"Deletion could not be completed or verified");return}
+  if(session?.user?.id!==uid||authLoadGeneration!==generation)return;
+  clearLocalChatData(uid);clearLegacyLocalChatData();localStorage.removeItem("ps_filters");localStorage.removeItem("sd_url");localStorage.removeItem("or_pkce");const sessionKeys=[];for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key&&(key==="or_pkce"||key==="age_ok"||key.startsWith("fan_visitor_")||key.startsWith("gmail_oauth_")))sessionKeys.push(key)}sessionKeys.forEach(key=>sessionStorage.removeItem(key));
   await loadMine();toast("Your content was deleted");go("");
 }
 
@@ -2243,6 +2657,7 @@ function loadAstro(){
   if(__astroP)return __astroP;
   __astroP=new Promise((res,rej)=>{const s=document.createElement("script");
     s.src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js";
+    s.integrity="sha384-LTVHvxfbG3XHla4Lu0C0s9U18B2sBOuzJIeOoVHm2t05SOOORvMbBMEVjXrGau9g";s.crossOrigin="anonymous";
     s.onload=()=>res(window.Astronomy);s.onerror=()=>rej(new Error("could not load the astronomy library"));
     document.head.appendChild(s);});
   return __astroP;
@@ -2542,9 +2957,9 @@ const AI_PROVIDERS={
   perplexity:{name:"Perplexity",base:"https://api.perplexity.ai",keyUrl:"https://www.perplexity.ai/settings/api",modelHint:"e.g. sonar"},
   cohere:{name:"Cohere",base:"https://api.cohere.ai/compatibility/v1",keyUrl:"https://dashboard.cohere.com/api-keys",modelHint:"e.g. command-r-plus"},
   azure:{name:"Azure OpenAI",base:"https://YOUR-RESOURCE.openai.azure.com/openai/deployments/YOUR-DEPLOYMENT",keyUrl:"https://portal.azure.com",modelHint:"your deployment name",extra:[{key:"api_version",label:"API version",hint:"e.g. 2024-06-01",ph:"2024-06-01"}]},
-  elevenlabs:{name:"ElevenLabs (voice)",base:"https://api.elevenlabs.io/v1",keyUrl:"https://elevenlabs.io/app/settings/api-keys",modelHint:"e.g. eleven_multilingual_v2",extra:[{key:"voice_id",label:"Voice ID",hint:"from your ElevenLabs Voices page",ph:"e.g. 21m00Tcm4TlvDq8ikWAM"}]},
-  ollama:{name:"Ollama (local)",base:"http://localhost:11434/v1",keyUrl:"",noKey:true,modelHint:"e.g. llama3"},
-  lmstudio:{name:"LM Studio (local)",base:"http://localhost:1234/v1",keyUrl:"",noKey:true,modelHint:"the loaded model name"},
+  elevenlabs:{name:"ElevenLabs voice (not text automation)",base:"https://api.elevenlabs.io/v1",keyUrl:"https://elevenlabs.io/app/settings/api-keys",unsupported:true,modelHint:"Voice providers will be connected separately",extra:[{key:"voice_id",label:"Voice ID",hint:"from your ElevenLabs Voices page",ph:"e.g. 21m00Tcm4TlvDq8ikWAM"}]},
+  ollama:{name:"Ollama local (not hosted automation)",base:"http://localhost:11434/v1",keyUrl:"",noKey:true,unsupported:true,modelHint:"Local device models cannot be reached by hosted agents"},
+  lmstudio:{name:"LM Studio local (not hosted automation)",base:"http://localhost:1234/v1",keyUrl:"",noKey:true,unsupported:true,modelHint:"Local device models cannot be reached by hosted agents"},
   custom:{name:"Custom / other (OpenAI-compatible)",base:"",keyUrl:"",modelHint:"any model id"}
 };
 function onProviderPick(){
@@ -2558,33 +2973,56 @@ function onProviderPick(){
   set("nbModelHint",el=>el.textContent=v.modelHint||"");
   set("nbModel",el=>el.placeholder=v.modelHint||"model id");
   set("nbExtra",el=>el.innerHTML=(v.extra||[]).map(f=>`<label>${esc(f.label)} ${f.hint?`<span class="muted">${esc(f.hint)}</span>`:""}</label><input id="nbx_${f.key}" placeholder="${esc(f.ph||"")}">`).join(""));
-  set("nbOAuth",el=>el.innerHTML=v.oauth==="openrouter"?`<button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span>`:"");
+  set("nbOAuth",el=>el.innerHTML=v.oauth==="openrouter"?`<button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span>`:(v.unsupported?'<span class="muted">This provider is shown for planning, but cannot be saved as a hosted text agent.</span>':""));
 }
 async function connectOpenRouter(){
+  const{data}=await sb.auth.getSession(),current=data&&data.session;if(!current){toast("Sign in before connecting OpenRouter");return}
   const verifier=[...crypto.getRandomValues(new Uint8Array(48))].map(b=>("0"+b.toString(16)).slice(-2)).join("");
   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier));
   const challenge=btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  localStorage.setItem("or_pkce",verifier);
+  sessionStorage.setItem("or_pkce",JSON.stringify({verifier,initiatingUserId:current.user.id,createdAt:Date.now()}));
   const cb=location.origin+location.pathname;
   location.href="https://openrouter.ai/auth?callback_url="+encodeURIComponent(cb)+"&code_challenge="+challenge+"&code_challenge_method=S256";
 }
+function showOpenRouterKeyWarning(message){
+  const prior=document.getElementById("openRouterKeyWarning");if(prior)prior.remove();
+  const o=document.createElement("div");o.className="overlay";o.id="openRouterKeyWarning";
+  o.innerHTML=`<div class="wizbox"><h2>Secure the new OpenRouter key</h2>
+    <p>${esc(message||"OpenRouter may have issued a key, but AliaSpaces could not confirm that it was stored securely.")}</p>
+    <p><b>Open your OpenRouter Keys page and revoke the newly created key</b>, then return here and reconnect it. The key is not shown or retained in this browser.</p>
+    <div class="autoformactions"><a class="btn" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Open OpenRouter Keys ↗</a><button class="btn sec" onclick="document.getElementById('openRouterKeyWarning').remove()">I understand</button></div></div>`;
+  document.body.appendChild(o);
+}
 async function handleOAuthReturn(){
+  let exchangeStarted=false,keyStored=false;
   try{
-    const u=new URL(location.href),code=u.searchParams.get("code"),verifier=localStorage.getItem("or_pkce");
-    if(!code||!verifier)return;
-    localStorage.removeItem("or_pkce");
-    const r=await fetch("https://openrouter.ai/api/v1/auth/keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,code_verifier:verifier})});
-    const j=await r.json().catch(()=>({}));
-    u.searchParams.delete("code");history.replaceState({},"",u.pathname+(u.hash||""));
-    if(!r.ok||!j.key){if(window.toast)toast("OpenRouter connect failed");return;}
+    const u=new URL(location.href),code=u.searchParams.get("code"),raw=sessionStorage.getItem("or_pkce");
+    if(!code||!raw)return;
+    sessionStorage.removeItem("or_pkce");
+    let pending;try{pending=JSON.parse(raw)}catch(e){pending=null}
     const{data}=await sb.auth.getSession();const s=data&&data.session;
-    if(!s){toast("Sign in, then reconnect OpenRouter");return;}
-    let d={owner:s.user.id,provider:"openrouter",name:"OpenRouter",base_url:"https://openrouter.ai/api/v1",api_key:j.key,model:"",extra:{}};
-    let ins=await sb.from("ai_backends").insert(d);
-    if(ins.error&&/column/i.test(ins.error.message)){delete d.provider;delete d.extra;ins=await sb.from("ai_backends").insert(d);}
-    if(ins.error){toast(ins.error.message);return;}
-    await loadMine();toast("OpenRouter connected");go("studio");
-  }catch(e){/* never break page load */}
+    u.searchParams.delete("code");history.replaceState({},"",u.pathname+(u.hash||""));
+    if(!pending||typeof pending.verifier!=="string"||typeof pending.createdAt!=="number"||Date.now()-pending.createdAt>10*60*1000){toast("This OpenRouter connection expired. Start it again; no key was requested.");return}
+    if(!s||s.user.id!==pending.initiatingUserId||session?.user?.id!==pending.initiatingUserId){toast("The signed-in account changed. Start OpenRouter again from the correct account; no key was requested.");return}
+    const initiatingUid=s.user.id,initiatingGeneration=authLoadGeneration;
+    exchangeStarted=true;
+    const r=await fetch("https://openrouter.ai/api/v1/auth/keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,code_verifier:pending.verifier,code_challenge_method:"S256"})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.key){if(window.toast)toast("OpenRouter connect failed");return;}
+    const fresh=await sb.auth.getSession(),freshSession=fresh.data&&fresh.data.session;
+    if(!freshSession||freshSession.user.id!==initiatingUid||session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration){showOpenRouterKeyWarning("OpenRouter issued a key after the signed-in account changed, so AliaSpaces did not store it. Revoke that key before trying again.");return}
+    const model=(prompt("OpenRouter is connected. Enter the model id you want this agent to use (you can edit it later):","")||"").trim();
+    if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration){showOpenRouterKeyWarning("OpenRouter issued a key after the signed-in account changed, so AliaSpaces did not store it. Revoke that key before trying again.");return}
+    const d={provider:"openrouter",name:"OpenRouter",base_url:"https://openrouter.ai/api/v1",api_key:j.key,model,extra:{auth_method:"openrouter_oauth"}},isolated=fixedSessionClient(freshSession.access_token);
+    const ins=await isolated.rpc("create_ai_backend",{p_provider:d.provider,p_name:d.name,p_base_url:d.base_url,p_api_key:d.api_key,p_model:d.model,p_extra:d.extra});
+    if(ins.error){showOpenRouterKeyWarning("OpenRouter issued a key, but secure model storage did not accept it. Revoke that key before trying again.");return;}
+    keyStored=true;
+    if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration)return;
+    await loadMine(initiatingUid,initiatingGeneration);if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration)return;toast(model?"OpenRouter connected":"OpenRouter connected — use Edit to add a model id");go("studio");
+  }catch(e){
+    if(exchangeStarted&&!keyStored)showOpenRouterKeyWarning("The OpenRouter exchange started, but AliaSpaces could not confirm that the resulting key was stored. Revoke any newly created key before trying again.");
+    else toast("OpenRouter connect failed. Please try again.");
+  }
 }
 
 
@@ -2598,19 +3036,17 @@ document.addEventListener('click',()=>closeSiteMenu());
 
 
 // ----- hashtag browse pages -----
-async function renderTag(tag){
+async function renderTag(tag,epoch=++renderEpoch){
   setMeta("#"+tag+" — AliaSpaces","Posts across the network tagged #"+tag);
   app.innerHTML='<div class="empty">Loading…</div>';
-  netFeed={mode:"tag",tag:tag,offset:0,busy:false,done:false};
-  const{data}=await netFeedQuery(0,FEED_PAGE-1);
-  const posts=netFeedFilter(data);
-  netFeed.offset=data?data.length:0;
-  if(!data||data.length<FEED_PAGE)netFeed.done=true;
+  const state=netFeed=newNetFeed("tag",String(tag||"").slice(0,120),epoch),{data,error}=await netFeedQuery(state);
+  if(epoch!==renderEpoch||netFeed!==state)return;
+  const raw=data||[],posts=netFeedFilter(raw);raw.forEach(row=>state.seenIds.add(row.id));advanceDescendingCursor(state,raw);if(error||raw.length<FEED_PAGE)state.done=true;
   app.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
     <h3 class="secthead" style="margin:0">#${esc(tag)}</h3>
     <button class="btn sec sm" onclick="go('')">Back to discover</button></div>
-    <div id="netFeed">${posts.map(x=>postHtml(x,x.personas,false)).join("")||`<div class="empty">No public posts tagged #${esc(tag)} yet.</div>`}</div>
-    ${netFeed.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`;
+    <div id="netFeed">${error?'<div class="empty">Tagged posts could not be loaded. Try again.</div>':posts.map(x=>postHtml(x,x.personas,false)).join("")||`<div class="empty">No public posts tagged #${esc(tag)} yet.</div>`}</div>
+    ${state.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`;
 }
 
 </script>

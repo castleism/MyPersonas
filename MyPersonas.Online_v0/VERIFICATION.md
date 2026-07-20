@@ -1,6 +1,173 @@
-# v0 Verification Checklist
+# AliaSpaces / MyPersonas Verification Checklist
 
 Status: ⬜ untested · ✅ pass · ❌ fail (see note) · ⏭ skipped/blocked
+
+## Agent control center release — backend smoke run 2026-07-20
+
+Repository implementation, backend deployment, and signed-in browser behavior are separate
+evidence. The backend smoke checks below were observed against project
+`nwsqyuucwzihruszocge`; user-flow checks remain blank until exercised with a real persona,
+model, schedule, and draft.
+
+Observed in this release:
+
+- ✅ Migration 011 is live and its historical file remains unchanged. The fresh-install
+  schema embeds that immutable migration followed by exact copies of deltas 012–014.
+- ✅ Migrations 012, 013, and 014 are live. Retry and approval hardening, fair owner
+  rotation, durable queue state, server-side input and active-schedule limits, and atomic
+  persona saves all passed object, trigger, and role-grant checks.
+- ✅ Final Edge versions are active: `ai-proxy` v9, `post-bridge` v4, `run-tasks` v10,
+  `run-publish-queue` v4, `fan-chat` v4, `gmail-oauth` v4, `delete-account` v9, and
+  `erase-content` v2, each with its documented JWT setting.
+- ✅ `CRON_SECRET` and `FAN_CHAT_SALT` are installed. Vault contains exactly one
+  `mypersonas_cron_secret`; stored cron commands contain only the Vault lookup.
+- ✅ With both jobs paused, production requests 50 and 51 called the final workers through
+  `pg_net` using the Vault secret. Both returned HTTP 200 with zero due work; the two
+  five-minute jobs were then resumed and independently read back as active.
+- ✅ Final inline application JavaScript, JSON-LD, eight touched Edge functions, SQL parser,
+  all-zone time conversion, migration 014 transactional rollback, and Git whitespace
+  checks passed. Supabase's advisor warning for the authenticated atomic-save function is
+  expected: that security-definer RPC is intentionally authenticated-only and performs
+  owner checks with an empty search path.
+
+Prerequisites: the new Edge code staged while both workers are paused; migrations 001–014
+applied in order; `erase-content` deployed before the compatible `index.html`;
+`CRON_SECRET` and `FAN_CHAT_SALT` set;
+all eight release functions deployed with the documented JWT settings; both workers
+scheduled every five minutes; at least one owner-linked model and one SFW public test
+persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
+`FAN_CHAT_AI_HOSTS` independently.
+
+### Database and privacy
+
+- [ ] A1. Before migration 011, the newly deployed `ai-proxy` can still use an existing
+      legacy owner key; the new workers remain unscheduled until their RPCs exist — ⏭ no
+      legacy model key existed to exercise; workers remained unscheduled until migration
+- [x] A2. Migration 011 completes without error; the Vault credential map, model CRUD/key
+      RPCs, task leases, daily usage table, fan reservation RPCs, atomic native publisher,
+      triggers, and partial indexes exist — ✅ live apply and object/signature checks passed
+- [x] A2b. Migration 012 completes in one transaction; its retry/due/dequeue RPCs, new
+      columns/indexes, narrowed persona/fan grants, durable message id, and invalid-approval
+      repair exist before either worker resumes — ✅ live object, grant, and repair checks
+- [x] A2c. Migration 013 installs service-only fair candidate/claim RPCs, a protected
+      owner-rotation state table, prompt-byte triggers on all four input sources, and the
+      100-active-schedule trigger before the final worker resumes — ✅ live objects,
+      service/auth/anon grants, RLS, and five trigger attachments checked
+- [x] A2d. Migration 014 installs one authenticated-only atomic persona-bundle save with
+      owner, linked-persona, Top 8, model, size, and count validation — ✅ compiled and
+      transactionally exercised twice under rollback, then applied live; anon execute is
+      false and authenticated execute is true
+- [ ] A3. Every non-empty legacy model key has a Vault mapping and an empty legacy
+      `api_key`; the linked model still responds through `ai-proxy` after migration — ⏭
+      no linked model/key existed; confirmed zero non-empty plaintext keys
+- [ ] A4. Browser model create/update/delete uses the owner RPCs. The browser cannot read
+      Vault mappings, execute `ai_backend_get_key`, or directly write `ai_backends` — ⬜
+- [ ] A5. Deleting one model connection and deleting all model connections remove their
+      associated Vault secrets without affecting another owner — ⬜
+- [ ] A6. A signed-in browser can load its own personas through `my_personas`, but anon
+      and authenticated table reads cannot select `personas.owner` — ⬜
+- [ ] A7. A new/existing persona has one binding and one native destination; account and
+      persona assignment guards reject cross-owner or mismatched rows — ⬜
+
+### Direction and safety controls
+
+- [ ] A8. Matrix shows Direction, Targets, Schedule, Queue, Fan inbox, and Audit on phone
+      and desktop widths; a database-not-ready state appears cleanly before migration — ⬜
+- [ ] A9. Direction fields persist and are present in a generated draft's server-built
+      prompt; persona hard rules remain authoritative — ⬜
+- [ ] A10. L0 allows co-writing only; L1 enables scheduled drafts; L2 exact approval waits
+      for the owner to press Publish now; L3 auto mode still requires exact approval but
+      may publish an approved native draft when due — ⬜
+- [ ] A11. Global pause and persona pause each stop new persona AI calls, draft generation,
+      publishing, and new fan-chat requests; resume restores only previously enabled
+      paths — ⬜
+- [ ] A12. Direction, pause, autonomy, destination, generation, approval, publish, and fan
+      events appear in the owner-only audit view — ⬜
+
+### Scheduling and drafts
+
+- [ ] A13. A daily schedule and a weekly schedule calculate the expected next generation
+      and publication time in the selected time zone, including preparation lead time — ⬜
+- [x] A14. Both stored cron commands read `mypersonas_cron_secret` from
+      `vault.decrypted_secrets` and contain no literal credential. Both endpoints reject a
+      missing/wrong `X-Cron-Secret` with HTTP 403 — ✅ final workers probed while paused:
+      both HTTP 200 with zero due work; jobs then resumed and read back active
+- [ ] A15. `run-tasks` ignores future, inactive, paused, L0, invalid-claim, mismatched, and
+      quiet-hour tasks and records a useful status/audit reason — ⬜
+- [ ] A16. Concurrent calls for one due task produce only one UUID lease, one reserved
+      daily model-call unit, at most one provider request, and one task/time-slot draft — ⬜
+- [ ] A17. The owner's local-day cap is atomic across different tasks. A reserved provider
+      call counts even if the provider fails, and an over-cap call is never sent — ⬜
+- [ ] A18. A lease expires/retries safely after an interrupted worker; transient failures
+      retain the intended slot for at most three exponential retries, permanent failures
+      advance it, and an old lease token cannot mutate a newer worker's task — ⬜
+- [ ] A19. A due eligible task produces an unapproved draft. Generation never sets exact
+      approval or silently enables a destination — ⬜
+- [ ] A20. Approving stores the exact-content hash and queues the selected time. Editing
+      content, target, format, or time clears approval and removes the draft from queue — ⬜
+
+### Publishing boundary
+
+- [ ] A21. `post-bridge` rejects signed-out users, non-owners, inactive claims/bindings,
+      insufficient autonomy, manual targets, invalid approvals, caps, and quiet hours — ⬜
+- [ ] A22. An eligible L2 exact-approved draft remains waiting when cron runs, then
+      publishes exactly once only after the owner presses Publish now — ⬜
+- [ ] A23. An eligible L3 exact-approved draft on an enabled native `auto` target publishes
+      only when due; a repeated queue invocation is idempotent — ⬜
+- [ ] A24. The atomic native publisher cannot exceed a destination daily cap or create a
+      post without finalizing the corresponding draft and audit record — ⬜
+- [ ] A25. Every external destination returns a clear gated/no-write-connector result even
+      when the ledger account is ownership verified or Gmail API connected — ⬜
+- [ ] A26. After the owner posts externally by hand, “mark manually posted” records the
+      state; it cannot be used for a native draft — ⬜
+
+### AI and fan chat
+
+- [ ] A27. `ai-proxy` requires a valid owner session, refuses another owner's persona or
+      model, strips browser system messages, honors pause/binding controls, and audits the
+      persona request without logging credentials — ⬜
+- [ ] A28. `SCHEDULE_AI_HOSTS` plus its Matrix confirmation extends only scheduled
+      generation; `FAN_CHAT_AI_HOSTS` plus its separate confirmation extends only fan chat;
+      an unlisted or unconfirmed custom host is refused — ⬜
+- [ ] A29. Fan chat is off by default and unavailable for private, paused, inactive,
+      unclaimed, or NSFW personas. A client-side 18+ acknowledgment does not bypass the
+      server NSFW block — ⬜
+- [ ] A30. Two concurrent messages for one session cannot both obtain the response lease.
+      Hourly visitor and persona-local-day quotas, fan-message storage, audit, session
+      state, and the 90-second response lease are reserved atomically — ⬜
+- [ ] A31. Only the matching response UUID can store the assistant reply and clear the
+      lease; retrying an old completion cannot create a duplicate reply — ⬜
+- [ ] A32. The fixed disclosure says AI and owner review. Commercial, dispute, self-harm,
+      or hard-rule signals flag the inbox without promising an owner reply or takeover — ⬜
+- [ ] A33. Export includes owner-visible automation/chat data without visitor hashes.
+      Delete-my-data removes daily usage, automation, messages, transcripts, and audit
+      rows, including Vault secrets through model deletion — ⬜
+- [ ] A34. Authenticated `erase-content` capabilities report protocol v2,
+      `contentOnly:true`, and `fullAccount:false`; the page refuses every older or
+      ambiguous contract — ⬜
+- [ ] A35. On a disposable owner, confirmed content erasure preserves the auth login but
+      removes every owned persona/post/media/ledger/model/automation/chat row plus profile
+      display name and preferences. Gmail revocation happens first, and any OpenRouter
+      backend requires provider-side key-revocation acknowledgment — ⬜
+- [ ] A36. The Pages artifact contains only `index.html`, runtime assets, CNAME,
+      `.nojekyll`, robots, and sitemap; it contains no setup guides, SQL, verification
+      notes, source snapshots, or private mailbox addresses — ⬜
+- [ ] A37. A persona with more than 30 posts exposes Load more; repeated loads use stable
+      newest-first created-at/id ordering, and Posts/Reels/search filters continue through
+      older pages without duplicates or silently stopping at 50 — ⬜
+- [ ] A38. Switching directly between two signed-in accounts immediately removes the old
+      owner's Matrix, draft, fan, audit, and chat UI; late requests and OAuth callbacks
+      cannot repopulate it — ⬜ requires two disposable signed-in accounts
+- [ ] A39. Discovery, recent/tag feeds, persona posts, and audit history load stable keyset
+      pages on demand, preserve filters, and neither duplicate nor skip equal-timestamp
+      rows — ⬜ live multi-page data set required
+- [ ] A40. A manually queued wall-clock time is stored and displayed in the configured
+      owner time zone, independent of phone location; a DST-gap time is rejected — ⬜
+- [ ] A41. Fan replies remain default-off and SFW-only; unsafe generated output is discarded,
+      replaced by the bounded refusal, escalated, and audited before any response is stored
+      or returned — ⬜ disposable fan session and intentionally unsafe model fixture required
+
+## Historical v0 verification (2026-07-10)
 
 Prereqs: sql-updates 001, 002, 003, 004 run in Supabase; latest commit pushed and
 deployed (Actions green); hard refresh.

@@ -1,7 +1,86 @@
-# Changelog — MyPersonas.online
+# Changelog — AliaSpaces / MyPersonas
 
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
+
+## Released — Agent control center (2026-07-20)
+
+- Added migration 011 for Vault-backed model credentials, owner automation settings,
+  persona-agent bindings, L0–L3 autonomy, content direction, native/external targets,
+  exact schedules, worker leases, atomic usage quotas, approval/publish state,
+  synchronized owner chat, append-only audit history, and a fan-chat inbox.
+- Added the dedicated migration 012 without rewriting the already-live 011 history. It
+  adds bounded transient retries, fair publish due-times, durable chat ids, owner-safe
+  model readiness, consent/target approval invalidation, narrower persona/fan reads, and
+  repair of approvals that no longer have valid L3 native-auto consent.
+- Added migration 013 for least-recently-served owner rotation in scheduled generation,
+  service-only fair claims, a grandfather-safe 100-active-schedule cap, bounded prompt
+  inputs, and deterministic pausing instead of repeatedly billing oversized tasks.
+- Added migration 014 and an authenticated transactional save RPC so a persona, its
+  public links, and its private note either all save or all remain unchanged.
+- Added a mobile-first control center with Direction, Targets, Schedule, Queue, Fan inbox,
+  and Audit views. Owners can set goals, success measures, audiences, content pillars,
+  campaigns, calls to action, approved offers/links, affiliate disclosures, source notes,
+  platform rules, time zones, quiet hours, daily caps, and global/persona pauses.
+- Reworked scheduled tasks around exact `next_run_at` and `next_publish_at` times. Each
+  provider call requires a random UUID task lease plus an atomic per-owner, local-day
+  model-call reservation. This prevents overlapping workers from duplicating calls or
+  racing the daily cap; generated content is never self-approved.
+- Kept cron credentials out of stored job commands: both cron invocations retrieve
+  `mypersonas_cron_secret` from Supabase Vault at execution, and the workers compare it
+  with the same value stored as their Edge Function secret.
+- Added exact-content approval. Approval stores a hash of the draft, target, and publish
+  time; editing any protected field clears approval and removes the draft from the queue.
+- Added `post-bridge` for signed-in, owner-initiated publishing and
+  `run-publish-queue` for due native publishing. L2 exact approvals wait for the owner to
+  press **Publish now**; L3 can publish only exact-approved drafts on an enabled native
+  `auto` target when due. Publication atomically rechecks controls, inserts the post,
+  finalizes the draft, and records audit history.
+- Hardened `ai-proxy`: it rebuilds persona context from the database, discards
+  browser-supplied system messages, validates the owner and linked model, observes pause
+  and binding controls, audits persona calls, and resolves model keys server-side from
+  Supabase Vault.
+- Added owner-authenticated model CRUD RPCs. Migration 011 transfers non-empty legacy keys
+  into Vault and clears the old column; browsers can create, edit, or delete their model
+  connections without selecting Vault mappings or reading a saved key back. Edge code
+  retains a legacy-key fallback only to support deploying it before the migration.
+- Added optional `fan-chat` with an immutable AI disclosure and one atomic reservation for
+  session identity, hourly/daily quota, fan-message storage, audit, and a UUID response
+  lease. It is SFW-only until server-verifiable age assurance exists. Escalations flag the
+  owner-review inbox but promise neither an owner response nor conversation takeover.
+- Added deterministic post-generation fan-reply screening before the only write/return
+  path. Unsafe or persona-rule-breaking model text is discarded, replaced with a bounded
+  refusal, escalated to the owner inbox, and categorized in the existing audit event.
+- Added separate optional `SCHEDULE_AI_HOSTS` and `FAN_CHAT_AI_HOSTS` allowlists so a
+  custom scheduled-generation endpoint is not automatically trusted by public fan chat;
+  Matrix now also requires a separate explicit confirmation for each surface.
+- Added privacy-safe persona RPCs and removed owner UUIDs from public/general persona
+  reads. Owners retain an owner-scoped roster RPC; export covers owner-visible control and
+  conversation data, while deletion also clears internal agent-usage reservations.
+- Kept all external publishing hard-gated. Account-ledger records, ownership verification,
+  and read-only Gmail OAuth do not provide write access; no external social posting
+  connector is implemented in this release.
+- Added versioned, JWT-verified content erasure that keeps the sign-in account while
+  deleting owned content and private profile customization. The client requires protocol
+  v2/content-only capability proof, revokes Gmail first, and requires provider-side
+  revocation acknowledgment for every OpenRouter key, including legacy connections.
+- Hardened Gmail OAuth failure compensation for Google's project-shared grants. Failed
+  callbacks never auto-revoke a grant that may power another connected mailbox; partial
+  trustworthy identities are checked first, recoverable credentials receive an explicit
+  **Revoke & reset** path, and shared-grant attempts receive local-only reset.
+- Changed the Pages workflow to publish an explicit runtime allowlist instead of setup
+  guides, migrations, verification notes, snapshots, or other repository internals.
+- Added stable persona-feed pagination and filter-aware search pagination so automated
+  posting cannot make posts older than the first page unreachable.
+- Added keyset Load more paths for public persona discovery, recent/tag feeds, and persona
+  feeds; added lazy full audit history; and bound manual draft times to the configured
+  owner time zone instead of the phone's current location.
+- Added auth-generation guards around private loads, editing, chat, Gmail, OpenRouter,
+  export, and content erasure so a delayed result cannot cross account boundaries.
+- Live backend rollout evidence is recorded in `VERIFICATION.md` only after migrations 012–014,
+  the content-erasure capability probe, worker resume/probes, Pages deployment, and live
+  browser smoke checks complete. Signed-in destructive scenarios still require a
+  disposable test owner.
 
 ## Unreleased — Account Ledger batch mode
 

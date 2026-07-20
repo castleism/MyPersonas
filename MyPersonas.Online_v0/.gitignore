@@ -9,3 +9,8 @@ assets/Downloads/*/[A-Za-z]*_v[0-9]*/
 **/forge-data/
 Thumbs.db
 desktop.ini
+
+# Never publish or add retired snapshots and local patch scratchpads.
+_to_delete/
+*.pre*
+_qa_*.py

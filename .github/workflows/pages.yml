@@ -26,8 +26,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare public site artifact
+        run: |
+          mkdir -p .pages-artifact
+          rsync -a --delete \
+            --prune-empty-dirs \
+            --include '/index.html' \
+            --include '/assets/***' \
+            --include '/CNAME' \
+            --include '/.nojekyll' \
+            --include '/robots.txt' \
+            --include '/sitemap.xml' \
+            --exclude '*' \
+            "${SITE_DIR}/" .pages-artifact/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ env.SITE_DIR }}
+          path: .pages-artifact
       - id: deployment
         uses: actions/deploy-pages@v4

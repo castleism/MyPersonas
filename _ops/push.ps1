@@ -1,6 +1,6 @@
-# MyPersonas - repair a corrupt git index if needed, then stage, commit, and push.
+# AliaSpaces / MyPersonas - repair a corrupt git index if needed, then stage, commit, and push.
 # Run from the repo root in PowerShell:
-#   cd D:\GIT\MyPersonas.Online ; .\_ops\push.ps1
+#   .\_ops\push.ps1
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path -Parent $PSScriptRoot)   # repo root (parent of _ops)
 
@@ -17,13 +17,16 @@ if ($bad) {
   git reset -q
 }
 
-# 3. Identity (only sets if missing).
-if (-not (git config user.email)) { git config user.email "christiancodyak@gmail.com" }
-if (-not (git config user.name))  { git config user.name  "Christian" }
+# 3. Require a configured identity without putting a private address in the repo.
+if (-not (git config user.email) -or -not (git config user.name)) {
+  throw "Configure git user.name and user.email before using this release helper."
+}
 
-# 4. Stage exactly the two changed files.
+# 4. Stage the complete site/server release. This includes ordered migrations and
+#    newly added Edge Function directories; omitting either can leave the live client
+#    incompatible with its database or server tier.
 Write-Host "Staging..." -ForegroundColor Cyan
-git add MyPersonas.Online_v0/index.html MyPersonas.Online_v0/ROADMAP.md MyPersonas.Online_v0/VERIFICATION.md README.md supabase
+git add -- MyPersonas.Online_v0 README.md supabase .github _ops
 
 Write-Host "Status:" -ForegroundColor Cyan
 git status -s

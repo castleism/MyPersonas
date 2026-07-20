@@ -1,0 +1,30 @@
+project_id = "nwsqyuucwzihruszocge"
+
+# Signed-in browser endpoints keep gateway JWT verification enabled.
+[functions.ai-proxy]
+verify_jwt = true
+
+[functions.post-bridge]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.erase-content]
+verify_jwt = true
+
+# Public or cron-secret-authenticated endpoints perform their own authorization.
+[functions.fan-chat]
+verify_jwt = false
+
+[functions.gmail-oauth]
+verify_jwt = false
+
+[functions.run-tasks]
+verify_jwt = false
+
+[functions.run-publish-queue]
+verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false

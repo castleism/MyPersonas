@@ -1,4 +1,4 @@
-# AliaSpaces.online — Roadmap
+# AliaSpaces / MyPersonas — Roadmap
 
 **Vision:** the home for every persona a person carries. A MySpace-style network where
 each persona gets its own page (looks, music, Top 8, albums, feed, links), fully
@@ -24,8 +24,8 @@ Shipped:
 - Social: friend requests (pending/accepted), block/mute, private/unlisted/public
   visibility enforced by row-level security, discover filters (18+ default-hidden,
   topic mutes), age gate on NSFW pages
-- AI: linked models (any OpenAI-compatible API), HQ assistant with roster context,
-  per-persona chatbots, tasks with model-per-task and one-click Run,
+- AI: linked hosted text models on approved HTTPS provider hosts, HQ assistant with roster
+  context, per-persona chatbots, tasks with model-per-task and one-click Run,
   SD character panel (local A1111/Forge), content drafts pipeline
   (chat/task output → draft → copy → post on platform; idea → ready → posted)
 - Trust & safety: pixel-burned watermarks with page URL on uploads, right-click/drag
@@ -34,7 +34,12 @@ Shipped:
 - Platform: brand icon bank (SVG, hologram-blue), favicon, release-driven extensions
   catalog (GitHub Releases + extension.json), versioned repo layout + Pages workflow
 
-## v0.5 — Live network (roadmap items)
+## v0.5 — Agent control center and live network
+
+An `[x]` here means the implementation exists in this repository. Migration 011, the five
+release Edge Functions, production secrets, and both five-minute cron jobs were deployed
+and smoke-tested on 2026-07-20. The Pages artifact is included in this release; signed-in
+browser scenarios retain their own verification evidence.
 
 - [x] Private Account Ledger batch mode: add many external accounts, keep them
       unassigned or bind each to an existing/quick-created private persona. Deployed
@@ -43,9 +48,22 @@ Shipped:
       single-use state + PKCE, exact-mailbox validation, refresh credentials encrypted
       in Supabase Vault, and only server-attested connection state exposed to the
       browser. Ownership verification remains distinct from API connection.
-- [ ] Auto-running scheduled tasks: Supabase Edge Function + pg_cron; results land
-      in drafts automatically each morning
-- [ ] Server-side AI proxy (Edge Function) so model API keys never touch the browser
+- [x] Persona agent control center: strategic direction, L0–L3 autonomy, global and
+      per-persona pauses, destination modes, exact daily/weekly schedules, time zones,
+      lead times, caps, quiet hours, approval queue, synchronized owner chat, and audit log
+- [x] Auto-running scheduled tasks: five-minute pg_cron polling, UUID task leases, and
+      atomic per-owner daily model-call reservations generate only due drafts without
+      duplicate provider calls or self-approval
+- [x] Server-side AI proxy: browser system prompts are discarded, persona context and
+      controls are loaded server-side, model keys migrate into Supabase Vault, and browser
+      model CRUD is limited to owner-authenticated RPCs that never read a key back
+- [x] Native AliaSpaces post bridge: L2 exact approvals wait for the owner to press
+      Publish now; L3 may publish only exact-approved native drafts on an enabled auto
+      target when due
+- [x] Optional SFW fan chat: fixed AI disclosure, atomic session/quota/response leasing,
+      bounded session memory, owner transcript review, and escalation flags that promise
+      neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
+      age assurance
 - [ ] Notifications: Supabase Realtime for friend requests/accepts (replace
       load-time polling badge)
 - [ ] Comments and reactions on feed posts
@@ -65,8 +83,9 @@ Shipped:
 
 - [ ] Persona-to-persona direct messages (privacy-preserving)
 - [ ] Native live streaming (Cloudflare Stream/Mux) replacing embed-only
-- [ ] Post-bridge: publish drafts directly to platforms with official APIs
-      (Facebook/Instagram Graph, TikTok Content Posting) where ToS allows
+- [ ] External provider write connectors: publish through official APIs only
+      (for example Facebook/Instagram Graph or TikTok Content Posting), after required
+      write scopes, app review, verified account assignment, and reconciliation are in place
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
 - [ ] PWA: installable mobile experience, push notifications
@@ -87,12 +106,15 @@ Shipped:
 
 1. **Single-file app** — one index.html, no framework/bundler. Fastest iteration;
    revisit when the file's size hurts (split modules + build step).
-2. **Limited server layer** — most ordinary app data still flows browser ↔ Supabase
-   under RLS; sensitive integrations use Edge Functions. Gmail OAuth now keeps its
-   client secret, state exchange, and refresh credentials server-side.
-3. **AI keys stored in DB and used from the browser** — protected by owner-only RLS
-   but visible to the owner's browser. v0.5 proxy removes browser exposure.
-4. **Scheduled tasks are manual** — ▶ Run opens a chat; no background execution yet.
+2. **Limited server layer** — ordinary owner data still flows browser ↔ Supabase under
+   RLS; credentials, persona-controlled AI, scheduled work, publishing, and public fan
+   chat use Edge Functions.
+3. **Legacy `ai_backends.api_key` remains as an empty compatibility column** — migration
+   011 moves non-empty values to Vault and browser CRUD uses RPCs. Remove the old column
+   after the staged transition no longer needs schema compatibility.
+4. **Schedules use five-minute polling** — exact local times are stored and UUID leases
+   plus atomic daily call reservations prevent overlapping workers, but normal dispatch may
+   occur up to about five minutes after a due time.
 5. **"Live" is an embed** of the persona's Twitch/YouTube/Kick, not native streaming.
 6. **Watermarking is client-side** canvas burn (images only; videos get an overlay);
    screenshots are unpreventable — treated as attribution/deterrence.
@@ -100,8 +122,9 @@ Shipped:
    friend you (RLS-enforced) but public content hiding is UX-level, not server-level.
 8. **Notifications poll at page load** only (no realtime).
 9. **prompt()/confirm() dialogs** for persona picking and destructive confirms.
-10. **Drafts post manually** (copy → paste on platform) — deliberate: avoids paid/
-    restricted APIs (X ~$200/mo) and ToS-risky automation (OnlyFans has no API).
+10. **External drafts still post manually** — native AliaSpaces publishing is implemented,
+    but every external destination remains hard-gated until its official write connector,
+    scopes, provider approval, assignment, caps, and reconciliation are implemented.
 11. **GitHub Pages hosting** — free static host, ~10-minute cache, no server control.
 12. **error_logs is insert-open** (anyone can file) — spam-able; fine pre-launch.
 13. **Top 8 is a jsonb array** on the persona row (no referential integrity).
@@ -110,7 +133,8 @@ Shipped:
     static releases.json fallback.
 15. **Personas app zip lives in the site repo** — small today; moves to GitHub
     Releases like Concept in v0.5.
-16. **Age gate is honor-system** (button + session flag); NSFW hiding is default-on
-    but client-side.
+16. **Page age gate is honor-system** (button + session flag); NSFW hiding is default-on
+    but client-side. Public fan chat therefore stays server-disabled for NSFW personas
+    until server-verifiable age assurance exists.
 17. **Google consent screen shows the Supabase domain** — cosmetic; fixed by the
     paid Supabase custom domain when it matters.
