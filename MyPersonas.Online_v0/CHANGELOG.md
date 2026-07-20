@@ -29,6 +29,12 @@ trailing letters are hotfixes. Releases are git tags.
 - Added explicit **Authenticate Gmail** / **Disconnect Gmail** controls and callback
   status handling. **Ownership verified** remains an identity check; only a completed
   Google consent flow produces **API connected**.
+- Added **Edit details** to recorded accounts so a missing login email, username,
+  profile URL, or private note can be corrected before authentication.
+- Added an iPhone-friendly, provider-filtered **Saved account** picker to batch rows.
+  It autofills owner-only ledger metadata, updates the selected record instead of
+  duplicating it, and adds mobile autofill labels and touch-sized controls. Passwords
+  remain outside AliaSpaces and authenticated login emails stay locked while connected.
 
 ## v0b — Route render race guard (2026-07-10)
 

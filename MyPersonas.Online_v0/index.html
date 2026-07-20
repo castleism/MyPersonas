@@ -167,9 +167,10 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .ledgerrow label{margin-top:0}.ledgernew{grid-column:1/-1;display:none}.ledgernew.on{display:flex;gap:8px;flex-wrap:wrap}.ledgernew>*{flex:1;min-width:170px}
 .ledgerlist{display:grid;gap:8px;margin:10px 0}.ledgeritem{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:10px 12px}.ledgeritem .ledgerwho{min-width:180px;flex:1}.ledgeritem select{width:auto;min-width:170px}
 .ledgerstate{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px}.pill.recorded{background:#fff4cc;color:#795d00}.pill.verified{background:#e7f6ec;color:#23733b}.pill.connected{background:#dff7f5;color:#086c66}.pill.attention{background:#fde8ec;color:#a52744}
-.ledgerassignnew,.ledgerauth{display:none;flex:1 0 100%;width:100%;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}.ledgerassignnew.on,.ledgerauth.on{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ledgerassignnew>div{flex:1;min-width:170px}.ledgerauth.on{align-items:center}.ledgerauth p{flex:1 1 420px;margin:0}
+.ledgersaved{grid-column:1/-1;background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px}.ledgersaved .muted{display:block;margin-top:4px}
+.ledgerassignnew,.ledgerauth,.ledgeredit{display:none;flex:1 0 100%;width:100%;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}.ledgerassignnew.on,.ledgerauth.on,.ledgeredit.on{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ledgerassignnew>div,.ledgeredit>div{flex:1;min-width:170px}.ledgerauth.on{align-items:center}.ledgerauth p{flex:1 1 420px;margin:0}.ledgeredit .ledgereditactions{flex:1 0 100%;display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.ledgerrow{grid-template-columns:1fr 1fr}.ledgerrow .ledgerwide,.ledgerrow .ledgernew{grid-column:1/-1}}
-@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}}
+@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}.ledgerrow input,.ledgerrow select,.ledgeredit input{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}}
 
 .pactions{margin-top:8px}
 .pcx{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
@@ -266,7 +267,7 @@ amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},ye
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
-let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0;
+let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBatchSaving=false;
 let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
 let renderEpoch=0; // bumped per render; async renders bail if superseded before their final DOM write
 const app=document.getElementById("app");
@@ -1858,8 +1859,71 @@ function ledgerProviderOptions(selected=""){
 function ledgerPersonaOptions(selected="",allowQuick=false){
   return `<option value="">Unassigned</option>${myPersonas.map(p=>`<option value="${p.id}" ${selected===p.id?"selected":""}>${esc(p.name)} (@${esc(p.handle)})</option>`).join("")}${allowQuick?'<option value="__new__">+ Quick create persona</option>':""}`;
 }
+function normalizeLedgerUsername(v){return (v||"").normalize("NFKC").trim().toLowerCase().replace(/^@/,"").replace(/\s+/g," ")}
+function normalizeLedgerEmail(v){return (v||"").trim().toLowerCase()}
+function normalizeLedgerUrl(v){
+  const raw=(v||"").trim();if(!raw)return "";
+  try{const u=new URL(raw);u.hash="";const path=u.pathname.replace(/\/+$/,"");return u.protocol.toLowerCase()+"//"+u.host.toLowerCase()+path+u.search}
+  catch(e){return raw.replace(/#.*$/,"").replace(/\/+$/,"")}
+}
+function sameLedgerAccount(a,b){
+  if(!a||!b||a.provider!==b.provider)return false;
+  const au=normalizeLedgerUsername(a.username),bu=normalizeLedgerUsername(b.username),ar=normalizeLedgerUrl(a.url),br=normalizeLedgerUrl(b.url),ae=normalizeLedgerEmail(a.login_email),be=normalizeLedgerEmail(b.login_email);
+  if(a.provider==="website"||a.provider==="email"||a.provider==="other")return !!ar&&ar===br;
+  if(a.provider==="gmail"||a.provider==="outlook"||a.provider==="proton")return !!ae&&ae===be;
+  if(au&&bu&&au===bu)return true;
+  if(ar&&br&&ar===br)return true;
+  if(!au&&!bu&&!ar&&!br)return !!ae&&ae===be;
+  return false;
+}
+function ledgerSavedAccounts(provider){return myAccounts.filter(a=>a.provider===provider)}
+function ledgerSavedAccountLabel(a){
+  const p=myPersonas.find(x=>x.id===a.persona_id),parts=[a.username||a.login_email||a.url||"Saved account"];
+  if(a.username&&a.login_email)parts.push(a.login_email);if(p)parts.push(p.name);return parts.join(" · ");
+}
+function ledgerSavedAccountOptions(provider,selected=""){
+  const list=ledgerSavedAccounts(provider),providerName=(PLATS[provider]||{}).name||provider;
+  if(!list.length)return{count:0,html:`<option value="">No saved ${esc(providerName)} accounts yet</option>`};
+  return{count:list.length,html:`<option value="">+ New ${esc(providerName)} account</option>${list.map(a=>`<option value="${esc(a.id)}" ${selected===a.id?"selected":""}>${esc(ledgerSavedAccountLabel(a))}</option>`).join("")}`};
+}
+function ledgerIdentityLocked(a){const c=myAccountConnections.find(x=>x.ledger_id===a.id);return !!(c&&c.connection_state==="connected")}
+function clearLedgerRowDetails(row){
+  [".lrUser",".lrEmail",".lrUrl",".lrNotes",".lrNewName",".lrNewHandle"].forEach(s=>{const e=row.querySelector(s);if(e)e.value=""});
+  const persona=row.querySelector(".lrPersona");if(persona){persona.value="";toggleLedgerQuick(persona)}
+}
+function ledgerRowDetailsSnapshot(row){return [".lrUser",".lrEmail",".lrUrl",".lrNotes"].map(s=>row.querySelector(s).value.trim())}
+function ledgerSavedRowDirty(row){
+  if(!row.dataset.savedSnapshot)return false;
+  try{return JSON.stringify(ledgerRowDetailsSnapshot(row))!==row.dataset.savedSnapshot}catch(e){return true}
+}
+function setLedgerSavedHelp(row,a=null){
+  const help=row.querySelector(".lrSavedHelp"),provider=row.querySelector(".lrProvider").value,providerName=(PLATS[provider]||{}).name||provider,count=ledgerSavedAccounts(provider).length;
+  if(!help)return;
+  help.textContent=a?(ledgerIdentityLocked(a)?"Editing this saved account. Its authenticated login email stays locked until the connection is disconnected.":"Editing this saved account. Save accounts will update it instead of creating a duplicate.")
+    :count?"Choose one to autofill its username, email, URL, notes, and persona. Passwords are never shown or stored.":`Enter a new ${providerName} account below. Passwords saved on your phone remain private to your phone.`;
+}
+function refreshLedgerSavedPicker(providerSelect){
+  const row=providerSelect.closest(".ledgerrow"),picker=row.querySelector(".lrSavedAccount"),hadSaved=!!row.dataset.ledgerId,saved=ledgerSavedAccountOptions(providerSelect.value);
+  if(hadSaved)clearLedgerRowDetails(row);
+  row.dataset.ledgerId="";delete row.dataset.savedSnapshot;providerSelect.disabled=false;picker.disabled=!saved.count;picker.innerHTML=saved.html;
+  row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);
+}
+function applyLedgerSavedAccount(picker){
+  const row=picker.closest(".ledgerrow"),id=picker.value,previous=row.dataset.ledgerId||"";
+  if(!id){
+    if(previous&&ledgerSavedRowDirty(row)&&!confirm("Clear your changes and start a new account?")){picker.value=previous;return}
+    if(previous)clearLedgerRowDetails(row);row.dataset.ledgerId="";delete row.dataset.savedSnapshot;row.querySelector(".lrProvider").disabled=false;row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);return
+  }
+  const a=myAccounts.find(x=>x.id===id);if(!a){picker.value="";toast("That saved account is no longer available");return}
+  const hasTyped=[".lrUser",".lrEmail",".lrUrl",".lrNotes"].some(s=>row.querySelector(s).value.trim());
+  if(hasTyped&&previous!==id&&!confirm("Replace the values in this row with the saved account?")){picker.value=previous;return}
+  row.dataset.ledgerId=a.id;row.querySelector(".lrProvider").value=a.provider;row.querySelector(".lrProvider").disabled=true;
+  row.querySelector(".lrUser").value=a.username||"";row.querySelector(".lrEmail").value=a.login_email||"";row.querySelector(".lrUrl").value=a.url||"";row.querySelector(".lrNotes").value=a.notes||"";
+  const persona=row.querySelector(".lrPersona");persona.value=a.persona_id&&myPersonas.some(p=>p.id===a.persona_id)?a.persona_id:"";toggleLedgerQuick(persona);
+  row.querySelector(".lrEmail").disabled=ledgerIdentityLocked(a);row.dataset.savedSnapshot=JSON.stringify(ledgerRowDetailsSnapshot(row));setLedgerSavedHelp(row,a);
+}
 function ledgerConnectionInfo(a){
-  const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row?row.connection_state:"recorded";
+  const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row&&!(row.connection_state==="verified"&&normalizeLedgerEmail(row.provider_email)!==normalizeLedgerEmail(a.login_email))?row.connection_state:"recorded";
   if(state==="connected")return{row,state,label:a.provider==="gmail"?"API connected · read-only":"API connected",klass:"connected",note:"External API access is active."};
   if(state==="verified")return{row,state,label:"Ownership verified",klass:"verified",note:"Ownership is verified; inbox/API access is not connected."};
   if(state==="error")return{row,state,label:"Needs reconnect",klass:"attention",note:"The external connection needs attention."};
@@ -1876,13 +1940,23 @@ function ledgerAuthPanel(a,info){
     :`<button class="btn sm" onclick="connectGmail('${a.id}')">Authenticate Gmail</button>`;
   return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
 }
+function ledgerEditPanel(a){
+  const locked=ledgerIdentityLocked(a),section="section-ledgeredit"+a.id.replace(/-/g,"");
+  return `<div class="ledgeredit" id="ledgerEdit_${a.id}">
+    <div><label for="ledgerEditUser_${a.id}">Handle / username</label><input id="ledgerEditUser_${a.id}" name="ledger_edit_username_${a.id}" autocomplete="${section} username" autocapitalize="none" spellcheck="false" value="${esc(a.username||"")}" placeholder="@handle or account name"></div>
+    <div><label for="ledgerEditEmail_${a.id}">Login email (optional)</label><input id="ledgerEditEmail_${a.id}" name="ledger_edit_email_${a.id}" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" value="${esc(a.login_email||"")}" placeholder="name@example.com" ${locked?"disabled":""}></div>
+    <div><label for="ledgerEditUrl_${a.id}">Profile / account URL (optional)</label><input id="ledgerEditUrl_${a.id}" name="ledger_edit_url_${a.id}" type="url" inputmode="url" autocomplete="${section} url" autocapitalize="none" spellcheck="false" value="${esc(a.url||"")}" placeholder="https://..."></div>
+    <div><label for="ledgerEditNotes_${a.id}">Private notes (optional — no secrets)</label><input id="ledgerEditNotes_${a.id}" name="ledger_edit_notes_${a.id}" autocomplete="off" value="${esc(a.notes||"")}" placeholder="Purpose, status, reminders"></div>
+    <div class="ledgereditactions"><button class="btn sm" onclick="saveLedgerDetails('${a.id}')">Save details</button><button class="btn sm sec" onclick="cancelLedgerEdit('${a.id}')">Cancel</button>${locked?'<span class="muted">Disconnect authentication before changing the login email.</span>':''}</div></div>`;
+}
 function accountLedgerHtml(){
   const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);return `<div class="ledgeritem">
     <div class="ledgerwho"><b>${esc((PLATS[a.provider]||{}).name||a.provider)}${a.username?" · "+esc(a.username):""}</b><br>
       <span class="muted">${esc(a.login_email||"")}${/^https?:\/\//i.test(a.url||"")?`${a.login_email?" · ":""}<a href="${esc(a.url)}" target="_blank" rel="noopener">open account ↗</a>`:""}</span>
       <span class="ledgerstate"><span class="pill ${info.klass}">${esc(info.label)}</span></span></div>
     <select id="ledgerPersona_${a.id}" data-current="${esc(a.persona_id||"")}" aria-label="Assigned persona" onchange="toggleSavedLedgerQuick('${a.id}',this)">${ledgerPersonaOptions(a.persona_id||"",true)}</select>
-    <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save</button>
+    <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save persona</button>
+    <button class="btn sm sec" onclick="toggleLedgerEdit('${a.id}')">Edit details</button>
     <button class="btn sm sec" onclick="toggleLedgerAuth('${a.id}')">Authentication</button>
     <button class="btn sm danger" onclick="deleteLedgerAccount('${a.id}')">Delete</button>
     ${p?`<span class="pill priv">${esc(p.name)}</span>`:'<span class="pill priv">Unassigned</span>'}
@@ -1890,65 +1964,106 @@ function accountLedgerHtml(){
       <div><label>New persona handle</label><input id="ledgerNewHandle_${a.id}" placeholder="lowercase_handle"></div>
       <button class="btn sm" onclick="createAndAssignLedgerPersona('${a.id}')">Create & assign</button>
       <button class="btn sm sec" onclick="cancelSavedLedgerQuick('${a.id}')">Cancel</button></div>
+    ${ledgerEditPanel(a)}
     ${ledgerAuthPanel(a,info)}</div>`}).join("")||'<p class="muted">No accounts recorded yet.</p>';
   return `<div class="acctsub">Your accounts (${myAccounts.length})</div><div class="ledgerlist">${existing}</div>
     <div class="acctsub">Batch add accounts</div>
-    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Authentication on the saved row to see and advance its connection state.</span></div></div>
-    <p class="muted">Add as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while recording.</p>
+    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Edit details to add or correct its login email, then Authentication to connect it.</span></div></div>
+    <p class="muted">Add or update as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while recording.</p>
     <div id="ledgerBatch"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn sm sec" onclick="addLedgerRow()">+ Add another row</button>
-      <button class="btn sm" onclick="saveLedgerBatch()">Record accounts</button></div>
+      <button class="btn sm" id="ledgerBatchSaveBtn" onclick="saveLedgerBatch()">Save accounts</button></div>
     <p class="muted" style="margin-top:8px">Quick-created personas start private. Open the persona editor later to add its voice, bio, visuals, safety rules, and publishing settings.</p>`;
 }
 function addLedgerRow(seed={}){
   const box=document.getElementById("ledgerBatch");if(!box)return;
-  const n=++ledgerRowSeq,row=document.createElement("div");row.className="ledgerrow";row.dataset.row=n;
-  row.innerHTML=`<div><label>Platform / site</label><select class="lrProvider">${ledgerProviderOptions(seed.provider||"")}</select></div>
-    <div><label>Handle / username</label><input class="lrUser" value="${esc(seed.username||"")}" placeholder="@handle or account name"></div>
-    <div><label>Login email (optional)</label><input class="lrEmail" type="email" value="${esc(seed.login_email||"")}" placeholder="name@example.com"></div>
-    <div class="ledgerwide"><label>Persona</label><select class="lrPersona" onchange="toggleLedgerQuick(this)">${ledgerPersonaOptions(seed.persona_id||"",true)}</select></div>
+  const n=++ledgerRowSeq,row=document.createElement("div"),provider=seed.provider||Object.keys(PLATS)[0],saved=ledgerSavedAccountOptions(provider,seed.id||"");row.className="ledgerrow";row.dataset.row=n;row.dataset.ledgerId=seed.id||"";
+  const section="section-ledger"+n;
+  row.innerHTML=`<div><label for="ledgerProvider_${n}">Platform / site</label><select id="ledgerProvider_${n}" name="ledger_provider_${n}" class="lrProvider" onchange="refreshLedgerSavedPicker(this)" ${seed.id?"disabled":""}>${ledgerProviderOptions(provider)}</select></div>
+    <div class="ledgersaved"><label for="ledgerSaved_${n}">Saved account (optional)</label><select id="ledgerSaved_${n}" name="ledger_saved_${n}" class="lrSavedAccount" aria-describedby="ledgerSavedHelp_${n}" onchange="applyLedgerSavedAccount(this)" ${saved.count?"":"disabled"}>${saved.html}</select><span class="muted lrSavedHelp" id="ledgerSavedHelp_${n}" aria-live="polite"></span></div>
+    <div><label for="ledgerUser_${n}">Handle / username</label><input id="ledgerUser_${n}" name="ledger_username_${n}" class="lrUser" autocomplete="${section} username" autocapitalize="none" spellcheck="false" enterkeyhint="next" value="${esc(seed.username||"")}" placeholder="@handle or account name"></div>
+    <div><label for="ledgerEmail_${n}">Login email (optional)</label><input id="ledgerEmail_${n}" name="ledger_email_${n}" class="lrEmail" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" enterkeyhint="next" value="${esc(seed.login_email||"")}" placeholder="name@example.com"></div>
+    <div class="ledgerwide"><label for="ledgerPersona_${n}">Persona</label><select id="ledgerPersona_${n}" name="ledger_persona_${n}" class="lrPersona" onchange="toggleLedgerQuick(this)">${ledgerPersonaOptions(seed.persona_id||"",true)}</select></div>
     <button class="btn sm danger" onclick="this.closest('.ledgerrow').remove()" aria-label="Remove row">✕</button>
-    <div class="ledgernew"><div><label>New persona name</label><input class="lrNewName" placeholder="Display name"></div>
-      <div><label>New persona handle</label><input class="lrNewHandle" placeholder="lowercase_handle"></div></div>
-    <div class="ledgerwide"><label>Profile / account URL (optional)</label><input class="lrUrl" type="url" value="${esc(seed.url||"")}" placeholder="https://..."></div>
-    <div class="ledgerwide"><label>Private notes (optional — no secrets)</label><input class="lrNotes" value="${esc(seed.notes||"")}" placeholder="Purpose, status, reminders"></div>`;
+    <div class="ledgernew"><div><label for="ledgerNewName_${n}">New persona name</label><input id="ledgerNewName_${n}" name="ledger_new_persona_name_${n}" class="lrNewName" autocomplete="off" placeholder="Display name"></div>
+      <div><label for="ledgerNewHandle_${n}">New persona handle</label><input id="ledgerNewHandle_${n}" name="ledger_new_persona_handle_${n}" class="lrNewHandle" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="lowercase_handle"></div></div>
+    <div class="ledgerwide"><label for="ledgerUrl_${n}">Profile / account URL (optional)</label><input id="ledgerUrl_${n}" name="ledger_url_${n}" class="lrUrl" type="url" inputmode="url" autocomplete="${section} url" autocapitalize="none" spellcheck="false" value="${esc(seed.url||"")}" placeholder="https://..."></div>
+    <div class="ledgerwide"><label for="ledgerNotes_${n}">Private notes (optional — no secrets)</label><input id="ledgerNotes_${n}" name="ledger_notes_${n}" class="lrNotes" autocomplete="off" value="${esc(seed.notes||"")}" placeholder="Purpose, status, reminders"></div>`;
   box.appendChild(row);
+  const account=seed.id?myAccounts.find(a=>a.id===seed.id):null;if(account)row.querySelector(".lrEmail").disabled=ledgerIdentityLocked(account);setLedgerSavedHelp(row,account||null);
 }
 function toggleLedgerQuick(sel){const q=sel.closest(".ledgerrow").querySelector(".ledgernew");q.classList.toggle("on",sel.value==="__new__")}
 function toggleSavedLedgerQuick(id,sel){document.getElementById("ledgerQuick_"+id).classList.toggle("on",sel.value==="__new__")}
 function cancelSavedLedgerQuick(id){const s=document.getElementById("ledgerPersona_"+id);s.value=s.dataset.current||"";toggleSavedLedgerQuick(id,s)}
-function toggleLedgerAuth(id){document.getElementById("ledgerAuth_"+id).classList.toggle("on")}
+function toggleLedgerAuth(id){const panel=document.getElementById("ledgerAuth_"+id);panel.classList.toggle("on");const edit=document.getElementById("ledgerEdit_"+id);if(edit)edit.classList.remove("on")}
+function toggleLedgerEdit(id){const panel=document.getElementById("ledgerEdit_"+id);panel.classList.toggle("on");const auth=document.getElementById("ledgerAuth_"+id);if(auth)auth.classList.remove("on");if(panel.classList.contains("on"))panel.scrollIntoView({behavior:"smooth",block:"nearest"})}
+function cancelLedgerEdit(id){
+  const a=myAccounts.find(x=>x.id===id),panel=document.getElementById("ledgerEdit_"+id);if(!a||!panel)return;
+  document.getElementById("ledgerEditUser_"+id).value=a.username||"";document.getElementById("ledgerEditEmail_"+id).value=a.login_email||"";
+  document.getElementById("ledgerEditUrl_"+id).value=a.url||"";document.getElementById("ledgerEditNotes_"+id).value=a.notes||"";panel.classList.remove("on");
+}
+function validLedgerEmail(v){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
+async function saveLedgerDetails(id){
+  const a=myAccounts.find(x=>x.id===id);if(!a){toast("That account is no longer available");return}
+  const username=val("ledgerEditUser_"+id),login_email=val("ledgerEditEmail_"+id),url=val("ledgerEditUrl_"+id),notes=val("ledgerEditNotes_"+id);
+  if(!username&&!login_email&&!url){toast("Add a username, login email, or account URL");return}
+  if(!validLedgerEmail(login_email)){toast("Enter a valid login email");return}
+  if(url&&!/^https?:\/\//i.test(url)){toast("Account URLs must begin with https:// or http://");return}
+  if(ledgerIdentityLocked(a)&&normalizeLedgerEmail(login_email)!==normalizeLedgerEmail(a.login_email)){toast("Disconnect authentication before changing the login email");return}
+  if(myAccounts.some(x=>x.id!==id&&sameLedgerAccount(x,{provider:a.provider,username,login_email,url}))){toast("Another saved account already uses those details");return}
+  const{error}=await sb.from("account_ledger").update({username,login_email,url,notes,updated_at:new Date().toISOString()}).eq("id",id);
+  if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account details saved. You can open Authentication now.");
+}
 async function createPrivatePersona(name,handle){
   return sb.from("personas").insert({owner:session.user.id,name,handle,visibility:"private"}).select().single();
 }
 async function saveLedgerBatch(){
+  if(ledgerBatchSaving)return;
   const rows=[...document.querySelectorAll("#ledgerBatch .ledgerrow")];
   if(!rows.length){toast("Add at least one account row");return}
-  const items=rows.map(r=>({row:r,provider:r.querySelector(".lrProvider").value,username:r.querySelector(".lrUser").value.trim(),
+  const items=rows.map(r=>({row:r,ledger_id:r.dataset.ledgerId||"",provider:r.querySelector(".lrProvider").value,username:r.querySelector(".lrUser").value.trim(),
     login_email:r.querySelector(".lrEmail").value.trim(),persona_id:r.querySelector(".lrPersona").value,url:r.querySelector(".lrUrl").value.trim(),
     notes:r.querySelector(".lrNotes").value.trim(),newName:r.querySelector(".lrNewName").value.trim(),newHandle:r.querySelector(".lrNewHandle").value.trim().toLowerCase()}));
+  const seen=[],selectedIds=new Set();
   for(const x of items){
     if(!x.username&&!x.login_email&&!x.url){toast("Each row needs a username, login email, or account URL");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(!validLedgerEmail(x.login_email)){toast("Enter a valid login email");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     if(x.url&&!/^https?:\/\//i.test(x.url)){toast("Account URLs must begin with https:// or http://");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     if(x.persona_id==="__new__"&&(!x.newName||!/^[a-z0-9._]{3,30}$/.test(x.newHandle))){toast("Quick personas need a name and a valid 3–30 character lowercase handle");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    const selected=x.ledger_id?myAccounts.find(a=>a.id===x.ledger_id):null;
+    if(x.ledger_id&&(!selected||selected.provider!==x.provider)){toast("A saved account selection is no longer available. Choose it again.");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(selectedIds.has(x.ledger_id)&&x.ledger_id){toast("The same saved account is selected more than once");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(x.ledger_id)selectedIds.add(x.ledger_id);
+    if(selected&&ledgerIdentityLocked(selected)&&normalizeLedgerEmail(x.login_email)!==normalizeLedgerEmail(selected.login_email)){toast("Disconnect authentication before changing the login email");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    const duplicate=myAccounts.find(a=>a.id!==x.ledger_id&&sameLedgerAccount(a,x));
+    if(duplicate){toast("That account is already recorded. Choose it from Saved account to update it.");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(seen.some(y=>sameLedgerAccount(y,x))){toast("The same account appears more than once in this batch");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    seen.push(x);
   }
-  const made=new Map();let saved=0;
-  for(const x of items){
-    let pid=x.persona_id||null;
-    if(pid==="__new__"){
-      pid=made.get(x.newHandle)||null;
-      if(!pid){
-        const{data,error}=await createPrivatePersona(x.newName,x.newHandle);
-        if(error){toast("Persona @"+x.newHandle+": "+(error.message.includes("duplicate")?"handle already exists":error.message));return}
-        pid=data.id;made.set(x.newHandle,pid);
+  ledgerBatchSaving=true;const saveButton=document.getElementById("ledgerBatchSaveBtn");if(saveButton){saveButton.disabled=true;saveButton.textContent="Saving…"}
+  const made=new Map();let added=0,updated=0;
+  try{
+    for(const x of items){
+      let pid=x.persona_id||null;
+      if(pid==="__new__"){
+        pid=made.get(x.newHandle)||null;
+        if(!pid){
+          const{data,error}=await createPrivatePersona(x.newName,x.newHandle);
+          if(error){toast("Persona @"+x.newHandle+": "+(error.message.includes("duplicate")?"handle already exists":error.message));return}
+          pid=data.id;made.set(x.newHandle,pid);
+        }
       }
+      const payload={persona_id:pid,provider:x.provider,username:x.username,login_email:x.login_email,url:x.url,notes:x.notes,updated_at:new Date().toISOString()};
+      const{error}=x.ledger_id?await sb.from("account_ledger").update(payload).eq("id",x.ledger_id):await sb.from("account_ledger").insert(Object.assign({owner:session.user.id},payload));
+      if(error){toast("Added "+added+" and updated "+updated+"; stopped: "+error.message);await loadMine();renderStudio();return}
+      if(x.ledger_id)updated++;else added++;
     }
-    const{error}=await sb.from("account_ledger").insert({owner:session.user.id,persona_id:pid,provider:x.provider,username:x.username,login_email:x.login_email,url:x.url,notes:x.notes});
-    if(error){toast("Saved "+saved+" accounts; stopped: "+error.message);await loadMine();renderStudio();return}
-    saved++;
+    await loadMine();acctTab="accounts";renderStudio();
+    const parts=[];if(added)parts.push("added "+added);if(updated)parts.push("updated "+updated);toast("Accounts saved: "+parts.join(" and ")+". No external access was granted.");
+  }finally{
+    ledgerBatchSaving=false;const currentButton=document.getElementById("ledgerBatchSaveBtn");if(currentButton){currentButton.disabled=false;currentButton.textContent="Save accounts"}
   }
-  await loadMine();acctTab="accounts";renderStudio();toast("Recorded "+saved+" account"+(saved===1?"":"s")+". No external access was granted.");
 }
 async function updateLedgerPersona(id){
   const persona_id=val("ledgerPersona_"+id)||null;
