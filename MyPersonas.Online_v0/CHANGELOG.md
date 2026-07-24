@@ -3,6 +3,28 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Unreleased — Full-history Inbox Concierge reports
+
+- Added an explicit full-history settings shortcut that selects a 100-year Gmail
+  lookback and a bounded 15,000-message report ceiling. Selecting it does not save,
+  queue a scan, approve cleanup, or change an email.
+- Kept the one-minute worker at conservative 40-message resumable pages: a maximum
+  scan needs about 6.25 hours of successful polling before retries while each function
+  invocation retains the existing 80-second safety budget.
+- A scan that reaches its message ceiling while Gmail has more matching mail now records
+  that partial result in a persistent latest-scan banner, the Activity timeline, and the
+  audit event instead of looking like a complete history scan.
+- Scan cursors now have a bounded seven-day lifetime refreshed after every successful
+  page. Any finding/checkpoint/progress persistence failure stops the scan incomplete
+  without advancing silently; saved-versus-processed counts and the error remain visible.
+- Runnable scans now rotate by the time they last received service, so one large mailbox
+  cannot monopolize the worker while other connected inboxes wait for their first page.
+- Every morning-report finding now displays its rules-derived suggested next step.
+  Suggestions remain review material only; labeling, archive, Trash, dismissal, and
+  unsubscribe handoff still require explicit owner selection or approval.
+- Added migration 017 as an additive bounds change. Applied migration 016 remains
+  unchanged.
+
 ## Released — Inbox Concierge (2026-07-24)
 
 - Added a separate, owner-only mailbox control plane for Gmail reports and approved

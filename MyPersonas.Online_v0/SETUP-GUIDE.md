@@ -25,6 +25,9 @@ unchanged. Migration `016-mailbox-manager.sql` added the owner-readable sanitize
 reports plus service-only provider references, cursors, exact action items, and operation
 leases used by Inbox Concierge. In another environment, apply it before deploying
 `mailbox-manager`, `run-mailbox-jobs`, the Gmail permission upgrade, or the matching page.
+Migration `017-mailbox-full-history.sql` is the additive next-release bounds change:
+apply it after 016 with the matching mailbox manager, worker, and page. It raises only the
+report lookback and per-scan ceiling; it grants no new scope or automatic action authority.
 Deploy the updated `delete-account` and `erase-content` functions before the new page so
 provider grants are revoked and mailbox jobs cannot race erasure. The page checks the
 versioned content-only capability before enabling erasure.
@@ -32,7 +35,7 @@ versioned content-only capability before enabling erasure.
 For a new Supabase project, open **SQL Editor**, paste the entire contents of
 `supabase-schema.sql`, and run it. The snapshot includes the base 008–010 account/
 connection/Gmail structures plus the immutable 001–012 history and exact migrations
-013–016. There is no legacy-key transition on a fresh project.
+013–017. There is no legacy-key transition on a fresh project.
 
 ## Step 2 — Wire the app to your project
 Dashboard → **Settings → API**:
@@ -110,8 +113,9 @@ security assessment.
 
 ### Inbox Concierge worker
 
-Run `sql-updates/016-mailbox-manager.sql`, then deploy the signed-in control endpoint and
-the cron-secret worker:
+Run `sql-updates/016-mailbox-manager.sql` followed by
+`sql-updates/017-mailbox-full-history.sql`, then deploy the signed-in control endpoint
+and the cron-secret worker:
 
 ```
 supabase functions deploy mailbox-manager
@@ -123,6 +127,18 @@ supabase functions deploy run-mailbox-jobs --no-verify-jwt
 requests. Store the same `CRON_SECRET` value in the Edge Function environment and in
 Supabase Vault as `mypersonas_cron_secret`, then schedule the worker every minute using
 the Vault lookup shown in `../supabase/DEPLOY.md`.
+
+The **Use full-history limits** control fills in a 100-year lookback and a
+15,000-message ceiling, but the owner must still save those settings and explicitly start
+the report. The worker retains 40-message resumable pages, which is about 6.25 hours of
+successful one-minute polling at the ceiling before retries. Scan cursors have a bounded
+seven-day expiry that refreshes after every successful page. If Gmail still has matching
+mail at the ceiling, the persistent latest-scan banner and Activity timeline say that
+older mail remains; the app never represents the bounded result as a complete history
+scan. A metadata/finding/checkpoint persistence failure ends the scan as incomplete and
+reports processed-versus-saved counts instead of advancing silently. When several
+mailboxes are active, the worker rotates by least-recently-served scan rather than letting
+one full-history report monopolize every minute.
 
 Inbox Concierge is rules-first. To enable optional AI classification, the owner must
 link a hosted text model in Matrix, select it for that mailbox, and accept the
@@ -187,7 +203,7 @@ Current connection coverage is intentionally explicit:
 
 Follow the staged order in `../supabase/DEPLOY.md`: pause both workers; deploy `ai-proxy`,
 `post-bridge`, `run-publish-queue`, `fan-chat`, `gmail-oauth`, and `twitter-oauth`; apply
-every pending migration through 016; deploy `run-tasks`, `mailbox-manager`,
+every pending migration through 017; deploy `run-tasks`, `mailbox-manager`,
 `run-mailbox-jobs`, `delete-account`, and the JWT-verified `erase-content`; publish the
 page; probe all three workers; then schedule content workers every five minutes and the
 bounded mailbox worker every minute. Set `CRON_SECRET` and `FAN_CHAT_SALT` before probing.

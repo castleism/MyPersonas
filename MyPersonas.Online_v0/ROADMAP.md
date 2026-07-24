@@ -54,6 +54,10 @@ browser scenarios retain their own verification evidence.
       exact approval plans for labels/archive/recoverable Trash, bounded Undo, a separate
       audit trail, and manual unsubscribe offers that never fetch arbitrary links in the
       background.
+- [x] Staged full-history Gmail reports: migration 017 and matching app/worker bounds
+      support a 100-year lookback with a 15,000-message ceiling, visibly identify a
+      cap-limited result, rotate active inboxes fairly, and show a suggested review action
+      on every finding without granting automatic approval or mutation authority.
 - [ ] Outlook Inbox Concierge adapter through delegated Microsoft Graph `Mail.ReadWrite`
       after an Entra app, callback, credentials, consent, and live personal/tenant tests
       are installed.

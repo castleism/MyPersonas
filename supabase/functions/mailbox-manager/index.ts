@@ -35,7 +35,10 @@ import {
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_FINDING_IDS = 50;
+const MAX_LOOKBACK_DAYS = 36_500;
+const MAX_SCAN_MESSAGES = 15_000;
 const PREVIEW_TTL_MS = 24 * 60 * 60 * 1_000;
+const SCAN_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const ACTIVE_SCAN_STATES = ["queued", "running"];
 const CADENCES = new Set(["manual", "daily", "weekly"]);
 const CLASSIFIER_MODES = new Set(["rules", "ai"]);
@@ -499,8 +502,18 @@ async function saveSettings(
     paused,
     schedule_cadence: scheduleCadence,
     include_spam_trash: body.includeSpamTrash === true,
-    lookback_days: integerInRange(body.lookbackDays, 90, 1, 3_650),
-    max_messages: integerInRange(body.maxMessages, 500, 25, 5_000),
+    lookback_days: integerInRange(
+      body.lookbackDays,
+      90,
+      1,
+      MAX_LOOKBACK_DAYS,
+    ),
+    max_messages: integerInRange(
+      body.maxMessages,
+      500,
+      25,
+      MAX_SCAN_MESSAGES,
+    ),
     classifier_mode: classifierMode,
     ai_backend_id: classifierMode === "ai" ? aiBackendId : null,
     ai_consent: classifierMode === "ai" && aiConsent,
@@ -605,8 +618,18 @@ async function requestScan(owner: string, context: MailboxContext) {
   }
   const snapshot = {
     includeSpamTrash: settings.include_spam_trash === true,
-    lookbackDays: integerInRange(settings.lookback_days, 90, 1, 3_650),
-    maxMessages: integerInRange(settings.max_messages, 500, 25, 5_000),
+    lookbackDays: integerInRange(
+      settings.lookback_days,
+      90,
+      1,
+      MAX_LOOKBACK_DAYS,
+    ),
+    maxMessages: integerInRange(
+      settings.max_messages,
+      500,
+      25,
+      MAX_SCAN_MESSAGES,
+    ),
     classifierMode: safeText(settings.classifier_mode, 32) || "rules",
     aiBackendId: isUuid(settings.ai_backend_id) ? settings.ai_backend_id : null,
     aiConsent: settings.ai_consent === true,
@@ -642,7 +665,7 @@ async function requestScan(owner: string, context: MailboxContext) {
     processed_count: 0,
     found_count: 0,
     checkpoint: {},
-    expires_at: isoAfter(24 * 60 * 60 * 1_000),
+    expires_at: isoAfter(SCAN_STATE_TTL_MS),
     updated_at: new Date().toISOString(),
   });
   if (stateError) {

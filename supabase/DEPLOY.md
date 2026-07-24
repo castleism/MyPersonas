@@ -17,7 +17,7 @@ supabase link --project-ref nwsqyuucwzihruszocge
 Use a Supabase-supported CLI installation method. Do not install the CLI globally with
 `npm install -g supabase`.
 
-## 2. Pause workers and apply migrations 013–016 before the release
+## 2. Pause workers and apply migrations 013–017 before the release
 
 Migration 011 moves existing plaintext model keys into Supabase Vault, clears the legacy
 `ai_backends.api_key` values, and revokes direct browser writes to `ai_backends`. Deploy
@@ -31,7 +31,9 @@ prompt-input limits, deterministic input blocking, and a 100-active-schedule cap
 Migration 014 added the authenticated, atomic persona/profile bundle save used by the
 page. Migration 015 added the independent service-only X OAuth/Vault boundary, and
 migration 016 added the independent mailbox report/action boundary. Pause/unschedule all
-workers before applying pending migrations or replacing their code.
+workers before applying pending migrations or replacing their code. Migration 017 is an
+additive full-history report-bounds change and must follow 016; it does not alter
+permissions or create a scan.
 
 ```sql
 select cron.unschedule(jobid)
@@ -55,10 +57,10 @@ supabase functions deploy run-publish-queue --no-verify-jwt
 supabase functions deploy fan-chat --no-verify-jwt
 ```
 
-Apply all pending migrations through 016 while the workers remain paused. Migration 015
-must be live before the X function; migration 016 must be live before either mailbox
-function or the Gmail permission upgrade. Then deploy the matching generator, mailbox
-services, and X connector:
+Apply all pending migrations through 017 while the workers remain paused. Migration 015
+must be live before the X function; migrations 016 and 017 must be live before deploying
+the full-history mailbox manager/worker/page combination. Then deploy the matching
+generator, mailbox services, and X connector:
 
 ```powershell
 supabase functions deploy run-tasks --no-verify-jwt
@@ -93,7 +95,7 @@ enforce their applicable checks in code.
 
 For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
 snapshot contains the base schema (including the 008–010 account-ledger, connection, and
-Gmail structures) plus the immutable 001–012 history and migrations 013–016. For the existing
+Gmail structures) plus the immutable 001–012 history and migrations 013–017. For the existing
 project, run every unapplied file in `MyPersonas.Online_v0/sql-updates` in numeric order.
 The automation release requires:
 
@@ -118,6 +120,8 @@ The automation release requires:
 - `016-mailbox-manager.sql` — owner-readable sanitized mailbox settings, scan summaries,
   findings, exact action plans, and audit events plus service-only cursors, provider
   message references, prior-label Undo snapshots, and serialized mailbox operations.
+- `017-mailbox-full-history.sql` — additive 100-year lookback and bounded
+  15,000-message report limits; no permission, schedule, or mutation grant.
 
 Migration 011 enables `supabase_vault`, creates an owner-authenticated model-management
 surface, migrates every non-empty legacy model key into Vault, and then clears the legacy
@@ -243,6 +247,14 @@ The Gmail adapter retrieves bounded headers, subject, and Gmail preview snippets
 bounded pages. It never downloads attachments or stores raw bodies. Provider message IDs,
 label snapshots, page cursors, and unsubscribe destinations stay in service-only tables;
 owner-readable tables contain only sanitized findings and aggregate job/action status.
+The optional full-history settings use a 100-year lookback and a 15,000-message ceiling.
+The worker advances at 40 messages per one-minute invocation (about 6.25 hours at the
+ceiling before retries), with a bounded seven-day cursor expiry refreshed after every
+successful page. A remaining Gmail page token is recorded as a cap-limited partial result
+in the persistent latest-scan banner, Activity, and audit history. A persistence failure
+stops the scan incomplete before a page can advance silently and records processed and
+saved-finding counts with the error. Runnable scans rotate by the time they last received
+service so active mailboxes advance fairly and refresh their bounded checkpoints.
 After per-mailbox consent, optional AI classification receives only the bounded sender,
 subject, and short Gmail preview snippet; full bodies and attachments are not sent. The
 model has no provider token, mailbox tool, unsubscribe URL, or mutation authority.

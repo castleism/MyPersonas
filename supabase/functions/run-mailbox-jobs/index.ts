@@ -33,9 +33,15 @@ import {
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const RUN_BUDGET_MS = 80_000;
 const MAX_DUE_SETTINGS = 50;
+const MAX_LOOKBACK_DAYS = 36_500;
+const MAX_SCAN_MESSAGES = 15_000;
+// At one bounded page per minute, 40 messages can cover 15,000 messages in
+// about 6.25 hours before retries while leaving ample room inside the 80s Edge
+// budget for Gmail metadata requests and owner-bound database writes.
 const MAX_SCAN_MESSAGES_PER_INVOCATION = 40;
 const MAX_ACTION_ITEMS_PER_INVOCATION = 16;
 const LEASE_SECONDS = 120;
+const SCAN_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const METADATA_HEADERS = [
   "From",
   "Subject",
@@ -213,8 +219,18 @@ function settingsSnapshot(value: unknown): SettingsSnapshot {
   const record = asRecord(value);
   return {
     includeSpamTrash: record.includeSpamTrash === true,
-    lookbackDays: integerInRange(record.lookbackDays, 90, 1, 3_650),
-    maxMessages: integerInRange(record.maxMessages, 500, 25, 5_000),
+    lookbackDays: integerInRange(
+      record.lookbackDays,
+      90,
+      1,
+      MAX_LOOKBACK_DAYS,
+    ),
+    maxMessages: integerInRange(
+      record.maxMessages,
+      500,
+      25,
+      MAX_SCAN_MESSAGES,
+    ),
     classifierMode: safeText(record.classifierMode, 16) === "ai"
       ? "ai"
       : "rules",
@@ -266,8 +282,18 @@ async function enqueueDueScans() {
     }
     const snapshot: SettingsSnapshot = {
       includeSpamTrash: setting.include_spam_trash === true,
-      lookbackDays: integerInRange(setting.lookback_days, 90, 1, 3_650),
-      maxMessages: integerInRange(setting.max_messages, 500, 25, 5_000),
+      lookbackDays: integerInRange(
+        setting.lookback_days,
+        90,
+        1,
+        MAX_LOOKBACK_DAYS,
+      ),
+      maxMessages: integerInRange(
+        setting.max_messages,
+        500,
+        25,
+        MAX_SCAN_MESSAGES,
+      ),
       classifierMode: setting.classifier_mode === "ai" ? "ai" : "rules",
       aiBackendId: isUuid(setting.ai_backend_id) ? setting.ai_backend_id : null,
       aiConsent: setting.ai_consent === true,
@@ -316,7 +342,7 @@ async function enqueueDueScans() {
       processed_count: 0,
       found_count: 0,
       checkpoint: { categoryCounts: {} },
-      expires_at: isoAfter(24 * 60 * 60 * 1_000),
+      expires_at: isoAfter(SCAN_STATE_TTL_MS),
       updated_at: nowIso(),
     });
     if (stateResult.error) {
@@ -351,16 +377,15 @@ function suggestedAction(
   classification: Classification,
   hasUnsubscribe: boolean,
 ) {
-  if (classification.protectedReasons.length) {
-    return classification.category === "security" ? "label" : "review";
-  }
+  if (
+    classification.protectedReasons.length ||
+    classification.category === "order_travel"
+  ) return "review";
   if (classification.category === "subscription") {
     return hasUnsubscribe ? "review" : "label_archive";
   }
   if (
-    ["account_creation", "receipt", "order_travel"].includes(
-      classification.category,
-    )
+    ["account_creation", "receipt"].includes(classification.category)
   ) return "label_archive";
   if (classification.category === "other") return "review";
   return "label";
@@ -453,9 +478,33 @@ async function persistScannedMessage(
   return true;
 }
 
-async function failScan(run: ScanRun, code: string, message: string) {
+async function failScan(
+  run: ScanRun,
+  code: string,
+  message: string,
+  counts: Record<string, number> = {},
+  progress: {
+    processed: number;
+    found: number;
+    categoryCounts: Record<string, unknown>;
+  } | null = null,
+) {
+  const processed = progress
+    ? integerInRange(
+      progress.processed,
+      run.processed_count,
+      0,
+      MAX_SCAN_MESSAGES,
+    )
+    : integerInRange(run.processed_count, 0, 0, MAX_SCAN_MESSAGES);
+  const found = progress
+    ? integerInRange(progress.found, run.found_count, 0, MAX_SCAN_MESSAGES)
+    : integerInRange(run.found_count, 0, 0, MAX_SCAN_MESSAGES);
   const terminal = await admin.from("mailbox_scan_runs").update({
     status: "failed",
+    processed_count: processed,
+    found_count: found,
+    ...(progress ? { category_counts: progress.categoryCounts } : {}),
     error_code: safeText(code, 80),
     error_message: safeText(message, 300),
     finished_at: nowIso(),
@@ -471,8 +520,10 @@ async function failScan(run: ScanRun, code: string, message: string) {
     run.ledger_id,
     "scan.failed",
     "failed",
-    "Inbox scan stopped safely without changing Gmail.",
-    { processed: run.processed_count || 0 },
+    `Inbox scan stopped incomplete without changing Gmail: ${
+      safeText(message, 160)
+    }`,
+    { ...counts, processed, savedFindings: found },
     run.id,
   );
 }
@@ -527,7 +578,12 @@ async function processOneScan(startedAt: number) {
       return true;
     }
     const snapshot = settingsSnapshot(run.settings_snapshot);
-    const processedBefore = integerInRange(state.processed_count, 0, 0, 5_000);
+    const processedBefore = integerInRange(
+      state.processed_count,
+      0,
+      0,
+      MAX_SCAN_MESSAGES,
+    );
     const remaining = snapshot.maxMessages - processedBefore;
     if (remaining <= 0) {
       await completeScan(run, state, asRecord(state.checkpoint));
@@ -687,40 +743,96 @@ async function processOneScan(startedAt: number) {
       1_000_000,
     ) + aiFallback;
     for (let index = 0; index < normalized.length; index++) {
-      if (
-        await persistScannedMessage(
+      const persisted = await persistScannedMessage(
+        run,
+        normalized[index],
+        classifications[index],
+      );
+      if (!persisted) {
+        await failScan(
           run,
-          normalized[index],
-          classifications[index],
-        )
-      ) {
-        saved++;
-        const category = classifications[index].category;
-        categoryCounts[category] = integerInRange(
-          categoryCounts[category],
-          0,
-          0,
-          1_000_000,
-        ) + 1;
+          "scan_persistence_failed",
+          "A report record could not be saved, so this Gmail page was not marked complete. Start a new scan after checking the service.",
+          {
+            pageCandidates: candidates.length,
+            pageSavedBeforeFailure: saved,
+            persistenceFailures: 1,
+          },
+          {
+            processed: processedBefore + candidates.length,
+            found: integerInRange(
+              state.found_count,
+              0,
+              0,
+              MAX_SCAN_MESSAGES,
+            ) + saved,
+            categoryCounts,
+          },
+        );
+        return true;
       }
+      saved++;
+      const category = classifications[index].category;
+      categoryCounts[category] = integerInRange(
+        categoryCounts[category],
+        0,
+        0,
+        1_000_000,
+      ) + 1;
     }
     const processed = processedBefore + candidates.length;
-    const found = integerInRange(state.found_count, 0, 0, 5_000) + saved;
+    const found = integerInRange(
+      state.found_count,
+      0,
+      0,
+      MAX_SCAN_MESSAGES,
+    ) + saved;
     const nextPageToken = safeText(page.nextPageToken, 2_048);
     const completed = !nextPageToken || processed >= snapshot.maxMessages;
-    await admin.from("mailbox_scan_state").update({
+    categoryCounts.scan_cap_reached =
+      nextPageToken && processed >= snapshot.maxMessages ? 1 : 0;
+    const stateProgress = await admin.from("mailbox_scan_state").update({
       page_token: completed ? "" : nextPageToken,
       processed_count: processed,
       found_count: found,
       checkpoint: { categoryCounts },
+      expires_at: isoAfter(SCAN_STATE_TTL_MS),
       updated_at: nowIso(),
     }).eq("scan_run_id", run.id).eq("owner", run.owner);
-    await admin.from("mailbox_scan_runs").update({
+    if (stateProgress.error) {
+      await failScan(
+        run,
+        "scan_checkpoint_save_failed",
+        "The report page was saved, but its checkpoint was not; the scan stopped incomplete.",
+        {
+          pageCandidates: candidates.length,
+          pageSavedBeforeFailure: saved,
+          persistenceFailures: 1,
+        },
+        { processed, found, categoryCounts },
+      );
+      return true;
+    }
+    const runProgress = await admin.from("mailbox_scan_runs").update({
       processed_count: processed,
       found_count: found,
       category_counts: categoryCounts,
       updated_at: nowIso(),
     }).eq("id", run.id).eq("owner", run.owner);
+    if (runProgress.error) {
+      await failScan(
+        run,
+        "scan_progress_save_failed",
+        "The report page was saved, but its visible progress could not be recorded; the scan stopped incomplete.",
+        {
+          pageCandidates: candidates.length,
+          pageSavedBeforeFailure: saved,
+          persistenceFailures: 1,
+        },
+        { processed, found, categoryCounts },
+      );
+      return true;
+    }
     if (completed) {
       await completeScan(
         { ...run, processed_count: processed, found_count: found },
@@ -755,9 +867,14 @@ async function completeScan(
     state.processed_count,
     run.processed_count,
     0,
-    5_000,
+    MAX_SCAN_MESSAGES,
   );
-  const found = integerInRange(state.found_count, run.found_count, 0, 5_000);
+  const found = integerInRange(
+    state.found_count,
+    run.found_count,
+    0,
+    MAX_SCAN_MESSAGES,
+  );
   const categoryCounts = asRecord(checkpoint.categoryCounts);
   const aiUsed = integerInRange(categoryCounts.ai_used, 0, 0, 1_000_000);
   const aiFallback = integerInRange(
@@ -766,6 +883,12 @@ async function completeScan(
     0,
     1_000_000,
   );
+  const capReached = integerInRange(
+    categoryCounts.scan_cap_reached,
+    0,
+    0,
+    1,
+  ) === 1;
   const terminal = await admin.from("mailbox_scan_runs").update({
     status: "completed",
     processed_count: processed,
@@ -802,8 +925,16 @@ async function completeScan(
     run.ledger_id,
     "scan.completed",
     "succeeded",
-    "Inbox headers, subjects, and preview snippets were scanned; no full bodies or attachments were read and no email was changed.",
-    { processed, findings: found, aiUsed, aiFallback },
+    capReached
+      ? "Inbox scan reached its saved message limit; older matching mail remains. No email was changed."
+      : "Inbox headers, subjects, and preview snippets were scanned; no full bodies or attachments were read and no email was changed.",
+    {
+      processed,
+      findings: found,
+      aiUsed,
+      aiFallback,
+      capReached: capReached ? 1 : 0,
+    },
     run.id,
   );
 }

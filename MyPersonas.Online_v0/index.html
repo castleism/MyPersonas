@@ -349,6 +349,8 @@ const GMAIL_MODIFY_SCOPE="https://www.googleapis.com/auth/gmail.modify";
 let mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};
 let mailboxView="subscriptions",mailboxRequest=0,mailboxPollTimer=null,mailboxPendingPlan=null,mailboxPlanReturnFocus=null,mailboxPlanInert=[];
 const MAILBOX_SELECTION_LIMIT=50;
+const MAILBOX_MAX_LOOKBACK_DAYS=36500;
+const MAILBOX_MAX_SCAN_MESSAGES=15000;
 let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and account loads discard stale completions
 let pageState={},editLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
 const app=document.getElementById("app");
@@ -2523,8 +2525,8 @@ function mailboxSettingsHtml(account){
   const settings=mailboxSettings(),mode=String(mailboxValue(settings,"classifierMode","classifier_mode")||"rules"),selectedBackend=String(mailboxValue(settings,"aiBackendId","ai_backend_id")||"");
   const consent=mailboxValue(settings,"aiConsent","ai_consent")===true,pausedValue=mailboxValue(settings,"paused"),paused=pausedValue===null?true:pausedValue===true;
   const cadence=String(mailboxValue(settings,"scheduleCadence","schedule_cadence")||"manual");
-  const lookback=Math.max(1,Math.min(3650,Number(mailboxValue(settings,"lookbackDays","lookback_days"))||90));
-  const maxMessages=Math.max(25,Math.min(5000,Number(mailboxValue(settings,"maxMessages","max_messages"))||500));
+  const lookback=Math.max(1,Math.min(MAILBOX_MAX_LOOKBACK_DAYS,Number(mailboxValue(settings,"lookbackDays","lookback_days"))||90));
+  const maxMessages=Math.max(25,Math.min(MAILBOX_MAX_SCAN_MESSAGES,Number(mailboxValue(settings,"maxMessages","max_messages"))||500));
   const includeSpam=mailboxValue(settings,"includeSpamTrash","include_spam_trash")===true;
   const ready=myBackends.filter(backendMailReady);
   const chosen=ready.find(b=>b.id===selectedBackend),chosenHost=parsedHttpUrl(chosen?.base_url)?.hostname||"",chosenDestination=chosen?`${chosen.name}${chosenHost?" ("+chosenHost+")":""}`:"the selected hosted provider";
@@ -2533,8 +2535,8 @@ function mailboxSettingsHtml(account){
     <div class="autogrid" style="margin-top:10px">
       <div><label for="mbClassifier">Classification</label><select id="mbClassifier" onchange="mailboxAiModeChanged()"><option value="rules" ${mode!=="ai"?"selected":""}>Private rules-only</option><option value="ai" ${mode==="ai"?"selected":""} ${ready.length?"":"disabled"}>AI-assisted for ambiguous mail</option></select><span class="muted">Rules inspect bounded headers, sender, subject, and a short Gmail preview snippet. With your explicit AI opt-in, only those bounded fields are sent to the selected model; full bodies and attachments are not sent.</span></div>
       <div><label for="mbAiBackend">Hosted AI model</label><select id="mbAiBackend" onchange="mailboxAiBackendChanged()" ${mode==="ai"?"":"disabled"}><option value="">Choose a ready model</option>${ready.map(b=>`<option value="${esc(mailboxSafeId(b.id))}" ${b.id===selectedBackend?"selected":""}>${esc(b.name)} · ${esc(b.model||"model")}</option>`).join("")}</select>${ready.length?'<span class="muted">Custom hosts must also be confirmed for the deployed MAILBOX_AI_HOSTS allowlist.</span>':'<span class="muted">Link a hosted text model under AI Models, then confirm its inbox host if it is custom.</span>'}</div>
-      <div><label for="mbLookback">Look back (days)</label><input id="mbLookback" type="number" min="1" max="3650" value="${lookback}"><span class="muted">Up to 10 years for historical account and receipt cleanup.</span></div>
-      <div><label for="mbMax">Maximum messages per scan</label><input id="mbMax" type="number" min="25" max="5000" step="25" value="${maxMessages}"></div>
+      <div><label for="mbLookback">Look back (days)</label><input id="mbLookback" type="number" min="1" max="${MAILBOX_MAX_LOOKBACK_DAYS}" value="${lookback}"><span class="muted">Up to 100 years, covering the practical lifetime of a Gmail account.</span></div>
+      <div><label for="mbMax">Maximum messages per scan</label><input id="mbMax" type="number" min="25" max="${MAILBOX_MAX_SCAN_MESSAGES}" step="25" value="${maxMessages}"><span class="muted">Up to ${MAILBOX_MAX_SCAN_MESSAGES.toLocaleString()} messages. Activity clearly reports if more matching mail remains.</span></div>
       <div><label for="mbCadence">Report-only schedule</label><select id="mbCadence"><option value="manual" ${cadence==="manual"?"selected":""}>Manual only</option><option value="daily" ${cadence==="daily"?"selected":""}>Daily report</option><option value="weekly" ${cadence==="weekly"?"selected":""}>Weekly report</option></select><span class="muted">A schedule scans and reports. It never labels, archives, trashes, or unsubscribes.</span></div>
     </div>
     <div class="mailboxchecks">
@@ -2542,8 +2544,15 @@ function mailboxSettingsHtml(account){
       <label><input id="mbPaused" type="checkbox" ${paused?"checked":""}>Pause this inbox <span class="muted">(stops Scan now, scheduled reports, cleanup, and undo jobs)</span></label>
       <label><input id="mbAiConsent" type="checkbox" ${consent?"checked":""} ${mode==="ai"?"":"disabled"}><span id="mbAiConsentText">I consent to send the bounded sender, subject, and short Gmail preview snippet to ${esc(chosenDestination)} only for ambiguous classification. Full bodies and attachments are not sent.</span></label>
     </div>
+    <div class="mailboxbar"><button class="btn sm sec" type="button" onclick="mailboxUseFullHistory()">Use full-history limits</button><span class="muted">Sets the 100-year window and ${MAILBOX_MAX_SCAN_MESSAGES.toLocaleString()}-message ceiling. This changes report settings only; it does not start a scan or approve any email action.</span></div>
     <div class="mailboxbar"><button class="btn sm" onclick="mailboxSaveSettings()">Save settings</button><span class="muted">Changes apply only to ${esc(account.login_email||"this Gmail account")}. Inbox cleanup is account-level and never inherits a persona's L0–L3 autonomy.</span></div>
   </details>`;
+}
+function mailboxUseFullHistory(){
+  const lookback=document.getElementById("mbLookback"),maximum=document.getElementById("mbMax");
+  if(lookback)lookback.value=String(MAILBOX_MAX_LOOKBACK_DAYS);
+  if(maximum)maximum.value=String(MAILBOX_MAX_SCAN_MESSAGES);
+  toast("Full-history limits selected. Save settings when ready; no scan has started.");
 }
 function mailboxAiModeChanged(){
   const enabled=val("mbClassifier")==="ai",backend=document.getElementById("mbAiBackend"),consent=document.getElementById("mbAiConsent");
@@ -2564,10 +2573,20 @@ async function mailboxSaveSettings(){
     if(!backend||!backendMailReady(backend)){toast("Choose a hosted model that is ready for inbox classification.");return}
     if(!aiConsent){toast("Confirm the limited AI data-sharing consent, or choose private rules-only.");return}
   }
-  const maxMessages=Math.max(25,Math.min(5000,Number(val("mbMax"))||500));
-  const lookbackDays=Math.max(1,Math.min(3650,Number(val("mbLookback"))||90));
+  const maxMessages=Math.max(25,Math.min(MAILBOX_MAX_SCAN_MESSAGES,Number(val("mbMax"))||500));
+  const lookbackDays=Math.max(1,Math.min(MAILBOX_MAX_LOOKBACK_DAYS,Number(val("mbLookback"))||90));
   const payload={ledgerId:account.id,paused:!!document.getElementById("mbPaused")?.checked,scheduleCadence:val("mbCadence")||"manual",includeSpamTrash:!!document.getElementById("mbIncludeSpam")?.checked,lookbackDays,maxMessages,classifierMode,aiBackendId:classifierMode==="ai"?aiBackendId:null,aiConsent:classifierMode==="ai"&&aiConsent};
   try{await mailboxCall("save-settings",payload);toast("Inbox report settings saved.");await mailboxLoad(true)}catch(e){toast(e.message)}
+}
+function mailboxLatestScanHtml(){
+  const runs=mailboxArray(mailboxState.data?.recentRuns||mailboxState.data?.recent_runs),run=runs[0];
+  if(!run)return '<div class="mailboxnotice"><b>No inbox report yet</b>Choose settings and start a scan when ready. Scans only prepare findings; they never approve or change email.</div>';
+  const status=String(mailboxValue(run,"status","state")||"unknown").toLowerCase(),processed=Number(mailboxValue(run,"processedCount","processed_count"))||0,found=Number(mailboxValue(run,"foundCount","found_count"))||0;
+  const counts=mailboxValue(run,"categoryCounts","category_counts")||{},capReached=Number(mailboxValue(counts,"scanCapReached","scan_cap_reached"))===1,snapshot=mailboxValue(run,"settingsSnapshot","settings_snapshot")||{};
+  const lookback=Math.max(1,Number(mailboxValue(snapshot,"lookbackDays","lookback_days"))||90),maximum=Math.max(25,Number(mailboxValue(snapshot,"maxMessages","max_messages"))||500),includeSpam=mailboxValue(snapshot,"includeSpamTrash","include_spam_trash")===true,classifier=String(mailboxValue(snapshot,"classifierMode","classifier_mode")||"rules")==="ai"?"AI-assisted":"private rules-only";
+  const scope=lookback>=MAILBOX_MAX_LOOKBACK_DAYS?"100-year full-history window":`${lookback.toLocaleString()}-day window`,errorMessage=String(mailboxValue(run,"errorMessage","error_message")||"");
+  const outcome=capReached?"Older matching mail remains outside this bounded report.":status==="failed"?"This report is incomplete; review the error before starting another scan.":status==="completed"?"The bounded Gmail query completed without another matching page.":"The report is still in progress.";
+  return `<div class="mailboxnotice ${capReached||status==="failed"?"warn":""}"><b>Latest scan · ${esc(status)}</b>${esc(scope)} · ${maximum.toLocaleString()}-message ceiling · ${includeSpam?"including protected Spam and Trash inventory":"regular Gmail mail"} · ${esc(classifier)}.<br>${processed.toLocaleString()} messages inspected · ${found.toLocaleString()} findings saved. ${esc(outcome)}${errorMessage?` ${esc(errorMessage)}`:""} No suggestion is approved automatically.</div>`;
 }
 function mailboxDashboardHtml(account){
   const data=mailboxState.data||{},capability=data.capability||{},capabilityError=String(mailboxValue(capability,"error","message")||""),summary=mailboxSummary(),scan=data.activeScan||data.active_scan,scanStatus=String(mailboxValue(scan,"status","state")||"");
@@ -2584,6 +2603,7 @@ function mailboxDashboardHtml(account){
       ["subscriptions","Subscriptions"],["accounts","Account creation"],["receipts","Receipts"],["protected","Protected"],["other","Other"]
     ].map(([key,label])=>`<button class="mailboxstat ${mailboxView===key?"on":""}" aria-pressed="${mailboxView===key?"true":"false"}" onclick="mailboxSwitchView('${key}')"><b>${summary[key]}</b><span>${label}</span></button>`).join("")}</div>
     <div class="mailboxsubnav" aria-label="Inbox report views">${tabs.map(([key,label])=>`<button class="${mailboxView===key?"on":""}" aria-pressed="${mailboxView===key?"true":"false"}" onclick="mailboxSwitchView('${key}')">${label}</button>`).join("")}</div>
+    ${mailboxLatestScanHtml()}
     ${mailboxView==="activity"?mailboxActivityHtml():mailboxFindingsHtml(account)}
   `;
 }
@@ -2597,15 +2617,20 @@ function mailboxFindingSender(finding){
 function mailboxFindingDomain(finding){
   return String(mailboxValue(finding,"siteDomain","site_domain","senderDomain","sender_domain","domain")||mailboxFindingSender(finding));
 }
+function mailboxSuggestedAction(finding){
+  if(mailboxProtected(finding))return "review only";
+  const raw=String(mailboxValue(finding,"suggestedAction","suggested_action")||"review").toLowerCase();
+  return ({label:"add category label",label_archive:"label and archive",trash:"move to trash",review:"review and decide"})[raw]||"review and decide";
+}
 function mailboxFindingHtml(finding){
   const id=mailboxSafeId(finding.id),protectedItem=mailboxProtected(finding),sender=mailboxFindingSender(finding);
   const subject=String(mailboxValue(finding,"subject")||"(no subject)"),received=mailboxDate(mailboxValue(finding,"receivedAt","received_at","messageDate","message_date"));
   const source=String(mailboxValue(finding,"sourceFolder","source_folder","folder")||""),category=String(mailboxValue(finding,"category","kind")||"other").replace(/_/g," ");
   const evidence=[...mailboxArray(mailboxValue(finding,"evidence","reasons")),...mailboxArray(mailboxValue(finding,"protectedReasons","protected_reasons"))].slice(0,3).map(String);
-  const unsubscribe=mailboxValue(finding,"unsubscribeAvailable","unsubscribe_available")===true||!!mailboxValue(finding,"unsubscribeKind","unsubscribe_kind");
+  const unsubscribe=mailboxValue(finding,"unsubscribeAvailable","unsubscribe_available")===true||!!mailboxValue(finding,"unsubscribeKind","unsubscribe_kind"),suggested=mailboxSuggestedAction(finding);
   return `<div class="mailboxfinding ${protectedItem?"protected":""}">
     <input class="mailboxfindingcheck" type="checkbox" value="${esc(id)}" data-protected="${protectedItem?"true":"false"}" onchange="mailboxSelectionChanged(this)" aria-label="Select ${esc(subject)}">
-    <div class="mailboxfindingmain"><b>${esc(subject)}</b><div class="mailboxfindingmeta"><span>${esc(sender)}</span>${received?`<span>· ${esc(received)}</span>`:""}<span class="pill priv">${esc(category)}</span>${source?`<span class="pill priv">${esc(source)}</span>`:""}${protectedItem?'<span class="pill recorded">protected</span>':""}${evidence.map(item=>`<span>· ${esc(item)}</span>`).join("")}</div></div>
+    <div class="mailboxfindingmain"><b>${esc(subject)}</b><div class="mailboxfindingmeta"><span>${esc(sender)}</span>${received?`<span>· ${esc(received)}</span>`:""}<span class="pill priv">${esc(category)}</span><span class="pill recorded">Suggested: ${esc(suggested)}</span>${source?`<span class="pill priv">${esc(source)}</span>`:""}${protectedItem?'<span class="pill recorded">protected</span>':""}${evidence.map(item=>`<span>· ${esc(item)}</span>`).join("")}</div></div>
     <div class="mailboxfindingactions">${unsubscribe?`<button class="btn sm sec" onclick="mailboxUnsubscribe('${id}')">Unsubscribe…</button>`:""}</div>
   </div>`;
 }
@@ -2614,13 +2639,13 @@ function mailboxFindingsHtml(account){
   const visible=findings.slice(0,250),reportedTotal=Number(mailboxSummary()[mailboxView])||findings.length,groups=new Map();
   visible.forEach(f=>{const key=mailboxView==="subscriptions"?mailboxFindingDomain(f):mailboxFindingSender(f);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f)});
   const groupHtml=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0])).map(([name,items])=>`<details class="mailboxgroup" open><summary><b>${esc(name)}</b><span>${items.length} message${items.length===1?"":"s"}</span></summary>${items.map(mailboxFindingHtml).join("")}</details>`).join("");
-  const actionBar=mailboxView==="protected"?`<div class="mailboxnotice warn"><b>Protected inventory</b>Security, personal, financial, legal, medical, order/travel, spam, trash, and other protected findings cannot be included in a bulk mailbox action. Dismissing a finding only removes it from this report.</div><div class="mailboxbar"><button class="btn sm sec" onclick="mailboxToggleAll(true)">Select up to ${MAILBOX_SELECTION_LIMIT}</button><button class="btn sm sec" onclick="mailboxToggleAll(false)">Clear</button><button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Dismiss findings</button><span class="muted push" id="mailboxSelectedCount" aria-live="polite">0 selected · ${MAILBOX_SELECTION_LIMIT} maximum</span></div>`:`<div class="mailboxbar">
+  const actionBar=mailboxView==="protected"?`<div class="mailboxnotice warn"><b>Protected inventory</b>Security, personal, financial, legal, medical, order/travel, spam, trash, and other protected findings cannot be included in a bulk mailbox action. Denying a suggestion only removes it from this report.</div><div class="mailboxbar"><button class="btn sm sec" onclick="mailboxToggleAll(true)">Select up to ${MAILBOX_SELECTION_LIMIT}</button><button class="btn sm sec" onclick="mailboxToggleAll(false)">Clear</button><button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Deny suggestions</button><span class="muted push" id="mailboxSelectedCount" aria-live="polite">0 selected · ${MAILBOX_SELECTION_LIMIT} maximum</span></div>`:`<div class="mailboxbar">
     <button class="btn sm sec" onclick="mailboxToggleAll(true)">Select up to ${MAILBOX_SELECTION_LIMIT}</button><button class="btn sm sec" onclick="mailboxToggleAll(false)">Clear</button>
     ${canModify?`<button class="btn sm mailboxaction" onclick="mailboxPrepare('label')" disabled>Add category label</button><button class="btn sm mailboxaction" onclick="mailboxPrepare('label_archive')" disabled>Label &amp; archive</button><button class="btn sm danger mailboxaction" onclick="mailboxPrepare('trash')" disabled>Move to trash</button>`:globalPaused?'<span class="muted">Cleanup actions stay locked while the global Matrix safety switch is paused.</span>':inboxPaused?'<span class="muted">Cleanup actions stay locked while this inbox is paused. Clear the pause in settings and save.</span>':`<button class="btn sm" onclick="connectGmail('${mailboxSafeId(account.id)}')">Enable cleanup access</button><span class="muted">Reports are read-only until Gmail cleanup access is approved.</span>`}
-    <button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Dismiss findings</button>
+    <button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Deny suggestions</button>
     <span class="muted push" id="mailboxSelectedCount" aria-live="polite">0 selected · ${MAILBOX_SELECTION_LIMIT} maximum</span>
   </div>`;
-  return `${actionBar}${groupHtml||'<div class="mailboxempty">No findings in this category yet. Run a scan or adjust the report settings.</div>'}${reportedTotal>visible.length?`<p class="muted">Showing the next ${visible.length} of ${reportedTotal} open findings in this category. Process or dismiss some, then refresh to load the next batch.</p>`:""}`;
+  return `${actionBar}${groupHtml||'<div class="mailboxempty">No findings in this category yet. Run a scan or adjust the report settings.</div>'}${reportedTotal>visible.length?`<p class="muted">Showing the next ${visible.length} of ${reportedTotal} open findings in this category. Approve or deny a batch, then refresh to load the next one.</p>`:""}`;
 }
 function mailboxSelectionChanged(source){
   let checked=[...document.querySelectorAll(".mailboxfindingcheck:checked")];
@@ -2723,8 +2748,8 @@ async function mailboxApprovePlan(){
 }
 async function mailboxDismissSelected(){
   const findingIds=mailboxSelectedIds(),account=mailboxSelectedAccount();if(!findingIds.length||!account)return;
-  if(!confirm(`Dismiss ${findingIds.length} finding${findingIds.length===1?"":"s"} from this report? This does not change the email.`))return;
-  try{await mailboxCall("dismiss",{ledgerId:account.id,findingIds});toast("Findings dismissed; no email was changed.");await mailboxLoad(true)}catch(e){toast(e.message)}
+  if(!confirm(`Deny ${findingIds.length} suggestion${findingIds.length===1?"":"s"} and remove ${findingIds.length===1?"it":"them"} from this report? This does not change the email.`))return;
+  try{await mailboxCall("dismiss",{ledgerId:account.id,findingIds});toast("Suggestions denied; no email was changed.");await mailboxLoad(true)}catch(e){toast(e.message)}
 }
 async function mailboxUnsubscribe(findingId){
   const id=mailboxSafeId(findingId),account=mailboxSelectedAccount(),finding=mailboxFindings().find(f=>String(f.id)===id);if(!id||!account||!finding)return;
@@ -2757,7 +2782,7 @@ function mailboxActivityHtml(){
     const undoDeadline=Date.parse(String(mailboxValue(plan,"undoExpiresAt","undo_expires_at")||"")),undo=mailboxValue(plan,"undoAvailable","undo_available")===true||(String(mailboxValue(plan,"undoStatus","undo_status")||"").toLowerCase()==="available"&&Number.isFinite(undoDeadline)&&undoDeadline>Date.now()),pending=status.toLowerCase()==="pending_approval";
     return `<div class="mailboxactivityitem"><div class="top"><div><b>${esc(operation)}</b><div class="muted">${count} message${count===1?"":"s"} · ${esc(status)}</div></div>${pending&&id?`<button class="btn sm sec" onclick="mailboxCancelPreview('${id}')">Cancel preview</button>`:undo&&id?`<button class="btn sm sec" onclick="mailboxUndo('${id}')">Undo</button>`:""}</div><time>${esc(mailboxDate(mailboxValue(plan,"updatedAt","updated_at","createdAt","created_at")))}</time></div>`;
   });
-  const runRows=runs.map(run=>{const processed=mailboxValue(run,"messageCount","message_count","processedCount","processed_count"),found=mailboxValue(run,"foundCount","found_count");return `<div class="mailboxactivityitem"><div class="top"><div><b>Inbox scan</b><div class="muted">${esc(String(mailboxValue(run,"status","state")||"complete"))}${processed!==null?` · ${Number(processed)||0} messages inspected`:""}${found!==null?` · ${Number(found)||0} findings`:""}</div></div></div><time>${esc(mailboxDate(mailboxValue(run,"finishedAt","finished_at","startedAt","started_at","createdAt","created_at")))}</time></div>`});
+  const runRows=runs.map(run=>{const processed=mailboxValue(run,"messageCount","message_count","processedCount","processed_count"),found=mailboxValue(run,"foundCount","found_count"),counts=mailboxValue(run,"categoryCounts","category_counts")||{},capReached=Number(mailboxValue(counts,"scanCapReached","scan_cap_reached"))===1,errorMessage=String(mailboxValue(run,"errorMessage","error_message")||"");return `<div class="mailboxactivityitem"><div class="top"><div><b>Inbox scan</b><div class="muted">${esc(String(mailboxValue(run,"status","state")||"complete"))}${processed!==null?` · ${Number(processed)||0} messages inspected`:""}${found!==null?` · ${Number(found)||0} findings saved`:""}${capReached?" · message limit reached; older matching mail remains":""}${errorMessage?` · ${esc(errorMessage)}`:""}</div></div></div><time>${esc(mailboxDate(mailboxValue(run,"finishedAt","finished_at","startedAt","started_at","createdAt","created_at")))}</time></div>`});
   const auditRows=audit.slice(0,50).map(item=>`<div class="mailboxactivityitem"><div class="top"><div><b>${esc(String(mailboxValue(item,"label","event","eventType","event_type","action")||"Inbox event").replace(/[._]/g," "))}</b><div class="muted">${esc(String(mailboxValue(item,"detail","message","summary")||""))}</div></div></div><time>${esc(mailboxDate(mailboxValue(item,"createdAt","created_at")))}</time></div>`);
   return `<div class="mailboxactivity">${[...planRows,...runRows,...auditRows].join("")||'<div class="mailboxempty">No inbox scan or cleanup activity yet.</div>'}</div>`;
 }
