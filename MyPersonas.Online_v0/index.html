@@ -296,8 +296,11 @@ linkedin:{name:"LinkedIn",icon:"💼"},signal:{name:"Signal",icon:"🔵"},whatsa
 telegram:{name:"Telegram",icon:"✈️"},bluesky:{name:"Bluesky",icon:"🦋"},threads:{name:"Threads",icon:"🧵"},
 legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{name:"Fiverr",icon:"🛠️"},
 amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
-trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},proton:{name:"Proton Mail",icon:"🔐"},
+trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},yahoo:{name:"Yahoo Mail",icon:"📮"},
+icloud:{name:"iCloud Mail",icon:"☁️"},proton:{name:"Proton Mail",icon:"🔐"},
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
+const LEDGER_EMAIL_PROVIDERS=new Set(["gmail","outlook","yahoo","icloud","proton"]);
+const LEDGER_ONLY_PROVIDERS=new Set(["yahoo","icloud"]);
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
 let myBackendCredentialIds=new Set();
 let myAgentSettings=null,myAgentBindings=[],myAgentDestinations=[],myContentPlans=[],myAgentActions=[],myAgentActionTotal=0,agentActionLoading=false,myFanSessions=[],myFanMessages=[];
@@ -1002,7 +1005,12 @@ function autoTargetName(accountId,destination="aliaspaces"){
 function autoTargetReadiness(a){
   if(!a)return{klass:"ok",label:"Native publishing available",note:"Every draft needs exact owner approval. L2 waits for you to press Publish now; L3 can publish that approved draft automatically when due."};
   const info=autoConn(a),scopes=(info.row?.granted_scopes||[]).map(x=>String(x).toLowerCase());
-  if(a.provider==="gmail")return{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?"Connected read-only":"Planning only",note:"Gmail can supply research context, but it is not a social publishing destination."};
+  if(LEDGER_EMAIL_PROVIDERS.has(a.provider)){
+    const name=(PLATS[a.provider]||{}).name||"This mailbox";
+    return a.provider==="gmail"
+      ?{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?"Connected read-only":"Planning only",note:"Gmail can supply research context, but it is not a social publishing destination."}
+      :{klass:"stop",label:"Mailbox record only",note:`${name} can be assigned for planning, but inbox/API access is not connected and it is not a social publishing destination.`};
+  }
   if(info.state!=="connected")return{klass:"stop",label:info.state==="verified"?"Ownership only":"Planning / manual only",note:"Connect this platform with an official publishing permission before any API post can run."};
   const write=scopes.some(s=>/write|publish|manage_posts|content_publish|tweet\.write|submit|w_member_social|upload/.test(s));
   return{klass:write?"wait":"stop",label:write?"Write grant recorded · connector pending":"Connected without write access",note:write?"The official posting adapter still has to be installed and approved before this target can publish.":"Reconnect with the platform's exact publishing permission when that connector is available."};
@@ -1443,7 +1451,7 @@ async function renderEdit(id,epoch=++renderEpoch){
     <h3>Social &amp; gaming links (public — shown on your page)</h3>
     <div id="eLinks"></div>
     <div class="linkrow">
-      <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select>
+      <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).filter(([k])=>!LEDGER_ONLY_PROVIDERS.has(k)).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select>
       <input id="lHandle" placeholder="@handle or gamertag">
       <input id="lUrl" placeholder="https://link (optional)">
       <button class="btn sm" onclick="addLink()">+</button>
@@ -2273,7 +2281,7 @@ function sameLedgerAccount(a,b){
   if(!a||!b||a.provider!==b.provider)return false;
   const au=normalizeLedgerUsername(a.username),bu=normalizeLedgerUsername(b.username),ar=normalizeLedgerUrl(a.url),br=normalizeLedgerUrl(b.url),ae=normalizeLedgerEmail(a.login_email),be=normalizeLedgerEmail(b.login_email);
   if(a.provider==="website"||a.provider==="email"||a.provider==="other")return !!ar&&ar===br;
-  if(a.provider==="gmail"||a.provider==="outlook"||a.provider==="proton")return !!ae&&ae===be;
+  if(LEDGER_EMAIL_PROVIDERS.has(a.provider))return !!ae&&ae===be;
   if(au&&bu&&au===bu)return true;
   if(ar&&br&&ar===br)return true;
   if(!au&&!bu&&!ar&&!br)return !!ae&&ae===be;
@@ -2339,12 +2347,13 @@ function ledgerAuthPanel(a,info){
   const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
   const verify=info.state==="recorded"?`<button class="btn sm" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Verify ownership</button>`:"";
   const why=!accountConnectionsReady?"Verification setup is not available yet.":!target?"Add a login email before ownership can be verified.":current!==target?`Sign in to AliaSpaces as ${esc(target)} to verify this account.`:!confirmed?"Confirm your AliaSpaces sign-in email first.":"This compares the recorded email with your confirmed AliaSpaces sign-in.";
+  const mailboxOnly=LEDGER_EMAIL_PROVIDERS.has(a.provider)&&a.provider!=="gmail",mailboxNote=mailboxOnly?` ${(PLATS[a.provider]||{}).name||"This mailbox"} is stored for planning and persona assignment only. AliaSpaces cannot read or sign in to it yet; never enter its password or an app-specific password.`:"";
   const gmailError=String(info.row&&info.row.error_code||""),gmailResetOnly=gmailResetOnlyError(gmailError),gmailMustDisconnect=info.state==="connected"||["google_revoke_required","google_revoke_failed"].includes(gmailError);
   const gmail=a.provider!=="gmail"?"":gmailResetOnly
     ?`<button class="btn sm sec" onclick="resetGmailAttempt('${a.id}')">Reset Gmail attempt</button>`
     :gmailMustDisconnect?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">${info.state==="connected"?"Disconnect Gmail":"Revoke & reset Gmail"}</button>`
     :`<button class="btn sm" onclick="connectGmail('${a.id}')">Authenticate Gmail</button>`;
-  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${esc(mailboxNote)}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
 }
 function ledgerEditPanel(a){
   const locked=ledgerIdentityLocked(a),section="section-ledgeredit"+a.id.replace(/-/g,"");
@@ -2374,7 +2383,7 @@ function accountLedgerHtml(){
     ${ledgerAuthPanel(a,info)}</div>`}).join("")||'<p class="muted">No accounts recorded yet.</p>';
   return `<div class="acctsub">Your accounts (${myAccounts.length})</div><div class="ledgerlist">${existing}</div>
     <div class="acctsub">Batch add accounts</div>
-    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Edit details to add or correct its login email, then Authentication to connect it.</span></div></div>
+    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Edit details to add or correct its login email, then Authentication to review the verification or connection options currently available for that provider.</span></div></div>
     <p class="muted">Add or update as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while recording.</p>
     <div id="ledgerBatch"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">

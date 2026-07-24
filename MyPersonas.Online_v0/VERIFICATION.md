@@ -179,6 +179,22 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
       replaced by the bounded refusal, escalated, and audited before any response is stored
       or returned — ⬜ disposable fan session and intentionally unsafe model fixture required
 
+## Yahoo and iCloud account records — 2026-07-23
+
+- [x] M1. Yahoo Mail and iCloud Mail are present in the private account-ledger provider
+      picker and inherit saved-account autofill, editing, persona assignment, and quick
+      persona creation from the generic ledger flow.
+- [x] M2. Case-insensitive duplicate detection uses the recorded email independently for
+      each mail provider; distinct addresses and different providers remain distinct.
+- [x] M3. Yahoo and iCloud remain private-ledger-only choices, do not appear in the public
+      persona-link selector, never expose Gmail OAuth actions, and state that mailbox/API
+      access and external publishing are unavailable.
+- [x] M4. The final inline application JavaScript parses and targeted provider, picker,
+      public-link exclusion, duplicate-identity, and safety-guidance assertions pass.
+- [ ] M5. Add, edit, assign, export, and delete disposable Yahoo and iCloud records in a
+      signed-in production session — ⬜ intentionally not performed against the owner's
+      real account records during this code-only release.
+
 ## Historical v0 verification (2026-07-10)
 
 Prereqs: sql-updates 001, 002, 003, 004 run in Supabase; latest commit pushed and

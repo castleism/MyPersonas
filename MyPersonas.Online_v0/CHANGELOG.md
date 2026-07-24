@@ -3,6 +3,14 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Yahoo and iCloud account records (2026-07-23)
+
+- Added Yahoo Mail and iCloud Mail to the private account ledger and saved-account
+  picker. Like Outlook and Proton Mail, they can be recorded, assigned to a persona,
+  edited, and optionally ownership-verified when their confirmed address matches the
+  AliaSpaces sign-in, but do not yet grant mailbox API access or external publishing
+  permission.
+
 ## Released — Agent control center (2026-07-20)
 
 - Added migration 011 for Vault-backed model credentials, owner automation settings,
