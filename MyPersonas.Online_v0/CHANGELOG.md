@@ -3,11 +3,47 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Grouped account connections and X OAuth foundation (2026-07-23)
+
+- Replaced the flat saved-account stack with provider-level expandable sections. Only
+  providers the owner has recorded are shown; a provider with multiple accounts gets an
+  account selector while every edit, persona assignment, connection, and delete action
+  remains scoped to the selected ledger record.
+- Renamed the former ownership status to **Sign-in email matched · not connected**. That
+  optional mailbox comparison no longer appears as provider authentication, and social
+  accounts such as X do not offer it.
+- Added provider-specific connection guidance so unsupported, business-only,
+  professional-only, bot-based, local-bridge, and developer-review integrations are not
+  presented as ordinary sign-in buttons.
+- Added migration 015 and the dedicated `twitter-oauth` Edge Function for X OAuth 2.0
+  Authorization Code with PKCE. The flow is bound to the owner, selected ledger record,
+  initiating browser tab, exact X username, and immutable X subject; access and refresh
+  tokens are stored only in Supabase Vault.
+- X authorization requests only `tweet.read`, `users.read`, and `offline.access`,
+  validates the complete returned scope set, supports refresh and
+  revocation, and refuses account deletion until stored provider access is revoked.
+- Token-exchange and refresh outcomes that may have minted or rotated an untracked grant
+  now fail closed into an explicit X Connected Apps revocation/reset flow. Credential-less
+  connected or post-grant error states cannot claim successful revocation, and erasure
+  requires provider-specific acknowledgments so OpenRouter consent cannot satisfy X.
+- Kept automated X publishing disabled and did not request `tweet.write`. Neither the
+  browser nor the OAuth function contains a posting endpoint; the future external
+  publisher must add claim/finalize safety, pass live provider tests, and obtain explicit
+  write reauthorization.
+- Added global no-referrer handling before third-party scripts so short-lived OAuth
+  callback codes are not exposed through outbound request referrers.
+- Made token exchange, refresh, revocation, disconnect, and erasure fail closed when X
+  returns an ambiguous result or local credential state is inconsistent. Connected or
+  unresolved X identities cannot be renamed or deleted until they are safely
+  disconnected or explicitly revoked in X Connected Apps.
+- Made provider-side erasure confirmations provider-specific, so acknowledging an
+  OpenRouter key revocation can never count as acknowledging an X app revocation.
+
 ## Released — Yahoo and iCloud account records (2026-07-23)
 
 - Added Yahoo Mail and iCloud Mail to the private account ledger and saved-account
   picker. Like Outlook and Proton Mail, they can be recorded, assigned to a persona,
-  edited, and optionally ownership-verified when their confirmed address matches the
+  edited, and optionally sign-in-email-matched when their confirmed address matches the
   AliaSpaces sign-in, but do not yet grant mailbox API access or external publishing
   permission.
 
@@ -99,7 +135,7 @@ trailing letters are hotfixes. Releases are git tags.
   export and deletion. The ledger stores metadata only and has no credential fields.
 - Fixed saved-account persona assignment so `+ Quick create persona` is available
   after recording an account, with a private persona created and assigned in place.
-- Account rows now distinguish **Recorded**, **Ownership verified**, and **API
+- Account rows now distinguish **Recorded**, **Sign-in email matched**, and **API
   connected** instead of implying that saving metadata authenticated the account.
 - Added server-attested email ownership verification in migration 009. Browsers can
   read their connection state but cannot write it or self-assert authentication;
@@ -114,7 +150,7 @@ trailing letters are hotfixes. Releases are git tags.
   encrypted in Supabase Vault, available only to the service role, and removed when
   the connection is disconnected or its ledger record is deleted.
 - Added explicit **Authenticate Gmail** / **Disconnect Gmail** controls and callback
-  status handling. **Ownership verified** remains an identity check; only a completed
+  status handling. **Sign-in email matched** remains an AliaSpaces-address check; only a completed
   Google consent flow produces **API connected**.
 - Added **Edit details** to recorded accounts so a missing login email, username,
   profile URL, or private note can be corrected before authentication.

@@ -13,6 +13,17 @@ const ALLOWED = new Set([
   "https://app.aliaspaces.com",
   "https://mypersonas.online",
 ]);
+const X_LOCAL_RESET_ERROR_CODES = new Set([
+  "twitter_already_connected",
+  "shared_grant_cleanup_failed",
+  "local_credential_cleanup_failed",
+]);
+const X_NO_PROVIDER_GRANT_ERROR_CODES = new Set([
+  "x_access_denied",
+  "x_oauth_error",
+  "missing_authorization_code",
+  "x_token_exchange_failed",
+]);
 const cors = (req: Request) => {
   const o = req.headers.get("Origin") || "";
   return {
@@ -57,6 +68,56 @@ async function revokeGoogleToken(token: string) {
   } catch {
     return false;
   }
+}
+
+async function revokeXToken(
+  token: string,
+  clientId: string,
+  clientSecret: string,
+) {
+  try {
+    const response = await fetch("https://api.x.com/2/oauth2/revoke", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+      },
+      body: new URLSearchParams({ token }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function xAccessTokenConfirmedInvalid(accessToken: string) {
+  if (!accessToken) return false;
+  try {
+    const response = await fetch("https://api.x.com/2/users/me", {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    return response.status === 401;
+  } catch {
+    return false;
+  }
+}
+
+async function revokeXGrantPair(
+  refreshToken: string,
+  accessToken: string,
+  clientId: string,
+  clientSecret: string,
+) {
+  if (!refreshToken || !accessToken) return false;
+  if (!await revokeXToken(refreshToken, clientId, clientSecret)) return false;
+  if (await revokeXToken(accessToken, clientId, clientSecret)) return true;
+  return await xAccessTokenConfirmedInvalid(accessToken);
 }
 
 async function listMediaFiles(
@@ -133,6 +194,21 @@ async function listGmailLedgers(admin: SupabaseClient, uid: string) {
   }
 }
 
+async function listTwitterLedgers(admin: SupabaseClient, uid: string) {
+  const ledgers: Array<{ id: string }> = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("account_ledger").select("id")
+      .eq("owner", uid).eq("provider", "twitter").order("id")
+      .range(from, from + 499);
+    if (error) throw new Error(`X connection inventory: ${error.message}`);
+    const page = (data || []) as Array<{ id: string }>;
+    ledgers.push(...page);
+    if (page.length < 500) return ledgers;
+    from += page.length;
+  }
+}
+
 function isOpenRouterBackend(row: {
   provider?: string | null;
   base_url?: string | null;
@@ -167,6 +243,74 @@ async function ownerHasOpenRouterBackend(admin: SupabaseClient, uid: string) {
   }
 }
 
+async function ownerHasAmbiguousXGrant(admin: SupabaseClient, uid: string) {
+  const credentials = new Map<string, string>();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("twitter_credentials")
+      .select("ledger_id,provider_subject").eq("owner", uid).order("ledger_id")
+      .range(from, from + 499);
+    if (error) {
+      throw new Error("could not inspect X manual-revocation state");
+    }
+    const page = (data || []) as Array<{
+      ledger_id: string;
+      provider_subject?: string | null;
+    }>;
+    for (const credential of page) {
+      credentials.set(
+        credential.ledger_id,
+        (credential.provider_subject || "").trim(),
+      );
+    }
+    if (page.length < 500) break;
+    from += page.length;
+  }
+
+  const sharedGrantResetLedgers = new Set<string>();
+  from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("account_connections")
+      .select("ledger_id,connection_state,error_code")
+      .eq("owner", uid).eq("provider", "twitter").order("ledger_id")
+      .range(from, from + 499);
+    if (error) {
+      throw new Error("could not inspect X manual-revocation state");
+    }
+    const page = (data || []) as Array<{
+      ledger_id: string;
+      connection_state?: string | null;
+      error_code?: string | null;
+    }>;
+    for (const connection of page) {
+      const sharedGrantReset = connection.connection_state === "error" &&
+        X_LOCAL_RESET_ERROR_CODES.has(connection.error_code || "");
+      if (sharedGrantReset) {
+        sharedGrantResetLedgers.add(connection.ledger_id);
+        continue;
+      }
+      if (
+        connection.error_code === "x_manual_revoke_required" ||
+        ((connection.connection_state === "connected" ||
+          (connection.connection_state === "error" &&
+            !X_NO_PROVIDER_GRANT_ERROR_CODES.has(
+              connection.error_code || "",
+            ))) &&
+          !credentials.has(connection.ledger_id))
+      ) {
+        return true;
+      }
+    }
+    if (page.length < 500) break;
+    from += page.length;
+  }
+
+  for (const [ledgerId, providerSubject] of credentials) {
+    if (!providerSubject && !sharedGrantResetLedgers.has(ledgerId)) return true;
+  }
+  return false;
+}
+
 async function revokeGmail(admin: SupabaseClient, uid: string) {
   const gmailLedgers = await listGmailLedgers(admin, uid);
   for (const ledger of gmailLedgers) {
@@ -195,6 +339,177 @@ async function revokeGmail(admin: SupabaseClient, uid: string) {
     );
     if (credentialError || removed !== true) {
       throw new Error("could not remove a stored Gmail authorization");
+    }
+  }
+}
+
+async function revokeTwitter(
+  admin: SupabaseClient,
+  uid: string,
+  manualRevocationsAcknowledged: boolean,
+) {
+  const twitterLedgers = await listTwitterLedgers(admin, uid);
+  for (const ledger of twitterLedgers) {
+    const leaseId = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_twitter_token_operation",
+      {
+        p_ledger_id: ledger.id,
+        p_owner: uid,
+        p_lease_id: leaseId,
+        p_operation_kind: "disconnect",
+        p_ttl_seconds: 180,
+      },
+    );
+    if (claimError || claimed !== true) {
+      throw new Error(
+        "another X connection operation is in progress; wait and retry deletion",
+      );
+    }
+    let operationError: unknown = null;
+    let releaseFailed = false;
+    let ledgerDeleted = false;
+    try {
+      const [credentialResult, connectionResult] = await Promise.all([
+        admin.from("twitter_credentials").select("ledger_id,provider_subject")
+          .eq("ledger_id", ledger.id).eq("owner", uid).maybeSingle(),
+        admin.from("account_connections").select("connection_state,error_code")
+          .eq("ledger_id", ledger.id).eq("owner", uid).maybeSingle(),
+      ]);
+      if (credentialResult.error || connectionResult.error) {
+        throw new Error("could not inspect a stored X authorization");
+      }
+      const sharedGrantReset =
+        connectionResult.data?.connection_state === "error" &&
+        X_LOCAL_RESET_ERROR_CODES.has(
+          connectionResult.data.error_code || "",
+        );
+      const credentialIdentityIsBlank = Boolean(credentialResult.data) &&
+        !(credentialResult.data?.provider_subject || "").trim();
+      const missingCredentialWithPriorGrantState = !credentialResult.data &&
+        !sharedGrantReset &&
+        (connectionResult.data?.connection_state === "connected" ||
+          (connectionResult.data?.connection_state === "error" &&
+            !X_NO_PROVIDER_GRANT_ERROR_CODES.has(
+              connectionResult.data.error_code || "",
+            )));
+      const manualRequired = !sharedGrantReset &&
+        (credentialIdentityIsBlank ||
+          missingCredentialWithPriorGrantState ||
+          (connectionResult.data?.connection_state === "error" &&
+            connectionResult.data.error_code ===
+              "x_manual_revoke_required"));
+      if (manualRequired && !manualRevocationsAcknowledged) {
+        throw new Error(
+          "revoke MyPersonas in X Connected Apps before deletion",
+        );
+      }
+      if (credentialResult.data) {
+        if (!manualRequired && !sharedGrantReset) {
+          const clientId = Deno.env.get("X_CLIENT_ID") || "";
+          const clientSecret = Deno.env.get("X_CLIENT_SECRET") || "";
+          if (!clientId || !clientSecret) {
+            throw new Error(
+              "X revocation is not configured; restore the X client configuration before deletion",
+            );
+          }
+          const { data, error: tokenError } = await admin.rpc(
+            "twitter_get_token_bundle",
+            { p_ledger_id: ledger.id, p_owner: uid },
+          );
+          const row = (Array.isArray(data) ? data[0] : data) as
+            | { token_bundle?: Record<string, unknown> | string }
+            | null;
+          let bundle = row?.token_bundle || null;
+          if (typeof bundle === "string") {
+            try {
+              bundle = JSON.parse(bundle) as Record<string, unknown>;
+            } catch {
+              bundle = null;
+            }
+          }
+          const refreshToken = bundle && typeof bundle === "object" &&
+              typeof bundle.refresh_token === "string"
+            ? bundle.refresh_token
+            : "";
+          const accessToken = bundle && typeof bundle === "object" &&
+              typeof bundle.access_token === "string"
+            ? bundle.access_token
+            : "";
+          if (tokenError || !refreshToken || !accessToken) {
+            throw new Error("could not read a stored X authorization safely");
+          }
+          if (
+            !await revokeXGrantPair(
+              refreshToken,
+              accessToken,
+              clientId,
+              clientSecret,
+            )
+          ) {
+            const now = new Date().toISOString();
+            const { error: recordError } = await admin.from(
+              "account_connections",
+            ).upsert(
+              {
+                ledger_id: ledger.id,
+                owner: uid,
+                provider: "twitter",
+                connection_state: "error",
+                error_code: "x_manual_revoke_required",
+                last_checked_at: now,
+                updated_at: now,
+              },
+              { onConflict: "ledger_id" },
+            );
+            if (recordError) {
+              throw new Error(
+                "X revocation was not confirmed and its manual-revocation safety state could not be recorded",
+              );
+            }
+            throw new Error(
+              "X did not confirm complete revocation; revoke MyPersonas in X Connected Apps before retrying deletion",
+            );
+          }
+        }
+        const { data: removed, error: credentialError } = await admin.rpc(
+          "twitter_delete_token_bundle",
+          { p_ledger_id: ledger.id, p_owner: uid },
+        );
+        if (credentialError || removed !== true) {
+          throw new Error("could not remove a stored X authorization");
+        }
+      }
+      await checked(
+        "pending X sign-ins",
+        admin.from("twitter_oauth_transactions").delete()
+          .eq("owner", uid).eq("ledger_id", ledger.id),
+      );
+      await checked(
+        "X account ledger",
+        admin.from("account_ledger").delete().eq("owner", uid)
+          .eq("id", ledger.id),
+      );
+      ledgerDeleted = true;
+    } catch (error) {
+      operationError = error;
+    } finally {
+      const { data: released, error: releaseError } = await admin.rpc(
+        "release_twitter_token_operation",
+        {
+          p_ledger_id: ledger.id,
+          p_owner: uid,
+          p_lease_id: leaseId,
+        },
+      );
+      releaseFailed = !ledgerDeleted &&
+        (Boolean(releaseError) || released !== true);
+    }
+    if (operationError) throw operationError;
+    if (releaseFailed) {
+      throw new Error(
+        "could not safely release an X deletion lock; retry after it expires",
+      );
     }
   }
 }
@@ -247,6 +562,10 @@ async function eraseOwnedRows(
     admin.from("gmail_oauth_transactions").delete().eq("owner", uid),
   );
   await checked(
+    "pending X sign-ins",
+    admin.from("twitter_oauth_transactions").delete().eq("owner", uid),
+  );
+  await checked(
     "account ledger",
     admin.from("account_ledger").delete().eq("owner", uid),
   );
@@ -292,7 +611,7 @@ export function createErasureHandler(
       confirm?: boolean;
       keepAccount?: boolean;
       protocolVersion?: number;
-      externalRevocationsAcknowledged?: boolean;
+      externalRevocationsAcknowledged?: boolean | string[];
     };
     try {
       body = await req.json();
@@ -330,20 +649,46 @@ export function createErasureHandler(
       return json({ error: "invalid session" }, 401);
     }
     const uid = userData.user.id;
+    const acknowledgedExternalRevocations = new Set<string>();
+    if (Array.isArray(body.externalRevocationsAcknowledged)) {
+      for (const provider of body.externalRevocationsAcknowledged) {
+        if (provider === "openrouter" || provider === "twitter") {
+          acknowledgedExternalRevocations.add(provider);
+        }
+      }
+    } else if (body.externalRevocationsAcknowledged === true) {
+      // Protocol-v2 compatibility: the old boolean represented only the
+      // original OpenRouter warning. It must never acknowledge an X grant.
+      acknowledgedExternalRevocations.add("openrouter");
+    }
 
     try {
-      if (
-        await ownerHasOpenRouterBackend(admin, uid) &&
-        body.externalRevocationsAcknowledged !== true
-      ) {
+      const [hasOpenRouter, hasAmbiguousX] = await Promise.all([
+        ownerHasOpenRouterBackend(admin, uid),
+        ownerHasAmbiguousXGrant(admin, uid),
+      ]);
+      const requiredExternalRevocations = [
+        ...(hasOpenRouter ? ["openrouter"] : []),
+        ...(hasAmbiguousX ? ["twitter"] : []),
+      ];
+      const missingExternalRevocations = requiredExternalRevocations.filter(
+        (provider) => !acknowledgedExternalRevocations.has(provider),
+      );
+      if (missingExternalRevocations.length) {
         return json({
           error:
-            "Revoke every OpenRouter key used here at OpenRouter, then acknowledge that step before local erasure.",
-          requiredExternalRevocations: ["openrouter"],
+            "Complete every required provider-side revocation, then acknowledge that step before local erasure.",
+          requiredExternalRevocations,
+          missingExternalRevocations,
         }, 409);
       }
       const personaIds = await listOwnedPersonaIds(admin, uid);
       await revokeGmail(admin, uid);
+      await revokeTwitter(
+        admin,
+        uid,
+        acknowledgedExternalRevocations.has("twitter"),
+      );
       await eraseMedia(admin, uid);
       await eraseOwnedRows(admin, uid, personaIds);
 

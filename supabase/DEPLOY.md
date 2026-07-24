@@ -15,7 +15,7 @@ supabase link --project-ref nwsqyuucwzihruszocge
 Use a Supabase-supported CLI installation method. Do not install the CLI globally with
 `npm install -g supabase`.
 
-## 2. Pause workers and apply migrations 013–014 before the release
+## 2. Pause workers and apply migrations 013–015 before the release
 
 Migration 011 moves existing plaintext model keys into Supabase Vault, clears the legacy
 `ai_backends.api_key` values, and revokes direct browser writes to `ai_backends`. Deploy
@@ -23,11 +23,12 @@ the new Edge code first. Its model-key resolver accepts the legacy column before
 migration and the service-only Vault RPC afterward, so the transition does not strand an
 existing model connection.
 
-Migrations 011 and 012 are already applied on the current production project and must
-remain immutable. Migration 013 adds service-only least-recently-served generation,
+Migrations 011–014 are already applied on the current production project and must
+remain immutable. Migration 013 added service-only least-recently-served generation,
 change-aware prompt-input limits, deterministic input blocking, and a 100-active-schedule
-cap. Migration 014 adds the authenticated, atomic persona/profile bundle save used by
-the new page. Pause/unschedule both workers before applying the migrations or replacing
+cap. Migration 014 added the authenticated, atomic persona/profile bundle save used by
+the page. Migration 015 adds the independent service-only X OAuth/Vault boundary.
+Pause/unschedule both workers before applying the migrations or replacing
 their code.
 
 ```sql
@@ -49,11 +50,12 @@ supabase functions deploy fan-chat --no-verify-jwt
 supabase functions deploy gmail-oauth --no-verify-jwt
 ```
 
-Apply all pending migrations through 014 while the workers remain paused, then deploy the
-new generator:
+Apply all pending migrations through 015 while the workers remain paused. Migration 015
+must be live before the X function. Then deploy the matching generator and X connector:
 
 ```powershell
 supabase functions deploy run-tasks --no-verify-jwt
+supabase functions deploy twitter-oauth --no-verify-jwt
 ```
 
 Deploy the content-erasure pair before publishing the matching GitHub Pages client. The
@@ -73,14 +75,15 @@ supabase functions deploy sitemap --no-verify-jwt
 ```
 
 `ai-proxy`, `post-bridge`, `delete-account`, and `erase-content` receive signed-in browser
-JWTs. The two cron workers use `X-Cron-Secret`. `fan-chat`, `gmail-oauth`, and `sitemap`
+JWTs. The two cron workers use `X-Cron-Secret`. `fan-chat`, `gmail-oauth`,
+`twitter-oauth`, and `sitemap`
 are public at the gateway by design and enforce their applicable checks in code.
 
 ## 3. Apply the database changes
 
 For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
 snapshot contains the base schema (including the 008–010 account-ledger, connection, and
-Gmail structures) plus the immutable 001–012 history and migrations 013–014. For the existing
+Gmail structures) plus the immutable 001–012 history and migrations 013–015. For the existing
 project, run every unapplied file in `MyPersonas.Online_v0/sql-updates` in numeric order.
 The automation release requires:
 
@@ -99,6 +102,9 @@ The automation release requires:
   pausing for oversized input, and a grandfather-safe 100-active-schedule cap.
 - `014-atomic-persona-save.sql` — owner-authenticated, transactional persona/profile,
   public-link, and private-note saving so a partial request cannot erase child data.
+- `015-twitter-oauth.sql` — one-time owner/browser-bound X OAuth state, Vault-backed
+  token bundles, provider-subject identity binding, serialized token operations, and
+  fail-closed ledger-change/deletion guards.
 
 Migration 011 enables `supabase_vault`, creates an owner-authenticated model-management
 surface, migrates every non-empty legacy model key into Vault, and then clears the legacy
@@ -123,6 +129,8 @@ supabase secrets set CRON_SECRET="<long random value>"
 supabase secrets set FAN_CHAT_SALT="<at least 32 random characters>"
 supabase secrets set GOOGLE_GMAIL_CLIENT_ID="<Google Gmail OAuth client ID>"
 supabase secrets set GOOGLE_GMAIL_CLIENT_SECRET="<Google Gmail OAuth client secret>"
+supabase secrets set X_CLIENT_ID="<X Web App client ID>"
+supabase secrets set X_CLIENT_SECRET="<X Web App client secret>"
 ```
 
 Store the exact same `CRON_SECRET` value in Supabase Vault under the name
@@ -275,7 +283,7 @@ https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth
 
 The Testing app must list each mailbox owner as a Google test user. Production use of
 `gmail.readonly` requires Google's applicable verification and restricted-scope review.
-Ownership verified means the ledger address matches the signed-in AliaSpaces email. API
+Sign-in email matched means the ledger address matches the signed-in AliaSpaces email. API
 connected means the read-only Gmail consent flow completed. Neither grants posting access.
 
 ## 8. External publishing remains locked
@@ -302,4 +310,9 @@ JWT. It must report `protocolVersion: 2`, `contentOnly: true`, and `fullAccount:
 Exercise `keepAccount: true` only with a disposable test owner: its auth login must remain,
 while its personas, posts, media, ledger, model keys, automation/chat data, profile display
 name, and preferences are removed. If any OpenRouter backend exists, erasure must require
-acknowledgment that every corresponding provider-side key was revoked first.
+an `openrouter` acknowledgment that every corresponding provider-side key was revoked
+first. Seed a credential-less X `connected` or post-grant `error` state and verify that
+erasure independently requires a `twitter` acknowledgment after MyPersonas is revoked in
+X Connected Apps. A legacy boolean acknowledgment may satisfy only OpenRouter; it must
+never satisfy X. If the required providers change between the warning and deletion, the
+409 response must return the current provider list and the page must display it again.

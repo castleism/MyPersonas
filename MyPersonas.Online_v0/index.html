@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>AliaSpaces — every persona, one home</title>
 <meta name="description" content="A home page for every side of you. Create anonymous persona pages with feeds, albums, music, Top 8 friends and every account you live on — never linked to your identity.">
 <meta name="keywords" content="personas, anonymous social network, creator page, link in bio, virtual influencer, persona pages, AI personas, creator hub">
@@ -165,12 +166,12 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .astblk{border-top:1px solid var(--border);margin-top:14px;padding-top:6px}
 .ledgerrow{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(150px,1fr) minmax(170px,1.1fr) minmax(180px,1.2fr) auto;gap:8px;align-items:end;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:8px}
 .ledgerrow label{margin-top:0}.ledgernew{grid-column:1/-1;display:none}.ledgernew.on{display:flex;gap:8px;flex-wrap:wrap}.ledgernew>*{flex:1;min-width:170px}
-.ledgerlist{display:grid;gap:8px;margin:10px 0}.ledgeritem{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:10px 12px}.ledgeritem .ledgerwho{min-width:180px;flex:1}.ledgeritem select{width:auto;min-width:170px}
+.ledgerlist{display:grid;gap:8px;margin:10px 0}.ledgerprovider{border:1px solid var(--border);border-radius:12px;background:var(--bg);overflow:hidden}.ledgerprovider>summary{display:flex;gap:10px;align-items:center;min-height:48px;padding:10px 12px;cursor:pointer;list-style:none}.ledgerprovider>summary::-webkit-details-marker{display:none}.ledgerprovider>summary::after{content:"▾";color:var(--dim);font-size:15px;transition:transform .15s ease}.ledgerprovider[open]>summary::after{transform:rotate(180deg)}.ledgerprovider>summary:focus-visible{outline:3px solid rgba(24,119,242,.25);outline-offset:-3px}.ledgerprovider[open]>summary{background:#fff;border-bottom:1px solid var(--border)}.ledgerprovidericon{font-size:20px;line-height:1}.ledgerprovidersummary{display:flex;gap:8px;align-items:center;justify-content:space-between;flex:1;min-width:0;flex-wrap:wrap}.ledgerprovidersummary b{font-size:15px}.ledgerprovidercounts{font-size:12px;color:var(--dim);font-weight:600}.ledgerproviderbody{padding:10px}.ledgerproviderpickerrow{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}.ledgerproviderpickerrow label{margin:0;white-space:nowrap}.ledgerproviderpicker{flex:1;min-width:220px}.ledgeraccountpanel[hidden]{display:none!important}.ledgeritem{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;border-radius:10px;padding:10px 12px}.ledgeritem .ledgerwho{min-width:180px;flex:1}.ledgeritem select{width:auto;min-width:170px}
 .ledgerstate{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px}.pill.recorded{background:#fff4cc;color:#795d00}.pill.verified{background:#e7f6ec;color:#23733b}.pill.connected{background:#dff7f5;color:#086c66}.pill.attention{background:#fde8ec;color:#a52744}
 .ledgersaved{grid-column:1/-1;background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px}.ledgersaved .muted{display:block;margin-top:4px}
 .ledgerassignnew,.ledgerauth,.ledgeredit{display:none;flex:1 0 100%;width:100%;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}.ledgerassignnew.on,.ledgerauth.on,.ledgeredit.on{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ledgerassignnew>div,.ledgeredit>div{flex:1;min-width:170px}.ledgerauth.on{align-items:center}.ledgerauth p{flex:1 1 420px;margin:0}.ledgeredit .ledgereditactions{flex:1 0 100%;display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.ledgerrow{grid-template-columns:1fr 1fr}.ledgerrow .ledgerwide,.ledgerrow .ledgernew{grid-column:1/-1}}
-@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select{width:100%}.ledgerrow input,.ledgerrow select,.ledgeredit input,.autocard input,.autocard select,.autocard textarea,.wizbox input,.wizbox select,.wizbox textarea,#chatov textarea,.fanbox textarea{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}.targetactions select{width:100%!important;max-width:100%}}
+@media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select,.ledgerproviderpicker{width:100%}.ledgerprovidersummary{display:block}.ledgerprovidercounts{display:block;margin-top:2px}.ledgerproviderpickerrow{display:block}.ledgerproviderpickerrow label{display:block;margin-bottom:4px}.ledgerrow input,.ledgerrow select,.ledgerproviderpicker,.ledgeredit input,.autocard input,.autocard select,.autocard textarea,.wizbox input,.wizbox select,.wizbox textarea,#chatov textarea,.fanbox textarea{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select,.ledgerproviderpicker{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}.targetactions select{width:100%!important;max-width:100%}}
 
 .autocard{border:1px solid #cfe2ff;box-shadow:0 4px 18px rgba(24,119,242,.09)}
 .autohead{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -301,12 +302,36 @@ icloud:{name:"iCloud Mail",icon:"☁️"},proton:{name:"Proton Mail",icon:"🔐"
 website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 const LEDGER_EMAIL_PROVIDERS=new Set(["gmail","outlook","yahoo","icloud","proton"]);
 const LEDGER_ONLY_PROVIDERS=new Set(["yahoo","icloud"]);
+const CONNECTOR_GUIDANCE={
+  gmail:{title:"Gmail OAuth available",note:"Connects read-only Gmail API access. It never grants social-posting permission."},
+  twitter:{title:"X OAuth available after provider setup",note:"Requires a MyPersonas X Developer Web App, the exact callback URL, client credentials, and X API access/credits. Authorization verifies the selected X identity with read and offline-refresh permission. A future posting connector must request write permission through a separate explicit reauthorization."},
+  outlook:{title:"Microsoft connector not installed",note:"Microsoft Graph supports delegated mailbox access, but MyPersonas still needs a registered and reviewed Microsoft app before this account can connect."},
+  yahoo:{title:"Yahoo connector not installed",note:"Yahoo mail access requires a dedicated developer app and restricted mail-scope approval. Never enter a Yahoo password or app password here."},
+  icloud:{title:"Record only",note:"MyPersonas does not have a supported hosted iCloud Mail management connector. Never enter an Apple Account password or app-specific password here."},
+  proton:{title:"Local bridge required",note:"A hosted site cannot directly authorize a Proton inbox. Full mailbox access requires Proton Bridge running on a trusted local computer."},
+  instagram:{title:"Professional accounts only",note:"A future official connector can manage eligible Instagram Business or Creator accounts after Meta app review; consumer accounts are not eligible."},
+  facebook:{title:"Facebook Pages only",note:"A future official connector can manage Pages the signed-in member administers after Meta app review; it cannot automate a personal profile."},
+  threads:{title:"Meta app review required",note:"Threads management requires its own approved Meta connector and permissions."},
+  whatsapp:{title:"WhatsApp Business only",note:"Management is available only through the WhatsApp Business Platform and Meta review, not a personal WhatsApp account."},
+  snapchat:{title:"Public Profiles only",note:"Snapchat publishing requires an eligible Public Profile and an allowlisted developer integration."},
+  discord:{title:"Bot connection required",note:"Discord automation must use an authorized bot. Automating a normal user account is not supported."},
+  telegram:{title:"Bot connection recommended",note:"Channel or group automation should use a Telegram bot; a personal Telegram login is not ordinary web OAuth."},
+  signal:{title:"Manual only",note:"Signal does not offer a supported hosted account-management API for this use."},
+  onlyfans:{title:"Manual only",note:"No supported public OnlyFans account-management connector is available. MyPersonas will not collect passwords, cookies, or reverse-engineered sessions."},
+  website:{title:"Site-specific setup required",note:"Website management depends on the host or CMS. Connectors must be added per platform rather than treating a saved URL as authentication."},
+  email:{title:"Mail provider required",note:"Choose the actual mailbox or newsletter provider before a safe connector can be selected."},
+  other:{title:"Provider connector required",note:"This record is available for planning and persona assignment, but it is not authenticated or remotely manageable."}
+};
+const OFFICIAL_CONNECTOR_PROVIDERS=new Set(["instagram","facebook","tiktok","patreon","snapchat","reddit","youtube","twitch","kick","linkedin","whatsapp","telegram","bluesky","threads"]);
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[];
 let myBackendCredentialIds=new Set();
 let myAgentSettings=null,myAgentBindings=[],myAgentDestinations=[],myContentPlans=[],myAgentActions=[],myAgentActionTotal=0,agentActionLoading=false,myFanSessions=[],myFanMessages=[];
 let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBatchSaving=false;
+let ledgerOpenProvider="",ledgerSelectedAccounts=new Map();
 let automationReady=true,agentMessagesReady=true,fanInboxReady=true,autoPersonaId="",autoTab="direction",autoTaskEditId="";
 let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
+let twitterOAuthNotice=null,twitterOAuthPending=null,twitterOAuthCompleting=false;
+let twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};
 let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and account loads discard stale completions
 let pageState={},editLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
 const app=document.getElementById("app");
@@ -389,6 +414,7 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
 }else{
   sb=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
   handleGmailReturn();
+  handleTwitterReturn();
   handleOAuthReturn();
   let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
   sb.auth.onAuthStateChange((ev,s)=>{
@@ -402,12 +428,17 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
       renderEpoch++;mineLoadRequest++;app.innerHTML='<div class="empty">Loading this account…</div>';localStorage.removeItem("ps_filters");closeChat();closePublicFanChat();
       document.querySelectorAll(".overlay").forEach(o=>o.remove());resetPrivateUiState();resetMineState();
     }
-    loadMine(uid,generation).then(async loaded=>{
+    (async()=>{
+      await finishPendingTwitter(uid,generation);
+      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      const loaded=await loadMine(uid,generation);
       if(!loaded||generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(myAccounts.some(account=>account.provider==="twitter"))await loadTwitterCapability(uid,generation);
+      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
       await finishPendingGmail(uid,generation);
       if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
       route();
-    });
+    })();
   });
   window.addEventListener("hashchange",route);
 }
@@ -439,7 +470,7 @@ function resetMineState(){
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
   updateBadge();
 }
-function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId=""}
+function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
 async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   const requestId=++mineLoadRequest;
@@ -501,8 +532,8 @@ async function route(){
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
   if(view==="p")return renderPersonaPage(arg,false,myEpoch);
   if(view==="studio"){
-    const notice=gmailOAuthNotice;
-    if(notice){acctTab="accounts";gmailOAuthNotice=null}
+    const notice=twitterOAuthNotice||gmailOAuthNotice;
+    if(notice){acctTab="accounts";twitterOAuthNotice=null;gmailOAuthNotice=null}
     renderStudio();
     if(notice)setTimeout(()=>toast(notice.message),40);
     return;
@@ -562,6 +593,34 @@ function handleGmailReturn(){
     else gmailOAuthNotice={message:"This Gmail authorization was not started in this browser tab. Please try again."};
   }else gmailOAuthNotice={message:reasons[reason]||"Gmail authorization did not complete."};
   ["gmail","reason","state","code","provider_error"].forEach(k=>u.searchParams.delete(k));
+  history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
+}
+function handleTwitterReturn(){
+  const u=new URL(location.href),result=u.searchParams.get("twitter");
+  if(!result)return;
+  const reason=u.searchParams.get("reason")||"";
+  const reasons={
+    cancelled:"X authorization was cancelled.",
+    invalid_state:"The X authorization expired. Please try again.",
+    missing_code:"X did not return an authorization code.",
+    scope_missing:"X did not grant all required identity, read, and offline-refresh permissions.",
+    username_mismatch:"The selected X account does not match the username recorded here.",
+    already_connected:"That X account is already connected elsewhere.",
+    refresh_token_missing:"X did not provide ongoing access. Please try again.",
+    secure_storage_failed:"X authorization could not be stored securely.",
+    token_exchange_failed:"X could not complete authorization. Please try again.",
+    profile_check_failed:"The selected X account could not be verified.",
+    connection_save_failed:"X authorized, but its connection record could not be saved.",
+    setup_required:"The MyPersonas X developer connector still needs its client credentials and API credits."
+  };
+  if(result==="finish"){
+    const state=u.searchParams.get("state")||"",code=u.searchParams.get("code")||"",providerError=u.searchParams.get("provider_error")||"";
+    const browserNonce=/^[A-Za-z0-9_-]{32,200}$/.test(state)?sessionStorage.getItem("twitter_oauth_"+state)||"":"";
+    if(state)sessionStorage.removeItem("twitter_oauth_"+state);
+    if(browserNonce)twitterOAuthPending={state,code,browserNonce,providerError};
+    else twitterOAuthNotice={message:"This X authorization was not started in this browser tab. Please try again."};
+  }else twitterOAuthNotice={message:reasons[reason]||"X authorization did not complete."};
+  ["twitter","reason","state","code","provider_error"].forEach(k=>u.searchParams.delete(k));
   history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
 }
 
@@ -1011,7 +1070,7 @@ function autoTargetReadiness(a){
       ?{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?"Connected read-only":"Planning only",note:"Gmail can supply research context, but it is not a social publishing destination."}
       :{klass:"stop",label:"Mailbox record only",note:`${name} can be assigned for planning, but inbox/API access is not connected and it is not a social publishing destination.`};
   }
-  if(info.state!=="connected")return{klass:"stop",label:info.state==="verified"?"Ownership only":"Planning / manual only",note:"Connect this platform with an official publishing permission before any API post can run."};
+  if(info.state!=="connected")return{klass:"stop",label:info.state==="verified"?"Sign-in email matched only":"Planning / manual only",note:"Connect this platform with an official publishing permission before any API post can run."};
   const write=scopes.some(s=>/write|publish|manage_posts|content_publish|tweet\.write|submit|w_member_social|upload/.test(s));
   return{klass:write?"wait":"stop",label:write?"Write grant recorded · connector pending":"Connected without write access",note:write?"The official posting adapter still has to be installed and approved before this target can publish.":"Reconnect with the platform's exact publishing permission when that connector is available."};
 }
@@ -1069,7 +1128,7 @@ function automationDirectionHtml(p,binding,plan){
 
 function automationTargetsHtml(p,binding){
   const rows=[null,...autoAssignedAccounts(p.id)];
-  return `<div class="autocallout"><b>Assignment is deliberate.</b> MyPersonas sees only the accounts assigned to this persona. Recorded or ownership-verified accounts are planning targets, not API permissions.</div>
+  return `<div class="autocallout"><b>Assignment is deliberate.</b> MyPersonas sees only the accounts assigned to this persona. Recorded or sign-in-email-matched accounts are planning targets, not API permissions.</div>
     <div class="targetlist">${rows.map(a=>{const d=autoDestination(p.id,a?.id||null),ready=autoTargetReadiness(a),info=a?autoConn(a):null,mode=d?.mode||(!a?"approval":"manual"),canAuto=!a&&binding?.autonomy_level>=3,accountUrl=safeHttpUrl(a?.url);return `<div class="targetitem"><div class="targettop"><div><b>${esc(autoTargetName(a?.id||null))}</b><div class="statusline"><span class="statusdot ${ready.klass}"></span><span class="muted">${esc(ready.label)}${a&&info?` · ${esc(info.label)}`:""}</span></div></div><span class="pill ${ready.klass==="ok"?"connected":ready.klass==="wait"?"verified":"attention"}">${esc(mode)}</span></div><p class="muted" style="margin-top:5px">${esc(ready.note)}</p><div class="targetactions"><select id="destMode_${a?.id||"native"}" style="width:auto">${a?`<option value="manual" ${mode==="manual"?"selected":""}>Manual / copy</option>`:mode==="manual"?'<option value="manual" selected disabled>Copy only — choose a publishing mode</option>':""}<option value="approval" ${mode==="approval"?"selected":""}>${a?"Approve, then post manually":"Approve, then Publish now"}</option>${a?"":`<option value="auto" ${mode==="auto"?"selected":""} ${canAuto?"":"disabled"}>Auto after approval (L3)</option>`}</select><input id="destCap_${a?.id||"native"}" type="number" min="1" max="100" value="${d?.daily_publish_limit||3}" aria-label="Daily post cap" style="width:90px"><button class="btn sm sec" onclick="saveAutomationDestination('${a?.id||""}')">Save target</button>${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}</div></div>`}).join("")}</div>
     <div class="autocallout warn"><b>External automatic publishing is intentionally locked.</b> It unlocks per destination only after a verified persona claim, an official connector, an eligible account type, the provider's exact write permission, and any required platform review. Gmail is read-only research access.</div>
     <button class="btn sec" onclick="acctTab='accounts';renderStudio();setTimeout(()=>document.getElementById('acctTabs')?.scrollIntoView({behavior:'smooth'}),0)">Manage account connections</button>`;
@@ -2298,6 +2357,9 @@ function ledgerSavedAccountOptions(provider,selected=""){
   return{count:list.length,html:`<option value="">+ New ${esc(providerName)} account</option>${list.map(a=>`<option value="${esc(a.id)}" ${selected===a.id?"selected":""}>${esc(ledgerSavedAccountLabel(a))}</option>`).join("")}`};
 }
 function ledgerIdentityLocked(a){const c=myAccountConnections.find(x=>x.ledger_id===a.id);return !!(c&&c.connection_state==="connected")}
+function ledgerUsernameLocked(a){const c=myAccountConnections.find(x=>x.ledger_id===a.id);return a.provider==="twitter"&&!!(c&&["connected","error"].includes(c.connection_state))}
+function ledgerEmailLocked(a){return a.provider==="gmail"&&ledgerIdentityLocked(a)}
+function ledgerIdentityEditLocked(a){return ledgerUsernameLocked(a)||ledgerEmailLocked(a)}
 function clearLedgerRowDetails(row){
   [".lrUser",".lrEmail",".lrUrl",".lrNotes",".lrNewName",".lrNewHandle"].forEach(s=>{const e=row.querySelector(s);if(e)e.value=""});
   const persona=row.querySelector(".lrPersona");if(persona){persona.value="";toggleLedgerQuick(persona)}
@@ -2310,20 +2372,20 @@ function ledgerSavedRowDirty(row){
 function setLedgerSavedHelp(row,a=null){
   const help=row.querySelector(".lrSavedHelp"),provider=row.querySelector(".lrProvider").value,providerName=(PLATS[provider]||{}).name||provider,count=ledgerSavedAccounts(provider).length;
   if(!help)return;
-  help.textContent=a?(ledgerIdentityLocked(a)?"Editing this saved account. Its authenticated login email stays locked until the connection is disconnected.":"Editing this saved account. Save accounts will update it instead of creating a duplicate.")
+  help.textContent=a?(ledgerIdentityEditLocked(a)?"Editing this saved account. Protected provider identity fields stay locked until the connection is disconnected or reset.":"Editing this saved account. Save accounts will update it instead of creating a duplicate.")
     :count?"Choose one to autofill its username, email, URL, notes, and persona. Passwords are never shown or stored.":`Enter a new ${providerName} account below. Passwords saved on your phone remain private to your phone.`;
 }
 function refreshLedgerSavedPicker(providerSelect){
   const row=providerSelect.closest(".ledgerrow"),picker=row.querySelector(".lrSavedAccount"),hadSaved=!!row.dataset.ledgerId,saved=ledgerSavedAccountOptions(providerSelect.value);
   if(hadSaved)clearLedgerRowDetails(row);
   row.dataset.ledgerId="";delete row.dataset.savedSnapshot;providerSelect.disabled=false;picker.disabled=!saved.count;picker.innerHTML=saved.html;
-  row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);
+  row.querySelector(".lrUser").disabled=false;row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);
 }
 function applyLedgerSavedAccount(picker){
   const row=picker.closest(".ledgerrow"),id=picker.value,previous=row.dataset.ledgerId||"";
   if(!id){
     if(previous&&ledgerSavedRowDirty(row)&&!confirm("Clear your changes and start a new account?")){picker.value=previous;return}
-    if(previous)clearLedgerRowDetails(row);row.dataset.ledgerId="";delete row.dataset.savedSnapshot;row.querySelector(".lrProvider").disabled=false;row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);return
+    if(previous)clearLedgerRowDetails(row);row.dataset.ledgerId="";delete row.dataset.savedSnapshot;row.querySelector(".lrProvider").disabled=false;row.querySelector(".lrUser").disabled=false;row.querySelector(".lrEmail").disabled=false;setLedgerSavedHelp(row);return
   }
   const a=myAccounts.find(x=>x.id===id);if(!a){picker.value="";toast("That saved account is no longer available");return}
   const hasTyped=[".lrUser",".lrEmail",".lrUrl",".lrNotes"].some(s=>row.querySelector(s).value.trim());
@@ -2331,48 +2393,100 @@ function applyLedgerSavedAccount(picker){
   row.dataset.ledgerId=a.id;row.querySelector(".lrProvider").value=a.provider;row.querySelector(".lrProvider").disabled=true;
   row.querySelector(".lrUser").value=a.username||"";row.querySelector(".lrEmail").value=a.login_email||"";row.querySelector(".lrUrl").value=a.url||"";row.querySelector(".lrNotes").value=a.notes||"";
   const persona=row.querySelector(".lrPersona");persona.value=a.persona_id&&myPersonas.some(p=>p.id===a.persona_id)?a.persona_id:"";toggleLedgerQuick(persona);
-  row.querySelector(".lrEmail").disabled=ledgerIdentityLocked(a);row.dataset.savedSnapshot=JSON.stringify(ledgerRowDetailsSnapshot(row));setLedgerSavedHelp(row,a);
+  row.querySelector(".lrUser").disabled=ledgerUsernameLocked(a);row.querySelector(".lrEmail").disabled=ledgerEmailLocked(a);row.dataset.savedSnapshot=JSON.stringify(ledgerRowDetailsSnapshot(row));setLedgerSavedHelp(row,a);
 }
 function ledgerConnectionInfo(a){
   const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row&&row.provider===a.provider&&!(row.connection_state==="verified"&&normalizeLedgerEmail(row.provider_email)!==normalizeLedgerEmail(a.login_email))?row.connection_state:"recorded";
-  if(state==="connected")return{row,state,label:a.provider==="gmail"?"API connected · read-only":"API connected",klass:"connected",note:"External API access is active."};
-  if(state==="verified")return{row,state,label:"Ownership verified",klass:"verified",note:"Ownership is verified; inbox/API access is not connected."};
+  if(state==="connected"){
+    if(a.provider==="gmail")return{row,state,label:"Gmail connected · read-only",klass:"connected",note:"Gmail API read access is active; posting and sending are not authorized."};
+    if(a.provider==="twitter"){
+      return{row,state,label:"X connected · identity verified",klass:"connected",note:"X verified this identity and granted read/offline-refresh access. Posting permission is not requested or active."};
+    }
+    return{row,state,label:"Provider API connected",klass:"connected",note:"This provider connection is active only for its recorded granted scopes."};
+  }
+  if(state==="verified")return{row,state,label:"Sign-in email matched · not connected",klass:"verified",note:"The recorded email matches this AliaSpaces sign-in. That does not authenticate the external provider or grant API access."};
   if(state==="error")return{row,state,label:"Needs reconnect",klass:"attention",note:"The external connection needs attention."};
   if(state==="disconnected")return{row,state,label:"Disconnected",klass:"attention",note:"External access is disconnected."};
-  return{row:null,state:"recorded",label:"Recorded · not authenticated",klass:"recorded",note:"This is a private inventory record only."};
+  return{row:null,state:"recorded",label:"Recorded · not connected",klass:"recorded",note:"This is a private inventory record only; no provider authorization has been granted."};
 }
 function gmailResetOnlyError(code){return["gmail_already_connected","shared_grant_cleanup_failed","local_credential_cleanup_failed"].includes(String(code||""))}
+function twitterResetOnlyError(code){return["twitter_already_connected","shared_grant_cleanup_failed","local_credential_cleanup_failed"].includes(String(code||""))}
+function ledgerConnectorGuidance(provider){
+  if(provider==="twitter"){
+    if(!twitterOAuthCapability.loaded)return{title:"Checking X connector setup",note:"The Connect button will become available only after the production X OAuth connector confirms that its developer credentials are installed."};
+    if(twitterOAuthCapability.error)return{title:"X connector unavailable",note:"The production authorization service could not confirm its setup. Try again after the connector is deployed and healthy."};
+    if(!twitterOAuthCapability.configured)return{title:"Provider setup required",note:"MyPersonas still needs an X Developer Web App, its exact callback URL, client credentials, and current X API access/credits. No X password should be entered here."};
+    return{title:"Ready to connect",note:"The production X OAuth connector is configured for identity/read access and secure refresh/revocation. Automated posting is not enabled."};
+  }
+  if(CONNECTOR_GUIDANCE[provider])return CONNECTOR_GUIDANCE[provider];
+  if(OFFICIAL_CONNECTOR_PROVIDERS.has(provider))return{title:"Provider connector not installed",note:"This provider offers developer access, but MyPersonas still needs its own approved app, scopes, secure token lifecycle, and live connector tests before this account can be managed."};
+  return{title:"Record only",note:"No supported MyPersonas management connector is installed for this provider. The account remains available for planning and persona assignment."};
+}
 function ledgerAuthPanel(a,info){
   const current=(session&&session.user&&session.user.email||"").toLowerCase(),target=(a.login_email||"").trim().toLowerCase();
-  const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
-  const verify=info.state==="recorded"?`<button class="btn sm" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Verify ownership</button>`:"";
-  const why=!accountConnectionsReady?"Verification setup is not available yet.":!target?"Add a login email before ownership can be verified.":current!==target?`Sign in to AliaSpaces as ${esc(target)} to verify this account.`:!confirmed?"Confirm your AliaSpaces sign-in email first.":"This compares the recorded email with your confirmed AliaSpaces sign-in.";
-  const mailboxOnly=LEDGER_EMAIL_PROVIDERS.has(a.provider)&&a.provider!=="gmail",mailboxNote=mailboxOnly?` ${(PLATS[a.provider]||{}).name||"This mailbox"} is stored for planning and persona assignment only. AliaSpaces cannot read or sign in to it yet; never enter its password or an app-specific password.`:"";
+  const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canOfferEmailMatch=LEDGER_EMAIL_PROVIDERS.has(a.provider),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
+  const verify=canOfferEmailMatch&&info.state==="recorded"?`<button class="btn sm sec" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Match sign-in email</button>`:"";
+  const why=!canOfferEmailMatch?"":!accountConnectionsReady?" Email matching is not available yet.":!target?" Add a login email if you want to match it with this AliaSpaces sign-in.":current!==target?` Sign in to AliaSpaces as ${esc(target)} to match this mailbox address.`:!confirmed?" Confirm your AliaSpaces sign-in email first.":" The recorded address matches this confirmed AliaSpaces sign-in; this optional check is not provider authentication.";
   const gmailError=String(info.row&&info.row.error_code||""),gmailResetOnly=gmailResetOnlyError(gmailError),gmailMustDisconnect=info.state==="connected"||["google_revoke_required","google_revoke_failed"].includes(gmailError);
   const gmail=a.provider!=="gmail"?"":gmailResetOnly
     ?`<button class="btn sm sec" onclick="resetGmailAttempt('${a.id}')">Reset Gmail attempt</button>`
     :gmailMustDisconnect?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">${info.state==="connected"?"Disconnect Gmail":"Revoke & reset Gmail"}</button>`
-    :`<button class="btn sm" onclick="connectGmail('${a.id}')">Authenticate Gmail</button>`;
-  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)} ${info.state==="recorded"?why:""}${esc(mailboxNote)}${a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose this Gmail account and approve read-only access; AliaSpaces never receives your Gmail password.":""}</span></p>${verify}${gmail}</div>`;
+    :`<button class="btn sm" onclick="connectGmail('${a.id}')" ${target?"":"disabled"}>Connect Gmail</button>`;
+  const twitterError=String(info.row&&info.row.error_code||""),twitterResetOnly=twitterResetOnlyError(twitterError),twitterManualRevoke=twitterError==="x_manual_revoke_required";
+  const twitter=a.provider!=="twitter"?"":twitterManualRevoke
+    ?`<a class="btn sm sec" href="https://x.com/settings/connected_apps" target="_blank" rel="noopener">Open X Connected Apps ↗</a><button class="btn sm danger" onclick="confirmManualTwitterRevocation('${a.id}')">I revoked it — reset</button>`
+    :twitterResetOnly
+    ?`<button class="btn sm sec" onclick="resetTwitterAttempt('${a.id}')">Reset X attempt</button>`
+    :info.state==="connected"?`${twitterOAuthCapability.configured?`<button class="btn sm sec" onclick="refreshTwitter('${a.id}')">Refresh X connection</button>`:""}<button class="btn sm danger" onclick="disconnectTwitter('${a.id}')">Disconnect X</button>`
+    :info.state==="error"?`<button class="btn sm danger" onclick="disconnectTwitter('${a.id}')">Revoke & reset X</button>`
+    :`<button class="btn sm" onclick="connectTwitter('${a.id}')" ${normalizeLedgerUsername(a.username)&&twitterOAuthCapability.configured?"":"disabled"}>Connect X</button>`;
+  const twitterSetup=a.provider!=="twitter"?"":!twitterOAuthCapability.loaded||twitterOAuthCapability.error
+    ?`<button class="btn sm sec" onclick="retryTwitterCapability()">Check X connector</button>`
+    :!twitterOAuthCapability.configured?`<a class="btn sm sec" href="https://console.x.com" target="_blank" rel="noopener">Open X Developer Console ↗</a>`:"";
+  const guide=ledgerConnectorGuidance(a.provider),showGuide=info.state!=="connected"||(a.provider==="twitter"&&!twitterOAuthCapability.configured),providerDetail=showGuide?` ${guide.title}. ${guide.note}`:"";
+  const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve read-only access; MyPersonas never receives its password.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):"";
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${info.state==="recorded"?why:""}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${verify}${gmail}${twitter}${twitterSetup}</div>`;
 }
 function ledgerEditPanel(a){
-  const locked=ledgerIdentityLocked(a),section="section-ledgeredit"+a.id.replace(/-/g,"");
+  const locked=ledgerIdentityEditLocked(a),section="section-ledgeredit"+a.id.replace(/-/g,"");
   return `<div class="ledgeredit" id="ledgerEdit_${a.id}">
-    <div><label for="ledgerEditUser_${a.id}">Handle / username</label><input id="ledgerEditUser_${a.id}" name="ledger_edit_username_${a.id}" autocomplete="${section} username" autocapitalize="none" spellcheck="false" value="${esc(a.username||"")}" placeholder="@handle or account name"></div>
-    <div><label for="ledgerEditEmail_${a.id}">Login email (optional)</label><input id="ledgerEditEmail_${a.id}" name="ledger_edit_email_${a.id}" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" value="${esc(a.login_email||"")}" placeholder="name@example.com" ${locked?"disabled":""}></div>
+    <div><label for="ledgerEditUser_${a.id}">Handle / username</label><input id="ledgerEditUser_${a.id}" name="ledger_edit_username_${a.id}" autocomplete="${section} username" autocapitalize="none" spellcheck="false" value="${esc(a.username||"")}" placeholder="@handle or account name" ${ledgerUsernameLocked(a)?"disabled":""}></div>
+    <div><label for="ledgerEditEmail_${a.id}">Login email (optional)</label><input id="ledgerEditEmail_${a.id}" name="ledger_edit_email_${a.id}" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" value="${esc(a.login_email||"")}" placeholder="name@example.com" ${ledgerEmailLocked(a)?"disabled":""}></div>
     <div><label for="ledgerEditUrl_${a.id}">Profile / account URL (optional)</label><input id="ledgerEditUrl_${a.id}" name="ledger_edit_url_${a.id}" type="url" inputmode="url" autocomplete="${section} url" autocapitalize="none" spellcheck="false" value="${esc(a.url||"")}" placeholder="https://..."></div>
     <div><label for="ledgerEditNotes_${a.id}">Private notes (optional — no secrets)</label><input id="ledgerEditNotes_${a.id}" name="ledger_edit_notes_${a.id}" autocomplete="off" value="${esc(a.notes||"")}" placeholder="Purpose, status, reminders"></div>
-    <div class="ledgereditactions"><button class="btn sm" onclick="saveLedgerDetails('${a.id}')">Save details</button><button class="btn sm sec" onclick="cancelLedgerEdit('${a.id}')">Cancel</button>${locked?'<span class="muted">Disconnect authentication before changing the login email.</span>':''}</div></div>`;
+    <div class="ledgereditactions"><button class="btn sm" onclick="saveLedgerDetails('${a.id}')">Save details</button><button class="btn sm sec" onclick="cancelLedgerEdit('${a.id}')">Cancel</button>${locked?'<span class="muted">Disconnect or reset the provider connection before changing its protected identity fields.</span>':''}</div></div>`;
 }
-function accountLedgerHtml(){
-  const existing=myAccounts.map(a=>{const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);return `<div class="ledgeritem">
+function ledgerProviderGroups(){
+  const groups=new Map(),order=new Map(Object.keys(PLATS).map((provider,index)=>[provider,index]));
+  myAccounts.forEach(account=>{if(!groups.has(account.provider))groups.set(account.provider,[]);groups.get(account.provider).push(account)});
+  return [...groups.entries()].sort(([a],[b])=>{
+    const ai=order.has(a)?order.get(a):Number.MAX_SAFE_INTEGER,bi=order.has(b)?order.get(b):Number.MAX_SAFE_INTEGER;
+    if(ai!==bi)return ai-bi;
+    const an=(PLATS[a]||{}).name||a,bn=(PLATS[b]||{}).name||b;
+    return an.localeCompare(bn);
+  });
+}
+function ledgerProviderStatusSummary(accounts){
+  const counts={connected:0,verified:0,error:0,disconnected:0,recorded:0};
+  accounts.forEach(account=>{const state=ledgerConnectionInfo(account).state;counts[state in counts?state:"recorded"]++});
+  return [
+    counts.connected&&`${counts.connected} connected`,
+    counts.verified&&`${counts.verified} sign-in email matched`,
+    counts.error&&`${counts.error} ${counts.error===1?"needs":"need"} reconnect`,
+    counts.disconnected&&`${counts.disconnected} disconnected`,
+    counts.recorded&&`${counts.recorded} not connected`
+  ].filter(Boolean).join(" · ");
+}
+function ledgerAccountItemHtml(a){
+  const p=myPersonas.find(x=>x.id===a.persona_id),info=ledgerConnectionInfo(a);
+  return `<div class="ledgeritem">
     <div class="ledgerwho"><b>${esc((PLATS[a.provider]||{}).name||a.provider)}${a.username?" · "+esc(a.username):""}</b><br>
       <span class="muted">${esc(a.login_email||"")}${safeHttpUrl(a.url)?`${a.login_email?" · ":""}<a href="${esc(safeHttpUrl(a.url))}" target="_blank" rel="noopener">open account ↗</a>`:""}</span>
       <span class="ledgerstate"><span class="pill ${info.klass}">${esc(info.label)}</span></span></div>
     <select id="ledgerPersona_${a.id}" data-current="${esc(a.persona_id||"")}" aria-label="Assigned persona" onchange="toggleSavedLedgerQuick('${a.id}',this)">${ledgerPersonaOptions(a.persona_id||"",true)}</select>
     <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save persona</button>
     <button class="btn sm sec" onclick="toggleLedgerEdit('${a.id}')">Edit details</button>
-    <button class="btn sm sec" onclick="toggleLedgerAuth('${a.id}')">Authentication</button>
+    <button class="btn sm sec" onclick="toggleLedgerAuth('${a.id}')">Connection</button>
     <button class="btn sm danger" onclick="deleteLedgerAccount('${a.id}')">Delete</button>
     ${p?`<span class="pill priv">${esc(p.name)}</span>`:'<span class="pill priv">Unassigned</span>'}
     <div class="ledgerassignnew" id="ledgerQuick_${a.id}"><div><label>New persona name</label><input id="ledgerNewName_${a.id}" placeholder="Display name"></div>
@@ -2380,10 +2494,41 @@ function accountLedgerHtml(){
       <button class="btn sm" onclick="createAndAssignLedgerPersona('${a.id}')">Create & assign</button>
       <button class="btn sm sec" onclick="cancelSavedLedgerQuick('${a.id}')">Cancel</button></div>
     ${ledgerEditPanel(a)}
-    ${ledgerAuthPanel(a,info)}</div>`}).join("")||'<p class="muted">No accounts recorded yet.</p>';
+    ${ledgerAuthPanel(a,info)}</div>`;
+}
+function rememberLedgerProvider(details){
+  const provider=details.dataset.provider||"";
+  if(details.open){
+    ledgerOpenProvider=provider;
+    document.querySelectorAll(".ledgerprovider[open]").forEach(other=>{if(other!==details)other.open=false});
+  }else if(ledgerOpenProvider===provider)ledgerOpenProvider="";
+}
+function selectLedgerProviderAccount(select){
+  const provider=select.dataset.provider||"",id=select.value;
+  if(!id||!myAccounts.some(account=>account.id===id&&account.provider===provider)){toast("That saved account is no longer available");return}
+  ledgerSelectedAccounts.set(provider,id);
+  const body=select.closest(".ledgerproviderbody");
+  if(!body)return;
+  body.querySelectorAll(".ledgeraccountpanel").forEach(panel=>{panel.hidden=panel.dataset.ledgerId!==id});
+}
+function ledgerProviderGroupHtml(provider,accounts){
+  const meta=PLATS[provider]||{},name=meta.name||provider||"Other",count=accounts.length;
+  let selectedId=ledgerSelectedAccounts.get(provider)||"";
+  if(!accounts.some(account=>account.id===selectedId))selectedId=accounts[0]?.id||"";
+  if(selectedId)ledgerSelectedAccounts.set(provider,selectedId);
+  const pickerId=`ledgerProviderAccount_${accounts[0].id}`;
+  const picker=count>1?`<div class="ledgerproviderpickerrow"><label for="${pickerId}">Account</label><select class="ledgerproviderpicker" id="${pickerId}" data-provider="${esc(provider)}" onchange="selectLedgerProviderAccount(this)">${accounts.map(account=>`<option value="${account.id}" ${account.id===selectedId?"selected":""}>${esc(ledgerSavedAccountLabel(account))}</option>`).join("")}</select></div>`:"";
+  const panels=accounts.map(account=>`<div class="ledgeraccountpanel" data-ledger-id="${account.id}" ${account.id===selectedId?"":"hidden"}>${ledgerAccountItemHtml(account)}</div>`).join("");
+  return `<details class="ledgerprovider" data-provider="${esc(provider)}" ontoggle="rememberLedgerProvider(this)" ${ledgerOpenProvider===provider?"open":""}>
+    <summary><span class="ledgerprovidericon" aria-hidden="true">${esc(meta.icon||"🔗")}</span><span class="ledgerprovidersummary"><b>${esc(name)}</b><span class="ledgerprovidercounts">${count} ${count===1?"account":"accounts"} · ${esc(ledgerProviderStatusSummary(accounts))}</span></span></summary>
+    <div class="ledgerproviderbody">${picker}${panels}</div>
+  </details>`;
+}
+function accountLedgerHtml(){
+  const existing=ledgerProviderGroups().map(([provider,accounts])=>ledgerProviderGroupHtml(provider,accounts)).join("")||'<p class="muted">No accounts recorded yet.</p>';
   return `<div class="acctsub">Your accounts (${myAccounts.length})</div><div class="ledgerlist">${existing}</div>
     <div class="acctsub">Batch add accounts</div>
-    <div class="ecorow"><div><b>Recording an account does not sign in, verify ownership, or grant access.</b><br><span class="muted">After recording it, use Edit details to add or correct its login email, then Authentication to review the verification or connection options currently available for that provider.</span></div></div>
+    <div class="ecorow"><div><b>Recording an account does not sign in or grant access.</b><br><span class="muted">After recording it, use Edit details to add or correct its identity fields, then Connection to see the official authorization options and provider requirements. Matching an email with your AliaSpaces sign-in is optional and is not provider authentication.</span></div></div>
     <p class="muted">Add or update as many rows as you need. Assign an existing persona, leave an account unassigned, or create a minimal private persona while recording.</p>
     <div id="ledgerBatch"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -2406,13 +2551,19 @@ function addLedgerRow(seed={}){
     <div class="ledgerwide"><label for="ledgerUrl_${n}">Profile / account URL (optional)</label><input id="ledgerUrl_${n}" name="ledger_url_${n}" class="lrUrl" type="url" inputmode="url" autocomplete="${section} url" autocapitalize="none" spellcheck="false" value="${esc(seed.url||"")}" placeholder="https://..."></div>
     <div class="ledgerwide"><label for="ledgerNotes_${n}">Private notes (optional — no secrets)</label><input id="ledgerNotes_${n}" name="ledger_notes_${n}" class="lrNotes" autocomplete="off" value="${esc(seed.notes||"")}" placeholder="Purpose, status, reminders"></div>`;
   box.appendChild(row);
-  const account=seed.id?myAccounts.find(a=>a.id===seed.id):null;if(account)row.querySelector(".lrEmail").disabled=ledgerIdentityLocked(account);setLedgerSavedHelp(row,account||null);
+  const account=seed.id?myAccounts.find(a=>a.id===seed.id):null;if(account){row.querySelector(".lrUser").disabled=ledgerUsernameLocked(account);row.querySelector(".lrEmail").disabled=ledgerEmailLocked(account)}setLedgerSavedHelp(row,account||null);
 }
 function toggleLedgerQuick(sel){const q=sel.closest(".ledgerrow").querySelector(".ledgernew");q.classList.toggle("on",sel.value==="__new__")}
 function toggleSavedLedgerQuick(id,sel){document.getElementById("ledgerQuick_"+id).classList.toggle("on",sel.value==="__new__")}
 function cancelSavedLedgerQuick(id){const s=document.getElementById("ledgerPersona_"+id);s.value=s.dataset.current||"";toggleSavedLedgerQuick(id,s)}
 function toggleLedgerAuth(id){const panel=document.getElementById("ledgerAuth_"+id);panel.classList.toggle("on");const edit=document.getElementById("ledgerEdit_"+id);if(edit)edit.classList.remove("on")}
 function toggleLedgerEdit(id){const panel=document.getElementById("ledgerEdit_"+id);panel.classList.toggle("on");const auth=document.getElementById("ledgerAuth_"+id);if(auth)auth.classList.remove("on");if(panel.classList.contains("on"))panel.scrollIntoView({behavior:"smooth",block:"nearest"})}
+function focusLedgerConnection(id){
+  const account=myAccounts.find(a=>a.id===id);
+  if(account){ledgerOpenProvider=account.provider;ledgerSelectedAccounts.set(account.provider,id)}
+  acctTab="accounts";renderStudio();
+  setTimeout(()=>{const panel=document.getElementById("ledgerAuth_"+id);if(panel){panel.classList.add("on");panel.scrollIntoView({behavior:"smooth",block:"nearest"})}},0);
+}
 function cancelLedgerEdit(id){
   const a=myAccounts.find(x=>x.id===id),panel=document.getElementById("ledgerEdit_"+id);if(!a||!panel)return;
   document.getElementById("ledgerEditUser_"+id).value=a.username||"";document.getElementById("ledgerEditEmail_"+id).value=a.login_email||"";
@@ -2425,10 +2576,11 @@ async function saveLedgerDetails(id){
   if(!username&&!login_email&&!url){toast("Add a username, login email, or account URL");return}
   if(!validLedgerEmail(login_email)){toast("Enter a valid login email");return}
   if(url&&!/^https?:\/\//i.test(url)){toast("Account URLs must begin with https:// or http://");return}
-  if(ledgerIdentityLocked(a)&&normalizeLedgerEmail(login_email)!==normalizeLedgerEmail(a.login_email)){toast("Disconnect authentication before changing the login email");return}
+  if(ledgerUsernameLocked(a)&&normalizeLedgerUsername(username)!==normalizeLedgerUsername(a.username)){toast("Disconnect or reset X before changing the protected username");return}
+  if(ledgerEmailLocked(a)&&normalizeLedgerEmail(login_email)!==normalizeLedgerEmail(a.login_email)){toast("Disconnect Gmail before changing the authenticated login email");return}
   if(myAccounts.some(x=>x.id!==id&&sameLedgerAccount(x,{provider:a.provider,username,login_email,url}))){toast("Another saved account already uses those details");return}
   const{error}=await sb.from("account_ledger").update({username,login_email,url,notes,updated_at:new Date().toISOString()}).eq("id",id);
-  if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account details saved. You can open Authentication now.");
+  if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account details saved. You can open Connection now.");
 }
 async function createPrivatePersona(name,handle){
   return sb.from("personas").insert({owner:session.user.id,name,handle,visibility:"private"}).select("id").single();
@@ -2450,7 +2602,8 @@ async function saveLedgerBatch(){
     if(x.ledger_id&&(!selected||selected.provider!==x.provider)){toast("A saved account selection is no longer available. Choose it again.");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     if(selectedIds.has(x.ledger_id)&&x.ledger_id){toast("The same saved account is selected more than once");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     if(x.ledger_id)selectedIds.add(x.ledger_id);
-    if(selected&&ledgerIdentityLocked(selected)&&normalizeLedgerEmail(x.login_email)!==normalizeLedgerEmail(selected.login_email)){toast("Disconnect authentication before changing the login email");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(selected&&ledgerUsernameLocked(selected)&&normalizeLedgerUsername(x.username)!==normalizeLedgerUsername(selected.username)){toast("Disconnect or reset X before changing the protected username");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
+    if(selected&&ledgerEmailLocked(selected)&&normalizeLedgerEmail(x.login_email)!==normalizeLedgerEmail(selected.login_email)){toast("Disconnect Gmail before changing the authenticated login email");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     const duplicate=myAccounts.find(a=>a.id!==x.ledger_id&&sameLedgerAccount(a,x));
     if(duplicate){toast("That account is already recorded. Choose it from Saved account to update it.");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
     if(seen.some(y=>sameLedgerAccount(y,x))){toast("The same account appears more than once in this batch");x.row.scrollIntoView({behavior:"smooth",block:"center"});return}
@@ -2474,7 +2627,7 @@ async function saveLedgerBatch(){
       if(error){toast("Added "+added+" and updated "+updated+"; stopped: "+error.message);await loadMine();renderStudio();return}
       if(x.ledger_id)updated++;else added++;
     }
-    await loadMine();acctTab="accounts";renderStudio();
+    await loadMine();if(myAccounts.some(account=>account.provider==="twitter")&&!twitterOAuthCapability.loaded)await loadTwitterCapability();acctTab="accounts";renderStudio();
     const parts=[];if(added)parts.push("added "+added);if(updated)parts.push("updated "+updated);toast("Accounts saved: "+parts.join(" and ")+". No external access was granted.");
   }finally{
     ledgerBatchSaving=false;const currentButton=document.getElementById("ledgerBatchSaveBtn");if(currentButton){currentButton.disabled=false;currentButton.textContent="Save accounts"}
@@ -2505,7 +2658,7 @@ async function verifyLedgerOwnership(id){
     const m=error.message||"";
     toast(/does not match/i.test(m)?"The recorded email does not match your signed-in AliaSpaces email.":/login email/i.test(m)?"Add a login email before verifying ownership.":m);return;
   }
-  await loadMine();acctTab="accounts";renderStudio();toast("Ownership verified. Inbox/API access is still not connected.");
+  await loadMine();acctTab="accounts";renderStudio();toast("Sign-in email matched. External provider/API access is still not connected.");
 }
 async function gmailOAuthAction(action,id,extra={}){
   const{data}=await sb.auth.getSession(),s=data&&data.session;
@@ -2555,11 +2708,94 @@ async function resetGmailAttempt(id){
   if(result.error){toast(result.error);return}
   await loadMine();acctTab="accounts";renderStudio();toast("Failed Gmail attempt reset. The other connected Gmail account was not changed.");
 }
+async function twitterOAuthAction(action,id,extra={}){
+  const{data}=await sb.auth.getSession(),s=data&&data.session;
+  if(!s)return{error:"Sign in again before connecting X."};
+  try{
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/twitter-oauth",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
+      body:JSON.stringify(Object.assign({action,ledgerId:id},extra))});
+    const j=await r.json().catch(()=>({}));
+    return r.ok?{data:j}:{error:j.error||("X authorization failed (HTTP "+r.status+")"),details:j};
+  }catch(e){return{error:"Could not reach X authorization: "+(e.message||e)}}
+}
+async function loadTwitterCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
+  if(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+  const result=await twitterOAuthAction("capabilities",null);
+  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+  if(result.error){
+    twitterOAuthCapability={loaded:true,configured:false,authenticationEnabled:false,postingEnabled:false,error:result.error};
+    return false;
+  }
+  const data=result.data||{};
+  twitterOAuthCapability={loaded:true,configured:data.configured===true,authenticationEnabled:data.authenticationEnabled===true,postingEnabled:data.postingEnabled===true,error:"",callbackUrl:typeof data.callbackUrl==="string"?data.callbackUrl:""};
+  return true;
+}
+async function retryTwitterCapability(){
+  await loadTwitterCapability();
+  acctTab="accounts";renderStudio();
+  toast(twitterOAuthCapability.configured?"X authorization is ready.":"X still needs its developer Web App credentials and API access before accounts can connect.");
+}
+async function connectTwitter(id){
+  const account=myAccounts.find(a=>a.id===id);
+  if(!account||account.provider!=="twitter"){toast("That X account is no longer available");return}
+  if(!normalizeLedgerUsername(account.username)){toast("Add the exact X username before connecting");return}
+  if(!twitterOAuthCapability.loaded)await loadTwitterCapability();
+  if(!twitterOAuthCapability.configured){toast(twitterOAuthCapability.error||"X still needs its developer Web App credentials and API access before accounts can connect.");return}
+  toast("Opening X authorization…");
+  const result=await twitterOAuthAction("start",id);
+  if(result.error){toast(result.error);return}
+  try{
+    const destination=new URL(result.data.authorizationUrl);
+    if(!["https://x.com","https://twitter.com"].includes(destination.origin)||destination.pathname!=="/i/oauth2/authorize")throw new Error("Unexpected X authorization destination");
+    const state=destination.searchParams.get("state")||"",browserNonce=result.data.browserNonce||"";
+    if(!/^[A-Za-z0-9_-]{32,200}$/.test(state)||!/^[A-Za-z0-9_-]{32,200}$/.test(browserNonce))throw new Error("Invalid X authorization binding");
+    sessionStorage.setItem("twitter_oauth_"+state,browserNonce);
+    location.assign(destination.toString());
+  }catch(e){toast(e.message||"Invalid X authorization link")}
+}
+async function finishPendingTwitter(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
+  if(!twitterOAuthPending||twitterOAuthCompleting)return;
+  if(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
+  const pending=twitterOAuthPending;twitterOAuthPending=null;
+  twitterOAuthCompleting=true;
+  const result=await twitterOAuthAction("complete",null,pending);
+  twitterOAuthCompleting=false;
+  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
+  twitterOAuthNotice={message:result.error||"X connected and its identity was verified. The grant is stored securely; automated X publishing remains disabled until live write-connector testing is complete."};
+}
+async function disconnectTwitter(id){
+  if(!confirm("Disconnect X and revoke MyPersonas access? This does not delete the external X account or its posts."))return;
+  const result=await twitterOAuthAction("disconnect",id);
+  if(result.error){await loadMine();if(result.details&&result.details.manualRevocationRequired)focusLedgerConnection(id);else{acctTab="accounts";renderStudio()}toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();
+  toast(result.data.xRevocationConfirmed===false?"X disconnected locally. Review X app permissions to confirm revocation.":"X disconnected and access revoked.");
+}
+async function refreshTwitter(id){
+  toast("Refreshing the X connection…");
+  const result=await twitterOAuthAction("refresh",id);
+  if(result.error){toast(result.error);await loadMine();acctTab="accounts";renderStudio();return}
+  await loadMine();acctTab="accounts";renderStudio();toast("X connection refreshed and reverified.");
+}
+async function resetTwitterAttempt(id){
+  if(!confirm("Clear this failed local X authorization attempt? No external X account or posts will be deleted."))return;
+  const result=await twitterOAuthAction("reset",id);
+  if(result.error){toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();toast("Failed X authorization attempt reset.");
+}
+async function confirmManualTwitterRevocation(id){
+  if(!confirm("Continue only if you already opened X Connected Apps and revoked MyPersonas. This removes the local encrypted token copy; it cannot verify a provider grant whose final state was ambiguous."))return;
+  const result=await twitterOAuthAction("reset",id,{manualRevocationAcknowledged:true});
+  if(result.error){toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();toast("Manual X revocation acknowledged and the local connection was reset.");
+}
 async function deleteLedgerAccount(id){
-  const account=myAccounts.find(a=>a.id===id),isGmail=account&&account.provider==="gmail",connection=isGmail&&myAccountConnections.find(c=>c.ledger_id===id),resetOnly=isGmail&&gmailResetOnlyError(connection&&connection.error_code);
-  const warning=resetOnly?"Remove this failed Gmail ledger entry and its local token copy? The Google grant used by the account connected elsewhere will not be revoked.":isGmail?"Remove this account from your private ledger and revoke any stored Gmail access? The external Gmail account and messages will not be deleted.":"Remove this account from your private ledger? This does not delete the external account.";
+  const account=myAccounts.find(a=>a.id===id),isGmail=account&&account.provider==="gmail",isTwitter=account&&account.provider==="twitter",connection=myAccountConnections.find(c=>c.ledger_id===id),gmailResetOnly=isGmail&&gmailResetOnlyError(connection&&connection.error_code),twitterResetOnly=isTwitter&&twitterResetOnlyError(connection&&connection.error_code),twitterManualRevoke=isTwitter&&connection&&connection.error_code==="x_manual_revoke_required";
+  if(twitterManualRevoke){toggleLedgerAuth(id);toast("Revoke MyPersonas in X Connected Apps, then use “I revoked it — reset” before deleting this ledger record.");return}
+  const warning=gmailResetOnly?"Remove this failed Gmail ledger entry and its local token copy? The Google grant used by the account connected elsewhere will not be revoked.":twitterResetOnly?"Remove this failed local X ledger attempt? The X grant used by the account connected elsewhere will not be revoked.":isGmail?"Remove this account from your private ledger and revoke any stored Gmail access? The external Gmail account and messages will not be deleted.":isTwitter?"Remove this account from your private ledger and revoke any stored X access? The external X account and posts will not be deleted.":"Remove this account from your private ledger? This does not delete the external account.";
   if(!confirm(warning))return;
-  if(isGmail){const disconnected=await gmailOAuthAction(resetOnly?"reset":"disconnect",id);if(disconnected.error){toast(disconnected.error);return}}
+  if(isGmail){const disconnected=await gmailOAuthAction(gmailResetOnly?"reset":"disconnect",id);if(disconnected.error){toast(disconnected.error);return}}
+  if(isTwitter&&connection&&["connected","error"].includes(connection.connection_state)){const disconnected=await twitterOAuthAction(twitterResetOnly?"reset":"disconnect",id);if(disconnected.error){await loadMine();if(disconnected.details&&disconnected.details.manualRevocationRequired)focusLedgerConnection(id);else{acctTab="accounts";renderStudio()}toast(disconnected.error);return}}
   const{error}=await sb.from("account_ledger").delete().eq("id",id);if(error){toast(error.message);return}
   await loadMine();acctTab="accounts";renderStudio();toast("Account removed from ledger");
 }
@@ -2637,11 +2873,21 @@ async function exportMyData(){
   a.download="mypersonas-data-"+new Date().toISOString().slice(0,10)+".json";a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
+function showEraseProviderWarning(requiredProviders){
+  const acknowledged=[...new Set((Array.isArray(requiredProviders)?requiredProviders:[]).filter(provider=>provider==="openrouter"||provider==="twitter"))],required=new Set(acknowledged),hasOpenRouter=required.has("openrouter"),hasAmbiguousX=required.has("twitter");
+  if(!hasOpenRouter&&!hasAmbiguousX)return false;
+  document.getElementById("eraseProviderWarning")?.remove();
+  const o=document.createElement("div");o.className="overlay";o.id="eraseProviderWarning";
+  const steps=[hasOpenRouter?"Revoke every key used here on the OpenRouter Keys page.":"",hasAmbiguousX?"Revoke MyPersonas on the X Connected Apps page because X could not confirm the final token state.":""].filter(Boolean);
+  const links=`${hasOpenRouter?'<a class="btn" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Open OpenRouter Keys ↗</a>':""}${hasAmbiguousX?'<a class="btn" href="https://x.com/settings/connected_apps" target="_blank" rel="noopener">Open X Connected Apps ↗</a>':""}`;
+  o.innerHTML=`<div class="wizbox"><h2>Revoke provider access first</h2><p>${steps.join(" ")}</p><p class="muted">Continue only after those provider-side revocations are complete. MyPersonas will then remove its local encrypted copies.</p><div class="autoformactions">${links}<button class="btn danger" id="confirmEraseProviderRevocations">I revoked them — continue</button><button class="btn sec" onclick="document.getElementById('eraseProviderWarning').remove()">Cancel</button></div></div>`;
+  document.body.appendChild(o);document.getElementById("confirmEraseProviderRevocations").addEventListener("click",()=>{o.remove();deleteAllContentConfirmed(acknowledged)});return true;
+}
 async function deleteAllContent(){
   if(!confirm("Delete ALL your personas, pages, posts, albums, account ledger, drafts, tasks and linked models? This cannot be undone. Your sign-in record stays. Model keys are removed from AliaSpaces, but pasted provider keys are not revoked at their provider."))return;
-  const hasOpenRouter=myBackends.some(isOpenRouterBackend);
-  if(hasOpenRouter){const o=document.createElement("div");o.className="overlay";o.id="eraseProviderWarning";o.innerHTML=`<div class="wizbox"><h2>Revoke OpenRouter first</h2><p>Deleting a local model connection cannot revoke its key at OpenRouter, including keys connected before AliaSpaces began recording how they were authorized. Open your OpenRouter Keys page, revoke every key used here, then continue.</p><div class="autoformactions"><a class="btn" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Open OpenRouter Keys ↗</a><button class="btn danger" onclick="document.getElementById('eraseProviderWarning').remove();deleteAllContentConfirmed(true)">I revoked them — continue</button><button class="btn sec" onclick="document.getElementById('eraseProviderWarning').remove()">Cancel</button></div></div>`;document.body.appendChild(o);return}
-  deleteAllContentConfirmed(false);
+  const hasOpenRouter=myBackends.some(isOpenRouterBackend),hasAmbiguousX=myAccountConnections.some(c=>c.provider==="twitter"&&c.error_code==="x_manual_revoke_required");
+  if(showEraseProviderWarning([hasOpenRouter?"openrouter":"",hasAmbiguousX?"twitter":""].filter(Boolean)))return;
+  deleteAllContentConfirmed([]);
 }
 async function deleteAllContentConfirmed(externalRevocationsAcknowledged){
   const uid=session.user.id,generation=authLoadGeneration;
@@ -2652,9 +2898,9 @@ async function deleteAllContentConfirmed(externalRevocationsAcknowledged){
   const capabilityBody=await capability.json().catch(()=>({}));if(!capability.ok||capabilityBody.protocolVersion!==2||capabilityBody.keepAccount!==true||capabilityBody.contentOnly!==true||capabilityBody.fullAccount!==false){toast("Safe content deletion is not available yet. Nothing was deleted.");return}
   let response;
   try{response=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({confirm:true,keepAccount:true,protocolVersion:2,externalRevocationsAcknowledged})})}catch(e){toast("Deletion service could not be reached. Nothing can be confirmed deleted.");return}
-  const result=await response.json().catch(()=>({}));if(!response.ok||result.deleted!==true||result.accountDeleted!==false){toast(result.error||"Deletion could not be completed or verified");return}
+  const result=await response.json().catch(()=>({}));if(!response.ok||result.deleted!==true||result.accountDeleted!==false){const required=Array.isArray(result.requiredExternalRevocations)?result.requiredExternalRevocations.filter(provider=>provider==="openrouter"||provider==="twitter"):[];if(response.status===409&&showEraseProviderWarning(required))return;toast(result.error||"Deletion could not be completed or verified");return}
   if(session?.user?.id!==uid||authLoadGeneration!==generation)return;
-  clearLocalChatData(uid);clearLegacyLocalChatData();localStorage.removeItem("ps_filters");localStorage.removeItem("sd_url");localStorage.removeItem("or_pkce");const sessionKeys=[];for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key&&(key==="or_pkce"||key==="age_ok"||key.startsWith("fan_visitor_")||key.startsWith("gmail_oauth_")))sessionKeys.push(key)}sessionKeys.forEach(key=>sessionStorage.removeItem(key));
+  clearLocalChatData(uid);clearLegacyLocalChatData();localStorage.removeItem("ps_filters");localStorage.removeItem("sd_url");localStorage.removeItem("or_pkce");const sessionKeys=[];for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key&&(key==="or_pkce"||key==="age_ok"||key.startsWith("fan_visitor_")||key.startsWith("gmail_oauth_")||key.startsWith("twitter_oauth_")))sessionKeys.push(key)}sessionKeys.forEach(key=>sessionStorage.removeItem(key));
   await loadMine();toast("Your content was deleted");go("");
 }
 

@@ -20,18 +20,17 @@ clears the legacy key column, revokes direct browser model writes, and creates t
 agent-control, lease, quota, approval, publishing, and fan-chat data plane. Do not apply it
 while an older Edge/client release is the only code available.
 
-The current production project already has migrations 011 and 012. Keep those historical
-files unchanged and pause both cron workers before the next release. Apply
-`013-fair-generation-queue.sql` before deploying its matching `run-tasks` worker. Migration
-013 adds least-recently-served owner rotation, prompt-input bounds, deterministic oversized
-input blocking, and the grandfather-safe active-schedule cap. Apply
-`014-atomic-persona-save.sql` before publishing the new page; it makes persona, link, and
-private-note edits one transaction. Deploy `erase-content` before the new page; the page
-checks its versioned content-only capability before enabling erasure.
+The current production project already has migrations 011–014. Keep those historical
+files unchanged. Migration `015-twitter-oauth.sql` adds service-only X OAuth state,
+operation locks, and Vault token storage; apply it before deploying `twitter-oauth` or
+the matching page. Deploy the updated `delete-account` and `erase-content` functions
+before the new page so provider grants are revoked or explicitly handled before account
+records are erased. The page checks the versioned content-only capability before
+enabling erasure.
 
 For a new Supabase project, open **SQL Editor**, paste the entire contents of
 `supabase-schema.sql`, and run it. The snapshot includes the base 008–010 account/
-connection/Gmail structures plus the immutable 001–012 history and migrations 013–014. There is no
+connection/Gmail structures plus the immutable 001–012 history and migrations 013–015. There is no
 legacy-key transition on a fresh project.
 
 ## Step 2 — Wire the app to your project
@@ -90,8 +89,8 @@ project **MyPersonas Gmail Connector** (`genial-union-503010-q5`):
    supabase functions deploy gmail-oauth --no-verify-jwt
    ```
 
-After an account is recorded, **Ownership verified** only means its login email matches
-the confirmed AliaSpaces sign-in email. Select **Authenticate Gmail** to run Google's
+After an account is recorded, **Sign-in email matched · not connected** only means its
+login email matches the confirmed AliaSpaces sign-in email. Select **Connect Gmail** to run Google's
 consent flow. The user must choose the exact recorded mailbox and approve read-only
 access before the status becomes **API connected**. Passwords are never collected;
 the refresh token is encrypted in Supabase Vault and is unavailable to browser code.
@@ -102,11 +101,50 @@ The `gmail.readonly` permission is a restricted Google scope. A Testing app work
 for configured test users. A public production launch requires Google's OAuth app
 verification and may require a restricted-scope security assessment.
 
-## Step 7 — Agent control center and schedules
+## Step 7 — X / Twitter account authorization
+
+Run `sql-updates/015-twitter-oauth.sql`, then create an X Developer **Web App** and
+register this exact callback URL in the
+[X Developer Console](https://console.x.com):
+
+`https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitter-oauth`
+
+Save the Web App credentials as Supabase Edge Function secrets. Never put them in
+`index.html`, a ledger note, or Git:
+
+```
+supabase secrets set X_CLIENT_ID="<X Web App client ID>"
+supabase secrets set X_CLIENT_SECRET="<X Web App client secret>"
+supabase functions deploy twitter-oauth --no-verify-jwt
+```
+
+The X developer project must have current API access/credits. MyPersonas requests only
+`tweet.read`, `users.read`, and `offline.access`; the callback must match
+exactly. Record the exact X username first, then select **Connect X**. Completion is
+single-use and bound to the same owner and browser tab, and `/2/users/me` must return that
+username before the connection becomes active.
+
+The X grant does not request posting permission, and automated X publishing is not enabled
+in this release. The OAuth function supports identity validation, read access, refresh,
+revocation, and secure Vault storage only. The future write connector must request
+`tweet.write` through a separate explicit reauthorization after it is implemented and
+live-tested.
+
+Current connection coverage is intentionally explicit:
+
+- **Gmail** — real Google consent, read-only inbox access, refresh, and revocation.
+- **X / Twitter** — real X consent, identity/read access, refresh, and revocation once
+  the production Web App credentials and API access are installed.
+- **Other saved providers** — private planning records until their official,
+  provider-specific connector, eligibility rules, app review, and permissions are
+  implemented. MyPersonas never treats a saved password, cookie, or matching email as
+  provider authentication.
+
+## Step 8 — Agent control center and schedules
 
 Follow the staged order in `../supabase/DEPLOY.md`: pause both workers; deploy `ai-proxy`,
-`post-bridge`, `run-publish-queue`, `fan-chat`, and `gmail-oauth`; apply every pending
-migration through 014; deploy `run-tasks`, `delete-account`, and the JWT-verified
+`post-bridge`, `run-publish-queue`, `fan-chat`, `gmail-oauth`, and `twitter-oauth`; apply
+every pending migration through 015; deploy `run-tasks`, `delete-account`, and the JWT-verified
 `erase-content`; publish the page; probe both workers; then schedule them every five
 minutes. Set `CRON_SECRET` and `FAN_CHAT_SALT` before probing.
 `SCHEDULE_AI_HOSTS` and `FAN_CHAT_AI_HOSTS` are separate optional hostname allowlists for
@@ -125,7 +163,7 @@ After deployment, the owner configures each persona in Matrix:
 2. **Safety** — global pause, persona status, autonomy level L0–L3, daily model-call and
    publishing limits, quiet hours, and optional disclosed fan chat.
 3. **Targets** — native AliaSpaces plus persona-assigned account-ledger rows. A recorded,
-   ownership-verified, or read-only-connected external account is still not write-enabled.
+   sign-in-email-matched, or read-only-connected external account is still not write-enabled.
 4. **Schedule** — daily/weekly day, local time, time zone, preparation lead time, content
    type, model, instructions, and approval requirement.
 5. **Queue** — edit, approve the exact draft, reject, publish native content now, or record
@@ -151,7 +189,8 @@ they do not promise an owner reply or live takeover.
 ## Implemented in this repository vs. still gated
 
 **Implemented in the repository:** sign-in, anonymous multi-persona pages, private
-account ledger, distinct ownership/API states, read-only Gmail OAuth, persona direction,
+provider-grouped account ledger, distinct recorded/email-match/API states, read-only Gmail
+OAuth, X OAuth identity/read authorization with refresh and revocation, persona direction,
 server-side AI proxy, Vault-backed model keys, precise scheduled draft generation with
 atomic call reservations, approval queue, native AliaSpaces publishing, global/persona
 pauses, caps and quiet hours, audit history, synchronized owner chat, and optional
@@ -163,8 +202,12 @@ rollout or browser QA has completed.
 which can retain the Supabase sign-in while removing owned personas, pages, posts, media,
 account records, drafts/tasks, model connections, automation/chat history, display name,
 and preferences. It refuses to run unless the server reports the immutable content-only
-contract. Gmail is revoked first. Any OpenRouter connection—legacy, pasted, or OAuth—also
-requires the owner to revoke its provider-side key before acknowledging local erasure.
+contract. Gmail and identifiable X grants are revoked first. If X cannot prove the final
+grant state, the owner must revoke MyPersonas in X Connected Apps before acknowledging
+X separately. Any OpenRouter connection—legacy, pasted, or OAuth—also requires the owner
+to revoke its provider-side key before acknowledging OpenRouter separately. The server
+recomputes the required provider list at deletion time; one provider's acknowledgment
+never satisfies another provider's revocation requirement.
 
 **Still gated:** direct posting to Instagram, Facebook, TikTok, X, YouTube, LinkedIn, or
 any other external service. No external write connector is implemented. Each provider
@@ -184,3 +227,6 @@ release can add Cloudflare Stream or Mux.
   private notes.
 - **Gmail credentials** are not stored in the account ledger. OAuth refresh tokens are
   encrypted in Supabase Vault and only the server-side connector can retrieve them.
+- **X credentials** are not stored in the account ledger. OAuth access/refresh tokens are
+  encrypted together in Supabase Vault and are available only to service-role connector
+  code. A saved username or matched AliaSpaces email is never treated as X authentication.

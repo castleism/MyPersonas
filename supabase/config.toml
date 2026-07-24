@@ -20,6 +20,9 @@ verify_jwt = false
 [functions.gmail-oauth]
 verify_jwt = false
 
+[functions.twitter-oauth]
+verify_jwt = false
+
 [functions.run-tasks]
 verify_jwt = false
 

@@ -2,6 +2,34 @@
 
 Status: ⬜ untested · ✅ pass · ❌ fail (see note) · ⏭ skipped/blocked
 
+## Grouped accounts and X OAuth foundation — backend/static check 2026-07-23
+
+- ✅ Migration 015 applied to project `nwsqyuucwzihruszocge`. The three service-only
+  X tables exist with RLS enabled; the Vault-cleanup and ledger-guard triggers exist;
+  all six token/state RPCs exist; `anon` and `authenticated` cannot execute the token
+  retrieval RPC or select the credential table; `service_role` can.
+- ✅ Active Edge versions are `twitter-oauth` v1 with gateway JWT verification off,
+  `delete-account` v12 with it on, and `erase-content` v5 with it on. X callback CORS
+  accepted the production origin, and an unsigned capabilities request was rejected.
+- ✅ No `X_CLIENT_ID` or `X_CLIENT_SECRET` is installed. The deployed start endpoint
+  returned the expected setup-required response without creating an OAuth transaction.
+  This is an explicit operational blocker, not a simulated connection.
+- ✅ Deno formatting, type-checking, and linting passed for `twitter-oauth`,
+  `delete-account`, and `erase-content`. The main inline app script parsed, migration
+  015 exactly matched its one consolidated-schema copy, SQL structural assertions
+  passed, required grouping/connector markers were present, and Git whitespace checks
+  passed.
+- ✅ Independent fail-closed review covered concurrent OAuth completion, malformed or
+  ambiguous token/refresh responses, shared-grant cleanup, missing credentials,
+  revocation failure, provider-specific erasure acknowledgment, and direct ledger
+  deletion/identity changes. No blocking static or security defect remained.
+- ⏭ A real X authorization, refresh, revocation, and username-match test is blocked
+  until a production X Web App, exact callback, client credentials, and current API
+  access are installed. Automated X posting remains intentionally disabled and no
+  `tweet.write` permission is requested.
+- ⏭ Signed-in phone/browser interaction was not exercised in this release pass; no
+  owner account, persona assignment, or existing connection was mutated.
+
 ## Agent control center release — backend smoke run 2026-07-20
 
 Repository implementation, backend deployment, and signed-in browser behavior are separate
