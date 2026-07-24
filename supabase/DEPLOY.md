@@ -329,7 +329,8 @@ select cron.schedule('mypersonas-run-mailbox-jobs', '* * * * *', $$
         limit 1
       )
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 90000
   );
 $$);
 ```
@@ -337,7 +338,9 @@ $$);
 Before scheduling, confirm Vault has exactly one secret named
 `mypersonas_cron_secret`. Check `cron.job`, `cron.job_run_details`, and all worker logs
 after scheduling. Resume only after direct authenticated worker probes return HTTP 200;
-zero due work is a valid result.
+zero due work is a valid result. The mailbox request timeout is deliberately longer than
+the worker's 80-second execution budget; pg_net's five-second default can otherwise record
+a false timeout while a bounded Gmail page is still completing successfully.
 
 ## 7. Gmail supports reports and explicitly approved cleanup
 
