@@ -59,6 +59,8 @@ async function revokeGoogleToken(token: string) {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ token }),
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
     });
     if (response.ok) return true;
     const failure = await response.json().catch(() => ({})) as {
@@ -314,31 +316,115 @@ async function ownerHasAmbiguousXGrant(admin: SupabaseClient, uid: string) {
 async function revokeGmail(admin: SupabaseClient, uid: string) {
   const gmailLedgers = await listGmailLedgers(admin, uid);
   for (const ledger of gmailLedgers) {
-    const { data: credential, error: credentialLookupError } = await admin
-      .from("gmail_credentials").select("ledger_id").eq("ledger_id", ledger.id)
-      .eq("owner", uid).maybeSingle();
-    if (credentialLookupError) {
-      throw new Error("could not inspect a stored Gmail authorization");
+    // Existing Gmail grants can predate Inbox Concierge. Seed a paused settings
+    // row so erasure serializes with scans, cleanup, disconnect, and undo.
+    const { error: settingsError } = await admin.from("mailbox_settings")
+      .upsert({
+        ledger_id: ledger.id,
+        owner: uid,
+        provider: "gmail",
+      }, { onConflict: "ledger_id", ignoreDuplicates: true });
+    if (settingsError) {
+      throw new Error("could not establish the Gmail erasure safety lock");
     }
-    if (!credential) continue;
-    const { data: refreshToken, error: tokenError } = await admin.rpc(
-      "gmail_get_refresh_token",
-      { p_ledger_id: ledger.id, p_owner: uid },
+
+    const leaseId = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_mailbox_operation",
+      {
+        p_ledger_id: ledger.id,
+        p_owner: uid,
+        p_lease_id: leaseId,
+        p_operation: "erase",
+        p_ttl_seconds: 180,
+      },
     );
-    if (tokenError || typeof refreshToken !== "string" || !refreshToken) {
-      throw new Error("could not read a stored Gmail authorization safely");
-    }
-    if (!await revokeGoogleToken(refreshToken)) {
+    if (claimError || claimed !== true) {
       throw new Error(
-        "Google did not confirm Gmail revocation; earlier Gmail grants in this request may already have been revoked",
+        "another Gmail inbox operation is in progress; wait and retry deletion",
       );
     }
-    const { data: removed, error: credentialError } = await admin.rpc(
-      "gmail_delete_refresh_token",
-      { p_ledger_id: ledger.id, p_owner: uid },
-    );
-    if (credentialError || removed !== true) {
-      throw new Error("could not remove a stored Gmail authorization");
+
+    let operationError: unknown = null;
+    let releaseFailed = false;
+    let ledgerDeleted = false;
+    try {
+      const { error: pauseError } = await admin.from("mailbox_settings").update(
+        {
+          paused: true,
+          next_scan_at: null,
+          updated_at: new Date().toISOString(),
+        },
+      ).eq("ledger_id", ledger.id).eq("owner", uid);
+      if (pauseError) {
+        throw new Error("could not pause Gmail inbox work before deletion");
+      }
+
+      const { data: credential, error: credentialLookupError } = await admin
+        .from("gmail_credentials").select("ledger_id").eq(
+          "ledger_id",
+          ledger.id,
+        )
+        .eq("owner", uid).maybeSingle();
+      if (credentialLookupError) {
+        throw new Error("could not inspect a stored Gmail authorization");
+      }
+      if (credential) {
+        const { data: refreshToken, error: tokenError } = await admin.rpc(
+          "gmail_get_refresh_token",
+          { p_ledger_id: ledger.id, p_owner: uid },
+        );
+        if (
+          tokenError || typeof refreshToken !== "string" || !refreshToken
+        ) {
+          throw new Error(
+            "could not read a stored Gmail authorization safely",
+          );
+        }
+        if (!await revokeGoogleToken(refreshToken)) {
+          throw new Error(
+            "Google did not confirm Gmail revocation; earlier Gmail grants in this request may already have been revoked",
+          );
+        }
+        const { data: removed, error: credentialError } = await admin.rpc(
+          "gmail_delete_refresh_token",
+          { p_ledger_id: ledger.id, p_owner: uid },
+        );
+        if (credentialError || removed !== true) {
+          throw new Error("could not remove a stored Gmail authorization");
+        }
+      }
+      await checked(
+        "pending Gmail sign-ins",
+        admin.from("gmail_oauth_transactions").delete()
+          .eq("owner", uid).eq("ledger_id", ledger.id),
+      );
+      await checked(
+        "Gmail account ledger",
+        admin.from("account_ledger").delete().eq("owner", uid)
+          .eq("id", ledger.id),
+      );
+      ledgerDeleted = true;
+    } catch (error) {
+      operationError = error;
+    } finally {
+      if (!ledgerDeleted) {
+        const { data: released, error: releaseError } = await admin.rpc(
+          "release_mailbox_operation",
+          {
+            p_ledger_id: ledger.id,
+            p_owner: uid,
+            p_lease_id: leaseId,
+          },
+        );
+        releaseFailed = Boolean(releaseError) || released !== true;
+      }
+    }
+    if (operationError) throw operationError;
+    if (releaseFailed) {
+      throw new Error(
+        "could not safely release a Gmail deletion lock; retry after it expires",
+      );
     }
   }
 }

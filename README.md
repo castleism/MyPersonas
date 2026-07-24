@@ -10,6 +10,10 @@ Source for https://aliaspaces.com — the persona network.
 - `.github/workflows/pages.yml` — deploys the current version folder to
   GitHub Pages on every push to `main`. Bump `SITE_DIR` there on major
   version changes.
+- `supabase/functions/mailbox-manager/` and `run-mailbox-jobs/` — the
+  owner-authenticated Inbox Concierge control endpoint and its cron-secret worker.
+  Gmail is the first real adapter; provider tokens and message references remain
+  server-side, and every mailbox mutation requires an exact owner-approved plan.
 
 ## Deployment
 

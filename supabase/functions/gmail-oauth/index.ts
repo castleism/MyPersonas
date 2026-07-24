@@ -20,7 +20,12 @@ const CALLBACK_URL = Deno.env.get("GMAIL_OAUTH_REDIRECT_URI") ||
   "https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth";
 const APP_RETURN_URL = Deno.env.get("GMAIL_OAUTH_APP_URL") ||
   "https://mypersonas.online/#/studio";
-const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
+// gmail.modify is the narrowest Gmail scope that can both inspect messages and
+// apply labels/archive/trash. The connector never exposes send, compose, or
+// permanent-delete operations even though Google's consent copy is broader.
+const GMAIL_REQUIRED_SCOPE = GMAIL_MODIFY_SCOPE;
 const LOCAL_RESET_ERROR_CODES = new Set([
   "gmail_already_connected",
   "shared_grant_cleanup_failed",
@@ -203,6 +208,8 @@ async function revokeGoogleToken(token: string) {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ token }),
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
     });
     if (response.ok) return true;
     const failure = await response.json().catch(() => ({})) as {
@@ -410,7 +417,7 @@ async function startAuthorization(
   }
   const [connectionLookup, credentialLookup] = await Promise.all([
     admin.from("account_connections")
-      .select("connection_state,error_code")
+      .select("connection_state,error_code,granted_scopes")
       .eq("ledger_id", ledger.id)
       .maybeSingle(),
     admin.from("gmail_credentials")
@@ -427,17 +434,28 @@ async function startAuthorization(
     );
   }
   const existingConnection = connectionLookup.data;
-  if (existingConnection?.connection_state === "connected") {
+  const existingScopes = Array.isArray(existingConnection?.granted_scopes)
+    ? existingConnection.granted_scopes.filter((scope): scope is string =>
+      typeof scope === "string"
+    )
+    : [];
+  const cleanupAlreadyEnabled = existingScopes.includes(GMAIL_MODIFY_SCOPE);
+  const upgradingReadOnly = existingConnection?.connection_state ===
+      "connected" &&
+    !cleanupAlreadyEnabled;
+  if (
+    existingConnection?.connection_state === "connected" &&
+    cleanupAlreadyEnabled
+  ) {
     return json(
       {
-        error:
-          "This Gmail account is already connected. Disconnect it before authorizing it again.",
+        error: "This Gmail account is already connected with cleanup access.",
       },
       409,
       origin,
     );
   }
-  if (credentialLookup.data) {
+  if (credentialLookup.data && !upgradingReadOnly) {
     const resetOnly = LOCAL_RESET_ERROR_CODES.has(
       existingConnection?.error_code || "",
     );
@@ -509,7 +527,7 @@ async function startAuthorization(
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: CALLBACK_URL,
     response_type: "code",
-    scope: `openid email ${GMAIL_SCOPE}`,
+    scope: `openid email ${GMAIL_REQUIRED_SCOPE}`,
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "select_account consent",
@@ -595,18 +613,18 @@ async function completeAuthorization(
     );
   }
 
-  const { data: consumed, error: stateError } = await admin.rpc(
-    "consume_gmail_oauth_state",
-    {
-      p_state_hash: await sha256Hex(rawState),
-      p_owner: user.id,
-      p_browser_nonce_hash: await sha256Hex(browserNonce),
-    },
-  );
-  const transaction = (Array.isArray(consumed) ? consumed[0] : consumed) as
-    | OAuthTransaction
-    | null;
-  if (stateError || !transaction) {
+  const stateHash = await sha256Hex(rawState);
+  const browserNonceHash = await sha256Hex(browserNonce);
+  // Read only the ledger binding first. The one-time state is consumed after
+  // the mailbox connect lease is acquired, so Disconnect/Erase cannot finish
+  // in the gap and then be undone by this completion.
+  const { data: pending, error: pendingError } = await admin.from(
+    "gmail_oauth_transactions",
+  ).select("ledger_id").eq("state_hash", stateHash).eq("owner", user.id).eq(
+    "browser_nonce_hash",
+    browserNonceHash,
+  ).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (pendingError || !pending?.ledger_id) {
     return json(
       {
         error:
@@ -617,7 +635,7 @@ async function completeAuthorization(
     );
   }
 
-  const ledger = await ownedGmailLedger(transaction.ledger_id, user.id);
+  const ledger = await ownedGmailLedger(pending.ledger_id, user.id);
   if (!ledger) {
     return json(
       { error: "The Gmail account record was not found." },
@@ -626,278 +644,365 @@ async function completeAuthorization(
     );
   }
 
-  if (providerError) {
-    await markConnectionError(
-      ledger,
-      providerError === "access_denied"
-        ? "google_access_denied"
-        : "google_oauth_error",
-    );
-    return json(
-      {
-        error: providerError === "access_denied"
-          ? "Gmail authorization was cancelled."
-          : "Google could not complete authorization.",
-      },
-      400,
-      origin,
-    );
-  }
-  if (!code) {
-    await markConnectionError(ledger, "missing_authorization_code");
-    return json(
-      { error: "Google did not return an authorization code." },
-      400,
-      origin,
-    );
-  }
-
-  let tokenResponse: Response;
-  try {
-    tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: CALLBACK_URL,
-        grant_type: "authorization_code",
-        code_verifier: transaction.code_verifier,
-      }),
-    });
-  } catch {
-    await markConnectionError(ledger, "google_token_unreachable");
-    return json(
-      { error: "Google could not complete authorization. Please try again." },
-      502,
-      origin,
-    );
-  }
-  const token = await tokenResponse.json().catch(() => ({})) as Record<
-    string,
-    unknown
-  >;
-  if (!tokenResponse.ok || typeof token.access_token !== "string") {
-    await markConnectionError(ledger, "google_token_exchange_failed");
-    return json(
-      { error: "Google could not complete authorization. Please try again." },
-      400,
-      origin,
-    );
-  }
-  const accessToken = token.access_token;
-  const issuedRefreshToken = typeof token.refresh_token === "string"
-    ? token.refresh_token
-    : "";
-
-  const grantedScopes = typeof token.scope === "string"
-    ? token.scope.split(/\s+/).filter(Boolean)
-    : [];
-  const [userInfoResult, profileResult] = await Promise.allSettled([
-    fetch("https://openidconnect.googleapis.com/v1/userinfo", {
-      headers: { "Authorization": `Bearer ${accessToken}` },
-    }),
-    fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
-      headers: { "Authorization": `Bearer ${accessToken}` },
-    }),
-  ]);
-  const userInfoResponse = userInfoResult.status === "fulfilled"
-    ? userInfoResult.value
-    : null;
-  const profileResponse = profileResult.status === "fulfilled"
-    ? profileResult.value
-    : null;
-  const userInfo = userInfoResponse
-    ? await userInfoResponse.json().catch(() => ({})) as Record<string, unknown>
-    : {};
-  const profile = profileResponse
-    ? await profileResponse.json().catch(() => ({})) as Record<string, unknown>
-    : {};
-  const ledgerEmail = (ledger.login_email || "").trim().toLowerCase();
-  const subject = userInfoResponse?.ok && typeof userInfo.sub === "string"
-    ? userInfo.sub.trim()
-    : "";
-  const identityEmail = userInfoResponse?.ok &&
-      userInfo.email_verified === true && typeof userInfo.email === "string"
-    ? userInfo.email.trim().toLowerCase()
-    : "";
-  const gmailEmail = profileResponse?.ok &&
-      typeof profile.emailAddress === "string"
-    ? profile.emailAddress.trim().toLowerCase()
-    : "";
-  const trustedEmails = [
-    ...new Set([identityEmail, gmailEmail].filter(Boolean)),
-  ];
-  const sharedGrantLookup = await findSharedGoogleGrant(
-    ledger,
-    subject,
-    trustedEmails,
-  );
-  if (sharedGrantLookup.error) {
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "gmail_identity_lookup_failed",
-      message: "Could not check the existing Gmail connection.",
-      status: 500,
-      recoveryRefreshToken: issuedRefreshToken,
-      allowRecoveryStorage: false,
-    });
-  }
-  if (sharedGrantLookup.shared) {
-    return rejectSharedGoogleGrant(ledger, origin);
-  }
-
-  if (!grantedScopes.includes(GMAIL_SCOPE)) {
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "gmail_scope_missing",
-      message: "Gmail read-only permission was not granted.",
-      recoveryRefreshToken: issuedRefreshToken,
-    });
-  }
-
-  const consistentTrustedEmail = trustedEmails.length === 1
-    ? trustedEmails[0]
-    : "";
-  if (
-    !userInfoResponse?.ok || !profileResponse?.ok ||
-    userInfo.email_verified !== true || !subject ||
-    !identityEmail || identityEmail !== gmailEmail
-  ) {
-    const emailMismatch = consistentTrustedEmail &&
-      consistentTrustedEmail !== ledgerEmail;
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: emailMismatch
-        ? "gmail_email_mismatch"
-        : userInfoResult.status === "rejected" ||
-            profileResult.status === "rejected"
-        ? "google_profile_unreachable"
-        : "google_profile_invalid",
-      message: emailMismatch
-        ? "That Google account does not match the Gmail address recorded here."
-        : "The selected Gmail account could not be verified.",
-      status: userInfoResult.status === "rejected" ||
-          profileResult.status === "rejected"
-        ? 502
-        : 400,
-      recoveryRefreshToken: issuedRefreshToken,
-    });
-  }
-  if (gmailEmail !== ledgerEmail) {
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "gmail_email_mismatch",
-      message:
-        "That Google account does not match the Gmail address recorded here.",
-      recoveryRefreshToken: issuedRefreshToken,
-    });
-  }
-
-  const { data: storedRefresh, error: storedRefreshError } = await admin.rpc(
-    "gmail_get_refresh_token",
+  const { error: settingsError } = await admin.from("mailbox_settings").upsert(
     {
-      p_ledger_id: ledger.id,
-      p_owner: ledger.owner,
-    },
-  );
-  if (storedRefreshError) {
-    const { data: knownCredential } = await admin.from("gmail_credentials")
-      .select("ledger_id")
-      .eq("ledger_id", ledger.id)
-      .eq("owner", ledger.owner)
-      .maybeSingle();
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "refresh_token_read_failed",
-      message: "The stored Gmail authorization could not be read safely.",
-      status: 500,
-      recoveryRefreshToken: issuedRefreshToken,
-      recoveryCredentialPresent: Boolean(knownCredential),
-    });
-  }
-  const previousRefreshToken = typeof storedRefresh === "string"
-    ? storedRefresh
-    : "";
-  const hadStoredRefresh = previousRefreshToken.length > 0;
-  const refreshToken = issuedRefreshToken
-    ? issuedRefreshToken
-    : hadStoredRefresh
-    ? previousRefreshToken
-    : "";
-  if (!refreshToken) {
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "google_refresh_token_missing",
-      message: "Google did not provide ongoing access. Please try again.",
-    });
-  }
-
-  if (issuedRefreshToken) {
-    const { error: storeError } = await admin.rpc("gmail_store_refresh_token", {
-      p_ledger_id: ledger.id,
-      p_owner: ledger.owner,
-      p_provider_email: gmailEmail,
-      p_refresh_token: issuedRefreshToken,
-    });
-    if (storeError) {
-      return failAfterGoogleGrant(ledger, origin, {
-        errorCode: "refresh_token_storage_failed",
-        message: "Gmail authorization could not be stored securely.",
-        status: 500,
-        recoveryCredentialPresent: hadStoredRefresh,
-        allowRecoveryStorage: false,
-      });
-    }
-  }
-
-  const now = new Date();
-  const expiresIn = typeof token.expires_in === "number"
-    ? token.expires_in
-    : 3600;
-  const { error: connectionError } = await admin.from("account_connections")
-    .upsert({
       ledger_id: ledger.id,
       owner: ledger.owner,
       provider: "gmail",
-      provider_subject: subject,
-      provider_email: gmailEmail,
-      granted_scopes: grantedScopes,
-      connection_state: "connected",
-      verification_method: "google_oauth",
-      verified_at: now.toISOString(),
-      connected_at: now.toISOString(),
-      last_checked_at: now.toISOString(),
-      expires_at: new Date(now.getTime() + expiresIn * 1000).toISOString(),
-      error_code: "",
-      updated_at: now.toISOString(),
-    }, { onConflict: "ledger_id" });
-  if (connectionError) {
-    if (connectionError.code === "23505") {
-      const cleanupSucceeded = await rollbackAttemptedCredential(
-        ledger,
-        Boolean(issuedRefreshToken),
-        previousRefreshToken,
+    },
+    { onConflict: "ledger_id", ignoreDuplicates: true },
+  );
+  if (settingsError) {
+    return json(
+      { error: "Could not establish the Gmail connection safety lock" },
+      500,
+      origin,
+    );
+  }
+  const leaseId = crypto.randomUUID();
+  const { data: claimed, error: claimError } = await admin.rpc(
+    "claim_mailbox_operation",
+    {
+      p_ledger_id: ledger.id,
+      p_owner: ledger.owner,
+      p_lease_id: leaseId,
+      p_operation: "connect",
+      p_ttl_seconds: 180,
+    },
+  );
+  if (claimError || claimed !== true) {
+    return json(
+      {
+        error:
+          "This inbox is busy or is being disconnected. Start the Gmail connection again after the current operation finishes.",
+      },
+      409,
+      origin,
+    );
+  }
+
+  try {
+    const { data: consumed, error: stateError } = await admin.rpc(
+      "consume_gmail_oauth_state",
+      {
+        p_state_hash: stateHash,
+        p_owner: user.id,
+        p_browser_nonce_hash: browserNonceHash,
+      },
+    );
+    const transaction = (Array.isArray(consumed) ? consumed[0] : consumed) as
+      | OAuthTransaction
+      | null;
+    if (
+      stateError || !transaction || transaction.ledger_id !== ledger.id
+    ) {
+      return json(
+        {
+          error:
+            "The Gmail authorization expired or was opened in a different browser tab.",
+        },
+        400,
+        origin,
       );
-      return rejectSharedGoogleGrant(ledger, origin, {
-        localCleanupFailed: !cleanupSucceeded,
+    }
+
+    if (providerError) {
+      await markConnectionError(
+        ledger,
+        providerError === "access_denied"
+          ? "google_access_denied"
+          : "google_oauth_error",
+      );
+      return json(
+        {
+          error: providerError === "access_denied"
+            ? "Gmail authorization was cancelled."
+            : "Google could not complete authorization.",
+        },
+        400,
+        origin,
+      );
+    }
+    if (!code) {
+      await markConnectionError(ledger, "missing_authorization_code");
+      return json(
+        { error: "Google did not return an authorization code." },
+        400,
+        origin,
+      );
+    }
+
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: CALLBACK_URL,
+          grant_type: "authorization_code",
+          code_verifier: transaction.code_verifier,
+        }),
+        redirect: "error",
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      await markConnectionError(ledger, "google_token_unreachable");
+      return json(
+        { error: "Google could not complete authorization. Please try again." },
+        502,
+        origin,
+      );
+    }
+    const token = await tokenResponse.json().catch(() => ({})) as Record<
+      string,
+      unknown
+    >;
+    if (!tokenResponse.ok || typeof token.access_token !== "string") {
+      await markConnectionError(ledger, "google_token_exchange_failed");
+      return json(
+        { error: "Google could not complete authorization. Please try again." },
+        400,
+        origin,
+      );
+    }
+    const accessToken = token.access_token;
+    const issuedRefreshToken = typeof token.refresh_token === "string"
+      ? token.refresh_token
+      : "";
+
+    const grantedScopes = typeof token.scope === "string"
+      ? token.scope.split(/\s+/).filter(Boolean)
+      : [];
+    const [userInfoResult, profileResult] = await Promise.allSettled([
+      fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+        headers: { "Authorization": `Bearer ${accessToken}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(12_000),
+      }),
+      fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+        headers: { "Authorization": `Bearer ${accessToken}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(12_000),
+      }),
+    ]);
+    const userInfoResponse = userInfoResult.status === "fulfilled"
+      ? userInfoResult.value
+      : null;
+    const profileResponse = profileResult.status === "fulfilled"
+      ? profileResult.value
+      : null;
+    const userInfo = userInfoResponse
+      ? await userInfoResponse.json().catch(() => ({})) as Record<
+        string,
+        unknown
+      >
+      : {};
+    const profile = profileResponse
+      ? await profileResponse.json().catch(() => ({})) as Record<
+        string,
+        unknown
+      >
+      : {};
+    const ledgerEmail = (ledger.login_email || "").trim().toLowerCase();
+    const subject = userInfoResponse?.ok && typeof userInfo.sub === "string"
+      ? userInfo.sub.trim()
+      : "";
+    const identityEmail = userInfoResponse?.ok &&
+        userInfo.email_verified === true && typeof userInfo.email === "string"
+      ? userInfo.email.trim().toLowerCase()
+      : "";
+    const gmailEmail = profileResponse?.ok &&
+        typeof profile.emailAddress === "string"
+      ? profile.emailAddress.trim().toLowerCase()
+      : "";
+    const trustedEmails = [
+      ...new Set([identityEmail, gmailEmail].filter(Boolean)),
+    ];
+    const sharedGrantLookup = await findSharedGoogleGrant(
+      ledger,
+      subject,
+      trustedEmails,
+    );
+    if (sharedGrantLookup.error) {
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "gmail_identity_lookup_failed",
+        message: "Could not check the existing Gmail connection.",
+        status: 500,
+        recoveryRefreshToken: issuedRefreshToken,
+        allowRecoveryStorage: false,
       });
     }
-    return failAfterGoogleGrant(ledger, origin, {
-      errorCode: "connection_save_failed",
-      message:
-        "Gmail authorized, but its connection record could not be saved.",
-      status: 500,
-      recoveryCredentialPresent: true,
+    if (sharedGrantLookup.shared) {
+      return rejectSharedGoogleGrant(ledger, origin);
+    }
+
+    if (!grantedScopes.includes(GMAIL_REQUIRED_SCOPE)) {
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "gmail_scope_missing",
+        message:
+          "Gmail cleanup permission was not granted. The prior connection, if any, was left unchanged.",
+        recoveryRefreshToken: issuedRefreshToken,
+      });
+    }
+
+    const consistentTrustedEmail = trustedEmails.length === 1
+      ? trustedEmails[0]
+      : "";
+    if (
+      !userInfoResponse?.ok || !profileResponse?.ok ||
+      userInfo.email_verified !== true || !subject ||
+      !identityEmail || identityEmail !== gmailEmail
+    ) {
+      const emailMismatch = consistentTrustedEmail &&
+        consistentTrustedEmail !== ledgerEmail;
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: emailMismatch
+          ? "gmail_email_mismatch"
+          : userInfoResult.status === "rejected" ||
+              profileResult.status === "rejected"
+          ? "google_profile_unreachable"
+          : "google_profile_invalid",
+        message: emailMismatch
+          ? "That Google account does not match the Gmail address recorded here."
+          : "The selected Gmail account could not be verified.",
+        status: userInfoResult.status === "rejected" ||
+            profileResult.status === "rejected"
+          ? 502
+          : 400,
+        recoveryRefreshToken: issuedRefreshToken,
+      });
+    }
+    if (gmailEmail !== ledgerEmail) {
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "gmail_email_mismatch",
+        message:
+          "That Google account does not match the Gmail address recorded here.",
+        recoveryRefreshToken: issuedRefreshToken,
+      });
+    }
+
+    const { data: storedRefresh, error: storedRefreshError } = await admin.rpc(
+      "gmail_get_refresh_token",
+      {
+        p_ledger_id: ledger.id,
+        p_owner: ledger.owner,
+      },
+    );
+    if (storedRefreshError) {
+      const { data: knownCredential } = await admin.from("gmail_credentials")
+        .select("ledger_id")
+        .eq("ledger_id", ledger.id)
+        .eq("owner", ledger.owner)
+        .maybeSingle();
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "refresh_token_read_failed",
+        message: "The stored Gmail authorization could not be read safely.",
+        status: 500,
+        recoveryRefreshToken: issuedRefreshToken,
+        recoveryCredentialPresent: Boolean(knownCredential),
+      });
+    }
+    const previousRefreshToken = typeof storedRefresh === "string"
+      ? storedRefresh
+      : "";
+    const hadStoredRefresh = previousRefreshToken.length > 0;
+    const refreshToken = issuedRefreshToken
+      ? issuedRefreshToken
+      : hadStoredRefresh
+      ? previousRefreshToken
+      : "";
+    if (!refreshToken) {
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "google_refresh_token_missing",
+        message: "Google did not provide ongoing access. Please try again.",
+      });
+    }
+
+    if (issuedRefreshToken) {
+      const { error: storeError } = await admin.rpc(
+        "gmail_store_refresh_token",
+        {
+          p_ledger_id: ledger.id,
+          p_owner: ledger.owner,
+          p_provider_email: gmailEmail,
+          p_refresh_token: issuedRefreshToken,
+        },
+      );
+      if (storeError) {
+        return failAfterGoogleGrant(ledger, origin, {
+          errorCode: "refresh_token_storage_failed",
+          message: "Gmail authorization could not be stored securely.",
+          status: 500,
+          recoveryCredentialPresent: hadStoredRefresh,
+          allowRecoveryStorage: false,
+        });
+      }
+    }
+
+    const now = new Date();
+    const expiresIn = typeof token.expires_in === "number"
+      ? token.expires_in
+      : 3600;
+    const { error: connectionError } = await admin.from("account_connections")
+      .upsert({
+        ledger_id: ledger.id,
+        owner: ledger.owner,
+        provider: "gmail",
+        provider_subject: subject,
+        provider_email: gmailEmail,
+        granted_scopes: grantedScopes,
+        connection_state: "connected",
+        verification_method: "google_oauth",
+        verified_at: now.toISOString(),
+        connected_at: now.toISOString(),
+        last_checked_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + expiresIn * 1000).toISOString(),
+        error_code: "",
+        updated_at: now.toISOString(),
+      }, { onConflict: "ledger_id" });
+    if (connectionError) {
+      if (connectionError.code === "23505") {
+        const cleanupSucceeded = await rollbackAttemptedCredential(
+          ledger,
+          Boolean(issuedRefreshToken),
+          previousRefreshToken,
+        );
+        return rejectSharedGoogleGrant(ledger, origin, {
+          localCleanupFailed: !cleanupSucceeded,
+        });
+      }
+      return failAfterGoogleGrant(ledger, origin, {
+        errorCode: "connection_save_failed",
+        message:
+          "Gmail authorized, but its connection record could not be saved.",
+        status: 500,
+        recoveryCredentialPresent: true,
+      });
+    }
+
+    return json(
+      {
+        connected: true,
+        cleanupEnabled: true,
+        ledgerId: ledger.id,
+        grantedScopes,
+      },
+      200,
+      origin,
+    );
+  } finally {
+    await admin.rpc("release_mailbox_operation", {
+      p_ledger_id: ledger.id,
+      p_owner: ledger.owner,
+      p_lease_id: leaseId,
     });
   }
-
-  return json({ connected: true, ledgerId: ledger.id }, 200, origin);
 }
 
-async function disconnect(req: Request, origin: string, ledgerId: string) {
-  const user = await caller(req);
-  if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
-  const ledger = await ownedGmailLedger(ledgerId, user.id);
-  if (!ledger) {
-    return json({ error: "Owned Gmail account not found" }, 404, origin);
-  }
-
+async function disconnectOwnedGmail(origin: string, ledger: Ledger) {
   const { data: connection, error: connectionLookupError } = await admin.from(
     "account_connections",
   )
@@ -1019,6 +1124,87 @@ async function disconnect(req: Request, origin: string, ledgerId: string) {
   );
 }
 
+async function disconnect(req: Request, origin: string, ledgerId: string) {
+  const user = await caller(req);
+  if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
+  const ledger = await ownedGmailLedger(ledgerId, user.id);
+  if (!ledger) {
+    return json({ error: "Owned Gmail account not found" }, 404, origin);
+  }
+
+  // Legacy Gmail connections predate mailbox_settings. Create a paused default
+  // row so disconnect can use the same per-mailbox lease as scans and cleanup.
+  const { error: settingsError } = await admin.from("mailbox_settings").upsert(
+    {
+      ledger_id: ledger.id,
+      owner: ledger.owner,
+      provider: "gmail",
+    },
+    { onConflict: "ledger_id", ignoreDuplicates: true },
+  );
+  if (settingsError) {
+    return json(
+      { error: "Could not establish the Gmail disconnect safety lock" },
+      500,
+      origin,
+    );
+  }
+
+  const leaseId = crypto.randomUUID();
+  const { data: claimed, error: claimError } = await admin.rpc(
+    "claim_mailbox_operation",
+    {
+      p_ledger_id: ledger.id,
+      p_owner: ledger.owner,
+      p_lease_id: leaseId,
+      p_operation: "disconnect",
+      p_ttl_seconds: 180,
+    },
+  );
+  if (claimError || claimed !== true) {
+    return json(
+      {
+        error:
+          "This inbox is busy. Wait for the current scan or cleanup step to finish, then disconnect again.",
+      },
+      409,
+      origin,
+    );
+  }
+
+  try {
+    const { error: pendingError } = await admin.from(
+      "gmail_oauth_transactions",
+    ).delete().eq("ledger_id", ledger.id).eq("owner", ledger.owner);
+    if (pendingError) {
+      return json(
+        { error: "Could not cancel the pending Gmail connection safely" },
+        500,
+        origin,
+      );
+    }
+    const { error: pauseError } = await admin.from("mailbox_settings").update({
+      paused: true,
+      next_scan_at: null,
+      updated_at: new Date().toISOString(),
+    }).eq("ledger_id", ledger.id).eq("owner", ledger.owner);
+    if (pauseError) {
+      return json(
+        { error: "Could not pause inbox work before disconnecting Gmail" },
+        500,
+        origin,
+      );
+    }
+    return await disconnectOwnedGmail(origin, ledger);
+  } finally {
+    await admin.rpc("release_mailbox_operation", {
+      p_ledger_id: ledger.id,
+      p_owner: ledger.owner,
+      p_lease_id: leaseId,
+    });
+  }
+}
+
 async function resetSharedGrantAttempt(
   req: Request,
   origin: string,
@@ -1101,6 +1287,24 @@ async function resetSharedGrantAttempt(
   return json({ reset: true, googleGrantUnchanged: true }, 200, origin);
 }
 
+async function capabilities(req: Request, origin: string) {
+  const user = await caller(req);
+  if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
+  return json(
+    {
+      configured: Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+      authenticationEnabled: Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+      reportScope: GMAIL_READ_SCOPE,
+      cleanupScope: GMAIL_MODIFY_SCOPE,
+      callbackUrl: CALLBACK_URL,
+      permanentDeleteEnabled: false,
+      sendingEnabled: false,
+    },
+    200,
+    origin,
+  );
+}
+
 serve(async (req) => {
   const origin = req.headers.get("Origin") || "";
   if (req.method === "OPTIONS") {
@@ -1122,6 +1326,9 @@ serve(async (req) => {
   }
   if (actionBody.action === "start") {
     return startAuthorization(req, origin, actionBody.ledgerId);
+  }
+  if (actionBody.action === "capabilities") {
+    return capabilities(req, origin);
   }
   if (actionBody.action === "complete") {
     return completeAuthorization(req, origin, actionBody);

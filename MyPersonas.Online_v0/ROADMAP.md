@@ -44,10 +44,24 @@ browser scenarios retain their own verification evidence.
 - [x] Private Account Ledger batch mode: add many external accounts, keep them
       unassigned or bind each to an existing/quick-created private persona. Deployed
       with owner-only storage, saved-row Quick Create, and explicit connection states.
-- [x] Provider OAuth connections: separate, read-only Gmail authorization with
-      single-use state + PKCE, exact-mailbox validation, refresh credentials encrypted
-      in Supabase Vault, and only server-attested connection state exposed to the
-      browser. Ownership verification remains distinct from API connection.
+- [x] Provider OAuth connections: separate Gmail authorization with single-use state +
+      PKCE, exact-mailbox validation, explicit cleanup re-consent, refresh credentials
+      encrypted in Supabase Vault, and only server-attested connection state exposed to
+      the browser. Ownership verification remains distinct from API connection.
+- [x] Gmail Inbox Concierge: resumable manual and report-only scheduled scans,
+      subscriptions/account-evidence/receipt/protected-mail reports, optional owner-chosen
+      AI classification using bounded sender, subject, and short Gmail preview snippets,
+      exact approval plans for labels/archive/recoverable Trash, bounded Undo, a separate
+      audit trail, and manual unsubscribe offers that never fetch arbitrary links in the
+      background.
+- [ ] Outlook Inbox Concierge adapter through delegated Microsoft Graph `Mail.ReadWrite`
+      after an Entra app, callback, credentials, consent, and live personal/tenant tests
+      are installed.
+- [ ] Yahoo and iCloud Inbox Concierge adapters through a dedicated encrypted IMAP
+      worker using user-created app-specific passwords; never collect either account's
+      normal password in the website.
+- [ ] Proton Inbox Concierge companion that runs locally beside Proton Mail Bridge;
+      hosted Supabase functions cannot directly reach Bridge's loopback-only IMAP service.
 - [x] Persona agent control center: strategic direction, L0–L3 autonomy, global and
       per-persona pauses, destination modes, exact daily/weekly schedules, time zones,
       lead times, caps, quiet hours, approval queue, synchronized owner chat, and audit log

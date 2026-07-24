@@ -20,6 +20,9 @@ verify_jwt = false
 [functions.gmail-oauth]
 verify_jwt = false
 
+[functions.mailbox-manager]
+verify_jwt = true
+
 [functions.twitter-oauth]
 verify_jwt = false
 
@@ -27,6 +30,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.run-publish-queue]
+verify_jwt = false
+
+[functions.run-mailbox-jobs]
 verify_jwt = false
 
 [functions.sitemap]

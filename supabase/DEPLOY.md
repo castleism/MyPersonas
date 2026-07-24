@@ -2,8 +2,10 @@
 
 The browser app is hosted by GitHub Pages. Supabase provides authentication, the
 database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
-This is a deployment runbook for the repository state; it does not assert that a live
-deployment or browser verification has completed.
+This is a deployment runbook for the repository state. The 2026-07-24 production rollout
+applied migration 016, deployed the matching mailbox/Gmail/erasure functions, and enabled
+the mailbox cron. A signed-in Gmail re-consent and real mailbox action remain explicit
+owner-run smoke tests.
 
 ## 1. Link the Supabase project
 
@@ -15,7 +17,7 @@ supabase link --project-ref nwsqyuucwzihruszocge
 Use a Supabase-supported CLI installation method. Do not install the CLI globally with
 `npm install -g supabase`.
 
-## 2. Pause workers and apply migrations 013–015 before the release
+## 2. Pause workers and apply migrations 013–016 before the release
 
 Migration 011 moves existing plaintext model keys into Supabase Vault, clears the legacy
 `ai_backends.api_key` values, and revokes direct browser writes to `ai_backends`. Deploy
@@ -23,18 +25,22 @@ the new Edge code first. Its model-key resolver accepts the legacy column before
 migration and the service-only Vault RPC afterward, so the transition does not strand an
 existing model connection.
 
-Migrations 011–014 are already applied on the current production project and must
-remain immutable. Migration 013 added service-only least-recently-served generation,
-change-aware prompt-input limits, deterministic input blocking, and a 100-active-schedule
-cap. Migration 014 added the authenticated, atomic persona/profile bundle save used by
-the page. Migration 015 adds the independent service-only X OAuth/Vault boundary.
-Pause/unschedule both workers before applying the migrations or replacing
-their code.
+Migrations 011–016 are applied on the current production project and must remain
+immutable. Migration 013 added service-only least-recently-served generation, change-aware
+prompt-input limits, deterministic input blocking, and a 100-active-schedule cap.
+Migration 014 added the authenticated, atomic persona/profile bundle save used by the
+page. Migration 015 added the independent service-only X OAuth/Vault boundary, and
+migration 016 added the independent mailbox report/action boundary. Pause/unschedule all
+workers before applying pending migrations or replacing their code.
 
 ```sql
 select cron.unschedule(jobid)
 from cron.job
-where jobname in ('mypersonas-run-tasks', 'mypersonas-run-publish-queue');
+where jobname in (
+  'mypersonas-run-tasks',
+  'mypersonas-run-publish-queue',
+  'mypersonas-run-mailbox-jobs'
+);
 ```
 
 If `pg_cron` or the named jobs do not exist yet, skip that statement. Existing projects
@@ -47,14 +53,18 @@ supabase functions deploy ai-proxy
 supabase functions deploy post-bridge
 supabase functions deploy run-publish-queue --no-verify-jwt
 supabase functions deploy fan-chat --no-verify-jwt
-supabase functions deploy gmail-oauth --no-verify-jwt
 ```
 
-Apply all pending migrations through 015 while the workers remain paused. Migration 015
-must be live before the X function. Then deploy the matching generator and X connector:
+Apply all pending migrations through 016 while the workers remain paused. Migration 015
+must be live before the X function; migration 016 must be live before either mailbox
+function or the Gmail permission upgrade. Then deploy the matching generator, mailbox
+services, and X connector:
 
 ```powershell
 supabase functions deploy run-tasks --no-verify-jwt
+supabase functions deploy mailbox-manager
+supabase functions deploy run-mailbox-jobs --no-verify-jwt
+supabase functions deploy gmail-oauth --no-verify-jwt
 supabase functions deploy twitter-oauth --no-verify-jwt
 ```
 
@@ -74,16 +84,16 @@ For a fresh project, also deploy the unchanged sitemap function:
 supabase functions deploy sitemap --no-verify-jwt
 ```
 
-`ai-proxy`, `post-bridge`, `delete-account`, and `erase-content` receive signed-in browser
-JWTs. The two cron workers use `X-Cron-Secret`. `fan-chat`, `gmail-oauth`,
-`twitter-oauth`, and `sitemap`
-are public at the gateway by design and enforce their applicable checks in code.
+`ai-proxy`, `post-bridge`, `mailbox-manager`, `delete-account`, and `erase-content`
+receive signed-in browser JWTs. The three cron workers use `X-Cron-Secret`. `fan-chat`,
+`gmail-oauth`, `twitter-oauth`, and `sitemap` are public at the gateway by design and
+enforce their applicable checks in code.
 
 ## 3. Apply the database changes
 
 For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
 snapshot contains the base schema (including the 008–010 account-ledger, connection, and
-Gmail structures) plus the immutable 001–012 history and migrations 013–015. For the existing
+Gmail structures) plus the immutable 001–012 history and migrations 013–016. For the existing
 project, run every unapplied file in `MyPersonas.Online_v0/sql-updates` in numeric order.
 The automation release requires:
 
@@ -105,6 +115,9 @@ The automation release requires:
 - `015-twitter-oauth.sql` — one-time owner/browser-bound X OAuth state, Vault-backed
   token bundles, provider-subject identity binding, serialized token operations, and
   fail-closed ledger-change/deletion guards.
+- `016-mailbox-manager.sql` — owner-readable sanitized mailbox settings, scan summaries,
+  findings, exact action plans, and audit events plus service-only cursors, provider
+  message references, prior-label Undo snapshots, and serialized mailbox operations.
 
 Migration 011 enables `supabase_vault`, creates an owner-authenticated model-management
 surface, migrates every non-empty legacy model key into Vault, and then clears the legacy
@@ -141,24 +154,26 @@ together. Do not paste the secret into the stored cron SQL.
 Supabase injects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never put a secret,
 refresh token, password, or provider key in `index.html`, a migration, or documentation.
 
-The scheduled worker and fan chat have separate outbound model-host allowlists. Their
-built-in lists cover the supported hosted providers and Azure OpenAI subdomains. Add only
-hostnames you operate or explicitly trust:
+Scheduled generation, fan chat, and mailbox classification have separate outbound
+model-host allowlists. Their built-in lists cover the supported hosted providers and
+Azure OpenAI subdomains. Add only hostnames you operate or explicitly trust:
 
 ```powershell
 supabase secrets set SCHEDULE_AI_HOSTS="models.example.com,another.example.com"
 supabase secrets set FAN_CHAT_AI_HOSTS="models.example.com,another.example.com"
+supabase secrets set MAILBOX_AI_HOSTS="models.example.com,another.example.com"
 ```
 
 - `SCHEDULE_AI_HOSTS` extends only `run-tasks` scheduled generation.
 - `FAN_CHAT_AI_HOSTS` extends only public fan-chat generation.
+- `MAILBOX_AI_HOSTS` extends only optional, owner-consented mailbox classification.
 - `FAN_CHAT_ALLOWED_ORIGINS` optionally adds comma-separated browser origins.
 - `FAN_CHAT_HOURLY_LIMIT` optionally changes the per-visitor hourly cap; default 12.
 
-Do not add a broad domain merely to make a request pass. The two model-host settings are
-separate because public fan chat has a different risk boundary from owner schedules. A
-custom hostname must be both allowlisted here and explicitly confirmed for the matching
-surface in Matrix; schedule confirmation never authorizes fan chat, or vice versa.
+Do not add a broad domain merely to make a request pass. The three model-host settings are
+separate because private mail, public fan chat, and owner schedules have different risk
+boundaries. A custom hostname must be both allowlisted here and explicitly confirmed for
+the matching surface in Matrix; one surface never authorizes another.
 
 ## 5. Runtime safety model
 
@@ -217,10 +232,34 @@ for owner review. Escalation means the transcript appears in the owner's review 
 does not promise that the owner will reply, take over the conversation, or perform an
 action. The fixed AI/owner-review disclosure cannot be removed.
 
-## 6. Schedule both workers every five minutes
+### Inbox Concierge
+
+Mailbox jobs use a separate per-ledger lease and never inherit a persona's L0–L3 setting.
+The existing global automation pause and the mailbox's own pause stop new work. A
+scheduled job may scan and report only; no saved schedule can label, archive, Trash, or
+unsubscribe.
+
+The Gmail adapter retrieves bounded headers, subject, and Gmail preview snippets in
+bounded pages. It never downloads attachments or stores raw bodies. Provider message IDs,
+label snapshots, page cursors, and unsubscribe destinations stay in service-only tables;
+owner-readable tables contain only sanitized findings and aggregate job/action status.
+After per-mailbox consent, optional AI classification receives only the bounded sender,
+subject, and short Gmail preview snippet; full bodies and attachments are not sent. The
+model has no provider token, mailbox tool, unsubscribe URL, or mutation authority.
+
+Every label, label-and-archive, or Trash request first creates an exact 24-hour plan bound
+to the owner, ledger, selected findings, current labels, target label, and plan hash. The
+worker re-fetches current state and skips changed or protected messages. Trash uses
+Gmail's recoverable Trash endpoint only, stores prior labels, and exposes a bounded Undo;
+the code has no permanent-delete path. Unsubscribe is a separate owner request and the
+server never fetches the untrusted destination.
+
+## 6. Schedule content workers every five minutes and mailbox jobs every minute
 
 Five-minute polling gives due work a maximum normal dispatch delay of about five minutes.
-The functions themselves select only rows whose `next_run_at` or `publish_at` is due.
+The content functions select only rows whose `next_run_at` or `publish_at` is due.
+One-minute mailbox polling advances bounded pages and approved plans without turning the
+schedule into permission to mutate mail.
 
 ```sql
 create extension if not exists pg_cron;
@@ -228,7 +267,11 @@ create extension if not exists pg_net;
 
 select cron.unschedule(jobid)
 from cron.job
-where jobname in ('mypersonas-run-tasks', 'mypersonas-run-publish-queue');
+where jobname in (
+  'mypersonas-run-tasks',
+  'mypersonas-run-publish-queue',
+  'mypersonas-run-mailbox-jobs'
+);
 
 select cron.schedule('mypersonas-run-tasks', '*/5 * * * *', $$
   select net.http_post(
@@ -261,19 +304,36 @@ select cron.schedule('mypersonas-run-publish-queue', '*/5 * * * *', $$
     body := '{}'::jsonb
   );
 $$);
+
+select cron.schedule('mypersonas-run-mailbox-jobs', '* * * * *', $$
+  select net.http_post(
+    url := 'https://nwsqyuucwzihruszocge.supabase.co/functions/v1/run-mailbox-jobs',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'X-Cron-Secret', (
+        select decrypted_secret
+        from vault.decrypted_secrets
+        where name = 'mypersonas_cron_secret'
+        limit 1
+      )
+    ),
+    body := '{}'::jsonb
+  );
+$$);
 ```
 
 Before scheduling, confirm Vault has exactly one secret named
-`mypersonas_cron_secret`. Check `cron.job`, `cron.job_run_details`, and both worker logs
+`mypersonas_cron_secret`. Check `cron.job`, `cron.job_run_details`, and all worker logs
 after scheduling. Resume only after direct authenticated worker probes return HTTP 200;
 zero due work is a valid result.
 
-## 7. Gmail remains a read-only connector
+## 7. Gmail supports reports and explicitly approved cleanup
 
 Gmail authorization is separate from AliaSpaces sign-in and from social posting
 permission. Keep it in the isolated Google Cloud project **MyPersonas Gmail Connector**
 (`genial-union-503010-q5`) and request only `openid`, `email`, and
-`https://www.googleapis.com/auth/gmail.readonly`.
+`https://www.googleapis.com/auth/gmail.modify`. Do not request
+`https://mail.google.com/`; Inbox Concierge has no immediate permanent-delete endpoint.
 
 Authorized callback:
 
@@ -281,10 +341,13 @@ Authorized callback:
 https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth
 ```
 
-The Testing app must list each mailbox owner as a Google test user. Production use of
-`gmail.readonly` requires Google's applicable verification and restricted-scope review.
-Sign-in email matched means the ledger address matches the signed-in AliaSpaces email. API
-connected means the read-only Gmail consent flow completed. Neither grants posting access.
+The Testing app must list each mailbox owner as a Google test user. Testing refresh tokens
+normally expire after seven days. Production use of `gmail.modify` requires Google's
+applicable verification and restricted-scope review; server storage or transmission of
+restricted Gmail data may require a security assessment. Sign-in email matched means the
+ledger address matches the signed-in AliaSpaces email. Reports connected means an earlier
+read-only grant remains usable for scans; Cleanup enabled means explicit `gmail.modify`
+re-consent completed. Neither grants social posting or mail sending in MyPersonas.
 
 ## 8. External publishing remains locked
 
@@ -294,9 +357,9 @@ rows can be planning/manual targets, but `post-bridge` and `run-publish-queue` r
 
 An external destination remains locked until it has an official provider-specific write
 connector, verified persona/account claim, exact assignment, required write scopes and app
-approval, destination limits, and an auditable reconciliation path. Read-only Gmail OAuth
-is not reusable as a write connector. Do not substitute passwords, cookies, scraping, or
-browser-driving automation.
+approval, destination limits, and an auditable reconciliation path. Gmail mailbox access
+is not reusable as a social publishing connector. Do not substitute passwords, cookies,
+scraping, or browser-driving automation.
 
 ## 9. Release verification
 

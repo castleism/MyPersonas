@@ -20,18 +20,19 @@ clears the legacy key column, revokes direct browser model writes, and creates t
 agent-control, lease, quota, approval, publishing, and fan-chat data plane. Do not apply it
 while an older Edge/client release is the only code available.
 
-The current production project already has migrations 011–014. Keep those historical
-files unchanged. Migration `015-twitter-oauth.sql` adds service-only X OAuth state,
-operation locks, and Vault token storage; apply it before deploying `twitter-oauth` or
-the matching page. Deploy the updated `delete-account` and `erase-content` functions
-before the new page so provider grants are revoked or explicitly handled before account
-records are erased. The page checks the versioned content-only capability before
-enabling erasure.
+The current production project has migrations 011–016. Keep those historical files
+unchanged. Migration `016-mailbox-manager.sql` added the owner-readable sanitized mailbox
+reports plus service-only provider references, cursors, exact action items, and operation
+leases used by Inbox Concierge. In another environment, apply it before deploying
+`mailbox-manager`, `run-mailbox-jobs`, the Gmail permission upgrade, or the matching page.
+Deploy the updated `delete-account` and `erase-content` functions before the new page so
+provider grants are revoked and mailbox jobs cannot race erasure. The page checks the
+versioned content-only capability before enabling erasure.
 
 For a new Supabase project, open **SQL Editor**, paste the entire contents of
 `supabase-schema.sql`, and run it. The snapshot includes the base 008–010 account/
-connection/Gmail structures plus the immutable 001–012 history and migrations 013–015. There is no
-legacy-key transition on a fresh project.
+connection/Gmail structures plus the immutable 001–012 history and exact migrations
+013–016. There is no legacy-key transition on a fresh project.
 
 ## Step 2 — Wire the app to your project
 Dashboard → **Settings → API**:
@@ -72,7 +73,9 @@ project **MyPersonas Gmail Connector** (`genial-union-503010-q5`):
 2. In **Google Auth Platform → Audience**, use External/Testing during development
    and add each mailbox owner you will use during testing as a test user.
 3. In **Data Access**, add `openid`, `email`, and
-   `https://www.googleapis.com/auth/gmail.readonly`.
+   `https://www.googleapis.com/auth/gmail.modify`. Do not request the broader
+   `https://mail.google.com/` scope: Inbox Concierge never immediately or permanently
+   deletes mail.
 4. Use its Web OAuth client
    `373519662305-05bnlabe18i89efnhec9inpt36al7lc6.apps.googleusercontent.com` and add
    this authorized redirect URI:
@@ -90,16 +93,49 @@ project **MyPersonas Gmail Connector** (`genial-union-503010-q5`):
    ```
 
 After an account is recorded, **Sign-in email matched · not connected** only means its
-login email matches the confirmed AliaSpaces sign-in email. Select **Connect Gmail** to run Google's
-consent flow. The user must choose the exact recorded mailbox and approve read-only
-access before the status becomes **API connected**. Passwords are never collected;
-the refresh token is encrypted in Supabase Vault and is unavailable to browser code.
-Completion is also bound to the same signed-in user and browser tab that started it,
-so forwarding a consent link cannot attach someone else's mailbox.
+login email matches the confirmed AliaSpaces sign-in email. Select **Connect Gmail** to
+run Google's consent flow. The user must choose the exact recorded mailbox and approve
+cleanup access before the status becomes **Cleanup enabled**. An existing read-only grant
+can be upgraded in place through the same button; denial leaves the earlier report-only
+connection unchanged. Passwords are never collected; the refresh token is encrypted in
+Supabase Vault and is unavailable to browser code. Completion is also bound to the same
+signed-in user and browser tab that started it, so forwarding a consent link cannot attach
+someone else's mailbox.
 
-The `gmail.readonly` permission is a restricted Google scope. A Testing app works only
-for configured test users. A public production launch requires Google's OAuth app
-verification and may require a restricted-scope security assessment.
+Both `gmail.readonly` and `gmail.modify` are restricted Google scopes. A Testing app works
+only for configured test users, and its refresh tokens normally expire after seven days.
+A public production launch requires Google's OAuth app verification and, when restricted
+Gmail data is stored or transmitted by the service, may require a restricted-scope
+security assessment.
+
+### Inbox Concierge worker
+
+Run `sql-updates/016-mailbox-manager.sql`, then deploy the signed-in control endpoint and
+the cron-secret worker:
+
+```
+supabase functions deploy mailbox-manager
+supabase functions deploy run-mailbox-jobs --no-verify-jwt
+```
+
+`mailbox-manager` creates report jobs and exact action plans for the signed-in owner.
+`run-mailbox-jobs` performs bounded Gmail pages, approved actions, and approved Undo
+requests. Store the same `CRON_SECRET` value in the Edge Function environment and in
+Supabase Vault as `mypersonas_cron_secret`, then schedule the worker every minute using
+the Vault lookup shown in `../supabase/DEPLOY.md`.
+
+Inbox Concierge is rules-first. To enable optional AI classification, the owner must
+link a hosted text model in Matrix, select it for that mailbox, and accept the
+per-mailbox disclosure. Only the bounded sender, subject, and short Gmail preview snippet
+is sent to the selected provider; full bodies and attachments are not sent. Custom model
+hosts need both `MAILBOX_AI_HOSTS` in the deployed function environment and the separate
+**Confirm inbox host** control; schedule or fan-chat confirmation does not authorize
+mailbox data.
+
+Scheduled jobs are report-only. Labels, label-and-archive, Trash, and Undo use separate
+exact plans and fresh owner approval. The code contains no Gmail send, permanent-delete,
+attachment-download, spam/block, forwarding, filter, or account-security endpoint.
+Unsubscribe destinations are never fetched by the server.
 
 ## Step 7 — X / Twitter account authorization
 
@@ -132,25 +168,33 @@ live-tested.
 
 Current connection coverage is intentionally explicit:
 
-- **Gmail** — real Google consent, read-only inbox access, refresh, and revocation.
+- **Gmail** — real Google consent, private report scans, explicitly approved
+  label/archive/recoverable-Trash actions, refresh, revocation, and bounded Undo.
 - **X / Twitter** — real X consent, identity/read access, refresh, and revocation once
   the production Web App credentials and API access are installed.
-- **Other saved providers** — private planning records until their official,
-  provider-specific connector, eligibility rules, app review, and permissions are
-  implemented. MyPersonas never treats a saved password, cookie, or matching email as
-  provider authentication.
+- **Outlook / Hotmail / Microsoft 365** — private planning records until the delegated
+  Microsoft Graph adapter and its Entra app are installed.
+- **Yahoo and iCloud Mail** — private planning records until a dedicated encrypted IMAP
+  worker exists. Never paste a normal or app-specific password into the website.
+- **Proton Mail** — private planning records until a trusted local companion can connect
+  to Proton Mail Bridge on the same computer.
+- **Other saved providers** — private planning records until their provider-specific
+  connector, eligibility rules, app review, and permissions are implemented.
+  MyPersonas never treats a saved password, cookie, or matching email as provider
+  authentication.
 
 ## Step 8 — Agent control center and schedules
 
 Follow the staged order in `../supabase/DEPLOY.md`: pause both workers; deploy `ai-proxy`,
 `post-bridge`, `run-publish-queue`, `fan-chat`, `gmail-oauth`, and `twitter-oauth`; apply
-every pending migration through 015; deploy `run-tasks`, `delete-account`, and the JWT-verified
-`erase-content`; publish the page; probe both workers; then schedule them every five
-minutes. Set `CRON_SECRET` and `FAN_CHAT_SALT` before probing.
-`SCHEDULE_AI_HOSTS` and `FAN_CHAT_AI_HOSTS` are separate optional hostname allowlists for
-custom scheduled-generation and public fan-chat model endpoints. A custom hostname also
-needs the separate matching confirmation in Matrix; confirming schedules never confirms
-fan chat.
+every pending migration through 016; deploy `run-tasks`, `mailbox-manager`,
+`run-mailbox-jobs`, `delete-account`, and the JWT-verified `erase-content`; publish the
+page; probe all three workers; then schedule content workers every five minutes and the
+bounded mailbox worker every minute. Set `CRON_SECRET` and `FAN_CHAT_SALT` before probing.
+`SCHEDULE_AI_HOSTS`, `FAN_CHAT_AI_HOSTS`, and `MAILBOX_AI_HOSTS` are separate optional
+hostname allowlists for custom scheduled-generation, public fan-chat, and private mailbox
+classification endpoints. A custom hostname also needs the separate matching confirmation
+in Matrix; one surface's confirmation never authorizes another.
 
 Store the same `CRON_SECRET` value twice: once as the Edge Function secret and once in
 Supabase Vault named `mypersonas_cron_secret`. The cron jobs read the Vault copy at runtime,
@@ -189,14 +233,17 @@ they do not promise an owner reply or live takeover.
 ## Implemented in this repository vs. still gated
 
 **Implemented in the repository:** sign-in, anonymous multi-persona pages, private
-provider-grouped account ledger, distinct recorded/email-match/API states, read-only Gmail
-OAuth, X OAuth identity/read authorization with refresh and revocation, persona direction,
-server-side AI proxy, Vault-backed model keys, precise scheduled draft generation with
-atomic call reservations, approval queue, native AliaSpaces publishing, global/persona
-pauses, caps and quiet hours, audit history, synchronized owner chat, and optional
-disclosed SFW fan chat with an owner-review inbox. These items still require the migration,
-function, cron, and Pages deployment described above; this guide does not claim that live
-rollout or browser QA has completed.
+provider-grouped account ledger, distinct recorded/email-match/API states, Gmail Inbox
+Concierge with exact cleanup approval and Undo, X OAuth identity/read authorization with
+refresh and revocation, persona direction, server-side AI proxy, Vault-backed model keys,
+precise scheduled draft generation with atomic call reservations, approval queue, native
+AliaSpaces publishing, global/persona pauses, caps and quiet hours, audit history,
+synchronized owner chat, and optional disclosed SFW fan chat with an owner-review inbox.
+The 2026-07-24 production rollout applied migration 016, deployed the mailbox, Gmail, and
+erasure functions, enabled the one-minute mailbox worker, and published the matching
+GitHub Pages client. Static-client, server-boundary, schema, and empty-queue worker checks
+passed. A signed-in Google re-consent and a real owner-approved Gmail scan/action remain
+owner-run smoke tests; this guide does not claim those mailbox contents were accessed.
 
 **Content erasure:** the Matrix security area uses the versioned `erase-content` endpoint,
 which can retain the Supabase sign-in while removing owned personas, pages, posts, media,
@@ -209,12 +256,12 @@ to revoke its provider-side key before acknowledging OpenRouter separately. The 
 recomputes the required provider list at deletion time; one provider's acknowledgment
 never satisfies another provider's revocation requirement.
 
-**Still gated:** direct posting to Instagram, Facebook, TikTok, X, YouTube, LinkedIn, or
-any other external service. No external write connector is implemented. Each provider
-needs its own official API integration, write scopes, app review where required, verified
-account assignment, reconciliation, and provider-specific testing. Gmail read-only access
-does not authorize social posting. Native live streaming is also still an embed; a future
-release can add Cloudflare Stream or Mux.
+**Still gated:** Outlook mailbox management, Yahoo/iCloud IMAP workers, a local Proton
+Bridge companion, and direct posting to Instagram, Facebook, TikTok, X, YouTube, LinkedIn,
+or any other external service. Each provider needs its own official integration,
+permissions, review where required, credential lifecycle, reconciliation, and
+provider-specific testing. Gmail mailbox access does not authorize social posting. Native
+live streaming is also still an embed; a future release can add Cloudflare Stream or Mux.
 
 ## Honest notes
 - **Watermarks**: uploaded images get the page URL burned into pixels (tiled + corner tag); right-click/drag is blocked. Screenshots can't be prevented — treat watermarks as attribution + deterrence.

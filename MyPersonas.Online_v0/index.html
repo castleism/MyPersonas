@@ -173,6 +173,18 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 @media(max-width:900px){.ledgerrow{grid-template-columns:1fr 1fr}.ledgerrow .ledgerwide,.ledgerrow .ledgernew{grid-column:1/-1}}
 @media(max-width:560px){.ledgerrow{grid-template-columns:1fr}.ledgerrow>*{grid-column:1}.ledgeritem select,.ledgerproviderpicker{width:100%}.ledgerprovidersummary{display:block}.ledgerprovidercounts{display:block;margin-top:2px}.ledgerproviderpickerrow{display:block}.ledgerproviderpickerrow label{display:block;margin-bottom:4px}.ledgerrow input,.ledgerrow select,.ledgerproviderpicker,.ledgeredit input,.autocard input,.autocard select,.autocard textarea,.wizbox input,.wizbox select,.wizbox textarea,#chatov textarea,.fanbox textarea{font-size:16px}.ledgerrow .btn,.ledgeredit .btn,.ledgeritem>.btn,.ledgeritem>select,.ledgerproviderpicker{min-height:44px}.ledgerrow .btn[aria-label="Remove row"]{min-width:44px}.targetactions select{width:100%!important;max-width:100%}}
 
+.mailboxshell{display:grid;gap:12px}.mailboxhead{display:flex;gap:10px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}.mailboxhead>div:first-child{flex:1;min-width:240px}.mailboxhead select{max-width:460px}
+.mailboxnotice{border:1px solid #cfe2ff;background:#eef6ff;border-radius:10px;padding:10px 12px;font-size:13px}.mailboxnotice.warn{background:#fff4cc;border-color:#ecd98a}.mailboxnotice.stop{background:#fde8ec;border-color:#efb7c3}.mailboxnotice b{display:block;margin-bottom:2px}
+.mailboxsettings{border:1px solid var(--border);background:var(--bg);border-radius:12px;padding:12px}.mailboxsettings summary{cursor:pointer;font-weight:700;list-style:none}.mailboxsettings summary::-webkit-details-marker{display:none}.mailboxsettings summary::after{content:" ▾";color:var(--dim)}.mailboxsettings[open] summary::after{content:" ▴"}
+.mailboxchecks{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin:8px 0}.mailboxchecks label{display:flex;gap:7px;align-items:flex-start;margin:0;font-size:13px;font-weight:500;color:var(--text)}.mailboxchecks input{width:auto;margin-top:2px}
+.mailboxstats{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:7px}.mailboxstat{appearance:none;text-align:left;background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:9px 10px;color:var(--text);cursor:pointer;font-family:inherit}.mailboxstat.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:#eef6ff}.mailboxstat b{display:block;font-size:18px}.mailboxstat span{font-size:11px;color:var(--dim)}
+.mailboxbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.mailboxbar .btn{min-height:36px}.mailboxbar .push{margin-left:auto}.mailboxsubnav{display:flex;gap:3px;overflow-x:auto;border-bottom:1px solid var(--border)}.mailboxsubnav button{white-space:nowrap;background:none;border:0;border-bottom:3px solid transparent;padding:8px 10px;color:var(--dim);font:600 13px inherit;cursor:pointer}.mailboxsubnav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.mailboxgroup{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:#fff;margin-top:8px}.mailboxgroup>summary{display:flex;gap:8px;align-items:center;padding:10px 12px;cursor:pointer;list-style:none;background:var(--bg)}.mailboxgroup>summary::-webkit-details-marker{display:none}.mailboxgroup>summary b{flex:1;min-width:0}.mailboxgroup>summary span{font-size:12px;color:var(--dim)}.mailboxfinding{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:start;padding:10px 12px;border-top:1px solid var(--border)}.mailboxfinding:first-of-type{border-top:0}.mailboxfinding input{width:auto;margin-top:4px}.mailboxfindingmain{min-width:0}.mailboxfindingmain b{display:block;overflow-wrap:anywhere}.mailboxfindingmeta{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--dim)}.mailboxfindingactions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.mailboxfinding.protected{background:#fffdf1}.mailboxempty{text-align:center;color:var(--dim);padding:24px 12px}
+.mailboxactivity{display:grid;gap:8px}.mailboxactivityitem{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 11px}.mailboxactivityitem .top{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}.mailboxactivityitem time{font-size:12px;color:var(--dim)}
+.mailboxbusy{display:flex;gap:8px;align-items:center;color:var(--dim);font-size:13px}.mailboxspinner{width:15px;height:15px;border:2px solid #cfd5dc;border-top-color:var(--accent);border-radius:50%;animation:mailspin .7s linear infinite}@keyframes mailspin{to{transform:rotate(360deg)}}
+@media(max-width:760px){.mailboxstats{grid-template-columns:1fr 1fr}.mailboxhead select{max-width:none}.mailboxshell input,.mailboxshell select{font-size:16px}.mailboxfinding{grid-template-columns:auto minmax(0,1fr)}.mailboxfindingactions{grid-column:2;justify-content:flex-start}.mailboxbar .push{margin-left:0}.mailboxbar .btn{min-height:42px}}
+@media(max-width:440px){.mailboxstats{grid-template-columns:1fr}.mailboxhead>div:first-child{min-width:0}.mailboxhead,.mailboxhead>div,.mailboxhead select,.mailboxbar .btn{width:100%}.mailboxfinding{padding:10px 8px}}
+
 .autocard{border:1px solid #cfe2ff;box-shadow:0 4px 18px rgba(24,119,242,.09)}
 .autohead{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .autohead>div:first-child{flex:1;min-width:230px}.autohead select{max-width:340px}
@@ -303,11 +315,11 @@ website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",ic
 const LEDGER_EMAIL_PROVIDERS=new Set(["gmail","outlook","yahoo","icloud","proton"]);
 const LEDGER_ONLY_PROVIDERS=new Set(["yahoo","icloud"]);
 const CONNECTOR_GUIDANCE={
-  gmail:{title:"Gmail OAuth available",note:"Connects read-only Gmail API access. It never grants social-posting permission."},
+  gmail:{title:"Gmail OAuth available",note:"Connects Gmail for private inbox reports and, only after the cleanup permission is approved, reversible label, archive, and trash actions. It never grants sending or social-posting permission."},
   twitter:{title:"X OAuth available after provider setup",note:"Requires a MyPersonas X Developer Web App, the exact callback URL, client credentials, and X API access/credits. Authorization verifies the selected X identity with read and offline-refresh permission. A future posting connector must request write permission through a separate explicit reauthorization."},
   outlook:{title:"Microsoft connector not installed",note:"Microsoft Graph supports delegated mailbox access, but MyPersonas still needs a registered and reviewed Microsoft app before this account can connect."},
-  yahoo:{title:"Yahoo connector not installed",note:"Yahoo mail access requires a dedicated developer app and restricted mail-scope approval. Never enter a Yahoo password or app password here."},
-  icloud:{title:"Record only",note:"MyPersonas does not have a supported hosted iCloud Mail management connector. Never enter an Apple Account password or app-specific password here."},
+  yahoo:{title:"Secure Yahoo worker not installed",note:"Yahoo inbox management needs a separately reviewed, encrypted IMAP/app-password worker. Never enter a Yahoo password or app password here."},
+  icloud:{title:"Secure iCloud worker not installed",note:"iCloud Mail management needs an encrypted IMAP app-password worker. Never enter an Apple Account password or app-specific password here."},
   proton:{title:"Local bridge required",note:"A hosted site cannot directly authorize a Proton inbox. Full mailbox access requires Proton Bridge running on a trusted local computer."},
   instagram:{title:"Professional accounts only",note:"A future official connector can manage eligible Instagram Business or Creator accounts after Meta app review; consumer accounts are not eligible."},
   facebook:{title:"Facebook Pages only",note:"A future official connector can manage Pages the signed-in member administers after Meta app review; it cannot automate a personal profile."},
@@ -332,6 +344,11 @@ let automationReady=true,agentMessagesReady=true,fanInboxReady=true,autoPersonaI
 let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
 let twitterOAuthNotice=null,twitterOAuthPending=null,twitterOAuthCompleting=false;
 let twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};
+const GMAIL_READ_SCOPE="https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_MODIFY_SCOPE="https://www.googleapis.com/auth/gmail.modify";
+let mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};
+let mailboxView="subscriptions",mailboxRequest=0,mailboxPollTimer=null,mailboxPendingPlan=null,mailboxPlanReturnFocus=null,mailboxPlanInert=[];
+const MAILBOX_SELECTION_LIMIT=50;
 let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and account loads discard stale completions
 let pageState={},editLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
 const app=document.getElementById("app");
@@ -470,7 +487,7 @@ function resetMineState(){
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
   updateBadge();
 }
-function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""}}
+function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
 async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   const requestId=++mineLoadRequest;
@@ -533,7 +550,7 @@ async function route(){
   if(view==="p")return renderPersonaPage(arg,false,myEpoch);
   if(view==="studio"){
     const notice=twitterOAuthNotice||gmailOAuthNotice;
-    if(notice){acctTab="accounts";twitterOAuthNotice=null;gmailOAuthNotice=null}
+    if(notice){acctTab=notice.returnTab==="inbox"?"inbox":"accounts";twitterOAuthNotice=null;gmailOAuthNotice=null}
     renderStudio();
     if(notice)setTimeout(()=>toast(notice.message),40);
     return;
@@ -577,7 +594,7 @@ function handleGmailReturn(){
     cancelled:"Gmail authorization was cancelled.",
     email_mismatch:"That Google account does not match the Gmail address recorded here.",
     invalid_state:"The Gmail authorization expired. Please try again.",
-    scope_missing:"Gmail read-only permission was not granted.",
+    scope_missing:"The Gmail permission required for inbox reports and approved cleanup was not granted.",
     already_connected:"That Gmail account is already connected elsewhere.",
     refresh_token_missing:"Google did not provide ongoing access. Please try again.",
     secure_storage_failed:"Gmail authorization could not be stored securely.",
@@ -588,9 +605,10 @@ function handleGmailReturn(){
   if(result==="finish"){
     const state=u.searchParams.get("state")||"",code=u.searchParams.get("code")||"",providerError=u.searchParams.get("provider_error")||"";
     const browserNonce=/^[A-Za-z0-9_-]{32,200}$/.test(state)?sessionStorage.getItem("gmail_oauth_"+state)||"":"";
-    if(state)sessionStorage.removeItem("gmail_oauth_"+state);
-    if(browserNonce)gmailOAuthPending={state,code,browserNonce,providerError};
-    else gmailOAuthNotice={message:"This Gmail authorization was not started in this browser tab. Please try again."};
+    const returnTab=/^[A-Za-z0-9_-]{32,200}$/.test(state)?sessionStorage.getItem("gmail_oauth_tab_"+state)||"":"";
+    if(state){sessionStorage.removeItem("gmail_oauth_"+state);sessionStorage.removeItem("gmail_oauth_tab_"+state)}
+    if(browserNonce)gmailOAuthPending={state,code,browserNonce,providerError,returnTab};
+    else gmailOAuthNotice={message:"This Gmail authorization was not started in this browser tab. Please try again.",returnTab};
   }else gmailOAuthNotice={message:reasons[reason]||"Gmail authorization did not complete."};
   ["gmail","reason","state","code","provider_error"].forEach(k=>u.searchParams.delete(k));
   history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
@@ -1039,6 +1057,10 @@ function backendBuiltInAutomation(b){try{const host=new URL(String(b?.base_url||
 function backendAutomationReady(b,surface="schedule"){
   if(!backendAgentReady(b))return false;if(backendBuiltInAutomation(b))return true;return b.extra?.[surface==="fan"?"fan_host_confirmed":"schedule_host_confirmed"]===true
 }
+function backendMailReady(b){
+  if(!backendAgentReady(b))return false;
+  return backendBuiltInAutomation(b)||b.extra?.mailbox_host_confirmed===true;
+}
 function readyAutomationBackends(surface="schedule"){return myBackends.filter(b=>backendAutomationReady(b,surface))}
 function backendOptions(selected="",automationOnly=false){
   return myBackends.map(b=>{const agentReady=backendAgentReady(b),automationReady=backendAutomationReady(b),ready=automationOnly?automationReady:agentReady,chosen=selected===b.id;return `<option value="${b.id}" data-agent-ready="${agentReady}" data-automation-ready="${automationReady}" ${chosen?"selected":""} ${ready?"":"disabled"}>${esc(b.name)}${ready?"":agentReady&&automationOnly?" · owner chat only":" · needs setup"}</option>`}).join("");
@@ -1067,7 +1089,7 @@ function autoTargetReadiness(a){
   if(LEDGER_EMAIL_PROVIDERS.has(a.provider)){
     const name=(PLATS[a.provider]||{}).name||"This mailbox";
     return a.provider==="gmail"
-      ?{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?"Connected read-only":"Planning only",note:"Gmail can supply research context, but it is not a social publishing destination."}
+      ?{klass:info.state==="connected"?"wait":"stop",label:info.state==="connected"?(scopes.includes(GMAIL_MODIFY_SCOPE)?"Inbox cleanup connected":"Inbox reports connected"):"Planning only",note:"Gmail can supply inbox reports and approved cleanup actions, but it cannot send mail and is not a social publishing destination."}
       :{klass:"stop",label:"Mailbox record only",note:`${name} can be assigned for planning, but inbox/API access is not connected and it is not a social publishing destination.`};
   }
   if(info.state!=="connected")return{klass:"stop",label:info.state==="verified"?"Sign-in email matched only":"Planning / manual only",note:"Connect this platform with an official publishing permission before any API post can run."};
@@ -1130,7 +1152,7 @@ function automationTargetsHtml(p,binding){
   const rows=[null,...autoAssignedAccounts(p.id)];
   return `<div class="autocallout"><b>Assignment is deliberate.</b> MyPersonas sees only the accounts assigned to this persona. Recorded or sign-in-email-matched accounts are planning targets, not API permissions.</div>
     <div class="targetlist">${rows.map(a=>{const d=autoDestination(p.id,a?.id||null),ready=autoTargetReadiness(a),info=a?autoConn(a):null,mode=d?.mode||(!a?"approval":"manual"),canAuto=!a&&binding?.autonomy_level>=3,accountUrl=safeHttpUrl(a?.url);return `<div class="targetitem"><div class="targettop"><div><b>${esc(autoTargetName(a?.id||null))}</b><div class="statusline"><span class="statusdot ${ready.klass}"></span><span class="muted">${esc(ready.label)}${a&&info?` · ${esc(info.label)}`:""}</span></div></div><span class="pill ${ready.klass==="ok"?"connected":ready.klass==="wait"?"verified":"attention"}">${esc(mode)}</span></div><p class="muted" style="margin-top:5px">${esc(ready.note)}</p><div class="targetactions"><select id="destMode_${a?.id||"native"}" style="width:auto">${a?`<option value="manual" ${mode==="manual"?"selected":""}>Manual / copy</option>`:mode==="manual"?'<option value="manual" selected disabled>Copy only — choose a publishing mode</option>':""}<option value="approval" ${mode==="approval"?"selected":""}>${a?"Approve, then post manually":"Approve, then Publish now"}</option>${a?"":`<option value="auto" ${mode==="auto"?"selected":""} ${canAuto?"":"disabled"}>Auto after approval (L3)</option>`}</select><input id="destCap_${a?.id||"native"}" type="number" min="1" max="100" value="${d?.daily_publish_limit||3}" aria-label="Daily post cap" style="width:90px"><button class="btn sm sec" onclick="saveAutomationDestination('${a?.id||""}')">Save target</button>${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}</div></div>`}).join("")}</div>
-    <div class="autocallout warn"><b>External automatic publishing is intentionally locked.</b> It unlocks per destination only after a verified persona claim, an official connector, an eligible account type, the provider's exact write permission, and any required platform review. Gmail is read-only research access.</div>
+    <div class="autocallout warn"><b>External automatic publishing is intentionally locked.</b> It unlocks per destination only after a verified persona claim, an official connector, an eligible account type, the provider's exact write permission, and any required platform review. Gmail inbox reports and approved cleanup are separate account tools; Gmail is never a social publishing destination.</div>
     <button class="btn sec" onclick="acctTab='accounts';renderStudio();setTimeout(()=>document.getElementById('acctTabs')?.scrollIntoView({behavior:'smooth'}),0)">Manage account connections</button>`;
 }
 
@@ -1275,8 +1297,8 @@ function renderStudio(){
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
   const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
-    ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),builtIn=backendBuiltInAutomation(b),status=scheduleReady&&fanReady?"automation ready":scheduleReady?"schedule ready":fanReady?"fan-chat ready":backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${status}</span>${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
-      <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${!builtIn&&backendAgentReady(b)?`<button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','schedule')">${scheduleReady?"Unconfirm schedule host":"Confirm schedule host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','fan')">${fanReady?"Unconfirm fan host":"Confirm fan host"}</button>`:""}<button class="btn sec sm" onclick="editBackend('${b.id}')">Edit</button><button class="btn danger sm" onclick="deleteBackend('${b.id}')">✕</button></span></div>`}).join("")||""}
+    ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,status=readyCount===3?"all automations ready":readyCount?`${readyCount}/3 automations ready`:backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${esc(status)}</span>${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
+      <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${!builtIn&&backendAgentReady(b)?`<button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','schedule')">${scheduleReady?"Unconfirm schedule host":"Confirm schedule host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','fan')">${fanReady?"Unconfirm fan host":"Confirm fan host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','mailbox')">${mailReady?"Unconfirm inbox host":"Confirm inbox host"}</button>`:""}<button class="btn sec sm" onclick="editBackend('${b.id}')">Edit</button><button class="btn danger sm" onclick="deleteBackend('${b.id}')">✕</button></span></div>`}).join("")||""}
     <label style="margin-top:10px">Provider</label>
     <select id="nbProvider" onchange="onProviderPick()">${Object.entries(AI_PROVIDERS).map(([k,v],i)=>`<option value="${k}" ${i===0?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
     <div class="row" style="margin-top:6px">
@@ -1318,6 +1340,7 @@ function renderStudio(){
   <div class="card"><h3>${ico("lock")}Your privacy</h3><p class="muted">Your email and identity are never shown anywhere. Each persona is a separate public face — nothing links them to each other or to you. Private personas are only visible to accepted friends. Unlisted personas are reachable only by direct link.</p></div>`;
   loadExtensions();
   if(acctTab==="accounts"&&accountLedgerReady)setTimeout(()=>{if(!document.querySelector("#ledgerBatch .ledgerrow"))addLedgerRow()},0);
+  if(acctTab==="inbox")setTimeout(()=>mailboxEnsureLoaded(),0);
 }
 async function removeBlock(id){await sb.from("blocks").delete().eq("id",id);await loadMine();renderStudio()}
 // ----- promote: ready-made ad posts + share intents -----
@@ -1945,7 +1968,20 @@ async function editBackend(id){
   const b=myBackends.find(x=>x.id===id);if(!b)return;const name=prompt("Connection label",b.name||"");if(name===null)return;const model=prompt("Model id",b.model||"");if(model===null)return;if(!name.trim()||!model.trim()){toast("Both a label and model id are required");return}
   let res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:name.trim(),p_model:model.trim(),p_extra:b.extra||{}});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").update({name:name.trim(),model:model.trim(),extra:b.extra||{}}).eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();toast("Model updated")
 }
-async function toggleBackendHostConfirmation(id,surface){const b=myBackends.find(x=>x.id===id);if(!b||backendBuiltInAutomation(b))return;const key=surface==="fan"?"fan_host_confirmed":"schedule_host_confirmed",next=b.extra?.[key]!==true,secret=surface==="fan"?"FAN_CHAT_AI_HOSTS":"SCHEDULE_AI_HOSTS";if(next&&!confirm(`Confirm only after this hostname was added to the deployed ${secret} secret. The server will still reject it if the allowlist is missing or unsafe.`))return;const extra={...(b.extra||{}),[key]:next};const res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:b.name,p_model:b.model,p_extra:extra});if(res.error){toast(res.error.message);return}await loadMine();renderStudio();toast(next?`${surface==="fan"?"Fan-chat":"Schedule"} host confirmation saved`:`${surface==="fan"?"Fan-chat":"Schedule"} host confirmation removed`)}
+async function toggleBackendHostConfirmation(id,surface){
+  const b=myBackends.find(x=>x.id===id);if(!b||backendBuiltInAutomation(b))return;
+  const spec=surface==="fan"
+    ?{key:"fan_host_confirmed",secret:"FAN_CHAT_AI_HOSTS",label:"Fan-chat"}
+    :surface==="mailbox"
+      ?{key:"mailbox_host_confirmed",secret:"MAILBOX_AI_HOSTS",label:"Inbox"}
+      :{key:"schedule_host_confirmed",secret:"SCHEDULE_AI_HOSTS",label:"Schedule"};
+  const next=b.extra?.[spec.key]!==true;
+  if(next&&!confirm(`Confirm only after this hostname was added to the deployed ${spec.secret} secret. The server will still reject it if the allowlist is missing or unsafe.`))return;
+  const extra={...(b.extra||{}),[spec.key]:next};
+  const res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:b.name,p_model:b.model,p_extra:extra});
+  if(res.error){toast(res.error.message);return}
+  await loadMine();renderStudio();toast(next?`${spec.label} host confirmation saved`:`${spec.label} host confirmation removed`);
+}
 async function deleteBackend(id){const b=myBackends.find(x=>x.id===id);if(!b)return;const oauth=b.provider==="openrouter"&&b.extra?.auth_method==="openrouter_oauth";if(!confirm(oauth?"Remove this model and its encrypted key from AliaSpaces? You must also revoke the key on OpenRouter.":"Remove this model and its encrypted key from AliaSpaces? This does not revoke a key at the provider."))return;let res=await sb.rpc("delete_ai_backend",{p_backend_id:id});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").delete().eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();if(oauth)showOpenRouterKeyWarning("The encrypted AliaSpaces copy was removed. OpenRouter still controls the issued key; revoke it there now.");else toast("Model connection removed from AliaSpaces")}
 
 // ---------- image previews + Stable Diffusion character tool ----------
@@ -2157,6 +2193,7 @@ function switchAcctTab(t){
   document.querySelectorAll('#acctTabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   document.querySelectorAll('#acctPanels .tabpanel').forEach(p=>p.style.display=(p.dataset.p===t?'block':'none'));
   if(t==="accounts"&&accountLedgerReady&&!document.querySelector("#ledgerBatch .ledgerrow"))addLedgerRow();
+  if(t==="inbox")mailboxEnsureLoaded();
 }
 function accountArea(){
   const P=prefsObj(),acc=P.account||{},mb=P.mbti||{},nat=P.natal||null,eco=P.eco||{};
@@ -2164,7 +2201,7 @@ function accountArea(){
   const tzGuess=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
   const emailVerified=session&&session.user&&session.user.email;
   const cfg=astroCfg();
-  const TABS=[["profile","Profile"],["security","Security"],["accounts","Accounts"],["ecosystem","Ecosystem"],["personality","Personality"],["astrology","Astrology"],["prefs","Preferences"]];
+  const TABS=[["profile","Profile"],["security","Security"],["accounts","Accounts"],["inbox","Inbox cleanup"],["ecosystem","Ecosystem"],["personality","Personality"],["astrology","Astrology"],["prefs","Preferences"]];
   const show=k=>`style="display:${acctTab===k?"block":"none"}"`;
   return `<div class="card">
     <h3>${ico("user")}Account</h3>
@@ -2220,6 +2257,10 @@ function accountArea(){
     <div class="tabpanel" data-p="accounts" ${show("accounts")}>
       <p class="muted">Private account inventory for every alias you manage. Store identifiers and links only — never enter passwords, recovery codes, API keys, or authentication secrets.</p>
       ${accountLedgerReady?accountLedgerHtml():`<div class="ecorow"><div><b>Account Ledger setup required</b><br><span class="muted">Run sql-updates/008-account-ledger.sql in the Supabase SQL Editor, then refresh this page.</span></div></div>`}
+    </div>
+
+    <div class="tabpanel" data-p="inbox" ${show("inbox")}>
+      <div id="mailboxRoot">${mailboxPanelHtml()}</div>
     </div>
 
     <div class="tabpanel" data-p="ecosystem" ${show("ecosystem")}>
@@ -2289,6 +2330,443 @@ function accountArea(){
     </div>
 
     </div></div>`;
+}
+
+// ----- Inbox Concierge (lazy-loaded; mailbox bodies and provider tokens never enter loadMine) -----
+function mailboxAccounts(){
+  return myAccounts.filter(a=>LEDGER_EMAIL_PROVIDERS.has(a.provider));
+}
+function mailboxSafeId(value){
+  const id=String(value||"");
+  return /^[A-Za-z0-9_-]{1,128}$/.test(id)?id:"";
+}
+function mailboxConnection(account){
+  return account?myAccountConnections.find(c=>c.ledger_id===account.id&&c.provider===account.provider)||null:null;
+}
+function mailboxScopes(account){
+  const scopes=mailboxConnection(account)?.granted_scopes;
+  return Array.isArray(scopes)?scopes.map(scope=>String(scope).toLowerCase()):[];
+}
+function mailboxGmailCanScan(account){
+  const connection=mailboxConnection(account),scopes=mailboxScopes(account);
+  return account?.provider==="gmail"&&connection?.connection_state==="connected"&&(scopes.includes(GMAIL_READ_SCOPE)||scopes.includes(GMAIL_MODIFY_SCOPE));
+}
+function mailboxGmailCanModify(account){
+  return mailboxGmailCanScan(account)&&mailboxScopes(account).includes(GMAIL_MODIFY_SCOPE);
+}
+function mailboxHasLoginEmail(account){
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(account?.login_email||"").trim());
+}
+function mailboxAccountName(account){
+  const provider=(PLATS[account?.provider]||{}).name||account?.provider||"Mailbox";
+  return `${provider}${account?.login_email?" · "+account.login_email:account?.username?" · "+account.username:""}`;
+}
+function mailboxSelectedAccount(){
+  const accounts=mailboxAccounts();
+  if(!accounts.length){mailboxState.ledgerId="";return null}
+  let selected=accounts.find(a=>a.id===mailboxState.ledgerId);
+  if(!selected){
+    selected=accounts.find(a=>mailboxGmailCanScan(a))||accounts[0];
+    mailboxState.ledgerId=selected.id;
+  }
+  return selected;
+}
+function mailboxProviderNotice(account){
+  if(!account)return `<div class="mailboxnotice warn"><b>Add a mailbox first</b>Open Accounts, add the mailbox address to your private ledger, then return here. Do not enter a password or app password.</div>`;
+  const connection=mailboxConnection(account);
+  if(account.provider==="gmail"){
+    if(!mailboxHasLoginEmail(account))return `<div class="mailboxnotice warn"><b>Add the Gmail address first</b>This saved row has no usable login email, so Google cannot verify which mailbox to connect. Open Accounts, edit this entry, and save its full email address.<div class="mailboxbar" style="margin-top:8px"><button class="btn sm" onclick="switchAcctTab('accounts')">Edit account details</button></div></div>`;
+    if(!mailboxGmailCanScan(account))return `<div class="mailboxnotice warn"><b>Connect this Gmail account</b>Google signs you in on its own page. MyPersonas never receives your Google password. The connector can inventory mail, but it cannot send messages or permanently delete them.<div class="mailboxbar" style="margin-top:8px"><button class="btn sm" onclick="connectGmail('${mailboxSafeId(account.id)}')">Connect Gmail</button></div></div>`;
+    if(mailboxGmailCanModify(account))return `<div class="mailboxnotice"><b>Gmail cleanup access is ready</b>Reports can scan all selected folders. Labels, archive, and trash happen only after you review an exact action plan and approve it.</div>`;
+    return `<div class="mailboxnotice warn"><b>Gmail reports are ready; cleanup is read-only</b>You can scan and review findings now. Approve Gmail cleanup access before labels, archive, or trash can run.<div class="mailboxbar" style="margin-top:8px"><button class="btn sm" onclick="connectGmail('${mailboxSafeId(account.id)}')">Enable cleanup access</button><button class="btn sm sec" onclick="disconnectGmail('${mailboxSafeId(account.id)}')">Disconnect Gmail</button></div></div>`;
+  }
+  const messages={
+    outlook:["Microsoft connector not installed","Outlook cleanup needs a registered Microsoft app and delegated Microsoft Graph mailbox permissions. The official connector is not installed yet, so no scan or action buttons are shown."],
+    yahoo:["Secure Yahoo worker not installed","Yahoo cleanup needs a separately reviewed, encrypted IMAP/app-password worker. Never paste a Yahoo password or app password into this site."],
+    icloud:["Secure iCloud worker not installed","iCloud Mail cleanup needs an encrypted IMAP app-password worker. Never paste an Apple Account password or app-specific password into this site."],
+    proton:["Local Proton Bridge required","Proton mailbox access must run through Proton Bridge on a trusted local computer and a future companion service. A hosted site cannot directly authorize this inbox."]
+  };
+  const copy=messages[account.provider]||["Mailbox connector not installed","This account remains a private planning record. No mailbox scan or cleanup action is available for this provider."];
+  const state=connection?.connection_state==="connected"?" A recorded connection exists, but it is not an installed Inbox Concierge connector.":"";
+  return `<div class="mailboxnotice stop"><b>${esc(copy[0])}</b>${esc(copy[1]+state)}</div>`;
+}
+function mailboxPanelHtml(){
+  const accounts=mailboxAccounts(),account=mailboxSelectedAccount();
+  const selector=accounts.length?`<select id="mailboxAccount" onchange="mailboxChooseAccount(this.value)">${accounts.map(a=>`<option value="${esc(mailboxSafeId(a.id))}" ${a.id===account?.id?"selected":""}>${esc(mailboxAccountName(a))}</option>`).join("")}</select>`:`<button class="btn sm" onclick="switchAcctTab('accounts')">Add an email account</button>`;
+  let body="";
+  if(account?.provider==="gmail"&&mailboxGmailCanScan(account)){
+    if(mailboxState.loading&&!mailboxState.loaded)body=`<div class="mailboxbusy" role="status" aria-live="polite"><span class="mailboxspinner" aria-hidden="true"></span>Loading this inbox dashboard…</div>`;
+    else if(mailboxState.error&&!mailboxState.loaded)body=`<div class="mailboxnotice stop" role="alert"><b>Inbox service unavailable</b>${esc(mailboxState.error)}<div class="mailboxbar" style="margin-top:8px"><button class="btn sm sec" onclick="mailboxRefresh()">Try again</button></div></div>`;
+    else if(mailboxState.loaded)body=mailboxDashboardHtml(account);
+    else body=`<div class="mailboxbusy" role="status" aria-live="polite"><span class="mailboxspinner" aria-hidden="true"></span>Preparing the inbox dashboard…</div>`;
+  }
+  return `<div class="mailboxshell">
+    <div class="mailboxhead"><div><h3 style="margin:0">Inbox Concierge</h3><p class="muted">Private reports, subscription inventory, account-creation mail, and receipts — one mailbox at a time.</p></div><div><label for="mailboxAccount">Mailbox</label>${selector}</div></div>
+    ${mailboxProviderNotice(account)}
+    ${body}
+    <div class="mailboxnotice"><b>Safety boundary</b>No permanent delete. No sending. Scheduled scans are report-only and never mutate mail. Gmail “folders” are labels. Spam and trash are inventory-only and protected from bulk actions.</div>
+  </div>`;
+}
+function mailboxRender(){
+  const root=document.getElementById("mailboxRoot");if(root)root.innerHTML=mailboxPanelHtml();
+}
+function mailboxChooseAccount(id){
+  const account=mailboxAccounts().find(a=>a.id===id);
+  mailboxRequest++;mailboxPendingPlan=null;
+  if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}
+  mailboxState={ledgerId:account?.id||"",loaded:false,loading:false,error:"",data:null};
+  mailboxView="subscriptions";mailboxRender();
+  if(account?.provider==="gmail"&&mailboxGmailCanScan(account))mailboxLoad();
+}
+async function mailboxCall(action,payload={}){
+  const{data}=await sb.auth.getSession(),active=data&&data.session;
+  if(!active)throw new Error("Sign in again before managing this inbox.");
+  let response;
+  try{
+    response=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/mailbox-manager",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+active.access_token},
+      body:JSON.stringify({action,...payload})
+    });
+  }catch(e){throw new Error("Could not reach the inbox service. "+(e.message||e))}
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||result.message||`Inbox service failed (HTTP ${response.status}).`);
+  return result;
+}
+function mailboxEnsureLoaded(){
+  const account=mailboxSelectedAccount();mailboxRender();
+  if(account?.provider==="gmail"&&mailboxGmailCanScan(account)&&!mailboxState.loaded&&!mailboxState.loading)mailboxLoad();
+}
+async function mailboxLoad(quiet=false){
+  const account=mailboxSelectedAccount();
+  if(!account||account.provider!=="gmail"||!mailboxGmailCanScan(account))return;
+  const request=++mailboxRequest,ledgerId=account.id;
+  mailboxState={...mailboxState,ledgerId,loading:true,error:""};
+  if(!quiet)mailboxRender();
+  try{
+    const data=await mailboxCall("dashboard",{ledgerId});
+    if(request!==mailboxRequest||mailboxState.ledgerId!==ledgerId)return;
+    mailboxState={ledgerId,loaded:true,loading:false,error:"",data};
+    mailboxRender();mailboxSchedulePoll();
+  }catch(e){
+    if(request!==mailboxRequest||mailboxState.ledgerId!==ledgerId)return;
+    mailboxState={...mailboxState,loaded:!!mailboxState.data,loading:false,error:e.message||String(e)};
+    mailboxRender();if(mailboxHasActiveWork())mailboxSchedulePoll(10000);
+  }
+}
+function mailboxRefresh(){
+  mailboxLoad(!!mailboxState.loaded);
+}
+function mailboxArray(value){return Array.isArray(value)?value:[]}
+function mailboxValue(object,...keys){
+  for(const key of keys)if(object&&object[key]!==undefined&&object[key]!==null)return object[key];
+  return null;
+}
+function mailboxSettings(){
+  return mailboxState.data?.settings||{};
+}
+function mailboxInboxPaused(){
+  const value=mailboxValue(mailboxSettings(),"paused");
+  return value===null?true:value===true;
+}
+function mailboxFindings(){
+  return mailboxArray(mailboxState.data?.findings).filter(f=>{
+    const status=String(mailboxValue(f,"status","state")||"open").toLowerCase();
+    return !!mailboxSafeId(f?.id)&&status==="open";
+  });
+}
+function mailboxProtected(finding){
+  const reasons=mailboxValue(finding,"protectedReasons","protected_reasons"),category=String(mailboxValue(finding,"category","kind")||"").toLowerCase();
+  return mailboxValue(finding,"protected","isProtected","is_protected")===true||(Array.isArray(reasons)&&reasons.length>0)||["security","order_travel","financial_legal_medical","personal"].includes(category)||["spam","trash"].includes(String(mailboxValue(finding,"sourceFolder","source_folder","folder")||"").toLowerCase());
+}
+function mailboxCategory(finding){
+  if(mailboxProtected(finding))return "protected";
+  const raw=String(mailboxValue(finding,"category","kind")||"other").toLowerCase().replace(/[\s-]+/g,"_");
+  if(["subscription","subscriptions","newsletter","newsletters"].includes(raw))return "subscriptions";
+  if(["account","accounts","account_creation","account_creations","signup","welcome"].includes(raw))return "accounts";
+  if(["receipt","receipts","invoice","invoices","order","orders"].includes(raw))return "receipts";
+  return "other";
+}
+function mailboxSummary(){
+  const reported=mailboxState.data?.summary||{},counts={subscriptions:0,accounts:0,receipts:0,protected:0,other:0};
+  mailboxFindings().forEach(f=>counts[mailboxCategory(f)]++);
+  for(const key of Object.keys(counts)){
+    const aliases=key==="accounts"?["accounts","accountCreations","account_creations"]:key==="protected"?["protected","protectedCount","protected_count"]:[key];
+    const value=mailboxValue(reported,...aliases);
+    if(Number.isFinite(Number(value)))counts[key]=Number(value);
+  }
+  return counts;
+}
+function mailboxDate(value){
+  if(!value)return "";
+  try{return new Date(value).toLocaleString([],{dateStyle:"medium",timeStyle:"short"})}catch(e){return String(value)}
+}
+function mailboxRunActive(value){
+  return ["queued","pending","running","scanning","approved","applying","requested","undo_requested","undoing"].includes(String(value||"").toLowerCase());
+}
+function mailboxHasActiveWork(){
+  const data=mailboxState.data||{},scan=data.activeScan||data.active_scan;
+  if(scan&&mailboxRunActive(mailboxValue(scan,"status","state")))return true;
+  return mailboxArray(data.actionPlans||data.action_plans).some(plan=>mailboxRunActive(mailboxValue(plan,"status","state"))||mailboxRunActive(mailboxValue(plan,"undoStatus","undo_status")));
+}
+function mailboxGlobalPaused(){
+  const capability=mailboxState.data?.capability||{};
+  const reported=mailboxValue(capability,"globalPaused","global_paused")??mailboxValue(mailboxState.data,"globalPaused","global_paused");
+  return reported===null?myAgentSettings?.automation_paused===true:reported===true;
+}
+function mailboxSchedulePoll(delay=3500){
+  if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}
+  if(acctTab!=="inbox"||!mailboxHasActiveWork())return;
+  mailboxPollTimer=setTimeout(()=>{mailboxPollTimer=null;mailboxLoad(true)},delay);
+}
+function mailboxSettingsHtml(account){
+  const settings=mailboxSettings(),mode=String(mailboxValue(settings,"classifierMode","classifier_mode")||"rules"),selectedBackend=String(mailboxValue(settings,"aiBackendId","ai_backend_id")||"");
+  const consent=mailboxValue(settings,"aiConsent","ai_consent")===true,pausedValue=mailboxValue(settings,"paused"),paused=pausedValue===null?true:pausedValue===true;
+  const cadence=String(mailboxValue(settings,"scheduleCadence","schedule_cadence")||"manual");
+  const lookback=Math.max(1,Math.min(3650,Number(mailboxValue(settings,"lookbackDays","lookback_days"))||90));
+  const maxMessages=Math.max(25,Math.min(5000,Number(mailboxValue(settings,"maxMessages","max_messages"))||500));
+  const includeSpam=mailboxValue(settings,"includeSpamTrash","include_spam_trash")===true;
+  const ready=myBackends.filter(backendMailReady);
+  const chosen=ready.find(b=>b.id===selectedBackend),chosenHost=parsedHttpUrl(chosen?.base_url)?.hostname||"",chosenDestination=chosen?`${chosen.name}${chosenHost?" ("+chosenHost+")":""}`:"the selected hosted provider";
+  return `<details class="mailboxsettings"><summary>Scan and report settings</summary>
+    <p class="muted" style="margin-top:8px">A scan covers Gmail inbox, archived mail, and labels within the saved lookback and message limit. Spam and trash are included only when you opt in below, and remain protected.</p>
+    <div class="autogrid" style="margin-top:10px">
+      <div><label for="mbClassifier">Classification</label><select id="mbClassifier" onchange="mailboxAiModeChanged()"><option value="rules" ${mode!=="ai"?"selected":""}>Private rules-only</option><option value="ai" ${mode==="ai"?"selected":""} ${ready.length?"":"disabled"}>AI-assisted for ambiguous mail</option></select><span class="muted">Rules inspect bounded headers, sender, subject, and a short Gmail preview snippet. With your explicit AI opt-in, only those bounded fields are sent to the selected model; full bodies and attachments are not sent.</span></div>
+      <div><label for="mbAiBackend">Hosted AI model</label><select id="mbAiBackend" onchange="mailboxAiBackendChanged()" ${mode==="ai"?"":"disabled"}><option value="">Choose a ready model</option>${ready.map(b=>`<option value="${esc(mailboxSafeId(b.id))}" ${b.id===selectedBackend?"selected":""}>${esc(b.name)} · ${esc(b.model||"model")}</option>`).join("")}</select>${ready.length?'<span class="muted">Custom hosts must also be confirmed for the deployed MAILBOX_AI_HOSTS allowlist.</span>':'<span class="muted">Link a hosted text model under AI Models, then confirm its inbox host if it is custom.</span>'}</div>
+      <div><label for="mbLookback">Look back (days)</label><input id="mbLookback" type="number" min="1" max="3650" value="${lookback}"><span class="muted">Up to 10 years for historical account and receipt cleanup.</span></div>
+      <div><label for="mbMax">Maximum messages per scan</label><input id="mbMax" type="number" min="25" max="5000" step="25" value="${maxMessages}"></div>
+      <div><label for="mbCadence">Report-only schedule</label><select id="mbCadence"><option value="manual" ${cadence==="manual"?"selected":""}>Manual only</option><option value="daily" ${cadence==="daily"?"selected":""}>Daily report</option><option value="weekly" ${cadence==="weekly"?"selected":""}>Weekly report</option></select><span class="muted">A schedule scans and reports. It never labels, archives, trashes, or unsubscribes.</span></div>
+    </div>
+    <div class="mailboxchecks">
+      <label><input id="mbIncludeSpam" type="checkbox" ${includeSpam?"checked":""}>Include spam and trash in the inventory <span class="muted">(always protected from bulk actions)</span></label>
+      <label><input id="mbPaused" type="checkbox" ${paused?"checked":""}>Pause this inbox <span class="muted">(stops Scan now, scheduled reports, cleanup, and undo jobs)</span></label>
+      <label><input id="mbAiConsent" type="checkbox" ${consent?"checked":""} ${mode==="ai"?"":"disabled"}><span id="mbAiConsentText">I consent to send the bounded sender, subject, and short Gmail preview snippet to ${esc(chosenDestination)} only for ambiguous classification. Full bodies and attachments are not sent.</span></label>
+    </div>
+    <div class="mailboxbar"><button class="btn sm" onclick="mailboxSaveSettings()">Save settings</button><span class="muted">Changes apply only to ${esc(account.login_email||"this Gmail account")}. Inbox cleanup is account-level and never inherits a persona's L0–L3 autonomy.</span></div>
+  </details>`;
+}
+function mailboxAiModeChanged(){
+  const enabled=val("mbClassifier")==="ai",backend=document.getElementById("mbAiBackend"),consent=document.getElementById("mbAiConsent");
+  if(backend)backend.disabled=!enabled;if(consent){consent.disabled=!enabled;consent.checked=false}mailboxUpdateAiConsentText();
+}
+function mailboxAiBackendChanged(){
+  const consent=document.getElementById("mbAiConsent");if(consent)consent.checked=false;mailboxUpdateAiConsentText();
+}
+function mailboxUpdateAiConsentText(){
+  const select=document.getElementById("mbAiBackend"),target=document.getElementById("mbAiConsentText"),backend=myBackends.find(b=>b.id===select?.value),host=parsedHttpUrl(backend?.base_url)?.hostname||"";
+  if(target)target.textContent=`I consent to send the bounded sender, subject, and short Gmail preview snippet to ${backend?`${backend.name}${host?" ("+host+")":""}`:"the selected hosted provider"} only for ambiguous classification. Full bodies and attachments are not sent.`;
+}
+async function mailboxSaveSettings(){
+  const account=mailboxSelectedAccount();if(!account||!mailboxGmailCanScan(account))return;
+  const classifierMode=val("mbClassifier")==="ai"?"ai":"rules",aiBackendId=val("mbAiBackend")||null,aiConsent=!!document.getElementById("mbAiConsent")?.checked;
+  if(classifierMode==="ai"){
+    const backend=myBackends.find(b=>b.id===aiBackendId);
+    if(!backend||!backendMailReady(backend)){toast("Choose a hosted model that is ready for inbox classification.");return}
+    if(!aiConsent){toast("Confirm the limited AI data-sharing consent, or choose private rules-only.");return}
+  }
+  const maxMessages=Math.max(25,Math.min(5000,Number(val("mbMax"))||500));
+  const lookbackDays=Math.max(1,Math.min(3650,Number(val("mbLookback"))||90));
+  const payload={ledgerId:account.id,paused:!!document.getElementById("mbPaused")?.checked,scheduleCadence:val("mbCadence")||"manual",includeSpamTrash:!!document.getElementById("mbIncludeSpam")?.checked,lookbackDays,maxMessages,classifierMode,aiBackendId:classifierMode==="ai"?aiBackendId:null,aiConsent:classifierMode==="ai"&&aiConsent};
+  try{await mailboxCall("save-settings",payload);toast("Inbox report settings saved.");await mailboxLoad(true)}catch(e){toast(e.message)}
+}
+function mailboxDashboardHtml(account){
+  const data=mailboxState.data||{},capability=data.capability||{},capabilityError=String(mailboxValue(capability,"error","message")||""),summary=mailboxSummary(),scan=data.activeScan||data.active_scan,scanStatus=String(mailboxValue(scan,"status","state")||"");
+  const tabs=[["subscriptions","Subscriptions"],["accounts","Account creation"],["receipts","Receipts"],["protected","Protected"],["other","Other"],["activity","Activity"]];
+  const busy=mailboxRunActive(scanStatus),globalPaused=mailboxGlobalPaused(),inboxPaused=mailboxInboxPaused();
+  return `${globalPaused?'<div class="mailboxnotice stop"><b>All automation is paused</b>The global Matrix safety switch also pauses inbox scans, classification jobs, cleanup actions, undo jobs, and scheduled reports. Review remains available; resume the global switch before queuing work.</div>':""}${inboxPaused?'<div class="mailboxnotice warn"><b>This inbox is paused</b>Review remains available, but Scan now, scheduled reports, cleanup, and undo jobs are stopped. Open settings, clear “Pause this inbox,” and save before starting work.</div>':""}${capabilityError?`<div class="mailboxnotice warn"><b>Inbox capability needs attention</b>${esc(capabilityError)}</div>`:""}${mailboxSettingsHtml(account)}
+    <div class="mailboxbar">
+      <button class="btn sm" onclick="mailboxRequestScan()" ${busy||globalPaused||inboxPaused?"disabled":""}>${busy?"Scan running…":"Scan now"}</button>
+      <button class="btn sm sec" onclick="mailboxRefresh()" ${mailboxState.loading?"disabled":""}>Refresh</button>
+      ${busy?`<span class="mailboxbusy" role="status" aria-live="polite"><span class="mailboxspinner" aria-hidden="true"></span>${esc(scanStatus||"working")} · this page refreshes automatically</span>`:""}
+      ${mailboxState.error?`<span class="muted" style="color:var(--red)">${esc(mailboxState.error)}</span>`:""}
+    </div>
+    <div class="mailboxstats">${[
+      ["subscriptions","Subscriptions"],["accounts","Account creation"],["receipts","Receipts"],["protected","Protected"],["other","Other"]
+    ].map(([key,label])=>`<button class="mailboxstat ${mailboxView===key?"on":""}" aria-pressed="${mailboxView===key?"true":"false"}" onclick="mailboxSwitchView('${key}')"><b>${summary[key]}</b><span>${label}</span></button>`).join("")}</div>
+    <div class="mailboxsubnav" aria-label="Inbox report views">${tabs.map(([key,label])=>`<button class="${mailboxView===key?"on":""}" aria-pressed="${mailboxView===key?"true":"false"}" onclick="mailboxSwitchView('${key}')">${label}</button>`).join("")}</div>
+    ${mailboxView==="activity"?mailboxActivityHtml():mailboxFindingsHtml(account)}
+  `;
+}
+function mailboxSwitchView(view){
+  if(!["subscriptions","accounts","receipts","protected","other","activity"].includes(view))return;
+  mailboxView=view;mailboxRender();
+}
+function mailboxFindingSender(finding){
+  return String(mailboxValue(finding,"senderName","sender_name","sender","fromName","from_name","senderEmail","sender_email")||"Unknown sender");
+}
+function mailboxFindingDomain(finding){
+  return String(mailboxValue(finding,"siteDomain","site_domain","senderDomain","sender_domain","domain")||mailboxFindingSender(finding));
+}
+function mailboxFindingHtml(finding){
+  const id=mailboxSafeId(finding.id),protectedItem=mailboxProtected(finding),sender=mailboxFindingSender(finding);
+  const subject=String(mailboxValue(finding,"subject")||"(no subject)"),received=mailboxDate(mailboxValue(finding,"receivedAt","received_at","messageDate","message_date"));
+  const source=String(mailboxValue(finding,"sourceFolder","source_folder","folder")||""),category=String(mailboxValue(finding,"category","kind")||"other").replace(/_/g," ");
+  const evidence=[...mailboxArray(mailboxValue(finding,"evidence","reasons")),...mailboxArray(mailboxValue(finding,"protectedReasons","protected_reasons"))].slice(0,3).map(String);
+  const unsubscribe=mailboxValue(finding,"unsubscribeAvailable","unsubscribe_available")===true||!!mailboxValue(finding,"unsubscribeKind","unsubscribe_kind");
+  return `<div class="mailboxfinding ${protectedItem?"protected":""}">
+    <input class="mailboxfindingcheck" type="checkbox" value="${esc(id)}" data-protected="${protectedItem?"true":"false"}" onchange="mailboxSelectionChanged(this)" aria-label="Select ${esc(subject)}">
+    <div class="mailboxfindingmain"><b>${esc(subject)}</b><div class="mailboxfindingmeta"><span>${esc(sender)}</span>${received?`<span>· ${esc(received)}</span>`:""}<span class="pill priv">${esc(category)}</span>${source?`<span class="pill priv">${esc(source)}</span>`:""}${protectedItem?'<span class="pill recorded">protected</span>':""}${evidence.map(item=>`<span>· ${esc(item)}</span>`).join("")}</div></div>
+    <div class="mailboxfindingactions">${unsubscribe?`<button class="btn sm sec" onclick="mailboxUnsubscribe('${id}')">Unsubscribe…</button>`:""}</div>
+  </div>`;
+}
+function mailboxFindingsHtml(account){
+  const findings=mailboxFindings().filter(f=>mailboxCategory(f)===mailboxView),globalPaused=mailboxGlobalPaused(),inboxPaused=mailboxInboxPaused(),canModify=mailboxGmailCanModify(account)&&!globalPaused&&!inboxPaused;
+  const visible=findings.slice(0,250),reportedTotal=Number(mailboxSummary()[mailboxView])||findings.length,groups=new Map();
+  visible.forEach(f=>{const key=mailboxView==="subscriptions"?mailboxFindingDomain(f):mailboxFindingSender(f);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f)});
+  const groupHtml=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0])).map(([name,items])=>`<details class="mailboxgroup" open><summary><b>${esc(name)}</b><span>${items.length} message${items.length===1?"":"s"}</span></summary>${items.map(mailboxFindingHtml).join("")}</details>`).join("");
+  const actionBar=mailboxView==="protected"?`<div class="mailboxnotice warn"><b>Protected inventory</b>Security, personal, financial, legal, medical, order/travel, spam, trash, and other protected findings cannot be included in a bulk mailbox action. Dismissing a finding only removes it from this report.</div><div class="mailboxbar"><button class="btn sm sec" onclick="mailboxToggleAll(true)">Select up to ${MAILBOX_SELECTION_LIMIT}</button><button class="btn sm sec" onclick="mailboxToggleAll(false)">Clear</button><button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Dismiss findings</button><span class="muted push" id="mailboxSelectedCount" aria-live="polite">0 selected · ${MAILBOX_SELECTION_LIMIT} maximum</span></div>`:`<div class="mailboxbar">
+    <button class="btn sm sec" onclick="mailboxToggleAll(true)">Select up to ${MAILBOX_SELECTION_LIMIT}</button><button class="btn sm sec" onclick="mailboxToggleAll(false)">Clear</button>
+    ${canModify?`<button class="btn sm mailboxaction" onclick="mailboxPrepare('label')" disabled>Add category label</button><button class="btn sm mailboxaction" onclick="mailboxPrepare('label_archive')" disabled>Label &amp; archive</button><button class="btn sm danger mailboxaction" onclick="mailboxPrepare('trash')" disabled>Move to trash</button>`:globalPaused?'<span class="muted">Cleanup actions stay locked while the global Matrix safety switch is paused.</span>':inboxPaused?'<span class="muted">Cleanup actions stay locked while this inbox is paused. Clear the pause in settings and save.</span>':`<button class="btn sm" onclick="connectGmail('${mailboxSafeId(account.id)}')">Enable cleanup access</button><span class="muted">Reports are read-only until Gmail cleanup access is approved.</span>`}
+    <button class="btn sm sec mailboxaction" onclick="mailboxDismissSelected()" disabled>Dismiss findings</button>
+    <span class="muted push" id="mailboxSelectedCount" aria-live="polite">0 selected · ${MAILBOX_SELECTION_LIMIT} maximum</span>
+  </div>`;
+  return `${actionBar}${groupHtml||'<div class="mailboxempty">No findings in this category yet. Run a scan or adjust the report settings.</div>'}${reportedTotal>visible.length?`<p class="muted">Showing the next ${visible.length} of ${reportedTotal} open findings in this category. Process or dismiss some, then refresh to load the next batch.</p>`:""}`;
+}
+function mailboxSelectionChanged(source){
+  let checked=[...document.querySelectorAll(".mailboxfindingcheck:checked")];
+  if(checked.length>MAILBOX_SELECTION_LIMIT){
+    if(source?.checked)source.checked=false;
+    checked=[...document.querySelectorAll(".mailboxfindingcheck:checked")];
+    toast(`Choose no more than ${MAILBOX_SELECTION_LIMIT} findings at a time.`);
+  }
+  const count=checked.length,target=document.getElementById("mailboxSelectedCount");
+  if(target)target.textContent=`${count} selected · ${MAILBOX_SELECTION_LIMIT} maximum`;
+  document.querySelectorAll(".mailboxaction").forEach(button=>button.disabled=count===0);
+}
+function mailboxToggleAll(checked){
+  const boxes=[...document.querySelectorAll(".mailboxfindingcheck:not(:disabled)")];
+  boxes.forEach((box,index)=>box.checked=checked&&index<MAILBOX_SELECTION_LIMIT);
+  if(checked&&boxes.length>MAILBOX_SELECTION_LIMIT)toast(`Selected the first ${MAILBOX_SELECTION_LIMIT} findings. Process those before selecting more.`);
+  mailboxSelectionChanged();
+}
+function mailboxSelectedIds(){
+  return [...document.querySelectorAll(".mailboxfindingcheck:checked")].map(box=>mailboxSafeId(box.value)).filter(Boolean);
+}
+async function mailboxRequestScan(){
+  const account=mailboxSelectedAccount();if(!account||!mailboxGmailCanScan(account))return;
+  if(mailboxGlobalPaused()){toast("Resume the global Matrix safety switch before starting an inbox job.");return}
+  if(mailboxInboxPaused()){toast("Open inbox settings, clear “Pause this inbox,” and save before scanning.");return}
+  try{
+    const result=await mailboxCall("request-scan",{ledgerId:account.id});
+    toast("Inbox scan queued. Scheduled and manual scans report only.");mailboxState.data={...(mailboxState.data||{}),activeScan:result.run||result.activeScan||{status:"queued"}};mailboxRender();mailboxSchedulePoll();
+  }catch(e){toast(e.message)}
+}
+async function mailboxPrepare(operation){
+  const findingIds=mailboxSelectedIds(),account=mailboxSelectedAccount();
+  if(!findingIds.length||!account||!mailboxGmailCanModify(account))return;
+  if(mailboxGlobalPaused()){toast("Resume the global Matrix safety switch before preparing a cleanup job.");return}
+  if(mailboxInboxPaused()){toast("Open inbox settings, clear “Pause this inbox,” and save before preparing cleanup.");return}
+  if(!["label","label_archive","trash"].includes(operation))return;
+  try{
+    const result=await mailboxCall("prepare-action",{ledgerId:account.id,findingIds,operation}),plan=result.plan||result;
+    if(!mailboxSafeId(plan.id)||!String(mailboxValue(plan,"planHash","plan_hash")||""))throw new Error("The inbox service did not return a verifiable action plan.");
+    const returnedOperation=String(mailboxValue(plan,"operation")||""),targetLabel=String(mailboxValue(plan,"targetLabel","target_label")||"");
+    if(returnedOperation!==operation||operation!=="trash"&&!targetLabel)throw new Error("The inbox service returned an action that does not match your request. Nothing was approved.");
+    const total=Number(mailboxValue(plan,"totalCount","total_count"))||0,returnedIds=mailboxArray(mailboxValue(plan,"findingIds","finding_ids")).map(mailboxSafeId).filter(Boolean),exactIds=[...new Set(returnedIds)];
+    if(!total||exactIds.length!==total||returnedIds.length!==exactIds.length||exactIds.some(id=>!findingIds.includes(id)))throw new Error("The inbox service did not return the exact protected-filtered selection. Nothing was approved.");
+    mailboxPendingPlan={...plan,operation:returnedOperation,targetLabel,findingIds:exactIds};mailboxShowPlan();
+  }catch(e){toast(e.message)}
+}
+function mailboxPlanCounts(plan){
+  const raw=mailboxValue(plan,"categoryCounts","category_counts")||{};
+  return Object.entries(raw).filter(([,value])=>Number(value)>0).map(([key,value])=>`${Number(value)} ${String(key).replace(/_/g," ")}`);
+}
+function mailboxShowPlan(){
+  const plan=mailboxPendingPlan;if(!plan)return;
+  document.getElementById("mailActionOv")?.remove();
+  mailboxPlanReturnFocus=document.activeElement;
+  const total=Number(mailboxValue(plan,"totalCount","total_count"))||0,excluded=Number(mailboxValue(plan,"protectedExcluded","protected_excluded"))||0,operation=String(plan.operation||"action"),targetLabel=String(mailboxValue(plan,"targetLabel","target_label")||"");
+  const labels={label:"Add the category label",label_archive:"Add the category label and archive",trash:"Move to Gmail trash"};
+  const expires=mailboxDate(mailboxValue(plan,"expiresAt","expires_at")),counts=mailboxPlanCounts(plan),selected=mailboxArray(plan.findingIds).map(id=>mailboxFindings().find(f=>String(f.id)===String(id))).filter(Boolean);
+  const overlay=document.createElement("div");overlay.className="overlay";overlay.id="mailActionOv";
+  overlay.innerHTML=`<div class="wizbox" role="dialog" aria-modal="true" aria-labelledby="mailActionTitle" onkeydown="mailboxPlanKeydown(event)"><h2 id="mailActionTitle">Review the exact inbox action</h2>
+    <div class="mailboxnotice ${operation==="trash"?"warn":""}"><b>${esc(labels[operation]||operation)}</b>${total} message${total===1?"":"s"} will be queued${operation!=="trash"&&targetLabel?` with the “${esc(targetLabel)}” Gmail label`:""}.${excluded?` ${excluded} protected message${excluded===1?" was":"s were"} excluded.`:""} Gmail trash is reversible; MyPersonas never permanently deletes mail.</div>
+    ${counts.length?`<div class="mailboxstats" style="margin-top:10px">${counts.map(text=>`<div class="mailboxstat"><span>${esc(text)}</span></div>`).join("")}</div>`:""}
+    ${selected.length?`<details class="mailboxsettings" style="margin-top:10px"><summary>Review selected messages (${selected.length})</summary><div style="max-height:260px;overflow:auto;margin-top:8px">${selected.map(f=>`<div class="mailboxfinding"><span></span><div class="mailboxfindingmain"><b>${esc(String(mailboxValue(f,"subject")||"(no subject)"))}</b><div class="mailboxfindingmeta">${esc(mailboxFindingSender(f))} · ${esc(mailboxDate(mailboxValue(f,"receivedAt","received_at")))}</div></div></div>`).join("")}</div></details>`:""}
+    <p class="muted">The worker will recheck ownership, scope, protection, and the signed plan before each operation.${expires?` This preview expires ${esc(expires)}.`:""}</p>
+    <div class="autoformactions"><button class="btn ${operation==="trash"?"danger":""}" onclick="mailboxApprovePlan()" ${total?"":"disabled"}>Approve this exact plan</button><button class="btn sec" onclick="mailboxCancelPreview('${mailboxSafeId(plan.id)}',true)">Cancel preview</button></div>
+  </div>`;document.body.appendChild(overlay);mailboxPlanInert=[...document.body.children].filter(element=>element!==overlay&&!element.inert);mailboxPlanInert.forEach(element=>element.inert=true);overlay.querySelector("button")?.focus();
+}
+function mailboxPlanKeydown(event){
+  if(event.key==="Escape"){event.preventDefault();mailboxCancelPreview(mailboxPendingPlan?.id||"",true);return}
+  if(event.key!=="Tab")return;
+  const dialog=document.querySelector("#mailActionOv .wizbox"),focusable=[...(dialog?.querySelectorAll('summary,button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')||[])];
+  if(!focusable.length){event.preventDefault();dialog?.focus?.();return}
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey&&(document.activeElement===first||!dialog?.contains(document.activeElement))){event.preventDefault();last.focus()}
+  else if(!event.shiftKey&&(document.activeElement===last||!dialog?.contains(document.activeElement))){event.preventDefault();first.focus()}
+}
+function mailboxClosePlan(){document.getElementById("mailActionOv")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;const target=mailboxPlanReturnFocus;mailboxPlanReturnFocus=null;target?.focus?.()}
+async function mailboxCancelPreview(planId="",fromModal=false){
+  const id=mailboxSafeId(planId||mailboxPendingPlan?.id),account=mailboxSelectedAccount();if(!id||!account)return;
+  if(!fromModal&&!confirm("Cancel this unapproved cleanup preview? No email will be changed."))return;
+  const buttons=[...document.querySelectorAll("#mailActionOv button")];buttons.forEach(button=>button.disabled=true);
+  const cancelButton=document.querySelector("#mailActionOv .btn.sec");if(cancelButton)cancelButton.textContent="Cancelling…";
+  try{
+    await mailboxCall("cancel-preview",{ledgerId:account.id,planId:id});
+    if(mailboxSafeId(mailboxPendingPlan?.id)===id)mailboxClosePlan();
+    toast("Cleanup preview cancelled. No email was changed.");await mailboxLoad(true);
+  }catch(e){
+    buttons.forEach(button=>button.disabled=false);if(cancelButton)cancelButton.textContent="Cancel preview";toast(e.message);
+  }
+}
+async function mailboxApprovePlan(){
+  const plan=mailboxPendingPlan,account=mailboxSelectedAccount();if(!plan||!account)return;
+  if(mailboxGlobalPaused()){toast("Resume the global Matrix safety switch before approving this inbox job.");return}
+  if(mailboxInboxPaused()){toast("Open inbox settings, clear “Pause this inbox,” and save before approving cleanup.");return}
+  const planId=mailboxSafeId(plan.id),planHash=String(mailboxValue(plan,"planHash","plan_hash")||"");
+  if(!planId||!planHash)return;
+  const modalButtons=[...document.querySelectorAll("#mailActionOv button")],button=document.querySelector("#mailActionOv .btn:not(.sec)");modalButtons.forEach(item=>item.disabled=true);if(button)button.textContent="Queuing…";
+  try{
+    await mailboxCall("approve-action",{ledgerId:account.id,planId,planHash});mailboxClosePlan();toast("Approved action queued. Refreshing until it finishes.");await mailboxLoad(true);
+  }catch(e){modalButtons.forEach(item=>item.disabled=false);if(button)button.textContent="Approve this exact plan";toast(e.message)}
+}
+async function mailboxDismissSelected(){
+  const findingIds=mailboxSelectedIds(),account=mailboxSelectedAccount();if(!findingIds.length||!account)return;
+  if(!confirm(`Dismiss ${findingIds.length} finding${findingIds.length===1?"":"s"} from this report? This does not change the email.`))return;
+  try{await mailboxCall("dismiss",{ledgerId:account.id,findingIds});toast("Findings dismissed; no email was changed.");await mailboxLoad(true)}catch(e){toast(e.message)}
+}
+async function mailboxUnsubscribe(findingId){
+  const id=mailboxSafeId(findingId),account=mailboxSelectedAccount(),finding=mailboxFindings().find(f=>String(f.id)===id);if(!id||!account||!finding)return;
+  const sender=mailboxFindingSender(finding);
+  if(!confirm(`Review the unsubscribe destination supplied by ${sender}? MyPersonas will not visit it or send an email automatically.`))return;
+  try{
+    const target=await mailboxCall("unsubscribe-target",{ledgerId:account.id,findingId:id}),kind=String(target.kind||"").toLowerCase(),raw=String(target.url||"");
+    if(kind==="https"){
+      const url=new URL(raw);
+      if(url.protocol!=="https:"||url.username||url.password||url.port||!url.hostname.includes(".")||raw.length>2048)throw new Error("The unsubscribe destination is not a safe HTTPS URL.");
+      if(target.hostname&&String(target.hostname).toLowerCase()!==url.hostname.toLowerCase())throw new Error("The unsubscribe hostname did not match the reviewed destination.");
+      url.hash="";
+      if(!confirm(`Open the unsubscribe page on ${url.hostname}? This leaves MyPersonas; review that site's confirmation before submitting.`))return;
+      const opened=window.open(url.toString(),"_blank","noopener,noreferrer");if(opened)opened.opener=null;else toast("Your browser blocked the new tab. Allow pop-ups and try again.");
+      return;
+    }
+    if(kind==="mailto"&&/^mailto:[^\r\n]{1,2000}$/i.test(raw)){
+      const url=new URL(raw),recipient=decodeURIComponent(url.pathname).trim(),domain=recipient.split("@")[1]?.toLowerCase()||"";
+      if(url.protocol!=="mailto:"||url.username||url.password||url.search||url.hash||!/^[A-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$/i.test(recipient)||!domain||target.hostname&&String(target.hostname).toLowerCase()!==domain)throw new Error("The unsubscribe email destination did not pass safety checks.");
+      if(!confirm(`Open your mail app with an unsubscribe email addressed to ${recipient}? Review it before sending; MyPersonas will not send it.`))return;
+      location.href=`mailto:${encodeURIComponent(recipient)}`;return;
+    }
+    throw new Error("This message did not provide a supported HTTPS or email unsubscribe destination.");
+  }catch(e){toast(e.message)}
+}
+function mailboxActivityHtml(){
+  const data=mailboxState.data||{},runs=mailboxArray(data.recentRuns||data.recent_runs),plans=mailboxArray(data.actionPlans||data.action_plans),audit=mailboxArray(data.audit);
+  const planRows=plans.map(plan=>{
+    const id=mailboxSafeId(plan.id),operation=String(mailboxValue(plan,"operation")||"cleanup").replace(/_/g," "),status=String(mailboxValue(plan,"status","state")||"prepared"),count=Number(mailboxValue(plan,"totalCount","total_count","appliedCount","applied_count"))||0;
+    const undoDeadline=Date.parse(String(mailboxValue(plan,"undoExpiresAt","undo_expires_at")||"")),undo=mailboxValue(plan,"undoAvailable","undo_available")===true||(String(mailboxValue(plan,"undoStatus","undo_status")||"").toLowerCase()==="available"&&Number.isFinite(undoDeadline)&&undoDeadline>Date.now()),pending=status.toLowerCase()==="pending_approval";
+    return `<div class="mailboxactivityitem"><div class="top"><div><b>${esc(operation)}</b><div class="muted">${count} message${count===1?"":"s"} · ${esc(status)}</div></div>${pending&&id?`<button class="btn sm sec" onclick="mailboxCancelPreview('${id}')">Cancel preview</button>`:undo&&id?`<button class="btn sm sec" onclick="mailboxUndo('${id}')">Undo</button>`:""}</div><time>${esc(mailboxDate(mailboxValue(plan,"updatedAt","updated_at","createdAt","created_at")))}</time></div>`;
+  });
+  const runRows=runs.map(run=>{const processed=mailboxValue(run,"messageCount","message_count","processedCount","processed_count"),found=mailboxValue(run,"foundCount","found_count");return `<div class="mailboxactivityitem"><div class="top"><div><b>Inbox scan</b><div class="muted">${esc(String(mailboxValue(run,"status","state")||"complete"))}${processed!==null?` · ${Number(processed)||0} messages inspected`:""}${found!==null?` · ${Number(found)||0} findings`:""}</div></div></div><time>${esc(mailboxDate(mailboxValue(run,"finishedAt","finished_at","startedAt","started_at","createdAt","created_at")))}</time></div>`});
+  const auditRows=audit.slice(0,50).map(item=>`<div class="mailboxactivityitem"><div class="top"><div><b>${esc(String(mailboxValue(item,"label","event","eventType","event_type","action")||"Inbox event").replace(/[._]/g," "))}</b><div class="muted">${esc(String(mailboxValue(item,"detail","message","summary")||""))}</div></div></div><time>${esc(mailboxDate(mailboxValue(item,"createdAt","created_at")))}</time></div>`);
+  return `<div class="mailboxactivity">${[...planRows,...runRows,...auditRows].join("")||'<div class="mailboxempty">No inbox scan or cleanup activity yet.</div>'}</div>`;
+}
+async function mailboxUndo(planId){
+  const id=mailboxSafeId(planId),account=mailboxSelectedAccount();if(!id||!account)return;
+  if(mailboxGlobalPaused()){toast("Resume the global Matrix safety switch before starting an undo job.");return}
+  if(mailboxInboxPaused()){toast("Open inbox settings, clear “Pause this inbox,” and save before requesting undo.");return}
+  if(!confirm("Queue the available undo for this action plan? Gmail may not be able to restore changes made later outside MyPersonas."))return;
+  try{await mailboxCall("request-undo",{ledgerId:account.id,planId:id});toast("Undo queued. Refreshing until it finishes.");await mailboxLoad(true)}catch(e){toast(e.message)}
 }
 
 function mbtiBlurb(t){
@@ -2398,7 +2876,10 @@ function applyLedgerSavedAccount(picker){
 function ledgerConnectionInfo(a){
   const row=myAccountConnections.find(c=>c.ledger_id===a.id)||null,state=row&&row.provider===a.provider&&!(row.connection_state==="verified"&&normalizeLedgerEmail(row.provider_email)!==normalizeLedgerEmail(a.login_email))?row.connection_state:"recorded";
   if(state==="connected"){
-    if(a.provider==="gmail")return{row,state,label:"Gmail connected · read-only",klass:"connected",note:"Gmail API read access is active; posting and sending are not authorized."};
+    if(a.provider==="gmail"){
+      const scopes=Array.isArray(row?.granted_scopes)?row.granted_scopes.map(scope=>String(scope).toLowerCase()):[],cleanup=scopes.includes(GMAIL_MODIFY_SCOPE);
+      return{row,state,label:cleanup?"Gmail connected · cleanup enabled":"Gmail connected · reports only",klass:"connected",note:cleanup?"Gmail inbox reports and owner-approved label, archive, and trash actions are enabled. Sending and permanent deletion are not available.":"Gmail read access is active for inbox reports. Cleanup actions stay locked until you approve Gmail cleanup access; sending is never authorized."};
+    }
     if(a.provider==="twitter"){
       return{row,state,label:"X connected · identity verified",klass:"connected",note:"X verified this identity and granted read/offline-refresh access. Posting permission is not requested or active."};
     }
@@ -2428,8 +2909,10 @@ function ledgerAuthPanel(a,info){
   const verify=canOfferEmailMatch&&info.state==="recorded"?`<button class="btn sm sec" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Match sign-in email</button>`:"";
   const why=!canOfferEmailMatch?"":!accountConnectionsReady?" Email matching is not available yet.":!target?" Add a login email if you want to match it with this AliaSpaces sign-in.":current!==target?` Sign in to AliaSpaces as ${esc(target)} to match this mailbox address.`:!confirmed?" Confirm your AliaSpaces sign-in email first.":" The recorded address matches this confirmed AliaSpaces sign-in; this optional check is not provider authentication.";
   const gmailError=String(info.row&&info.row.error_code||""),gmailResetOnly=gmailResetOnlyError(gmailError),gmailMustDisconnect=info.state==="connected"||["google_revoke_required","google_revoke_failed"].includes(gmailError);
+  const gmailCleanup=info.state==="connected"&&Array.isArray(info.row?.granted_scopes)&&info.row.granted_scopes.map(scope=>String(scope).toLowerCase()).includes(GMAIL_MODIFY_SCOPE);
   const gmail=a.provider!=="gmail"?"":gmailResetOnly
     ?`<button class="btn sm sec" onclick="resetGmailAttempt('${a.id}')">Reset Gmail attempt</button>`
+    :info.state==="connected"&&!gmailCleanup?`<button class="btn sm" onclick="connectGmail('${a.id}')">Enable inbox cleanup</button><button class="btn sm danger" onclick="disconnectGmail('${a.id}')">Disconnect Gmail</button>`
     :gmailMustDisconnect?`<button class="btn sm danger" onclick="disconnectGmail('${a.id}')">${info.state==="connected"?"Disconnect Gmail":"Revoke & reset Gmail"}</button>`
     :`<button class="btn sm" onclick="connectGmail('${a.id}')" ${target?"":"disabled"}>Connect Gmail</button>`;
   const twitterError=String(info.row&&info.row.error_code||""),twitterResetOnly=twitterResetOnlyError(twitterError),twitterManualRevoke=twitterError==="x_manual_revoke_required";
@@ -2444,7 +2927,7 @@ function ledgerAuthPanel(a,info){
     ?`<button class="btn sm sec" onclick="retryTwitterCapability()">Check X connector</button>`
     :!twitterOAuthCapability.configured?`<a class="btn sm sec" href="https://console.x.com" target="_blank" rel="noopener">Open X Developer Console ↗</a>`:"";
   const guide=ledgerConnectorGuidance(a.provider),showGuide=info.state!=="connected"||(a.provider==="twitter"&&!twitterOAuthCapability.configured),providerDetail=showGuide?` ${guide.title}. ${guide.note}`:"";
-  const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve read-only access; MyPersonas never receives its password.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):"";
+  const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve inbox access for reports and owner-approved cleanup; MyPersonas never receives its password and cannot send mail or permanently delete it.":a.provider==="gmail"&&!gmailCleanup?" Google will ask you to upgrade this existing grant before labels, archive, or trash can be queued.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):"";
   return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${info.state==="recorded"?why:""}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${verify}${gmail}${twitter}${twitterSetup}</div>`;
 }
 function ledgerEditPanel(a){
@@ -2681,6 +3164,7 @@ async function connectGmail(id){
     const state=destination.searchParams.get("state")||"",browserNonce=result.data.browserNonce||"";
     if(!/^[A-Za-z0-9_-]{32,200}$/.test(state)||!/^[A-Za-z0-9_-]{32,200}$/.test(browserNonce))throw new Error("Invalid Gmail authorization binding");
     sessionStorage.setItem("gmail_oauth_"+state,browserNonce);
+    sessionStorage.setItem("gmail_oauth_tab_"+state,acctTab==="inbox"?"inbox":"accounts");
     location.assign(destination.toString());
   }catch(e){toast(e.message||"Invalid Google authorization link")}
 }
@@ -2692,11 +3176,11 @@ async function finishPendingGmail(expectedUid=session?.user?.id||null,generation
   const result=await gmailOAuthAction("complete",null,pending);
   gmailOAuthCompleting=false;
   if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
-  gmailOAuthNotice={message:result.error||"Gmail connected with read-only access."};
+  gmailOAuthNotice={message:result.error||"Gmail connected. Inbox reports and owner-approved cleanup are available; sending and permanent deletion remain unavailable.",returnTab:pending.returnTab};
   await loadMine(expectedUid,generation);
 }
 async function disconnectGmail(id){
-  if(!confirm("Disconnect Gmail and revoke AliaSpaces read-only access? Your Gmail account and messages will not be deleted."))return;
+  if(!confirm("Disconnect Gmail and revoke MyPersonas inbox access? Your Gmail account and messages will not be deleted."))return;
   const result=await gmailOAuthAction("disconnect",id);
   if(result.error){toast(result.error);return}
   await loadMine();acctTab="accounts";renderStudio();

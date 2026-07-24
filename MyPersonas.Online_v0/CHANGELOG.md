@@ -3,6 +3,41 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Inbox Concierge (2026-07-24)
+
+- Added a separate, owner-only mailbox control plane for Gmail reports and approved
+  cleanup. Mailbox permissions do not inherit a persona's social-posting autonomy level;
+  the existing global pause and a per-mailbox pause stop mailbox jobs.
+- Added resumable manual and daily/weekly report-only scans across Gmail's regular mail
+  and labels, with an explicit option to inventory Spam and Trash. Sent, Draft, Spam,
+  Trash, unread, starred, important, attachment-bearing, security, account, receipt,
+  financial/legal/medical, travel/order, personal, and unknown mail remain protected from
+  bulk Trash actions.
+- Added rules-first classification for subscriptions, possible account-creation evidence,
+  receipts, security mail, orders/travel, financial/legal/medical mail, personal mail, and
+  review items. Optional AI assistance is per-mailbox opt-in and sends only the bounded
+  sender, subject, and short Gmail preview snippet to an explicitly selected hosted model;
+  full bodies and attachments are not sent, messages remain untrusted data, and the model
+  has no mailbox tools or credentials.
+- Added exact, expiring action plans for label, label-and-archive, and recoverable Trash
+  operations. The worker rechecks the owner, mailbox, Gmail permission, current message
+  labels, protected-mail rules, and approval hash before changing anything. Prior labels
+  are retained for a bounded Undo path; permanent deletion, sending, replies, attachment
+  access, mark-read, spam/block, filters, forwarding, and account-security changes are not
+  implemented.
+- Added subscription-site grouping and explicit unsubscribe offers. The service never
+  fetches an unsubscribe destination: a requested HTTPS page opens in the owner's browser,
+  while a `mailto:` target opens the owner's mail app. Historical cleanup is always a
+  separate approval.
+- Upgraded new Gmail authorization and existing read-only connections through explicit
+  re-consent to `gmail.modify`, the least Gmail scope that supports labels, archive, and
+  Trash without immediate permanent deletion. Refresh tokens remain encrypted in Supabase
+  Vault and never reach the page, classifier, or logs.
+- Added truthful capability guidance for Outlook, Yahoo, iCloud, and Proton. Outlook
+  requires a future Microsoft Graph app; Yahoo and iCloud require a dedicated encrypted
+  IMAP/app-password worker; Proton requires a trusted local companion connected to Proton
+  Mail Bridge. Unsupported providers expose no scan or mutation controls.
+
 ## Released — Grouped account connections and X OAuth foundation (2026-07-23)
 
 - Replaced the flat saved-account stack with provider-level expandable sections. Only
