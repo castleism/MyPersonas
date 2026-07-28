@@ -5,6 +5,10 @@ trailing letters are hotfixes. Releases are git tags.
 
 ## Unreleased — Full-history Inbox Concierge reports
 
+- Removed the misleading same-address inventory check from unsupported mailbox panels.
+  Outlook/Hotmail now says plainly that no Microsoft OAuth grant exists, Gmail explains
+  Google's Testing/test-user 403 gate, and X distinguishes missing production client
+  credentials from the separate API-credit check.
 - Added an explicit full-history settings shortcut that selects a 100-year Gmail
   lookback and a bounded 15,000-message report ceiling. Selecting it does not save,
   queue a scan, approve cleanup, or change an email.

@@ -315,9 +315,9 @@ website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",ic
 const LEDGER_EMAIL_PROVIDERS=new Set(["gmail","outlook","yahoo","icloud","proton"]);
 const LEDGER_ONLY_PROVIDERS=new Set(["yahoo","icloud"]);
 const CONNECTOR_GUIDANCE={
-  gmail:{title:"Gmail OAuth available",note:"Connects Gmail for private inbox reports and, only after the cleanup permission is approved, reversible label, archive, and trash actions. It never grants sending or social-posting permission."},
-  twitter:{title:"X OAuth available after provider setup",note:"Requires a MyPersonas X Developer Web App, the exact callback URL, client credentials, and X API access/credits. Authorization verifies the selected X identity with read and offline-refresh permission. A future posting connector must request write permission through a separate explicit reauthorization."},
-  outlook:{title:"Microsoft connector not installed",note:"Microsoft Graph supports delegated mailbox access, but MyPersonas still needs a registered and reviewed Microsoft app before this account can connect."},
+  gmail:{title:"Google testing access required",note:"The Gmail connector is installed, but Google has not completed production verification. While its OAuth app remains in Testing, the exact Google account must be added to the connector project's Test users list or Google will block authorization with a 403."},
+  twitter:{title:"X developer credentials not installed",note:"The X authorization service is deployed, but its production Web App client ID and secret are not installed yet. After those credentials are added, X API access and credits must also be active. Identity/read authorization does not enable posting."},
+  outlook:{title:"Outlook OAuth not installed",note:"This saved Hotmail/Outlook address is an inventory record, not a Microsoft connection. A dedicated Entra app and Microsoft Graph mailbox connector must be installed before a real Connect Outlook button can be enabled."},
   yahoo:{title:"Secure Yahoo worker not installed",note:"Yahoo inbox management needs a separately reviewed, encrypted IMAP/app-password worker. Never enter a Yahoo password or app password here."},
   icloud:{title:"Secure iCloud worker not installed",note:"iCloud Mail management needs an encrypted IMAP app-password worker. Never enter an Apple Account password or app-specific password here."},
   proton:{title:"Local bridge required",note:"A hosted site cannot directly authorize a Proton inbox. Full mailbox access requires Proton Bridge running on a trusted local computer."},
@@ -2910,7 +2910,7 @@ function ledgerConnectionInfo(a){
     }
     return{row,state,label:"Provider API connected",klass:"connected",note:"This provider connection is active only for its recorded granted scopes."};
   }
-  if(state==="verified")return{row,state,label:"Sign-in email matched · not connected",klass:"verified",note:"The recorded email matches this AliaSpaces sign-in. That does not authenticate the external provider or grant API access."};
+  if(state==="verified")return{row,state,label:"Inventory email matched · provider not connected",klass:"verified",note:"A same-address inventory check was recorded previously. It does not authenticate the external provider or grant API access."};
   if(state==="error")return{row,state,label:"Needs reconnect",klass:"attention",note:"The external connection needs attention."};
   if(state==="disconnected")return{row,state,label:"Disconnected",klass:"attention",note:"External access is disconnected."};
   return{row:null,state:"recorded",label:"Recorded · not connected",klass:"recorded",note:"This is a private inventory record only; no provider authorization has been granted."};
@@ -2921,7 +2921,7 @@ function ledgerConnectorGuidance(provider){
   if(provider==="twitter"){
     if(!twitterOAuthCapability.loaded)return{title:"Checking X connector setup",note:"The Connect button will become available only after the production X OAuth connector confirms that its developer credentials are installed."};
     if(twitterOAuthCapability.error)return{title:"X connector unavailable",note:"The production authorization service could not confirm its setup. Try again after the connector is deployed and healthy."};
-    if(!twitterOAuthCapability.configured)return{title:"Provider setup required",note:"MyPersonas still needs an X Developer Web App, its exact callback URL, client credentials, and current X API access/credits. No X password should be entered here."};
+    if(!twitterOAuthCapability.configured)return{title:"X client credentials missing",note:"The deployed connector is healthy, but its production Web App client ID and secret are not installed. Create a confidential X Web App with the exact callback, install those two secrets, then confirm current API credits. No X password should be entered here."};
     return{title:"Ready to connect",note:"The production X OAuth connector is configured for identity/read access and secure refresh/revocation. Automated posting is not enabled."};
   }
   if(CONNECTOR_GUIDANCE[provider])return CONNECTOR_GUIDANCE[provider];
@@ -2929,10 +2929,7 @@ function ledgerConnectorGuidance(provider){
   return{title:"Record only",note:"No supported MyPersonas management connector is installed for this provider. The account remains available for planning and persona assignment."};
 }
 function ledgerAuthPanel(a,info){
-  const current=(session&&session.user&&session.user.email||"").toLowerCase(),target=(a.login_email||"").trim().toLowerCase();
-  const confirmed=!!(session&&session.user&&session.user.email_confirmed_at),canOfferEmailMatch=LEDGER_EMAIL_PROVIDERS.has(a.provider),canVerify=accountConnectionsReady&&!!target&&current===target&&confirmed;
-  const verify=canOfferEmailMatch&&info.state==="recorded"?`<button class="btn sm sec" onclick="verifyLedgerOwnership('${a.id}')" ${canVerify?"":"disabled"}>Match sign-in email</button>`:"";
-  const why=!canOfferEmailMatch?"":!accountConnectionsReady?" Email matching is not available yet.":!target?" Add a login email if you want to match it with this AliaSpaces sign-in.":current!==target?` Sign in to AliaSpaces as ${esc(target)} to match this mailbox address.`:!confirmed?" Confirm your AliaSpaces sign-in email first.":" The recorded address matches this confirmed AliaSpaces sign-in; this optional check is not provider authentication.";
+  const target=(a.login_email||"").trim().toLowerCase();
   const gmailError=String(info.row&&info.row.error_code||""),gmailResetOnly=gmailResetOnlyError(gmailError),gmailMustDisconnect=info.state==="connected"||["google_revoke_required","google_revoke_failed"].includes(gmailError);
   const gmailCleanup=info.state==="connected"&&Array.isArray(info.row?.granted_scopes)&&info.row.granted_scopes.map(scope=>String(scope).toLowerCase()).includes(GMAIL_MODIFY_SCOPE);
   const gmail=a.provider!=="gmail"?"":gmailResetOnly
@@ -2952,8 +2949,8 @@ function ledgerAuthPanel(a,info){
     ?`<button class="btn sm sec" onclick="retryTwitterCapability()">Check X connector</button>`
     :!twitterOAuthCapability.configured?`<a class="btn sm sec" href="https://console.x.com" target="_blank" rel="noopener">Open X Developer Console ↗</a>`:"";
   const guide=ledgerConnectorGuidance(a.provider),showGuide=info.state!=="connected"||(a.provider==="twitter"&&!twitterOAuthCapability.configured),providerDetail=showGuide?` ${guide.title}. ${guide.note}`:"";
-  const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve inbox access for reports and owner-approved cleanup; MyPersonas never receives its password and cannot send mail or permanently delete it.":a.provider==="gmail"&&!gmailCleanup?" Google will ask you to upgrade this existing grant before labels, archive, or trash can be queued.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):"";
-  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${info.state==="recorded"?why:""}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${verify}${gmail}${twitter}${twitterSetup}</div>`;
+  const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve inbox access. If Google shows “403 Access blocked,” that address is not yet an approved test user; code cannot bypass Google verification. MyPersonas never receives its password and cannot send mail or permanently delete it.":a.provider==="gmail"&&!gmailCleanup?" Google will ask you to upgrade this existing grant before labels, archive, or trash can be queued.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username after the production developer credentials are installed; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):"";
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${gmail}${twitter}${twitterSetup}</div>`;
 }
 function ledgerEditPanel(a){
   const locked=ledgerIdentityEditLocked(a),section="section-ledgeredit"+a.id.replace(/-/g,"");

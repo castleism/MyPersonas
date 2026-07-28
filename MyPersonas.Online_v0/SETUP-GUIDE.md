@@ -95,9 +95,10 @@ project **MyPersonas Gmail Connector** (`genial-union-503010-q5`):
    supabase functions deploy gmail-oauth --no-verify-jwt
    ```
 
-After an account is recorded, **Sign-in email matched · not connected** only means its
-login email matches the confirmed AliaSpaces sign-in email. Select **Connect Gmail** to
-run Google's consent flow. The user must choose the exact recorded mailbox and approve
+The old same-address inventory check is no longer shown as a connection step. It never
+authenticated Google, Microsoft, Yahoo, or Apple and was especially misleading when one
+AliaSpaces owner managed several mailbox addresses. Select **Connect Gmail** to run
+Google's real consent flow. The user must choose the exact recorded mailbox and approve
 cleanup access before the status becomes **Cleanup enabled**. An existing read-only grant
 can be upgraded in place through the same button; denial leaves the earlier report-only
 connection unchanged. Passwords are never collected; the refresh token is encrypted in
