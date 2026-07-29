@@ -472,17 +472,17 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
     }
     (async()=>{
       await finishPendingTwitter(uid,generation);
-      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       const loaded=await loadMine(uid,generation);
-      if(!loaded||generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(!loaded||generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       if(myAccounts.some(account=>account.provider==="twitter"))await loadTwitterCapability(uid,generation);
-      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       await loadMetaCapability(uid,generation);
-      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       await finishPendingGmail(uid,generation);
-      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       await finishPendingMeta(uid,generation);
-      if(generation!==authLoadGeneration||session?.user?.id!==uid)return;
+      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
       route();
     })();
   });
