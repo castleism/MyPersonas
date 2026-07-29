@@ -4,8 +4,10 @@ The browser app is hosted by GitHub Pages. Supabase provides authentication, the
 database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
 This is a deployment runbook for the repository state. The 2026-07-24 production rollout
 applied migration 016, deployed the matching mailbox/Gmail/erasure functions, and enabled
-the mailbox cron. A signed-in Gmail re-consent and real mailbox action remain explicit
-owner-run smoke tests.
+the mailbox cron. The 2026-07-29 rollout applied migrations 017 and 018 and deployed
+`delete-account` v17, `erase-content` v10, and the configuration-gated `meta-oauth` v1.
+A signed-in Gmail re-consent, real mailbox action, and credentialed Meta owner flow remain
+explicit owner-run smoke tests.
 
 ## 1. Link the Supabase project
 
@@ -17,7 +19,7 @@ supabase link --project-ref nwsqyuucwzihruszocge
 Use a Supabase-supported CLI installation method. Do not install the CLI globally with
 `npm install -g supabase`.
 
-## 2. Pause workers and apply migrations 013–017 before the release
+## 2. Pause workers and apply migrations 013–018 before the release
 
 Migration 011 moves existing plaintext model keys into Supabase Vault, clears the legacy
 `ai_backends.api_key` values, and revokes direct browser writes to `ai_backends`. Deploy
@@ -25,15 +27,16 @@ the new Edge code first. Its model-key resolver accepts the legacy column before
 migration and the service-only Vault RPC afterward, so the transition does not strand an
 existing model connection.
 
-Migrations 011–016 are applied on the current production project and must remain
+Migrations 011–018 are applied on the current production project and must remain
 immutable. Migration 013 added service-only least-recently-served generation, change-aware
 prompt-input limits, deterministic input blocking, and a 100-active-schedule cap.
 Migration 014 added the authenticated, atomic persona/profile bundle save used by the
 page. Migration 015 added the independent service-only X OAuth/Vault boundary, and
 migration 016 added the independent mailbox report/action boundary. Pause/unschedule all
-workers before applying pending migrations or replacing their code. Migration 017 is an
-additive full-history report-bounds change and must follow 016; it does not alter
-permissions or create a scan.
+workers before applying pending migrations or replacing their code. Migration 017 added
+the full-history report bounds without changing permissions or creating a scan. Migration
+018 added the Meta OAuth/Page-discovery and Vault boundary; it requests no publishing
+scope and enables no external posting.
 
 ```sql
 select cron.unschedule(jobid)
@@ -57,10 +60,11 @@ supabase functions deploy run-publish-queue --no-verify-jwt
 supabase functions deploy fan-chat --no-verify-jwt
 ```
 
-Apply all pending migrations through 017 while the workers remain paused. Migration 015
+Apply all pending migrations through 018 while the workers remain paused. Migration 015
 must be live before the X function; migrations 016 and 017 must be live before deploying
-the full-history mailbox manager/worker/page combination. Then deploy the matching
-generator, mailbox services, and X connector:
+the full-history mailbox manager/worker/page combination; migration 018 must be live
+before the Meta connector. Then deploy the matching generator, mailbox services, and
+OAuth connectors:
 
 ```powershell
 supabase functions deploy run-tasks --no-verify-jwt
@@ -68,6 +72,7 @@ supabase functions deploy mailbox-manager
 supabase functions deploy run-mailbox-jobs --no-verify-jwt
 supabase functions deploy gmail-oauth --no-verify-jwt
 supabase functions deploy twitter-oauth --no-verify-jwt
+supabase functions deploy meta-oauth --no-verify-jwt
 ```
 
 Deploy the content-erasure pair before publishing the matching GitHub Pages client. The
@@ -88,15 +93,15 @@ supabase functions deploy sitemap --no-verify-jwt
 
 `ai-proxy`, `post-bridge`, `mailbox-manager`, `delete-account`, and `erase-content`
 receive signed-in browser JWTs. The three cron workers use `X-Cron-Secret`. `fan-chat`,
-`gmail-oauth`, `twitter-oauth`, and `sitemap` are public at the gateway by design and
-enforce their applicable checks in code.
+`gmail-oauth`, `twitter-oauth`, `meta-oauth`, and `sitemap` are public at the gateway by
+design and enforce their applicable checks in code.
 
 ## 3. Apply the database changes
 
 For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
-snapshot contains the base schema (including the 008–010 account-ledger, connection, and
-Gmail structures) plus the immutable 001–012 history and migrations 013–017. For the existing
-project, run every unapplied file in `MyPersonas.Online_v0/sql-updates` in numeric order.
+snapshot contains the base schema plus the immutable migration history through 018. For
+an existing project, run every unapplied file in
+`MyPersonas.Online_v0/sql-updates` in numeric order.
 The automation release requires:
 
 - `008-account-ledger.sql` — private external-account inventory; no passwords or tokens.
@@ -122,6 +127,10 @@ The automation release requires:
   message references, prior-label Undo snapshots, and serialized mailbox operations.
 - `017-mailbox-full-history.sql` — additive 100-year lookback and bounded
   15,000-message report limits; no permission, schedule, or mutation grant.
+- `018-meta-oauth.sql` — owner/browser-bound Meta OAuth state, short-lived
+  Vault-backed Page selection, immutable Facebook Page and linked Instagram
+  professional-account bindings, shared-grant revocation, and service-only user/Page
+  token storage. It adds no publishing permission or posting path.
 
 Migration 011 enables `supabase_vault`, creates an owner-authenticated model-management
 surface, migrates every non-empty legacy model key into Vault, and then clears the legacy
@@ -148,6 +157,10 @@ supabase secrets set GOOGLE_GMAIL_CLIENT_ID="<Google Gmail OAuth client ID>"
 supabase secrets set GOOGLE_GMAIL_CLIENT_SECRET="<Google Gmail OAuth client secret>"
 supabase secrets set X_CLIENT_ID="<X Web App client ID>"
 supabase secrets set X_CLIENT_SECRET="<X Web App client secret>"
+supabase secrets set META_APP_ID="<Meta app ID>"
+supabase secrets set META_APP_SECRET="<Meta app secret>"
+# Set this too when Facebook Login for Business created a login configuration.
+supabase secrets set META_LOGIN_CONFIG_ID="<Meta login configuration ID>"
 ```
 
 Store the exact same `CRON_SECRET` value in Supabase Vault under the name
@@ -364,7 +377,56 @@ ledger address matches the signed-in AliaSpaces email. Reports connected means a
 read-only grant remains usable for scans; Cleanup enabled means explicit `gmail.modify`
 re-consent completed. Neither grants social posting or mail sending in MyPersonas.
 
-## 8. External publishing remains locked
+## 8. Meta connects Facebook Pages and linked Instagram professional accounts
+
+Migration 018 and `meta-oauth` provide the server-side authorization, Page discovery,
+selection, immutable identity binding, Vault token storage, and shared-grant disconnect
+foundation. They do **not** enable posting. Create a Meta Business app with Facebook
+Login for Business, register this exact valid OAuth redirect URI, and keep the app secret
+only in Supabase Edge Function secrets:
+
+```text
+https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth
+```
+
+The connector requests only `pages_show_list`, `pages_read_engagement`, and
+`instagram_basic`. It supports Facebook Pages returned by `/me/accounts`; it never binds
+or automates a personal Facebook profile. A linked Instagram target is offered only when
+the Page reports an exact `instagram_business_account` professional-account id. Personal
+Instagram consumer accounts are not eligible.
+
+If Facebook Login for Business creates a login configuration, copy its Configuration ID
+into `META_LOGIN_CONFIG_ID`. The connector then sends `config_id` and
+`override_default_response_type=true` in the authorization request. Keep the permissions
+inside that Meta configuration aligned with the same three read/discovery scopes.
+
+The pinned default is Graph API `v25.0`. Set `META_GRAPH_API_VERSION` only when performing
+a reviewed version upgrade:
+
+```powershell
+supabase secrets set META_GRAPH_API_VERSION="v25.0"
+```
+
+During development, app administrators, developers, and configured testers can exercise
+the flow against assets they are permitted to manage. Broader production access still
+requires the applicable Meta business verification, Privacy Policy, Terms, Data Deletion
+instructions/callback, Live mode, and App Review/Advanced Access. Completing the local
+OAuth flow is not proof that those production gates are approved.
+
+Facebook Login authorization is shared by all Pages selected under one immutable Meta
+user id. **Disconnect Meta** revokes and disconnects that complete grant, including every
+Facebook Page and linked Instagram ledger bound to it. If Meta does not confirm
+revocation, the service retains the encrypted credential and requires the owner to remove
+MyPersonas in Facebook Business Integrations before explicitly acknowledging manual
+revocation. Never describe removal of one local Page row as provider revocation.
+
+Future publishing must be a separate reviewed release. It will need explicit
+reauthorization for `pages_manage_posts` and/or `instagram_content_publish`, exact draft
+approval and destination reconciliation, Meta review, and live Page/Instagram tests.
+Neither migration 018 nor `meta-oauth` requests those permissions or exposes a publish
+endpoint.
+
+## 9. External publishing remains locked
 
 Direct publishing currently supports only the native AliaSpaces feed. External account
 rows can be planning/manual targets, but `post-bridge` and `run-publish-queue` return
@@ -376,7 +438,7 @@ approval, destination limits, and an auditable reconciliation path. Gmail mailbo
 is not reusable as a social publishing connector. Do not substitute passwords, cookies,
 scraping, or browser-driving automation.
 
-## 9. Release verification
+## 10. Release verification
 
 After the staged code rollout, migration, secrets, cron jobs, and Pages release complete,
 perform the unchecked automation section in

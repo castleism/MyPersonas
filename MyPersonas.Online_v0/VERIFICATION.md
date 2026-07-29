@@ -2,6 +2,39 @@
 
 Status: ⬜ untested · ✅ pass · ❌ fail (see note) · ⏭ skipped/blocked
 
+## Provider management and Meta Page pairing — release check 2026-07-29
+
+- ✅ Migration 018 is live on project `nwsqyuucwzihruszocge`. All eight Meta tables
+  have row-level security; `anon` and `authenticated` have no direct table-read or
+  function-execute access; all 21 connector functions are service-role-only. The Meta
+  transaction, candidate, grant, cleanup-hold, Page-connection, and erasure-lease tables
+  were empty after deployment.
+- ✅ Rollback-only production tests proved the owner-locked state machine: erasure
+  atomically cancels pending OAuth, blocks new OAuth, cannot be released by the wrong
+  lease ID, and refuses to begin while a code exchange is in fail-closed processing.
+- ✅ Active Edge versions are `delete-account` v17 and `erase-content` v10 with gateway
+  JWT verification on, plus `meta-oauth` v1 with gateway verification off for the
+  provider callback. The Meta function validates signed-in POST actions itself.
+- ✅ Production probes accepted the exact MyPersonas origin, rejected an unapproved
+  origin for both preflight and POST, rejected unsigned capabilities, returned the
+  expected configuration-required response for start, and safely redirected an invalid
+  callback state without reflecting it.
+- ✅ Deno format/type/lint checks passed for all changed functions. Independent
+  high-severity review covered OAuth single-use processing, ambiguous exchanges,
+  immutable identity reservation, exact manual-revocation checkpoints, shared-grant
+  disconnect, owner erasure leases, cross-request acknowledgements, and profile deletion;
+  no release blocker remained.
+- ✅ All five public HTML files parsed with no duplicate IDs, broken local references, or
+  inline-JavaScript errors. The account ledger, setup page, and owner guide contain the
+  same 39 providers; the Pages artifact includes every intended public policy/setup file.
+  Migration 018 exactly matches its consolidated-schema copy.
+- ⏭ `META_APP_ID`, `META_APP_SECRET`, and `META_LOGIN_CONFIG_ID` are not installed, so a
+  real Facebook Page/linked-Instagram authorization is correctly configuration-gated.
+  Publishing permissions and external Meta posting remain intentionally absent.
+- ⏭ Real signed-in owner, Gmail re-consent/mailbox action, Meta asset selection, X
+  authorization, and phone interaction remain owner-run smoke tests. No mailbox was
+  scanned, no Page was connected, and no external content was posted during this release.
+
 ## Grouped accounts and X OAuth foundation — backend/static check 2026-07-23
 
 - ✅ Migration 015 applied to project `nwsqyuucwzihruszocge`. The three service-only

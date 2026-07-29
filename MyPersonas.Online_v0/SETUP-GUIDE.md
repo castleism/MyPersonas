@@ -20,14 +20,19 @@ clears the legacy key column, revokes direct browser model writes, and creates t
 agent-control, lease, quota, approval, publishing, and fan-chat data plane. Do not apply it
 while an older Edge/client release is the only code available.
 
-The current production project has migrations 011–016. Keep those historical files
+The current production project has migrations 011–018. Keep those historical files
 unchanged. Migration `016-mailbox-manager.sql` added the owner-readable sanitized mailbox
 reports plus service-only provider references, cursors, exact action items, and operation
 leases used by Inbox Concierge. In another environment, apply it before deploying
 `mailbox-manager`, `run-mailbox-jobs`, the Gmail permission upgrade, or the matching page.
-Migration `017-mailbox-full-history.sql` is the additive next-release bounds change:
-apply it after 016 with the matching mailbox manager, worker, and page. It raises only the
-report lookback and per-scan ceiling; it grants no new scope or automatic action authority.
+Migration `017-mailbox-full-history.sql` is the applied additive bounds change. In another
+environment, apply it after 016 with the matching mailbox manager, worker, and page. It
+raises only the report lookback and per-scan ceiling; it grants no new scope or automatic
+action authority. Migration `018-meta-oauth.sql` is the applied additive connector
+boundary. In another environment, apply it after 017 before deploying `meta-oauth`. It
+adds service-only Meta OAuth transactions, candidate assets, grants, Page connections,
+token-operation and owner-erasure leases, Vault mappings, and ledger mutation guards. It
+grants no direct Facebook or Instagram publishing authority.
 Deploy the updated `delete-account` and `erase-content` functions before the new page so
 provider grants are revoked and mailbox jobs cannot race erasure. The page checks the
 versioned content-only capability before enabling erasure.
@@ -35,7 +40,7 @@ versioned content-only capability before enabling erasure.
 For a new Supabase project, open **SQL Editor**, paste the entire contents of
 `supabase-schema.sql`, and run it. The snapshot includes the base 008–010 account/
 connection/Gmail structures plus the immutable 001–012 history and exact migrations
-013–017. There is no legacy-key transition on a fresh project.
+013–018. There is no legacy-key transition on a fresh project.
 
 ## Step 2 — Wire the app to your project
 Dashboard → **Settings → API**:
@@ -189,6 +194,9 @@ Current connection coverage is intentionally explicit:
   label/archive/recoverable-Trash actions, refresh, revocation, and bounded Undo.
 - **X / Twitter** — real X consent, identity/read access, refresh, and revocation once
   the production Web App credentials and API access are installed.
+- **Facebook Pages and Page-linked professional Instagram** — the official Meta pairing
+  foundation can discover and securely bind eligible assets once the Business app is
+  configured. The current grant is identity/read-only; direct publishing remains off.
 - **Outlook / Hotmail / Microsoft 365** — private planning records until the delegated
   Microsoft Graph adapter and its Entra app are installed.
 - **Yahoo and iCloud Mail** — private planning records until a dedicated encrypted IMAP
@@ -200,11 +208,62 @@ Current connection coverage is intentionally explicit:
   MyPersonas never treats a saved password, cookie, or matching email as provider
   authentication.
 
-## Step 8 — Agent control center and schedules
+## Step 8 — Facebook Page and linked Instagram pairing
+
+The first Meta connector uses one Meta Business app with
+[Facebook Login for Business](https://developers.facebook.com/documentation/facebook-login/facebook-login-for-business)
+to discover [Facebook Pages](https://developers.facebook.com/documentation/pages-api/overview)
+and an eligible professional Instagram account linked to each Page. It does not automate a
+Facebook personal profile or a consumer Instagram account. Standalone professional
+Instagram Login is a separate connector and is not installed in this release.
+
+1. Open [Meta for Developers → My Apps](https://developers.facebook.com/apps/), create a
+   **Business** app, and add Facebook Login for Business.
+2. Add `mypersonas.online` as the app domain and use the public URLs:
+   `https://mypersonas.online/privacy.html`,
+   `https://mypersonas.online/terms.html`, and
+   `https://mypersonas.online/data-deletion.html`.
+3. Register this exact OAuth redirect URI:
+   `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth`.
+4. During development, add the Facebook member as an app administrator/developer/tester
+   and keep only the Pages that member is authorized to manage in scope. For broader use,
+   complete the applicable [business verification](https://developers.facebook.com/documentation/development/release/business-verification)
+   and [app review](https://developers.facebook.com/documentation/instagram-platform/app-review)
+   steps.
+5. Configure discovery permissions `pages_show_list`, `pages_read_engagement`, and
+   `instagram_basic`. Do not add publishing permissions to make the first connection pass.
+6. Install the credentials directly as Edge Function secrets, apply migration 018, and
+   deploy the callback:
+
+   ```
+   supabase secrets set META_APP_ID="<Meta app ID>"
+   supabase secrets set META_APP_SECRET="<Meta app secret>"
+   supabase secrets set META_LOGIN_CONFIG_ID="<Meta login configuration ID>"
+   supabase functions deploy meta-oauth --no-verify-jwt
+   ```
+
+   Set `META_LOGIN_CONFIG_ID` when Facebook Login for Business creates a login
+   configuration. Its configured permissions must match the same three discovery scopes.
+
+7. In Matrix → Account & settings → Accounts, record each destination as
+   **Facebook Page** and optionally **Instagram**, assign its persona, open
+   **Connection**, choose **Connect Meta & choose Pages**, and bind only the Page records
+   Meta returns. A linked Instagram ID is accepted only when Meta discovers it on that
+   Page.
+
+The callback exchanges and stores Meta user/Page tokens in Supabase Vault. Disconnecting
+one paired asset revokes the complete shared Meta-user grant and disconnects every Page
+and linked Instagram asset created from it. The UI continues to label external publishing
+as unavailable. A later write release must separately request `pages_manage_posts` and/or
+the current Instagram content-publishing permission, complete review, add reconciliation
+and rate-limit handling, and pass live owner-account tests.
+
+## Step 9 — Agent control center and schedules
 
 Follow the staged order in `../supabase/DEPLOY.md`: pause both workers; deploy `ai-proxy`,
 `post-bridge`, `run-publish-queue`, `fan-chat`, `gmail-oauth`, and `twitter-oauth`; apply
-every pending migration through 017; deploy `run-tasks`, `mailbox-manager`,
+every pending migration through 018; deploy `meta-oauth`,
+`run-tasks`, `mailbox-manager`,
 `run-mailbox-jobs`, `delete-account`, and the JWT-verified `erase-content`; publish the
 page; probe all three workers; then schedule content workers every five minutes and the
 bounded mailbox worker every minute. Set `CRON_SECRET` and `FAN_CHAT_SALT` before probing.
@@ -252,29 +311,41 @@ they do not promise an owner reply or live takeover.
 **Implemented in the repository:** sign-in, anonymous multi-persona pages, private
 provider-grouped account ledger, distinct recorded/email-match/API states, Gmail Inbox
 Concierge with exact cleanup approval and Undo, X OAuth identity/read authorization with
-refresh and revocation, persona direction, server-side AI proxy, Vault-backed model keys,
+refresh and revocation, Meta Page/linked-Instagram identity pairing with publishing
+disabled, manual provider handoffs, persona direction, server-side AI proxy, Vault-backed model keys,
 precise scheduled draft generation with atomic call reservations, approval queue, native
 AliaSpaces publishing, global/persona pauses, caps and quiet hours, audit history,
 synchronized owner chat, and optional disclosed SFW fan chat with an owner-review inbox.
 The 2026-07-24 production rollout applied migration 016, deployed the mailbox, Gmail, and
-erasure functions, enabled the one-minute mailbox worker, and published the matching
-GitHub Pages client. Static-client, server-boundary, schema, and empty-queue worker checks
-passed. A signed-in Google re-consent and a real owner-approved Gmail scan/action remain
-owner-run smoke tests; this guide does not claim those mailbox contents were accessed.
+erasure functions, and enabled the one-minute mailbox worker. The 2026-07-29 rollout
+applied migrations 017 and 018 and deployed the hardened erasure pair plus the
+configuration-gated Meta connector. Static-client, server-boundary, schema, rollback-only
+race, and empty-Meta-state checks passed. A signed-in Google re-consent, real
+owner-approved Gmail scan/action, and credentialed Meta owner flow remain owner-run smoke
+tests; this guide does not claim those mailbox contents or provider assets were accessed.
 
 **Content erasure:** the Matrix security area uses the versioned `erase-content` endpoint,
 which can retain the Supabase sign-in while removing owned personas, pages, posts, media,
 account records, drafts/tasks, model connections, automation/chat history, display name,
 and preferences. It refuses to run unless the server reports the immutable content-only
-contract. Gmail and identifiable X grants are revoked first. If X cannot prove the final
-grant state, the owner must revoke MyPersonas in X Connected Apps before acknowledging
-X separately. Any OpenRouter connection—legacy, pasted, or OAuth—also requires the owner
-to revoke its provider-side key before acknowledging OpenRouter separately. The server
-recomputes the required provider list at deletion time; one provider's acknowledgment
-never satisfies another provider's revocation requirement.
+contract. Gmail, identifiable X grants, and safely attributable Meta grants or unfinished
+Meta candidates are revoked first. If X cannot prove the final grant state, the owner must
+revoke MyPersonas in X Connected Apps before acknowledging X separately. When the server
+can safely reserve an unfinished Meta identity to that owner, it may require the owner to
+remove MyPersonas in Meta Business Integrations before acknowledging Meta separately;
+that one Meta authorization can cover every paired Page and linked professional Instagram
+account. An exchange with no trustworthy identity is retained as an ownership
+investigation instead: the page must not advise provider revocation or accept an ordinary
+manual acknowledgement, because doing so could disrupt another owner's existing shared
+grant. Any OpenRouter
+connection—legacy, pasted, or OAuth—also requires the owner to revoke its provider-side
+key before acknowledging OpenRouter separately. The server recomputes the required
+provider list at deletion time; one provider's acknowledgment never satisfies another
+provider's revocation requirement.
 
 **Still gated:** Outlook mailbox management, Yahoo/iCloud IMAP workers, a local Proton
-Bridge companion, and direct posting to Instagram, Facebook, TikTok, X, YouTube, LinkedIn,
+Bridge companion, standalone Instagram Login, and direct posting to Instagram, Facebook,
+TikTok, X, YouTube, LinkedIn,
 or any other external service. Each provider needs its own official integration,
 permissions, review where required, credential lifecycle, reconciliation, and
 provider-specific testing. Gmail mailbox access does not authorize social posting. Native

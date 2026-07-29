@@ -44,6 +44,10 @@ browser scenarios retain their own verification evidence.
 - [x] Private Account Ledger batch mode: add many external accounts, keep them
       unassigned or bind each to an existing/quick-created private persona. Deployed
       with owner-only storage, saved-row Quick Create, and explicit connection states.
+- [x] Provider management handoffs: every saved account has a Manage workspace for
+      persona-assigned post/reply drafts, media links, planned times, copy/open-account
+      handoff, and manual-completion tracking. OnlyFans and other record-only providers
+      never receive a password, cookie, scraped session, or false “posted” state.
 - [x] Provider OAuth connections: separate Gmail authorization with single-use state +
       PKCE, exact-mailbox validation, explicit cleanup re-consent, refresh credentials
       encrypted in Supabase Vault, and only server-attested connection state exposed to
@@ -58,6 +62,13 @@ browser scenarios retain their own verification evidence.
       support a 100-year lookback with a 15,000-message ceiling, visibly identify a
       cap-limited result, rotate active inboxes fairly, and show a suggested review action
       on every finding without granting automatic approval or mutation authority.
+- [x] Meta identity/pairing foundation: migration 018 and `meta-oauth` discover
+      Facebook Pages and Page-linked professional Instagram accounts, bind only
+      owner-selected ledger records, keep tokens in Vault, and revoke the shared grant.
+      Production connection remains configuration-gated and direct publishing is off.
+- [x] Public provider-review foundation: deployable Privacy, Terms, Data Deletion, and
+      owner setup pages with explicit official-API, app-review, manual-handoff, and
+      connector-status boundaries.
 - [ ] Outlook Inbox Concierge adapter through delegated Microsoft Graph `Mail.ReadWrite`
       after an Entra app, callback, credentials, consent, and live personal/tenant tests
       are installed.

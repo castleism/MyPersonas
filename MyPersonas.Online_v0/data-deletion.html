@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <title>Data Deletion Guide — MyPersonas / AliaSpaces</title>
+  <meta name="description" content="How to export, disconnect, revoke, and delete MyPersonas / AliaSpaces content and account data.">
+  <link rel="canonical" href="https://mypersonas.online/data-deletion.html">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <style>
+    :root{--bg:#f0f2f5;--panel:#fff;--border:#d8dce2;--text:#1c1e21;--dim:#5d6470;--accent:#1877f2;--accent2:#0b5fcc;--soft:#eaf3ff;--warn:#fff7d6;--danger:#b4233f;--green:#176c43;--max:900px}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 "Segoe UI",Arial,sans-serif}
+    a{color:var(--accent2);text-underline-offset:3px}
+    a:hover{text-decoration-thickness:2px}
+    a:focus-visible,.brand:focus-visible{outline:3px solid rgba(24,119,242,.35);outline-offset:4px;border-radius:4px}
+    .skip{position:fixed;left:12px;top:-80px;z-index:20;background:#111;color:#fff;padding:10px 14px;border-radius:8px}
+    .skip:focus{top:12px}
+    header{background:#fff;border-bottom:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .bar{max-width:var(--max);margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:800;color:var(--accent);text-decoration:none;letter-spacing:-.4px}
+    nav{display:flex;gap:6px;flex-wrap:wrap}
+    nav a{color:var(--dim);font-size:14px;font-weight:650;text-decoration:none;padding:8px 10px;border-radius:8px}
+    nav a:hover,nav a[aria-current="page"]{background:var(--soft);color:var(--accent2)}
+    main{max-width:var(--max);margin:auto;padding:30px 24px 64px}
+    .hero{background:linear-gradient(135deg,#fff 0%,#f3f8ff 100%);border:1px solid #cfe2ff;border-radius:18px;padding:clamp(24px,5vw,48px);box-shadow:0 6px 24px rgba(23,74,135,.08)}
+    h1{font-size:clamp(34px,7vw,54px);line-height:1.08;letter-spacing:-1.5px;margin:0 0 12px;color:#0b2545}
+    .lede{font-size:18px;color:#3d5875;max-width:720px;margin:0}
+    .effective{display:inline-block;margin-top:18px;background:var(--soft);color:#174d86;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+    .notice{margin:18px 0 0;background:var(--warn);border:1px solid #ead68c;border-radius:12px;padding:14px 16px}
+    .notice strong{display:block;margin-bottom:2px}
+    section{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin-top:16px}
+    h2{font-size:23px;line-height:1.25;margin:0 0 10px;color:#0b2545}
+    h3{font-size:17px;margin:20px 0 6px}
+    p{margin:8px 0}
+    ul,ol{padding-left:23px;margin:8px 0}
+    li+li{margin-top:8px}
+    .steps{counter-reset:steps;list-style:none;padding:0}
+    .steps>li{counter-increment:steps;position:relative;padding:0 0 18px 48px;min-height:40px}
+    .steps>li::before{content:counter(steps);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:800}
+    .steps strong{display:block;color:#0b2545}
+    .callout{background:var(--soft);border-left:4px solid var(--accent);padding:12px 14px;border-radius:0 10px 10px 0;margin:14px 0}
+    .danger{background:#fff2f4;border-left-color:var(--danger)}
+    .provider-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .provider-grid a{display:block;background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:12px;text-decoration:none;font-weight:700}
+    .provider-grid a span{display:block;color:var(--dim);font-size:12px;font-weight:400;margin-top:2px}
+    .provider-grid a:hover{border-color:var(--accent);background:var(--soft)}
+    .contact{border-color:#b8dfca;background:#f4fbf7}
+    footer{border-top:1px solid var(--border);background:#fff;color:var(--dim)}
+    footer .bar{font-size:13px;align-items:flex-start}
+    footer p{margin:0}
+    @media(max-width:720px){.bar{padding:12px 18px}main{padding:22px 14px 48px}.hero,section{padding:20px}nav{width:100%}nav a{flex:1;text-align:center;min-width:110px}.provider-grid{grid-template-columns:1fr}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{header,footer,.skip{display:none}body{background:#fff}main{max-width:none;padding:0}.hero,section{box-shadow:none;break-inside:avoid}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to deletion guide</a>
+  <header>
+    <div class="bar">
+      <a class="brand" href="index.html" aria-label="MyPersonas and AliaSpaces home">MyPersonas / AliaSpaces</a>
+      <nav aria-label="Policy pages">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="data-deletion.html" aria-current="page">Data deletion</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <div class="hero">
+      <h1>Data Deletion Guide</h1>
+      <p class="lede">Use these controls to export your data, disconnect providers, erase MyPersonas content, and request deletion of the remaining AliaSpaces sign-in record.</p>
+      <span class="effective">Effective July 28, 2026</span>
+      <div class="notice">
+        <strong>Deleting MyPersonas data does not delete an external account.</strong>
+        Your Gmail, X, Meta, OnlyFans, or other provider account and provider-hosted content remain under that provider’s control.
+      </div>
+    </div>
+
+    <section>
+      <h2>Before deleting</h2>
+      <ol class="steps">
+        <li><strong>Sign in to the correct AliaSpaces account.</strong> Open <a href="index.html#/studio">Matrix</a>, then open <strong>Account &amp; settings → Security</strong>.</li>
+        <li><strong>Download a copy if you want one.</strong> Select <strong>Download my data (JSON)</strong>. The export excludes stored model keys and provider tokens.</li>
+        <li><strong>Pause automation.</strong> Use the global Matrix safety switch so no new draft, publishing, fan-chat, or mailbox work begins while you review deletion.</li>
+        <li><strong>Revoke providers where needed.</strong> Use the provider links below. Provider-side revocation is especially important when the app cannot prove the final token state.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Delete all MyPersonas content but keep sign-in</h2>
+      <ol class="steps">
+        <li><strong>Go to Security.</strong> In Matrix, open <strong>Account &amp; settings → Security → Sessions &amp; data</strong>.</li>
+        <li><strong>Select “Delete all my content.”</strong> Read the confirmation carefully. This action cannot be undone.</li>
+        <li><strong>Complete any provider-revocation prompt.</strong> If the page safely identifies OpenRouter, an uncertain X grant, or an unfinished Meta authorization for manual revocation, follow its provider link and confirm only after revocation is complete. One Meta authorization can cover every paired Facebook Page and linked professional Instagram account. If the page instead reports a Meta ownership investigation, do not revoke or acknowledge it from that sign-in; use <strong>Report a problem</strong> so the original owner connection is not disrupted.</li>
+        <li><strong>Wait for verified completion.</strong> The page enables deletion only when the server reports the content-only deletion contract. If the deletion service cannot be reached or cannot confirm success, the page does not claim deletion.</li>
+      </ol>
+      <p>This removes owned personas, pages, posts, comments, reactions, albums, uploaded media, account inventory and connection records, drafts, schedules, content plans, linked models and encrypted credentials, automation and chat history, display name, preferences, and owner problem reports.</p>
+      <div class="callout"><strong>Your sign-in remains.</strong> Content erasure clears the private profile details but intentionally keeps the Supabase authentication record so you can still sign in.</div>
+    </section>
+
+    <section>
+      <h2>Request deletion of the remaining sign-in record</h2>
+      <p>The current public Security screen exposes verified content-only erasure, not a separate full-account button. To request full sign-in deletion:</p>
+      <ol class="steps">
+        <li><strong>Run “Delete all my content” first.</strong> This removes the content and supported connected grants through the verified owner flow.</li>
+        <li><strong>While still signed in, press “Report a problem.”</strong> The button appears in the lower-left corner of the main MyPersonas / AliaSpaces application.</li>
+        <li><strong>Enter this exact request:</strong><q>Delete my remaining AliaSpaces sign-in record.</q> Do not add a password, token, recovery code, or other credential.</li>
+        <li><strong>Keep provider revocations separate.</strong> Removing the sign-in record cannot remove copies held by Google, X, Meta, an AI provider, or another third party.</li>
+      </ol>
+      <p>The signed-in report supplies the account identifier needed to locate the request without asking you to place authentication secrets in the note. No completion time is promised on this page.</p>
+    </section>
+
+    <section>
+      <h2>Remove one saved or connected account</h2>
+      <ol class="steps">
+        <li><strong>Open Account &amp; settings → Accounts.</strong> Expand the provider and select the saved account.</li>
+        <li><strong>Remove the account record.</strong> For Gmail and X, MyPersonas attempts to revoke supported access and remove its encrypted token before deleting the ledger record. Removing a connected Facebook Page or linked Instagram record revokes the complete shared Meta grant and disconnects every asset paired through it. A failed or uncertain revocation is shown instead of being silently treated as complete.</li>
+        <li><strong>Revoke at the provider too.</strong> Use its Connected Apps or security settings if you want to independently end access.</li>
+      </ol>
+      <p>For inventory-only providers such as OnlyFans, removing the record deletes the MyPersonas identifier, assignment, notes, and planning link. It does not affect the external account because MyPersonas never had provider authorization.</p>
+    </section>
+
+    <section>
+      <h2>Provider revocation links</h2>
+      <p>Sign in directly with the provider and remove MyPersonas or the relevant application. These are provider pages, not MyPersonas pages.</p>
+      <div class="provider-grid">
+        <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google permissions<span>Revoke Gmail or Google-account access</span></a>
+        <a href="https://x.com/settings/connected_apps" target="_blank" rel="noopener noreferrer">X Connected Apps<span>Revoke the MyPersonas X grant</span></a>
+        <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer">OpenRouter keys<span>Remove or revoke a model key</span></a>
+        <a href="https://www.facebook.com/settings?tab=business_tools" target="_blank" rel="noopener noreferrer">Meta integrations<span>Review Facebook and Instagram business integrations</span></a>
+        <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener noreferrer">Microsoft app access<span>Review personal Microsoft-account application access</span></a>
+        <a href="https://support.apple.com/en-us/102654" target="_blank" rel="noopener noreferrer">Apple app passwords<span>Revoke an app-specific password if one was created elsewhere</span></a>
+      </div>
+      <p>Future provider connectors must add their revocation path to this guide before production use.</p>
+    </section>
+
+    <section>
+      <h2>Mailbox-specific effects</h2>
+      <ul>
+        <li>Disconnecting Gmail removes the stored MyPersonas grant and stops new scans and actions.</li>
+        <li>Deleting MyPersonas findings, plans, or audit records does not reverse changes already made in Gmail.</li>
+        <li>Use an available MyPersonas Undo before its displayed deadline if you need to restore labels or recover messages moved to Trash by an approved plan.</li>
+        <li>Gmail controls Trash retention. MyPersonas currently limits its displayed undo window to no more than 28 days and cannot restore mail after the provider removes it.</li>
+        <li>No MyPersonas deletion action deletes the Gmail account itself.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Browser data and public copies</h2>
+      <p>After content erasure, MyPersonas clears account-scoped chat backups and selected preferences from the current browser. Because content-only erasure keeps sign-in, the Supabase session can remain. To remove remaining device data, sign out and clear site data for MyPersonas in your browser.</p>
+      <p>Public content or media may have been copied, embedded, indexed, downloaded, or cached by other people and services. MyPersonas deletion removes the owned source records and stored media it controls but cannot guarantee removal of independent third-party copies.</p>
+      <div class="callout danger"><strong>Never send credentials in a deletion request.</strong> MyPersonas does not need an external provider password, app password, recovery code, access token, API key, or session cookie to locate your signed-in request.</div>
+    </section>
+
+    <section class="contact">
+      <h2>If the controls cannot be reached</h2>
+      <p>Open the <a href="index.html">MyPersonas / AliaSpaces application</a> and use <strong>Report a problem</strong>. Begin the note with “Data deletion,” describe the control you could not reach, and do not include credentials or payment information.</p>
+      <p>For more detail about the data involved, read the <a href="privacy.html">Privacy Notice</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="bar">
+      <p>MyPersonas / AliaSpaces · Effective July 28, 2026</p>
+      <p><a href="index.html">Home</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+    </div>
+  </footer>
+</body>
+</html>

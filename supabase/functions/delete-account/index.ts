@@ -24,12 +24,18 @@ const X_NO_PROVIDER_GRANT_ERROR_CODES = new Set([
   "missing_authorization_code",
   "x_token_exchange_failed",
 ]);
+const META_MANUAL_REVOCATION_URL =
+  "https://www.facebook.com/settings?tab=business_tools";
+const META_OWNER_ERASURE_TTL_SECONDS = 3600;
+const META_GRAPH_API_VERSION = /^v[0-9]+\.[0-9]+$/.test(
+    Deno.env.get("META_GRAPH_API_VERSION") || "",
+  )
+  ? Deno.env.get("META_GRAPH_API_VERSION")!
+  : "v25.0";
 const cors = (req: Request) => {
   const o = req.headers.get("Origin") || "";
   return {
-    "Access-Control-Allow-Origin": ALLOWED.has(o)
-      ? o
-      : "https://aliaspaces.com",
+    "Access-Control-Allow-Origin": ALLOWED.has(o) ? o : "",
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -51,6 +57,58 @@ async function checked(
 ) {
   const { error } = await operation;
   if (error) throw new Error(`${label}: ${error.message}`);
+}
+
+async function renewMetaOwnerErasure(
+  admin: SupabaseClient,
+  uid: string,
+  leaseId: string,
+  phase: string,
+) {
+  const { data, error } = await admin.rpc("renew_meta_owner_erasure", {
+    p_owner: uid,
+    p_lease_id: leaseId,
+    p_ttl_seconds: META_OWNER_ERASURE_TTL_SECONDS,
+  });
+  if (error || data !== true) {
+    throw new Error(
+      `the Meta owner-erasure lease expired before ${phase}; retry after the active lease clears`,
+    );
+  }
+}
+
+async function withMetaOwnerErasureRelease<T>(
+  admin: SupabaseClient,
+  uid: string,
+  leaseId: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  let result: T | undefined;
+  let workError: unknown;
+  let releaseFailed = false;
+  try {
+    result = await work();
+  } catch (error) {
+    workError = error;
+  } finally {
+    try {
+      const { data, error } = await admin.rpc("release_meta_owner_erasure", {
+        p_owner: uid,
+        p_lease_id: leaseId,
+      });
+      releaseFailed = Boolean(error) || data !== true;
+    } catch {
+      releaseFailed = true;
+    }
+  }
+  if (releaseFailed) {
+    const prior = workError instanceof Error ? `${workError.message}; ` : "";
+    throw new Error(
+      `${prior}the exact Meta owner-erasure lease could not be released; retry after its safety timeout`,
+    );
+  }
+  if (workError) throw workError;
+  return result as T;
 }
 
 async function revokeGoogleToken(token: string) {
@@ -120,6 +178,68 @@ async function revokeXGrantPair(
   if (!await revokeXToken(refreshToken, clientId, clientSecret)) return false;
   if (await revokeXToken(accessToken, clientId, clientSecret)) return true;
   return await xAccessTokenConfirmedInvalid(accessToken);
+}
+
+async function metaAppSecretProof(accessToken: string, appSecret: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(appSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(accessToken),
+    ),
+  );
+  return [...signature].map((byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+async function revokeMetaPermissions(
+  metaUserId: string,
+  accessToken: string,
+  appSecret: string,
+) {
+  if (
+    !/^[0-9]{1,64}$/.test(metaUserId) ||
+    !accessToken ||
+    accessToken.length > 16_384 ||
+    !appSecret
+  ) {
+    return false;
+  }
+  try {
+    const url = new URL(
+      `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${metaUserId}/permissions`,
+    );
+    url.searchParams.set(
+      "appsecret_proof",
+      await metaAppSecretProof(accessToken, appSecret),
+    );
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return false;
+    const payload = await response.json().catch(() => null) as
+      | { success?: boolean }
+      | boolean
+      | null;
+    return payload === true ||
+      Boolean(payload && typeof payload === "object" && payload.success);
+  } catch {
+    return false;
+  }
 }
 
 async function listMediaFiles(
@@ -209,6 +329,79 @@ async function listTwitterLedgers(admin: SupabaseClient, uid: string) {
     if (page.length < 500) return ledgers;
     from += page.length;
   }
+}
+
+type MetaGrantRow = {
+  id: string;
+  meta_user_id: string;
+};
+
+type MetaCandidateRow = {
+  selection_hash: string;
+  meta_user_id: string;
+  revocation_state:
+    | "pending"
+    | "revoking"
+    | "provider_revoked"
+    | "manual_required";
+  revocation_started_at?: string | null;
+};
+
+type MetaClaimedCandidateRow = {
+  selection_hash: string;
+  meta_user_id: string;
+  previous_revocation_state:
+    | "pending"
+    | "revoking"
+    | "provider_revoked"
+    | "manual_required";
+  token_bundle?: Record<string, unknown> | string;
+};
+
+async function listMetaGrants(admin: SupabaseClient, uid: string) {
+  const grants: MetaGrantRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("meta_grants")
+      .select("id,meta_user_id").eq("owner", uid).order("id")
+      .range(from, from + 499);
+    if (error) throw new Error("could not inspect stored Meta grants");
+    const page = (data || []) as MetaGrantRow[];
+    grants.push(...page);
+    if (page.length < 500) return grants;
+    from += page.length;
+  }
+}
+
+async function getMetaCandidate(admin: SupabaseClient, uid: string) {
+  const { data, error } = await admin.from("meta_oauth_candidates")
+    .select(
+      "selection_hash,meta_user_id,revocation_state,revocation_started_at",
+    )
+    .eq("owner", uid)
+    .maybeSingle();
+  if (error) {
+    throw new Error("could not inspect pending Meta authorization cleanup");
+  }
+  return data as MetaCandidateRow | null;
+}
+
+function metaCandidateAccessToken(
+  value: Record<string, unknown> | string | undefined,
+) {
+  let bundle: unknown = value;
+  if (typeof bundle === "string") {
+    try {
+      bundle = JSON.parse(bundle);
+    } catch {
+      return "";
+    }
+  }
+  if (!bundle || typeof bundle !== "object") return "";
+  const token = (bundle as Record<string, unknown>).user_access_token;
+  return typeof token === "string" && token.length <= 16_384
+    ? token.trim()
+    : "";
 }
 
 function isOpenRouterBackend(row: {
@@ -311,6 +504,60 @@ async function ownerHasAmbiguousXGrant(admin: SupabaseClient, uid: string) {
     if (!providerSubject && !sharedGrantResetLedgers.has(ledgerId)) return true;
   }
   return false;
+}
+
+async function ownerHasAmbiguousMetaGrant(
+  admin: SupabaseClient,
+  uid: string,
+) {
+  const [grants, candidate, manualConnections, cleanupHold] = await Promise.all(
+    [
+      listMetaGrants(admin, uid),
+      getMetaCandidate(admin, uid),
+      admin.from("account_connections").select("ledger_id")
+        .eq("owner", uid)
+        .eq("error_code", "meta_manual_revoke_required")
+        .limit(1),
+      admin.from("meta_oauth_cleanup_holds").select("owner")
+        .eq("owner", uid).maybeSingle(),
+    ],
+  );
+  if (manualConnections.error || cleanupHold.error) {
+    throw new Error("could not inspect Meta manual-revocation state");
+  }
+  if (cleanupHold.data) return true;
+  if ((manualConnections.data || []).length > 0) return true;
+  if (
+    candidate &&
+    candidate.revocation_state === "manual_required"
+  ) {
+    return true;
+  }
+  if (
+    !Deno.env.get("META_APP_SECRET") &&
+    (grants.length > 0 ||
+      Boolean(
+        candidate && candidate.revocation_state !== "provider_revoked",
+      ))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function ownerHasMetaOwnershipInvestigation(
+  admin: SupabaseClient,
+  uid: string,
+) {
+  const { data, error } = await admin.from("meta_oauth_cleanup_holds")
+    .select("owner")
+    .eq("owner", uid)
+    .eq("cleanup_kind", "ownership_investigation")
+    .maybeSingle();
+  if (error) {
+    throw new Error("could not inspect Meta ownership-investigation state");
+  }
+  return Boolean(data);
 }
 
 async function revokeGmail(admin: SupabaseClient, uid: string) {
@@ -600,6 +847,384 @@ async function revokeTwitter(
   }
 }
 
+async function metaGrantRecordedState(
+  admin: SupabaseClient,
+  uid: string,
+  grantId: string,
+) {
+  const { data: assets, error: assetError } = await admin.from(
+    "meta_page_connections",
+  )
+    .select("facebook_ledger_id,instagram_ledger_id")
+    .eq("owner", uid)
+    .eq("grant_id", grantId);
+  if (assetError) throw new Error("could not inspect shared Meta assets");
+  const ledgerIds = [
+    ...new Set(
+      (assets || []).flatMap((asset) => [
+        asset.facebook_ledger_id,
+        asset.instagram_ledger_id,
+      ]).filter((value): value is string =>
+        typeof value === "string" && !!value
+      ),
+    ),
+  ];
+  if (!ledgerIds.length) return "active";
+  const { data: connections, error } = await admin.from("account_connections")
+    .select("error_code")
+    .eq("owner", uid)
+    .in("ledger_id", ledgerIds);
+  if (error) throw new Error("could not inspect Meta cleanup state");
+  const errors = new Set(
+    (connections || []).map((row) => String(row.error_code || "")),
+  );
+  if (errors.has("meta_provider_revoked_local_cleanup_failed")) {
+    return "provider_revoked";
+  }
+  if (errors.has("meta_manual_revoke_required")) return "manual_required";
+  return "active";
+}
+
+async function revokeMeta(
+  admin: SupabaseClient,
+  uid: string,
+  manualRevocationsAcknowledged: boolean,
+) {
+  const appSecret = Deno.env.get("META_APP_SECRET") || "";
+  const providerRevokedUsers = new Set<string>();
+  const manuallyAcknowledgedUsers = new Set<string>();
+  const grants = await listMetaGrants(admin, uid);
+
+  for (const grant of grants) {
+    const leaseId = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_meta_token_operation",
+      {
+        p_grant_id: grant.id,
+        p_owner: uid,
+        p_lease_id: leaseId,
+        p_operation_kind: "disconnect",
+        p_ttl_seconds: 180,
+      },
+    );
+    if (claimError || claimed !== true) {
+      throw new Error(
+        "another Meta connection operation is in progress; wait and retry deletion",
+      );
+    }
+
+    let grantDeleted = false;
+    try {
+      const recordedState = await metaGrantRecordedState(admin, uid, grant.id);
+      if (
+        recordedState === "manual_required" &&
+        !manualRevocationsAcknowledged
+      ) {
+        throw new Error(
+          "revoke the entire MyPersonas integration in Facebook Business Integrations before deletion",
+        );
+      }
+
+      let providerRevocationConfirmed = recordedState === "provider_revoked";
+      if (
+        !providerRevocationConfirmed &&
+        recordedState !== "manual_required"
+      ) {
+        const { data, error: tokenError } = await admin.rpc(
+          "meta_get_grant_token_bundle",
+          { p_grant_id: grant.id, p_owner: uid },
+        );
+        const row = (Array.isArray(data) ? data[0] : data) as
+          | {
+            meta_user_id?: string;
+            token_bundle?: Record<string, unknown> | string;
+          }
+          | null;
+        let bundle: unknown = row?.token_bundle || null;
+        if (typeof bundle === "string") {
+          try {
+            bundle = JSON.parse(bundle);
+          } catch {
+            bundle = null;
+          }
+        }
+        const accessToken = bundle && typeof bundle === "object" &&
+            typeof (bundle as Record<string, unknown>).access_token === "string"
+          ? String((bundle as Record<string, unknown>).access_token)
+          : "";
+        const metaUserId = String(row?.meta_user_id || grant.meta_user_id);
+        providerRevocationConfirmed = !tokenError && Boolean(appSecret) &&
+          await revokeMetaPermissions(metaUserId, accessToken, appSecret);
+      }
+
+      const manualAccepted = !providerRevocationConfirmed &&
+        recordedState === "manual_required" &&
+        manualRevocationsAcknowledged;
+      if (!providerRevocationConfirmed && !manualAccepted) {
+        const { error: recordError } = await admin.rpc(
+          "meta_mark_grant_error",
+          {
+            p_grant_id: grant.id,
+            p_owner: uid,
+            p_error_code: "meta_manual_revoke_required",
+          },
+        );
+        if (recordError) {
+          throw new Error(
+            "Meta revocation was not confirmed and its shared fail-closed state could not be recorded",
+          );
+        }
+        throw new Error(
+          `Meta did not confirm revocation; revoke the entire MyPersonas integration at ${META_MANUAL_REVOCATION_URL}, then retry with the Meta acknowledgement`,
+        );
+      }
+
+      const deleted = await admin.rpc(
+        "meta_delete_grant_and_mark_disconnected",
+        { p_grant_id: grant.id, p_owner: uid, p_lease_id: leaseId },
+      );
+      if (deleted.error) {
+        if (providerRevocationConfirmed) {
+          await admin.rpc("meta_mark_grant_error", {
+            p_grant_id: grant.id,
+            p_owner: uid,
+            p_error_code: "meta_provider_revoked_local_cleanup_failed",
+          });
+        }
+        throw new Error(
+          providerRevocationConfirmed
+            ? "Meta access was revoked, but the shared local connection could not be cleared; retry deletion"
+            : "manual Meta revocation was acknowledged, but the shared local connection could not be cleared; retry deletion",
+        );
+      }
+      grantDeleted = true;
+      if (providerRevocationConfirmed) {
+        providerRevokedUsers.add(grant.meta_user_id);
+      } else {
+        manuallyAcknowledgedUsers.add(grant.meta_user_id);
+      }
+    } finally {
+      if (!grantDeleted) {
+        await admin.rpc("release_meta_token_operation", {
+          p_grant_id: grant.id,
+          p_owner: uid,
+          p_lease_id: leaseId,
+        });
+      }
+    }
+  }
+
+  const candidate = await getMetaCandidate(admin, uid);
+  if (candidate) {
+    const [durableGrant, reservation] = await Promise.all([
+      admin.from("meta_grants")
+        .select("owner")
+        .eq("meta_user_id", candidate.meta_user_id)
+        .maybeSingle(),
+      admin.from("meta_identity_reservations")
+        .select("owner,candidate_selection_hash")
+        .eq("meta_user_id", candidate.meta_user_id)
+        .maybeSingle(),
+    ]);
+    if (durableGrant.error || reservation.error) {
+      throw new Error(
+        "could not inspect Meta identity ownership before candidate cleanup",
+      );
+    }
+    if (
+      (durableGrant.data && durableGrant.data.owner !== uid) ||
+      (reservation.data && reservation.data.owner !== uid)
+    ) {
+      const { data: discarded, error } = await admin.rpc(
+        "meta_delete_oauth_candidate",
+        { p_selection_hash: candidate.selection_hash, p_owner: uid },
+      );
+      if (error || discarded !== true) {
+        throw new Error(
+          "could not discard a legacy cross-owner Meta candidate without touching the other owner's provider grant",
+        );
+      }
+    } else if (
+      !reservation.data ||
+      reservation.data.candidate_selection_hash !== candidate.selection_hash
+    ) {
+      const { data: holdStatus, error: holdError } = await admin.rpc(
+        "meta_create_cleanup_hold",
+        {
+          p_owner: uid,
+          p_error_code: "meta_identity_reservation_unavailable",
+          p_meta_user_id: candidate.meta_user_id,
+          p_cleanup_kind: "ownership_investigation",
+        },
+      );
+      if (holdError) {
+        throw new Error(
+          "could not establish a fail-closed Meta ownership investigation",
+        );
+      }
+      if (holdStatus === "reserved_other_owner") {
+        const { data: discarded, error } = await admin.rpc(
+          "meta_delete_oauth_candidate",
+          { p_selection_hash: candidate.selection_hash, p_owner: uid },
+        );
+        if (error || discarded !== true) {
+          throw new Error(
+            "could not discard a cross-owner Meta candidate without touching the other owner's provider grant",
+          );
+        }
+      } else if (
+        holdStatus === "held" ||
+        holdStatus === "protected_existing_hold"
+      ) {
+        throw new Error(
+          "META_OWNERSHIP_INVESTIGATION: The Meta identity reservation cannot prove which shared provider integration is safe to revoke. Do not revoke Meta access; ownership review is required before erasure.",
+        );
+      } else {
+        throw new Error(
+          "could not establish a fail-closed Meta ownership investigation",
+        );
+      }
+    } else {
+      if (
+        candidate.revocation_state === "manual_required" &&
+        !manualRevocationsAcknowledged
+      ) {
+        throw new Error(
+          "revoke the entire MyPersonas integration in Facebook Business Integrations before deletion",
+        );
+      }
+      const startedAt = candidate.revocation_started_at
+        ? new Date(candidate.revocation_started_at).getTime()
+        : 0;
+      if (
+        candidate.revocation_state === "revoking" &&
+        startedAt > Date.now() - 3 * 60 * 1000
+      ) {
+        throw new Error(
+          "another Meta authorization cleanup is in progress; wait and retry deletion",
+        );
+      }
+
+      const { data: claimData, error: claimError } = await admin.rpc(
+        "meta_claim_oauth_candidate_for_revocation",
+        {
+          p_selection_hash: candidate.selection_hash,
+          p_owner: uid,
+          p_browser_nonce_hash: null,
+          p_allow_manual_required: manualRevocationsAcknowledged,
+        },
+      );
+      const claimedCandidate =
+        (Array.isArray(claimData) ? claimData[0] : null) as
+          | MetaClaimedCandidateRow
+          | null;
+      if (claimError || !claimedCandidate) {
+        throw new Error(
+          "could not lock the pending Meta authorization for safe cleanup",
+        );
+      }
+
+      let providerRevocationConfirmed =
+        claimedCandidate.previous_revocation_state === "provider_revoked" ||
+        providerRevokedUsers.has(claimedCandidate.meta_user_id);
+      const manualAccepted =
+        manuallyAcknowledgedUsers.has(claimedCandidate.meta_user_id) ||
+        (claimedCandidate.previous_revocation_state === "manual_required" &&
+          manualRevocationsAcknowledged);
+      if (!providerRevocationConfirmed && !manualAccepted) {
+        const accessToken = metaCandidateAccessToken(
+          claimedCandidate.token_bundle,
+        );
+        providerRevocationConfirmed = Boolean(appSecret) &&
+          await revokeMetaPermissions(
+            claimedCandidate.meta_user_id,
+            accessToken,
+            appSecret,
+          );
+      }
+      if (!providerRevocationConfirmed && !manualAccepted) {
+        const { data: recorded, error } = await admin.rpc(
+          "meta_mark_candidate_manual_revoke",
+          {
+            p_selection_hash: candidate.selection_hash,
+            p_owner: uid,
+            p_error_code: "meta_candidate_revoke_unconfirmed",
+          },
+        );
+        if (error || recorded !== true) {
+          throw new Error(
+            "Meta candidate revocation was not confirmed and its fail-closed state could not be recorded",
+          );
+        }
+        throw new Error(
+          `Meta did not confirm revocation; revoke the entire MyPersonas integration at ${META_MANUAL_REVOCATION_URL}, then retry with the Meta acknowledgement`,
+        );
+      }
+      if (providerRevocationConfirmed) {
+        const { data: marked, error } = await admin.rpc(
+          "meta_mark_candidate_provider_revoked",
+          { p_selection_hash: candidate.selection_hash, p_owner: uid },
+        );
+        if (error || marked !== true) {
+          throw new Error(
+            "Meta access was revoked, but its local cleanup checkpoint could not be recorded",
+          );
+        }
+      }
+      const { data: deleted, error: deleteError } = await admin.rpc(
+        "meta_delete_oauth_candidate",
+        { p_selection_hash: candidate.selection_hash, p_owner: uid },
+      );
+      if (deleteError || deleted !== true) {
+        if (!providerRevocationConfirmed) {
+          await admin.rpc("meta_mark_candidate_manual_revoke", {
+            p_selection_hash: candidate.selection_hash,
+            p_owner: uid,
+            p_error_code: "meta_manual_revoke_cleanup_failed",
+          });
+        }
+        throw new Error(
+          "Meta access was revoked or manually acknowledged, but the pending local authorization could not be cleared",
+        );
+      }
+    }
+  }
+
+  const { data: cleanupHold, error: holdLookupError } = await admin.from(
+    "meta_oauth_cleanup_holds",
+  ).select("owner,meta_user_id,cleanup_kind,error_code").eq("owner", uid)
+    .maybeSingle();
+  if (holdLookupError) {
+    throw new Error("could not inspect ambiguous Meta authorization cleanup");
+  }
+  if (cleanupHold) {
+    if (cleanupHold.cleanup_kind === "ownership_investigation") {
+      throw new Error(
+        "Meta returned no identity for an ambiguous authorization. Account erasure is fail-closed until support resolves the ownership investigation; do not revoke a provider integration based on this hold",
+      );
+    }
+    if (!manualRevocationsAcknowledged) {
+      throw new Error(
+        "revoke the entire MyPersonas integration in Facebook Business Integrations before deletion",
+      );
+    }
+    const { data: removed, error } = await admin.rpc(
+      "meta_delete_cleanup_hold",
+      {
+        p_owner: uid,
+        p_cleanup_kind: cleanupHold.cleanup_kind,
+        p_meta_user_id: cleanupHold.meta_user_id,
+        p_error_code: cleanupHold.error_code,
+      },
+    );
+    if (error || removed !== true) {
+      throw new Error(
+        "manual Meta revocation was acknowledged, but the ambiguous authorization hold could not be cleared",
+      );
+    }
+  }
+}
+
 async function eraseOwnedRows(
   admin: SupabaseClient,
   uid: string,
@@ -685,9 +1310,22 @@ export function createErasureHandler(
     const json = (body: unknown, status = 200) =>
       new Response(JSON.stringify(body), {
         status,
-        headers: { ...CORS, "Content-Type": "application/json" },
+        headers: {
+          ...CORS,
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
       });
-    if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+    const origin = req.headers.get("Origin") || "";
+    if (req.method === "OPTIONS") {
+      return ALLOWED.has(origin)
+        ? new Response("ok", { headers: CORS })
+        : new Response("Forbidden", { status: 403 });
+    }
+    if (!ALLOWED.has(origin)) {
+      return json({ error: "origin not allowed" }, 403);
+    }
     if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "");
@@ -710,6 +1348,11 @@ export function createErasureHandler(
         keepAccount: true,
         fullAccount: !options.contentOnly,
         contentOnly: options.contentOnly,
+        externalRevocationAcknowledgements: [
+          "openrouter",
+          "twitter",
+          "meta",
+        ],
       });
     }
     if (body.confirm !== true || body.protocolVersion !== 2) {
@@ -738,7 +1381,11 @@ export function createErasureHandler(
     const acknowledgedExternalRevocations = new Set<string>();
     if (Array.isArray(body.externalRevocationsAcknowledged)) {
       for (const provider of body.externalRevocationsAcknowledged) {
-        if (provider === "openrouter" || provider === "twitter") {
+        if (
+          provider === "openrouter" ||
+          provider === "twitter" ||
+          provider === "meta"
+        ) {
           acknowledgedExternalRevocations.add(provider);
         }
       }
@@ -749,13 +1396,32 @@ export function createErasureHandler(
     }
 
     try {
-      const [hasOpenRouter, hasAmbiguousX] = await Promise.all([
-        ownerHasOpenRouterBackend(admin, uid),
-        ownerHasAmbiguousXGrant(admin, uid),
-      ]);
+      const [
+        hasOpenRouter,
+        hasAmbiguousX,
+        hasAmbiguousMeta,
+        hasMetaOwnershipInvestigation,
+      ] = await Promise
+        .all([
+          ownerHasOpenRouterBackend(admin, uid),
+          ownerHasAmbiguousXGrant(admin, uid),
+          ownerHasAmbiguousMetaGrant(admin, uid),
+          ownerHasMetaOwnershipInvestigation(admin, uid),
+        ]);
+      if (hasMetaOwnershipInvestigation) {
+        return json({
+          error:
+            "Meta returned no identity for an ambiguous authorization. Erasure is fail-closed until support resolves the ownership investigation. Do not revoke a provider integration based on this hold.",
+          ownershipInvestigationRequired: true,
+          doNotRevokeProvider: true,
+          requiredExternalRevocations: [],
+          missingExternalRevocations: [],
+        }, 409);
+      }
       const requiredExternalRevocations = [
         ...(hasOpenRouter ? ["openrouter"] : []),
         ...(hasAmbiguousX ? ["twitter"] : []),
+        ...(hasAmbiguousMeta ? ["meta"] : []),
       ];
       const missingExternalRevocations = requiredExternalRevocations.filter(
         (provider) => !acknowledgedExternalRevocations.has(provider),
@@ -768,40 +1434,150 @@ export function createErasureHandler(
           missingExternalRevocations,
         }, 409);
       }
-      const personaIds = await listOwnedPersonaIds(admin, uid);
-      await revokeGmail(admin, uid);
-      await revokeTwitter(
-        admin,
-        uid,
-        acknowledgedExternalRevocations.has("twitter"),
+      const metaOwnerErasureLeaseId = crypto.randomUUID();
+      const { data: claimStatus, error: claimError } = await admin.rpc(
+        "claim_meta_owner_erasure",
+        {
+          p_owner: uid,
+          p_lease_id: metaOwnerErasureLeaseId,
+          p_ttl_seconds: META_OWNER_ERASURE_TTL_SECONDS,
+        },
       );
-      await eraseMedia(admin, uid);
-      await eraseOwnedRows(admin, uid, personaIds);
-
-      if (body.keepAccount === true) {
-        await checked(
-          "account preferences",
-          admin.from("profiles").update({ display_name: null, prefs: {} }).eq(
-            "id",
-            uid,
-          ),
-        );
-        return json({ deleted: true, accountDeleted: false });
-      }
-
-      await checked("profile", admin.from("profiles").delete().eq("id", uid));
-      const { error: deleteUserError } = await admin.auth.admin.deleteUser(uid);
-      if (deleteUserError) {
+      if (claimError) {
         return json({
-          error: "content removed but sign-in deletion failed: " +
-            deleteUserError.message,
+          error:
+            "Could not establish the Meta owner-erasure safety lease. No erasure work was started.",
         }, 500);
       }
-      return json({ deleted: true, accountDeleted: true });
+      if (claimStatus === "processing_oauth") {
+        return json({
+          error:
+            "A Meta authorization exchange is still being resolved. Erasure is fail-closed until that provider outcome is durably recorded.",
+          ownershipInvestigationRequired: true,
+          doNotRevokeProvider: true,
+          requiredExternalRevocations: [],
+          missingExternalRevocations: [],
+        }, 409);
+      }
+      if (claimStatus === "busy") {
+        return json({
+          error:
+            "Another account-erasure operation is already running. Wait for it to finish or for its safety lease to expire, then retry.",
+        }, 409);
+      }
+      if (claimStatus !== "claimed") {
+        return json({
+          error:
+            "The Meta owner-erasure safety lease returned an unknown state. No erasure work was started.",
+        }, 500);
+      }
+
+      const eraseClaimedOwner = async () => {
+        const personaIds = await listOwnedPersonaIds(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "Gmail revocation",
+        );
+        await revokeGmail(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "X revocation",
+        );
+        await revokeTwitter(
+          admin,
+          uid,
+          hasAmbiguousX &&
+            acknowledgedExternalRevocations.has("twitter"),
+        );
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "Meta revocation",
+        );
+        await revokeMeta(
+          admin,
+          uid,
+          hasAmbiguousMeta &&
+            acknowledgedExternalRevocations.has("meta"),
+        );
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "media erasure",
+        );
+        await eraseMedia(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "owned-row erasure",
+        );
+        await eraseOwnedRows(admin, uid, personaIds);
+
+        if (body.keepAccount === true) {
+          await renewMetaOwnerErasure(
+            admin,
+            uid,
+            metaOwnerErasureLeaseId,
+            "account preference reset",
+          );
+          await checked(
+            "account preferences",
+            admin.from("profiles").update({ display_name: null, prefs: {} }).eq(
+              "id",
+              uid,
+            ),
+          );
+          return json({ deleted: true, accountDeleted: false });
+        }
+
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "profile deletion",
+        );
+        await checked("profile", admin.from("profiles").delete().eq("id", uid));
+        const { error: deleteUserError } = await admin.auth.admin.deleteUser(
+          uid,
+        );
+        if (deleteUserError) {
+          return json({
+            error: "content removed but sign-in deletion failed: " +
+              deleteUserError.message,
+          }, 500);
+        }
+        return json({ deleted: true, accountDeleted: true });
+      };
+
+      return body.keepAccount === true
+        ? await withMetaOwnerErasureRelease(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          eraseClaimedOwner,
+        )
+        : await eraseClaimedOwner();
     } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      if (message.startsWith("META_OWNERSHIP_INVESTIGATION:")) {
+        return json({
+          error: message.slice("META_OWNERSHIP_INVESTIGATION:".length).trim(),
+          ownershipInvestigationRequired: true,
+          doNotRevokeProvider: true,
+          requiredExternalRevocations: [],
+          missingExternalRevocations: [],
+        }, 409);
+      }
       return json({
         error: "Deletion stopped and may be partially complete: " +
-          (error instanceof Error ? error.message : "unknown error"),
+          message,
       }, 500);
     }
   };

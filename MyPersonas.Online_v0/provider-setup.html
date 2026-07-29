@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <title>Provider Setup — MyPersonas / AliaSpaces</title>
+  <meta name="description" content="Official account connection, review, mailbox, and manual-staging requirements for every provider supported by the MyPersonas Account Ledger.">
+  <link rel="canonical" href="https://mypersonas.online/provider-setup.html">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <style>
+    :root{
+      --bg:#f0f2f5;--panel:#fff;--border:#d8dce2;--text:#1c1e21;--dim:#5d6470;
+      --accent:#1877f2;--accent2:#0b5fcc;--navy:#0b2545;--soft:#eaf3ff;
+      --green:#176c43;--green-bg:#e9f8f0;--amber:#7c5200;--amber-bg:#fff4cf;
+      --purple:#6542a6;--purple-bg:#f1ebff;--red:#9e2942;--red-bg:#fdecef;--max:1100px
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 "Segoe UI",Arial,sans-serif}
+    a{color:var(--accent2);text-underline-offset:3px}
+    a:hover{text-decoration-thickness:2px}
+    a:focus-visible,input:focus-visible,summary:focus-visible,.provider:focus-visible{outline:3px solid rgba(24,119,242,.35);outline-offset:3px;border-radius:6px}
+    .skip{position:fixed;left:12px;top:-80px;z-index:30;background:#111;color:#fff;padding:10px 14px;border-radius:8px}
+    .skip:focus{top:12px}
+    header{background:#fff;border-bottom:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .bar{max-width:var(--max);margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:800;color:var(--accent);text-decoration:none;letter-spacing:-.4px}
+    nav{display:flex;gap:6px;flex-wrap:wrap}
+    nav a{color:var(--dim);font-size:14px;font-weight:650;text-decoration:none;padding:8px 10px;border-radius:8px}
+    nav a:hover,nav a[aria-current="page"]{background:var(--soft);color:var(--accent2)}
+    main{max-width:var(--max);margin:auto;padding:30px 24px 64px}
+    .hero{background:linear-gradient(135deg,#fff 0%,#f2f7ff 100%);border:1px solid #cfe2ff;border-radius:18px;padding:clamp(24px,5vw,48px);box-shadow:0 6px 24px rgba(23,74,135,.08)}
+    .eyebrow{margin:0 0 8px;color:var(--accent2);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    h1{font-size:clamp(34px,7vw,54px);line-height:1.05;letter-spacing:-1.5px;margin:0 0 13px;color:var(--navy)}
+    .lede{font-size:18px;color:#3d5875;max-width:800px;margin:0}
+    .updated{display:inline-block;margin-top:18px;background:var(--soft);color:#174d86;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+    .truth{margin:18px 0 0;background:#fff7d6;border:1px solid #ead68c;border-radius:12px;padding:14px 16px}
+    .truth strong{display:block;margin-bottom:3px;color:#563e00}
+    .legend{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+    .legend div{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}
+    .legend p{font-size:13px;color:var(--dim);margin:7px 0 0}
+    .badge{display:inline-block;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;line-height:1.3}
+    .ready{color:var(--green);background:var(--green-bg);border:1px solid #b8dfca}
+    .review{color:var(--amber);background:var(--amber-bg);border:1px solid #ead68c}
+    .limited{color:var(--purple);background:var(--purple-bg);border:1px solid #d6c7f6}
+    .manual{color:var(--red);background:var(--red-bg);border:1px solid #f2bec9}
+    section,.group{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin-top:16px}
+    h2{font-size:24px;line-height:1.25;margin:0 0 10px;color:var(--navy)}
+    h3{font-size:18px;line-height:1.3;margin:8px 0 6px;color:var(--navy)}
+    p{margin:8px 0}
+    ul,ol{padding-left:23px;margin:9px 0}
+    li+li{margin-top:6px}
+    .plain{color:var(--dim);font-size:14px}
+    .split{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+    .stepbox{border:1px solid var(--border);border-radius:12px;padding:17px;background:#fbfcfe}
+    .stepbox h3{margin-top:0}
+    code{font:13px/1.5 Consolas,monospace;background:#eef1f5;border-radius:5px;padding:2px 5px;overflow-wrap:anywhere}
+    .callback{display:block;margin:6px 0 10px;padding:9px 10px;background:#eef1f5;border:1px solid #d9dde3;border-radius:8px;overflow-wrap:anywhere}
+    .search{display:flex;align-items:center;gap:12px;margin-top:18px}
+    .search label{font-size:14px;font-weight:750;color:var(--navy);white-space:nowrap}
+    .search input{width:100%;border:1px solid #bcc5d0;border-radius:10px;padding:11px 13px;font:inherit;background:#fff;color:var(--text)}
+    details.group{padding:0;overflow:hidden}
+    details.group>summary{cursor:pointer;list-style:none;padding:20px 22px;font-size:22px;font-weight:800;color:var(--navy);display:flex;align-items:center;justify-content:space-between;gap:12px}
+    details.group>summary::-webkit-details-marker{display:none}
+    details.group>summary:after{content:"+";font-size:26px;color:var(--accent);font-weight:500}
+    details.group[open]>summary:after{content:"−"}
+    details.group[open]>summary{border-bottom:1px solid var(--border)}
+    .groupbody{padding:18px 22px 22px}
+    .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+    .provider{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;min-width:0}
+    .provider[hidden]{display:none}
+    .providerhead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .providerhead h3{margin:0}
+    .provider p{font-size:14px;color:#424955}
+    .provider ul{font-size:13px;color:#40464f;margin-bottom:0}
+    .provider li strong{color:var(--text)}
+    .manualflow{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;counter-reset:handoff}
+    .manualflow div{counter-increment:handoff;background:#fbfcfe;border:1px solid var(--border);border-radius:10px;padding:13px;font-size:13px}
+    .manualflow div:before{content:counter(handoff);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;margin-bottom:7px}
+    .never{background:#fff5f6;border-color:#f0c4cc}
+    .never h2{color:#7b1d31}
+    .source{background:#f4fbf7;border-color:#b8dfca}
+    .emptyresult{display:none;background:#fff;border:1px dashed #b9c1cc;border-radius:12px;padding:24px;text-align:center;color:var(--dim);margin-top:16px}
+    footer{border-top:1px solid var(--border);background:#fff;color:var(--dim)}
+    footer .bar{font-size:13px;align-items:flex-start}
+    footer p{margin:0}
+    @media(max-width:850px){.legend{grid-template-columns:repeat(2,1fr)}.cards,.split{grid-template-columns:1fr}.manualflow{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){.bar{padding:12px 16px}main{padding:20px 12px 48px}.hero,section{padding:19px}.legend{grid-template-columns:1fr}.search{align-items:stretch;flex-direction:column;gap:6px}.groupbody{padding:13px}.provider{padding:14px}details.group>summary{padding:17px;font-size:19px}.providerhead{display:block}.providerhead .badge{margin-top:6px}.manualflow{grid-template-columns:1fr}nav{width:100%}nav a{flex:1;text-align:center;min-width:90px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{header,footer,.skip,.search{display:none}body{background:#fff}main{max-width:none;padding:0}.hero,section,.group{box-shadow:none;break-inside:avoid}details.group:not([open])>.groupbody{display:block}.cards{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to provider setup</a>
+  <header>
+    <div class="bar">
+      <a class="brand" href="index.html" aria-label="MyPersonas and AliaSpaces home">MyPersonas / AliaSpaces</a>
+      <nav aria-label="Site pages">
+        <a href="index.html">Home</a>
+        <a href="provider-setup.html" aria-current="page">Provider setup</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="data-deletion.html">Data deletion</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <div class="hero">
+      <p class="eyebrow">Owner setup center</p>
+      <h1>Connect accounts safely</h1>
+      <p class="lede">Use this page to see which accounts can connect, which require a developer app or provider review, and which should stay in MyPersonas as a manual posting handoff.</p>
+      <span class="updated">Reviewed July 29, 2026</span>
+      <div class="truth">
+        <strong>A saved account is not an authenticated account.</strong>
+        MyPersonas never treats a username, matching email, password, or cookie as provider permission. Direct posting stays off until the provider's official connector, write permission, and a real-account test all pass.
+      </div>
+    </div>
+
+    <div class="legend" aria-label="Connection status legend">
+      <div><span class="badge ready">Connectable now</span><p>The connector exists, but an owner console or verification step may still be required.</p></div>
+      <div><span class="badge review">Requires provider app/review</span><p>An official route exists; credentials, review, or a connector build remain.</p></div>
+      <div><span class="badge limited">Limited / special connector</span><p>Bot, business, partner, local bridge, mailbox, or partial API only.</p></div>
+      <div><span class="badge manual">Manual staging only</span><p>Prepare everything here; publish or send in the official provider yourself.</p></div>
+    </div>
+
+    <section>
+      <h2>Do these first</h2>
+      <div class="split">
+        <div>
+          <ol>
+            <li>Keep the live <a href="privacy.html">Privacy</a>, <a href="terms.html">Terms</a>, and <a href="data-deletion.html">Data deletion</a> pages available for provider reviews.</li>
+            <li>Add one Gmail address as a Google test user and complete one real inbox report.</li>
+            <li>Finish the X Web App credentials and API credits. Posting needs a later write reauthorization.</li>
+            <li>Create the Meta Business app, connect Facebook Pages, and pair their linked Instagram professional accounts.</li>
+            <li>Build Outlook next, then add the secure Yahoo/iCloud worker and local Proton companion.</li>
+          </ol>
+        </div>
+        <div class="stepbox">
+          <h3>Never paste secrets into the site</h3>
+          <p class="plain">Provider app secrets, bot tokens, app passwords, recovery codes, and cookies belong nowhere in the Account Ledger or notes. Official account OAuth sends you to the provider's own sign-in screen. Server credentials go directly into encrypted deployment secrets.</p>
+          <p><a href="PROVIDER-SETUP-GUIDE.md">Open the full detailed checklist</a></p>
+        </div>
+      </div>
+      <div class="search">
+        <label for="providerSearch">Find an account type</label>
+        <input id="providerSearch" type="search" autocomplete="off" placeholder="Try Gmail, Instagram, OnlyFans, Etsy…" aria-describedby="searchHelp">
+      </div>
+      <p id="searchHelp" class="plain">Searches the provider cards below. Clear the field to show every account type.</p>
+    </section>
+
+    <section>
+      <h2>Meta: one Page-pairing flow for Facebook and Instagram</h2>
+      <p>Use Facebook Login for Business to select Pages you administer and discover the eligible Instagram Business or Creator account linked to each Page. Facebook personal profiles and Instagram consumer accounts are not supported.</p>
+      <p><strong>The current Meta connector pairs eligible assets for identity/read use only; it does not publish.</strong> Synchronized posting remains off until the additional permissions, provider review, write adapters, and real-account tests below are complete.</p>
+      <div class="split">
+        <div class="stepbox">
+          <h3>Your setup</h3>
+          <ol>
+            <li>Create the Business app in <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta for Developers</a>.</li>
+            <li>Confirm Pages, Instagram accounts, and roles in <a href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer">Meta Business</a>.</li>
+            <li>Link each Instagram professional account to the correct Facebook Page.</li>
+            <li>Add this callback:</li>
+          </ol>
+          <code class="callback">https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth</code>
+          <p class="plain">Discovery starts with <code>pages_show_list</code>, <code>pages_read_engagement</code>, and <code>instagram_basic</code>.</p>
+        </div>
+        <div class="stepbox">
+          <h3>Before synchronized publishing</h3>
+          <ul>
+            <li>Facebook Page posting needs <code>pages_manage_posts</code>.</li>
+            <li>Instagram posting needs <code>instagram_content_publish</code>.</li>
+            <li>Comments and insights require separate permissions only when enabled.</li>
+            <li>Meta review/Advanced Access, business verification when requested, live tests, and duplicate-safe reconciliation must pass.</li>
+          </ul>
+          <p><a href="https://www.postman.com/meta/instagram/folder/23987686-3a75357f-e106-47ef-a8d9-af1aadf85365" target="_blank" rel="noopener noreferrer">Official Instagram API requirements</a></p>
+        </div>
+      </div>
+    </section>
+
+    <div id="emptyResult" class="emptyresult" role="status">No account type matched that search.</div>
+
+    <details class="group" open>
+      <summary>Social publishing</summary>
+      <div class="groupbody cards">
+        <article class="provider" data-provider="twitter" data-search="x twitter oauth posting social">
+          <div class="providerhead"><h3>X / Twitter</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Identity/read OAuth exists. Production credentials, API credits, and a separate tested write adapter are still required.</p>
+          <ul>
+            <li><strong>Owner:</strong> create a confidential Web App in the <a href="https://console.x.com" target="_blank" rel="noopener noreferrer">X Developer Console</a>; callback: <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitter-oauth</code>.</li>
+            <li><strong>Posting:</strong> add <code>tweet.write</code> only after the publish adapter exists, then reauthorize.</li>
+            <li><strong>Cost:</strong> X uses <a href="https://docs.x.com/x-api/getting-started/pricing" target="_blank" rel="noopener noreferrer">pay-per-use credits</a>.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="instagram" data-search="instagram meta creator business professional facebook linked social">
+          <div class="providerhead"><h3>Instagram</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Eligible Business or Creator accounts can publish through Meta. The current MyPersonas flow only pairs the Instagram account linked to a Facebook Page; it does not publish.</p>
+          <ul>
+            <li><strong>Owner:</strong> convert to professional, link the Page, add assets to Meta Business, and complete app review.</li>
+            <li><strong>Permission:</strong> <code>instagram_content_publish</code>; comments/insights are separate.</li>
+            <li><a href="https://www.postman.com/meta/instagram/overview" target="_blank" rel="noopener noreferrer">Official Meta Instagram workspace</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="facebook" data-search="facebook page meta business social">
+          <div class="providerhead"><h3>Facebook Page</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Official automation is for Pages the signed-in member administers—not personal profiles. The current MyPersonas flow only pairs the Page; it does not publish.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the Meta Business app and select the exact Page.</li>
+            <li><strong>Permission:</strong> <code>pages_manage_posts</code> for publishing; engagement is separate.</li>
+            <li><a href="https://www.postman.com/meta/facebook/overview" target="_blank" rel="noopener noreferrer">Official Facebook API workspace</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="tiktok" data-search="tiktok video photo content posting audit social">
+          <div class="providerhead"><h3>TikTok</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Direct Post needs the Content Posting product, <code>video.publish</code>, and TikTok review/audit. Unaudited clients publish privately.</p>
+          <ul>
+            <li><strong>Owner:</strong> follow TikTok's current <a href="https://developers.tiktok.com/doc/getting-started-create-an-app" target="_blank" rel="noopener noreferrer">app registration guide</a>, add policy URLs, and submit the use case.</li>
+            <li><a href="https://developers.tiktok.com/products/content-posting-api" target="_blank" rel="noopener noreferrer">Content Posting API</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="youtube" data-search="youtube google video upload schedule audit social">
+          <div class="providerhead"><h3>YouTube</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Uploads use the YouTube Data API and <code>youtube.upload</code>. Unverified projects are restricted to private uploads.</p>
+          <ul>
+            <li><strong>Owner:</strong> enable YouTube Data API v3 in <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud</a>, configure OAuth, and complete the YouTube audit.</li>
+            <li><a href="https://developers.google.com/youtube/v3/docs/videos/insert" target="_blank" rel="noopener noreferrer">Official upload requirements</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="linkedin" data-search="linkedin member organization company page post social">
+          <div class="providerhead"><h3>LinkedIn</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Member posting uses Share on LinkedIn. Organization/Page posting needs a qualifying Page role and Community Management access.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the app at <a href="https://www.linkedin.com/developers/apps" target="_blank" rel="noopener noreferrer">LinkedIn Developers</a> and associate the Page.</li>
+            <li><strong>Permission:</strong> <code>w_member_social</code> for member posts; the portal's current approved organization scope is authoritative.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="bluesky" data-search="bluesky at protocol oauth social">
+          <div class="providerhead"><h3>Bluesky</h3><span class="badge review">Requires connector build</span></div>
+          <p>No conventional app review, but MyPersonas still needs a security-complete OAuth connector and AT Protocol publisher.</p>
+          <ul>
+            <li><strong>Owner:</strong> authorize the correct account after client metadata and callback are live.</li>
+            <li><strong>MyPersonas:</strong> PKCE, PAR, DPoP, refresh rotation, secure keys, record publishing, and revocation.</li>
+            <li><a href="https://docs.bsky.app/docs/advanced-guides/oauth-client" target="_blank" rel="noopener noreferrer">Official OAuth guide</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="threads" data-search="threads meta social publish">
+          <div class="providerhead"><h3>Threads</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Threads publishing requires a Meta app, its own OAuth connector, review for production users, and <code>threads_content_publish</code>.</p>
+          <ul>
+            <li><strong>Owner:</strong> add Threads to the Meta app and add the callback once implemented.</li>
+            <li><a href="https://www.postman.com/meta/threads/overview" target="_blank" rel="noopener noreferrer">Official Threads API workspace</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="snapchat" data-search="snapchat snap public profile allowlist partner social">
+          <div class="providerhead"><h3>Snapchat</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>The Public Profile API is allowlist-only. Personal Snapchat automation is not supported.</p>
+          <ul>
+            <li><strong>Owner:</strong> create a Public Profile and OAuth app in <a href="https://business.snapchat.com/" target="_blank" rel="noopener noreferrer">Snap Business Manager</a>, then apply for allowlist access.</li>
+            <li><a href="https://developers.snap.com/marketing-api/Public-Profile-API/GetStarted" target="_blank" rel="noopener noreferrer">Official setup</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="reddit" data-search="reddit devvit post comment manual action social">
+          <div class="providerhead"><h3>Reddit</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Devvit can submit as a user only after a clear, separate owner action. Reddit explicitly disallows unattended user actions.</p>
+          <ul>
+            <li><strong>Owner:</strong> create a <a href="https://developers.reddit.com/new" target="_blank" rel="noopener noreferrer">Devvit project</a>, request only submit permissions, publish, and complete approval.</li>
+            <li><strong>Commercial use:</strong> may require a separate Reddit agreement.</li>
+            <li><a href="https://developers.reddit.com/docs/capabilities/server/userActions" target="_blank" rel="noopener noreferrer">User-action rules</a></li>
+          </ul>
+        </article>
+      </div>
+    </details>
+
+    <details class="group" open>
+      <summary>Bots, memberships, live streams, and business messaging</summary>
+      <div class="groupbody cards">
+        <article class="provider" data-provider="discord" data-search="discord bot server channel chat">
+          <div class="providerhead"><h3>Discord</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Use an installed bot with narrow server/channel permissions. Automating a normal user account is prohibited.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the app/bot in the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">Discord Developer Portal</a> and install it into selected servers.</li>
+            <li><a href="https://docs.discord.com/developers/platform/oauth2-and-permissions" target="_blank" rel="noopener noreferrer">OAuth and permissions</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="telegram" data-search="telegram bot channel group chat">
+          <div class="providerhead"><h3>Telegram</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Use a bot as an administrator in the intended channel or group; do not treat a personal Telegram login as normal web OAuth.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the bot through <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">BotFather</a> and grant only needed rights.</li>
+            <li><a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener noreferrer">Telegram Bot API</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="whatsapp" data-search="whatsapp meta business messaging customer">
+          <div class="providerhead"><h3>WhatsApp</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>WhatsApp Business Platform supports business customer messaging, not social-feed publishing or personal WhatsApp management.</p>
+          <ul>
+            <li><strong>Owner:</strong> create a WhatsApp Business Account/number, add Cloud API, configure webhooks, templates, review, and billing.</li>
+            <li><a href="https://www.postman.com/meta/whatsapp-business-platform/collection/wlk6lh4/whatsapp-cloud-api" target="_blank" rel="noopener noreferrer">Official Cloud API collection</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="patreon" data-search="patreon memberships posts scheduler webhooks">
+          <div class="providerhead"><h3>Patreon</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>The API supports identity, campaigns, members, post reads, and webhooks. No public general create-post scope was found.</p>
+          <ul>
+            <li><strong>Owner:</strong> register a client in the <a href="https://www.patreon.com/portal/registration/register-clients" target="_blank" rel="noopener noreferrer">Patreon portal</a>.</li>
+            <li><strong>Posting:</strong> use Patreon's <a href="https://support.patreon.com/hc/en-us/articles/360031956632-Scheduled-posts" target="_blank" rel="noopener noreferrer">native scheduler</a> through manual handoff.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="twitch" data-search="twitch live schedule channel chat moderation">
+          <div class="providerhead"><h3>Twitch</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>The official API covers channel details, schedules, chat, clips, and moderation—not a general social-feed/video-upload publisher.</p>
+          <ul>
+            <li><strong>Owner:</strong> register an app in the <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer">Twitch Developer Console</a>.</li>
+            <li><a href="https://dev.twitch.tv/docs/authentication/scopes/" target="_blank" rel="noopener noreferrer">Official scopes</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="kick" data-search="kick live channel chat rewards moderation">
+          <div class="providerhead"><h3>Kick</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Kick's API covers channel updates, chat, events, rewards, moderation, and live information—not ordinary feed publishing.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the app at <a href="https://dev.kick.com/" target="_blank" rel="noopener noreferrer">Kick Dev</a>.</li>
+            <li><a href="https://api.kick.com/swagger/index.html" target="_blank" rel="noopener noreferrer">Official public API reference</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="rumble" data-search="rumble video upload native scheduler live">
+          <div class="providerhead"><h3>Rumble</h3><span class="badge manual">Manual staging only</span></div>
+          <p>No public upload API was located. Stage files and metadata here, then use Rumble's native uploader/scheduler.</p>
+          <ul>
+            <li><a href="https://rumble.support/help/how-to-upload-a-video" target="_blank" rel="noopener noreferrer">Official upload guide</a></li>
+            <li>The documented Live Stream API is read/overlay data, not publishing authorization.</li>
+          </ul>
+        </article>
+      </div>
+    </details>
+
+    <details class="group" open>
+      <summary>Email and inbox cleanup</summary>
+      <div class="groupbody cards">
+        <article class="provider" data-provider="gmail" data-search="gmail google inbox mailbox cleanup email">
+          <div class="providerhead"><h3>Gmail</h3><span class="badge ready">Connectable now</span></div>
+          <p>OAuth, report scans, exact approval plans, labels/archive/recoverable Trash, and Undo are implemented.</p>
+          <ul>
+            <li><strong>Owner:</strong> add each exact address under <a href="https://console.cloud.google.com/auth/audience?project=genial-union-503010-q5" target="_blank" rel="noopener noreferrer">Google Auth test users</a>, then press Connect Gmail.</li>
+            <li><strong>Callback:</strong> <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/gmail-oauth</code>.</li>
+            <li><strong>Production:</strong> complete OAuth verification/security review as Google requires.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="outlook" data-search="outlook hotmail microsoft 365 graph inbox mailbox email">
+          <div class="providerhead"><h3>Outlook / Hotmail / Microsoft 365</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>A delegated Microsoft Graph connector and Entra app must be built before a real Connect Outlook button can work.</p>
+          <ul>
+            <li><strong>Owner:</strong> register an app in <a href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer">Microsoft Entra</a> for work and personal Microsoft accounts.</li>
+            <li><strong>Start:</strong> <code>Mail.Read</code>; add <code>Mail.ReadWrite</code> only for approved cleanup. Do not add <code>Mail.Send</code>.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="yahoo" data-search="yahoo mail imap app password inbox email">
+          <div class="providerhead"><h3>Yahoo Mail</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Safe access needs a dedicated encrypted IMAP worker. Never put a Yahoo password or app password in the ledger.</p>
+          <ul>
+            <li><strong>Owner, after the worker exists:</strong> create a <a href="https://help.yahoo.com/kb/account/password-sln15241.html" target="_blank" rel="noopener noreferrer">Yahoo app password</a> and enter it only in encrypted secret entry.</li>
+            <li><strong>IMAP:</strong> <code>imap.mail.yahoo.com:993</code> with SSL.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="icloud" data-search="icloud apple mail imap app specific password inbox email">
+          <div class="providerhead"><h3>iCloud Mail</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Use Apple's supported third-party authorization when available, otherwise an app-specific password in the future encrypted worker.</p>
+          <ul>
+            <li><strong>Owner:</strong> enable 2FA and follow Apple's <a href="https://support.apple.com/en-us/102654" target="_blank" rel="noopener noreferrer">app-specific password</a> instructions.</li>
+            <li><strong>IMAP:</strong> <code>imap.mail.me.com:993</code> with SSL.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="proton" data-search="proton mail bridge local inbox email">
+          <div class="providerhead"><h3>Proton Mail</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Requires a paid plan, Proton Bridge on a trusted always-on computer, and a local MyPersonas companion.</p>
+          <ul>
+            <li><strong>Owner:</strong> install <a href="https://proton.me/support/protonmail-bridge-install" target="_blank" rel="noopener noreferrer">Proton Mail Bridge</a> locally.</li>
+            <li>Never expose Bridge ports to the internet.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="email" data-search="email newsletter mailchimp kit beehiiv substack provider">
+          <div class="providerhead"><h3>Email / Newsletter</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>This is a category, not a provider. Record the real service—such as Mailchimp, Kit, beehiiv, or another sender—so its official API can be evaluated.</p>
+          <ul>
+            <li>Do not reuse a mailbox password as newsletter authorization.</li>
+            <li>Sending remains off until that provider's connector, consent, audience rules, and unsubscribe handling pass.</li>
+          </ul>
+        </article>
+      </div>
+    </details>
+
+    <details class="group" open>
+      <summary>Websites, stores, reviews, and affiliate links</summary>
+      <div class="groupbody cards">
+        <article class="provider" data-provider="wix" data-search="wix website store cms">
+          <div class="providerhead"><h3>Wix</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>Use Wix's official OAuth app route or a minimal-permission API key for an owner-controlled site.</p>
+          <ul>
+            <li><strong>Owner:</strong> create the app in the <a href="https://dev.wix.com/" target="_blank" rel="noopener noreferrer">Wix Developer Center</a> or create a narrowly scoped account API key.</li>
+            <li><a href="https://dev.wix.com/docs/build-apps/develop-your-app/api-integrations/rest" target="_blank" rel="noopener noreferrer">Official REST integration guide</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="website" data-search="website store cms wordpress shopify squarespace webflow custom">
+          <div class="providerhead"><h3>Website / Store</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Record the actual host or CMS. WordPress, Shopify, Squarespace, Webflow, WooCommerce, and custom sites each need their own official route.</p>
+          <ul>
+            <li>A saved URL is not authentication.</li>
+            <li>Domain, DNS, billing, checkout, legal, destructive, and major production changes stay owner-approved.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="etsy" data-search="etsy seller shop listing commerce store">
+          <div class="providerhead"><h3>Etsy</h3><span class="badge review">Requires provider app/review</span></div>
+          <p>A Seller App can manage an eligible owner's shop; broader seller access requires Etsy review.</p>
+          <ul>
+            <li><strong>Owner:</strong> register at <a href="https://developers.etsy.com/documentation/" target="_blank" rel="noopener noreferrer">Etsy Developers</a> with an active shop in good standing.</li>
+            <li><strong>Start:</strong> <code>listings_r</code> and <code>listings_w</code>; add other scopes only for approved features.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="amazon" data-search="amazon affiliate associates creators api links products commerce">
+          <div class="providerhead"><h3>Amazon / Affiliate</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Amazon Associates plus the Creators API can provide approved product/link data. It does not authorize retail-account operation or social posting.</p>
+          <ul>
+            <li><strong>Owner:</strong> enroll in <a href="https://affiliate-program.amazon.com/" target="_blank" rel="noopener noreferrer">Amazon Associates</a>, meet current eligibility, keep marketplace Partner Tags, and register for Creators API.</li>
+            <li><a href="https://affiliate-program.amazon.com/creatorsapi/docs/en-us/introduction" target="_blank" rel="noopener noreferrer">Creators API</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="yelp" data-search="yelp business reviews replies partner">
+          <div class="providerhead"><h3>Yelp</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Reply access is disabled by default and requires a claimed business plus Yelp Partner approval.</p>
+          <ul>
+            <li><strong>Owner:</strong> claim the listing at <a href="https://biz.yelp.com/" target="_blank" rel="noopener noreferrer">Yelp for Business</a> and apply for Respond to Reviews access.</li>
+            <li><a href="https://docs.developer.yelp.com/docs/respond-to-reviews-api-v2" target="_blank" rel="noopener noreferrer">Official reply API requirements</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="trustpilot" data-search="trustpilot business reviews replies api partner">
+          <div class="providerhead"><h3>Trustpilot</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>Requires a Trustpilot for Business account and API module; multi-business integrations use the partner route.</p>
+          <ul>
+            <li><strong>Owner:</strong> confirm the paid module/entitlement and Business Unit ID.</li>
+            <li><a href="https://developers.trustpilot.com/introduction/" target="_blank" rel="noopener noreferrer">Trustpilot developer start</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="legalzoom" data-search="legalzoom legal documents mcp">
+          <div class="providerhead"><h3>LegalZoom</h3><span class="badge limited">Limited / special connector</span></div>
+          <p>An official MCP path exists, but capability depends on the authorized service and documents. MyPersonas has no connector.</p>
+          <ul>
+            <li><strong>Default:</strong> inventory/manual only unless you choose a narrow document workflow.</li>
+            <li>Filings, signatures, purchases, account changes, and legal decisions remain owner-controlled.</li>
+            <li><a href="https://www.legalzoom.com/tools/mcp-docs" target="_blank" rel="noopener noreferrer">Official LegalZoom MCP information</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="fiverr" data-search="fiverr seller gig buyer marketplace">
+          <div class="providerhead"><h3>Fiverr</h3><span class="badge manual">Manual staging only</span></div>
+          <p>No public general seller gig/order/message-management API was located.</p>
+          <ul>
+            <li>Stage gig copy, images, FAQs, offers, and replies from text you supply.</li>
+            <li>Open Fiverr, review, publish/send manually, and mark complete.</li>
+            <li><a href="https://help.fiverr.com/hc/en-us/articles/49174165608593-Prohibited-services-on-Fiverr" target="_blank" rel="noopener noreferrer">Official prohibited-services guidance</a></li>
+          </ul>
+        </article>
+      </div>
+    </details>
+
+    <details class="group" open>
+      <summary>Manual creator, private messaging, gaming, and other accounts</summary>
+      <div class="groupbody cards">
+        <article class="provider" data-provider="onlyfans" data-search="onlyfans creator fans adult manual">
+          <div class="providerhead"><h3>OnlyFans</h3><span class="badge manual">Manual staging only</span></div>
+          <p>No public official developer/account-management API was located. Do not use passwords, cookies, session copying, scraping, auto-DMs, or unofficial login automation.</p>
+          <ul>
+            <li><strong>Safe workflow:</strong> stage media/caption/link, approve, open the media handoff, copy the package, open <a href="https://onlyfans.com/" target="_blank" rel="noopener noreferrer">OnlyFans</a>, publish in its signed-in interface, then mark posted.</li>
+            <li>Use a native scheduler only if the current signed-in interface offers it.</li>
+            <li>Draft replies only from message text you paste or explicitly supply.</li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="signal" data-search="signal private messenger messages manual">
+          <div class="providerhead"><h3>Signal</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Signal has no supported hosted account-management API for this use and prohibits bulk/automated messaging.</p>
+          <ul>
+            <li>Paste or supply message text for a draft, review it, and send it yourself.</li>
+            <li><a href="https://signal.org/legal/" target="_blank" rel="noopener noreferrer">Signal terms</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="steam" data-search="steam gaming games inventory">
+          <div class="providerhead"><h3>Steam</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Steam Web APIs cover public data and approved publisher operations, not general consumer-account/social management.</p>
+          <ul><li><a href="https://partner.steamgames.com/doc/webapi_overview" target="_blank" rel="noopener noreferrer">Steam Web API overview</a></li></ul>
+        </article>
+
+        <article class="provider" data-provider="psn" data-search="playstation psn sony gaming games inventory">
+          <div class="providerhead"><h3>PlayStation</h3><span class="badge manual">Manual staging only</span></div>
+          <p>PlayStation Partners is for game development/publishing. Personal PSN account management stays manual.</p>
+          <ul><li><a href="https://partners.playstation.net/sign-in" target="_blank" rel="noopener noreferrer">PlayStation Partners</a></li></ul>
+        </article>
+
+        <article class="provider" data-provider="xbox" data-search="xbox microsoft gaming games inventory">
+          <div class="providerhead"><h3>Xbox</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Xbox services APIs are title/game services, not a consumer social-account manager.</p>
+          <ul><li><a href="https://learn.microsoft.com/en-us/gaming/gdk/docs/services/fundamentals/xbox-services-api/live-introduction-to-xbox-live-apis" target="_blank" rel="noopener noreferrer">Xbox services API introduction</a></li></ul>
+        </article>
+
+        <article class="provider" data-provider="nintendo" data-search="nintendo gaming games inventory">
+          <div class="providerhead"><h3>Nintendo</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Nintendo's developer program is for game development/publishing. Consumer account management stays manual.</p>
+          <ul><li><a href="https://developer.nintendo.com/register" target="_blank" rel="noopener noreferrer">Nintendo Developer Portal</a></li></ul>
+        </article>
+
+        <article class="provider" data-provider="epic" data-search="epic games gaming eos inventory">
+          <div class="providerhead"><h3>Epic Games</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Epic Online Services supports a developer's game integration, not a general Epic consumer-account manager.</p>
+          <ul><li><a href="https://onlineservices.epicgames.com/en-US/accounts-social" target="_blank" rel="noopener noreferrer">Epic Accounts &amp; Social</a></li></ul>
+        </article>
+
+        <article class="provider" data-provider="other" data-search="other unknown provider manual">
+          <div class="providerhead"><h3>Other</h3><span class="badge manual">Manual staging only</span></div>
+          <p>Record the real provider and public account URL. MyPersonas will check for an official API, eligibility, review, pricing, and terms before enabling anything.</p>
+          <ul><li>Until that review is complete, use the manual handoff and never store credentials in the record.</li></ul>
+        </article>
+      </div>
+    </details>
+
+    <section>
+      <h2>Manual posting handoff</h2>
+      <p>Use this sequence for OnlyFans, Fiverr, Rumble, Signal, gaming accounts, and any provider without a live-tested write connector.</p>
+      <div class="manualflow" aria-label="Manual posting sequence">
+        <div><strong>Stage</strong><br>Caption, media, accessibility text, warning, disclosure, link, target, and time.</div>
+        <div><strong>Approve</strong><br>Review the exact package and approve or deny it in MyPersonas.</div>
+        <div><strong>Handoff</strong><br>Copy the package, open its media asset, and open the official provider.</div>
+        <div><strong>Publish</strong><br>Sign in and complete the action in the provider's own interface.</div>
+        <div><strong>Record</strong><br>Return to MyPersonas and mark the staged item posted or sent.</div>
+      </div>
+    </section>
+
+    <section class="never">
+      <h2>Automation that MyPersonas will not use</h2>
+      <ul>
+        <li>External passwords, recovery codes, one-time authentication codes, app passwords in ledger fields, browser cookies, or copied session tokens.</li>
+        <li>CAPTCHA bypasses, stealth browsers, reverse-engineered private APIs, or scraping private inboxes, fans, followers, and messages.</li>
+        <li>Auto-DMs, fake engagement, unsolicited bulk replies, personal-profile bots, or unattended actions that a provider requires a human to confirm.</li>
+      </ul>
+    </section>
+
+    <section class="source">
+      <h2>Important limits</h2>
+      <p>Provider permissions, review rules, prices, rate limits, and product names change. Recheck the linked official source immediately before applying. A provider offering an API does not mean MyPersonas has implemented it.</p>
+      <p><a href="PROVIDER-SETUP-GUIDE.md">Read the full provider-by-provider owner and Codex checklist</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="bar">
+      <p>MyPersonas / AliaSpaces provider setup center</p>
+      <p><a href="index.html">Home</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="data-deletion.html">Data deletion</a></p>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const input = document.getElementById("providerSearch");
+      const cards = [...document.querySelectorAll(".provider")];
+      const groups = [...document.querySelectorAll("details.group")];
+      const empty = document.getElementById("emptyResult");
+
+      function filterProviders() {
+        const term = input.value.trim().toLowerCase();
+        let visible = 0;
+        cards.forEach(card => {
+          const haystack = `${card.dataset.provider || ""} ${card.dataset.search || ""} ${card.textContent}`.toLowerCase();
+          const matches = !term || haystack.includes(term);
+          card.hidden = !matches;
+          if (matches) visible += 1;
+        });
+        groups.forEach(group => {
+          const hasVisible = [...group.querySelectorAll(".provider")].some(card => !card.hidden);
+          group.hidden = Boolean(term) && !hasVisible;
+          if (term && hasVisible) group.open = true;
+        });
+        empty.style.display = visible ? "none" : "block";
+      }
+
+      function focusProviderFromHash() {
+        let providerKey = "";
+        try {
+          providerKey = decodeURIComponent(location.hash.slice(1)).trim().toLowerCase();
+        } catch {
+          return;
+        }
+        if (!providerKey) return;
+        const card = cards.find(candidate => (candidate.dataset.provider || "").toLowerCase() === providerKey);
+        if (!card) return;
+
+        if (input.value) {
+          input.value = "";
+          filterProviders();
+        }
+        const group = card.closest("details.group");
+        if (group) {
+          group.hidden = false;
+          group.open = true;
+        }
+        card.hidden = false;
+        card.tabIndex = -1;
+        requestAnimationFrame(() => {
+          card.scrollIntoView({block:"start"});
+          card.focus({preventScroll:true});
+        });
+      }
+
+      input.addEventListener("input", filterProviders);
+      window.addEventListener("hashchange", focusProviderFromHash);
+      focusProviderFromHash();
+    })();
+  </script>
+</body>
+</html>

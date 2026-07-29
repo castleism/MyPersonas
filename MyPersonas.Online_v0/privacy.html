@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <title>Privacy Notice — MyPersonas / AliaSpaces</title>
+  <meta name="description" content="How MyPersonas / AliaSpaces handles account, persona, connected-service, mailbox, and AI data.">
+  <link rel="canonical" href="https://mypersonas.online/privacy.html">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <style>
+    :root{--bg:#f0f2f5;--panel:#fff;--border:#d8dce2;--text:#1c1e21;--dim:#5d6470;--accent:#1877f2;--accent2:#0b5fcc;--soft:#eaf3ff;--warn:#fff7d6;--green:#176c43;--max:900px}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 "Segoe UI",Arial,sans-serif}
+    a{color:var(--accent2);text-underline-offset:3px}
+    a:hover{text-decoration-thickness:2px}
+    a:focus-visible,.brand:focus-visible{outline:3px solid rgba(24,119,242,.35);outline-offset:4px;border-radius:4px}
+    .skip{position:fixed;left:12px;top:-80px;z-index:20;background:#111;color:#fff;padding:10px 14px;border-radius:8px}
+    .skip:focus{top:12px}
+    header{background:#fff;border-bottom:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .bar{max-width:var(--max);margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:800;color:var(--accent);text-decoration:none;letter-spacing:-.4px}
+    nav{display:flex;gap:6px;flex-wrap:wrap}
+    nav a{color:var(--dim);font-size:14px;font-weight:650;text-decoration:none;padding:8px 10px;border-radius:8px}
+    nav a:hover,nav a[aria-current="page"]{background:var(--soft);color:var(--accent2)}
+    main{max-width:var(--max);margin:auto;padding:30px 24px 64px}
+    .hero{background:linear-gradient(135deg,#fff 0%,#f3f8ff 100%);border:1px solid #cfe2ff;border-radius:18px;padding:clamp(24px,5vw,48px);box-shadow:0 6px 24px rgba(23,74,135,.08)}
+    h1{font-size:clamp(34px,7vw,54px);line-height:1.08;letter-spacing:-1.5px;margin:0 0 12px;color:#0b2545}
+    .lede{font-size:18px;color:#3d5875;max-width:720px;margin:0}
+    .effective{display:inline-block;margin-top:18px;background:var(--soft);color:#174d86;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+    .notice{margin:18px 0 0;background:var(--warn);border:1px solid #ead68c;border-radius:12px;padding:14px 16px}
+    .notice strong{display:block;margin-bottom:2px}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+    .summary div{background:#fff;border:1px solid var(--border);border-radius:12px;padding:15px}
+    .summary strong{display:block;color:#0b2545;margin-bottom:3px}
+    section{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin-top:16px}
+    h2{font-size:23px;line-height:1.25;margin:0 0 10px;color:#0b2545}
+    h3{font-size:17px;margin:20px 0 6px}
+    p{margin:8px 0}
+    ul,ol{padding-left:23px;margin:8px 0}
+    li+li{margin-top:7px}
+    .callout{background:var(--soft);border-left:4px solid var(--accent);padding:12px 14px;border-radius:0 10px 10px 0;margin:14px 0}
+    .plain{color:var(--dim);font-size:14px}
+    .contact{border-color:#b8dfca;background:#f4fbf7}
+    footer{border-top:1px solid var(--border);background:#fff;color:var(--dim)}
+    footer .bar{font-size:13px;align-items:flex-start}
+    footer p{margin:0}
+    @media(max-width:720px){.summary{grid-template-columns:1fr}.bar{padding:12px 18px}main{padding:22px 14px 48px}.hero,section{padding:20px}nav{width:100%}nav a{flex:1;text-align:center;min-width:110px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{header,footer,.skip{display:none}body{background:#fff}main{max-width:none;padding:0}.hero,section{box-shadow:none;break-inside:avoid}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to privacy notice</a>
+  <header>
+    <div class="bar">
+      <a class="brand" href="index.html" aria-label="MyPersonas and AliaSpaces home">MyPersonas / AliaSpaces</a>
+      <nav aria-label="Policy pages">
+        <a href="privacy.html" aria-current="page">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="data-deletion.html">Data deletion</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <div class="hero">
+      <h1>Privacy Notice</h1>
+      <p class="lede">This notice explains the data the current MyPersonas / AliaSpaces service uses, what can be public, and what happens when you connect an external account or an AI provider.</p>
+      <span class="effective">Effective July 28, 2026</span>
+      <div class="notice">
+        <strong>Current connector scope matters.</strong>
+        Gmail mailbox tools are deployed but remain subject to Google's test-user or production-verification gate. X identity/read authorization code is deployed but cannot accept connections until its developer credentials and current API access are installed. The Meta foundation can pair Facebook Pages and Page-linked professional Instagram accounts only after its Business app credentials are installed; it does not have publishing permission. Other provider records are private planning inventory until an official connector is added. A saved account name, email match, password, or cookie is never treated as provider authorization.
+      </div>
+    </div>
+
+    <div class="summary" aria-label="Privacy summary">
+      <div><strong>Private owner record</strong>Your AliaSpaces sign-in is linked to your data internally, but the owner is not displayed on public persona pages.</div>
+      <div><strong>No external passwords</strong>Do not give MyPersonas passwords, recovery codes, API secrets, or session cookies for social, creator, or mailbox accounts.</div>
+      <div><strong>You control actions</strong>Scheduled AI work creates drafts. Mailbox changes require a separate exact preview and owner approval.</div>
+    </div>
+
+    <section>
+      <h2>1. Who operates this service</h2>
+      <p>This notice uses <strong>MyPersonas / AliaSpaces</strong> as the operator label for the website, persona network, private management studio, and related automation features.</p>
+      <p>The service uses Supabase for authentication, database records, server-side Edge Functions, encrypted secret storage through Supabase Vault, and media storage.</p>
+    </section>
+
+    <section>
+      <h2>2. Information handled by the service</h2>
+
+      <h3>Sign-in and private account information</h3>
+      <ul>
+        <li>Your sign-in email, Supabase user identifier, account display name, authentication state, and security factors managed by Supabase Auth.</li>
+        <li>Optional details you choose to save, such as name, pronouns, date of birth, gender, country, city or region, phone number, time zone, personality notes, and astrology birth details.</li>
+        <li>Preferences such as content filters, hidden topics, and automation safety settings.</li>
+      </ul>
+
+      <h3>Persona and social content</h3>
+      <ul>
+        <li>Persona names, handles, bios, themes, visibility settings, links, posts, comments, reactions, albums, media, follows, blocks, and other page content.</li>
+        <li>Private notes, drafts, schedules, content plans, persona instructions, affiliate disclosure text, approval records, automation history, and owner-assistant conversations.</li>
+        <li>Public fan-chat messages, the persona involved, a one-way hash of the visitor’s random browser token, safety flags, and escalation state. Fan chat is currently disabled for adult/NSFW personas.</li>
+      </ul>
+
+      <h3>Saved external-account inventory</h3>
+      <p>The private account ledger can contain a provider name, username, login email, profile URL, persona assignment, notes, and connection status. It is designed for identifiers and planning—not credentials. Do not enter provider passwords, app passwords, recovery codes, API keys, or browser cookies.</p>
+
+      <h3>Connected provider data</h3>
+      <ul>
+        <li><strong>Gmail:</strong> authorized mailbox identity, granted scopes, message and thread identifiers, labels, selected headers, sender, subject, date, a bounded Gmail preview snippet, unsubscribe metadata, classification findings, scan status, action previews, approved label/archive/Trash changes, and undo/audit records. The current scanner does not read full message bodies or download attachments.</li>
+        <li><strong>X:</strong> the authorized account identifier and username, granted scopes, connection state, and token lifecycle data. The current connector supports identity/read authorization and does not have posting permission.</li>
+        <li><strong>Meta:</strong> after the owner authorizes the configured Business app, the Meta member identifier and name, manageable Page identifiers, Page names and tasks, Page-linked professional Instagram identifiers and profile fields, granted discovery scopes, connection state, and token lifecycle data. The current connector pairs assets for identity/read use and does not publish.</li>
+        <li><strong>Future connectors:</strong> this notice must be updated when Outlook or another provider begins sending data to MyPersonas, or before a current identity/read connector adds a new data or publishing scope.</li>
+      </ul>
+
+      <h3>Diagnostics you choose to submit</h3>
+      <p>The in-app <strong>Report a problem</strong> control sends your note, the current page route, up to 200 characters of browser user-agent information, and a short list of recent in-app error or status messages. When you are signed in, the report can include your user identifier; signed-out reports have no account identifier.</p>
+    </section>
+
+    <section>
+      <h2>3. How information is used</h2>
+      <ul>
+        <li>Authenticate you, protect private owner records, and provide account-security controls.</li>
+        <li>Create, display, search, and manage persona pages according to the visibility you choose.</li>
+        <li>Store account inventory and bind authorized provider identities to the intended ledger record.</li>
+        <li>Generate drafts, schedule work, enforce pauses, limits and quiet hours, and keep approval and action histories.</li>
+        <li>Run mailbox reports and carry out only the exact mailbox actions you approve.</li>
+        <li>Send selected prompts and context to the AI provider you configure or select.</li>
+        <li>Investigate problem reports, protect the service, and enforce safety boundaries.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. What is public and what is private</h2>
+      <p>Your profile and owner-to-persona relationship are private database records protected by owner-based access rules. Public and unlisted persona pages can expose the content, links, interactions, and profile details you put on those pages. Private persona visibility restricts the page, but it is not a promise of absolute anonymity.</p>
+      <div class="callout"><strong>Uploaded media uses a public media bucket.</strong> Treat an uploaded media URL as public even when it appears on a private or unlisted persona. Do not upload material that must remain confidential.</div>
+      <p>Other people, search engines, external links, or caches can retain copies of public material. Avoid including identifying information if separation between personas matters to you.</p>
+    </section>
+
+    <section>
+      <h2>5. OAuth, tokens, and external accounts</h2>
+      <p>Official provider authorization redirects you to the provider’s own sign-in and consent page. MyPersonas receives authorization results and tokens, not the password you enter on the provider page.</p>
+      <ul>
+        <li>Gmail refresh tokens, X access/refresh token bundles, and configured Meta user/Page tokens are encrypted in Supabase Vault and are unavailable to ordinary browser code.</li>
+        <li>OAuth state, PKCE verifiers, and same-browser bindings are temporary, service-only records used to complete a connection safely.</li>
+        <li>Connection metadata—such as provider identity, scopes, status, and expiry—appears in owner-readable records without exposing the token.</li>
+        <li>Removing a ledger record or using content erasure attempts to revoke supported provider grants and remove the encrypted local token. It does not delete your provider account or provider-hosted content.</li>
+      </ul>
+      <p>For providers without an official connector—including OnlyFans and Signal—MyPersonas can hold private planning records, links, drafts, and the posted/sent status you mark for staged items. It will not collect provider passwords, session cookies, or reverse-engineered login sessions.</p>
+    </section>
+
+    <section>
+      <h2>6. AI processing</h2>
+      <p>When you choose an AI backend, the relevant prompt, persona instructions, conversation content, or draft context is sent through a server-side proxy to that provider. Supported hosted endpoints can include OpenAI-compatible services, Anthropic, Azure OpenAI, Google Gemini endpoints, OpenRouter, xAI, Groq, Mistral, DeepSeek, Together, Fireworks, and explicitly approved custom hosts. Which provider receives data depends on the model connection you select.</p>
+      <p>Optional AI mailbox classification is off until you select a model for that mailbox and accept the mailbox-specific disclosure. It sends only bounded sender/subject/preview-snippet inputs for ambiguous messages—not full bodies or attachments. A custom mailbox AI host needs separate confirmation.</p>
+      <p>If you use a locally configured Stable Diffusion endpoint, the prompt is sent to the endpoint URL stored in that browser. A generated image is uploaded to the public media bucket only when you choose to save it.</p>
+      <p>AI providers process submitted data under their own terms and privacy notices. Avoid sending secrets or information you are not permitted to disclose.</p>
+    </section>
+
+    <section>
+      <h2>7. Service providers and third-party requests</h2>
+      <p>Data can be transmitted to:</p>
+      <ul>
+        <li><strong>Supabase</strong> for sign-in, database, storage, encrypted Vault secrets, and Edge Functions.</li>
+        <li><strong>The provider you connect</strong>, such as Google/Gmail, X, or Meta, to authorize, verify, discover eligible assets, read, modify, refresh, or revoke within the scopes shown on its consent screen.</li>
+        <li><strong>The AI provider you select</strong> for a requested model operation.</li>
+        <li><strong>Open-Meteo geocoding</strong> when you press “Find place”; the entered place name is sent to obtain coordinates and a time zone.</li>
+        <li><strong>Content, embed, CDN, and extension hosts</strong> when your browser loads their media, scripts, embeds, or release information. Those hosts receive ordinary web-request information under their own policies.</li>
+      </ul>
+      <p>The current application does not include a behavioral-ad tracking or personal-data sale workflow.</p>
+    </section>
+
+    <section>
+      <h2>8. Browser storage and cookies</h2>
+      <p>The current web client uses browser local storage and session storage for the Supabase sign-in session, content filters, selected local endpoint, owner-chat backup, OAuth same-tab binding, age-gate choice, and a random fan-chat visitor token. Session items normally end with the browser tab; local items remain until cleared by the feature, content erasure where applicable, or your browser’s site-data controls.</p>
+      <p>MyPersonas does not import or store session cookies from external social, creator, or mailbox accounts. Supabase Auth, provider sign-in pages, and embedded third-party content can use their own cookies or browser storage under their notices.</p>
+    </section>
+
+    <section>
+      <h2>9. Security safeguards</h2>
+      <p>The current design uses HTTPS provider flows, Supabase row-level access rules, owner-bound server functions, encrypted Vault storage for connector tokens and model keys, limited service-role access, exact-action approvals, safety pauses, and audit records. Sensitive OAuth tables are not readable by ordinary browser roles.</p>
+      <p>No system can guarantee perfect security. Protect your AliaSpaces sign-in, enable two-factor authentication when available, review connected applications at each provider, and report unexpected activity without including credentials.</p>
+    </section>
+
+    <section>
+      <h2>10. Retention and deletion</h2>
+      <p>Owner content and operational records generally remain until you remove them, clear the relevant history, remove the connected account, or use the content-erasure control. Short-lived authorization, scan, lease, and action-preview records expire according to their task. Gmail scan checkpoints are bounded to seven days, action previews to 24 hours, and the current Gmail undo window to no more than 28 days.</p>
+      <p>Deleting all content removes owned personas, pages, posts, albums, media, account inventory and connections, drafts, schedules, linked models and encrypted credentials, automation/chat history, display name, preferences, and owner problem reports. The in-app content-erasure control intentionally retains your Supabase sign-in record.</p>
+      <p>For complete steps, provider revocation links, and sign-in deletion instructions, see the <a href="data-deletion.html">Data Deletion Guide</a>.</p>
+    </section>
+
+    <section>
+      <h2>11. Your choices and controls</h2>
+      <ul>
+        <li>Choose public, unlisted, or private persona visibility.</li>
+        <li>Download an owner-readable JSON export from <strong>Account &amp; settings → Security</strong>.</li>
+        <li>Clear an owner-assistant conversation from its chat controls.</li>
+        <li>Pause all automation, pause one persona, require approval, limit daily activity, and set quiet hours in Matrix.</li>
+        <li>Disconnect a supported provider and revoke the grant at the provider.</li>
+        <li>Delete content while keeping sign-in, or request removal of the remaining sign-in record.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>12. Children and adult content</h2>
+      <p>MyPersonas is not directed to children under 13, and children under 13 should not create accounts or use public fan chat. Do not submit a child’s personal information through the service.</p>
+      <p>Adult/NSFW persona features are for adults age 18 or older. The current 18+ page prompt is a visitor self-attestation, not identity-based age assurance. Public AI fan chat remains disabled for NSFW personas. Users are responsible for complying with provider rules and applicable age, consent, and content laws.</p>
+    </section>
+
+    <section>
+      <h2>13. Affiliate and sponsored content</h2>
+      <p>MyPersonas can store approved links, offers, and disclosure language and can display sponsored or affiliate destinations. The persona owner is responsible for accurate, prominent disclosures and for following the destination platform’s advertising, endorsement, and affiliate rules. A link stored in MyPersonas is not an endorsement or verification of the offer.</p>
+    </section>
+
+    <section class="contact">
+      <h2>14. Privacy questions and changes</h2>
+      <p>Use the <strong>Report a problem</strong> button in the MyPersonas / AliaSpaces application and begin the note with “Privacy.” Do not include passwords, provider tokens, recovery codes, payment information, or other authentication secrets.</p>
+      <p>Material changes to connected providers or data uses should be reflected here with a new effective date before the new behavior is relied on.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="bar">
+      <p>MyPersonas / AliaSpaces · Effective July 28, 2026</p>
+      <p><a href="index.html">Home</a> · <a href="terms.html">Terms</a> · <a href="data-deletion.html">Data deletion</a></p>
+    </div>
+  </footer>
+</body>
+</html>

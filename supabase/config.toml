@@ -26,6 +26,9 @@ verify_jwt = true
 [functions.twitter-oauth]
 verify_jwt = false
 
+[functions.meta-oauth]
+verify_jwt = false
+
 [functions.run-tasks]
 verify_jwt = false
 

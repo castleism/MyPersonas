@@ -37,6 +37,11 @@ jobs:
             --include '/.nojekyll' \
             --include '/robots.txt' \
             --include '/sitemap.xml' \
+            --include '/privacy.html' \
+            --include '/terms.html' \
+            --include '/data-deletion.html' \
+            --include '/provider-setup.html' \
+            --include '/PROVIDER-SETUP-GUIDE.md' \
             --exclude '*' \
             "${SITE_DIR}/" .pages-artifact/
       - uses: actions/upload-pages-artifact@v3

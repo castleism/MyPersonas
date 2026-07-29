@@ -3,7 +3,31 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
-## Unreleased — Full-history Inbox Concierge reports
+## Released — Provider management and Meta Page pairing (2026-07-29)
+
+- Added a provider-level **Manage** workspace to every saved account. Eligible
+  non-mailbox accounts with assigned personas can stage posts, media handoffs, planned
+  times, and owner-reviewed reply drafts without claiming an external post or message was
+  sent; mailbox records route to the separate Inbox Concierge instead.
+- Added a safe manual handoff for OnlyFans and other record-only platforms: prepare and
+  review in MyPersonas, copy the package, open the official account, complete the action
+  yourself, then mark the exact draft manually posted. No password, cookie, scraping, or
+  reverse-engineered session path was added.
+- Added public provider setup, Privacy, Terms, and Data Deletion pages and included them
+  in the GitHub Pages artifact and sitemap so provider-review teams and owners can reach
+  the same current capability boundaries.
+- Added migration 018 and a dedicated `meta-oauth` foundation for Facebook Pages and
+  Page-linked professional Instagram accounts. It discovers provider-owned asset IDs,
+  binds only owner-selected ledger records, stores user/Page tokens in Supabase Vault,
+  serializes token operations, and revokes the full shared grant on disconnect.
+- Kept Meta publishing disabled. The first release requests Page/linked-Instagram
+  discovery permissions only; write permissions, Meta review, a posting adapter, and
+  live tests remain separate gates. Facebook personal profiles and consumer Instagram
+  accounts are not presented as automatable destinations.
+- Corrected the public canonical/social URLs to `mypersonas.online`, renamed Facebook
+  inventory to **Facebook Page**, and made draft handoffs include tags and media links.
+
+## Released — Full-history Inbox Concierge reports (2026-07-29)
 
 - Removed the misleading same-address inventory check from unsupported mailbox panels.
   Outlook/Hotmail now says plainly that no Microsoft OAuth grant exists, Gmail explains
