@@ -360,6 +360,7 @@ let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBa
 let ledgerOpenProvider="",ledgerSelectedAccounts=new Map();
 let timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};
 let myAccountPersonaLinks=[],sharedAccountLinksReady=true;
+let redditOAuthCapability={loaded:false,configured:false,error:""},redditOAuthNotice=null;
 function personaManagesAccount(a,personaId){
   if(!a||!personaId)return false;
   return a.persona_id===personaId||myAccountPersonaLinks.some(l=>l.ledger_id===a.id&&l.persona_id===personaId);
@@ -467,6 +468,7 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   handleGmailReturn();
   handleTwitterReturn();
   handleMetaReturn();
+  handleRedditReturn();
   handleOAuthReturn();
   let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
   sb.auth.onAuthStateChange((ev,s)=>{
@@ -526,7 +528,7 @@ function resetMineState(){
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
   updateBadge();
 }
-function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
+function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};redditOAuthCapability={loaded:false,configured:false,error:""};redditOAuthNotice=null;twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
 async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   const requestId=++mineLoadRequest;
@@ -681,6 +683,26 @@ function handleTwitterReturn(){
     else twitterOAuthNotice={message:"This X authorization was not started in this browser tab. Please try again."};
   }else twitterOAuthNotice={message:reasons[reason]||"X authorization did not complete."};
   ["twitter","reason","state","code","provider_error"].forEach(k=>u.searchParams.delete(k));
+  history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
+}
+function handleRedditReturn(){
+  const u=new URL(location.href),result=u.searchParams.get("reddit");if(!result)return;
+  setTimeout(()=>{if(redditOAuthNotice)toast(redditOAuthNotice.message)},900);
+  const reason=u.searchParams.get("reason")||"";
+  const reasons={
+    cancelled:"Reddit authorization was cancelled.",
+    invalid_state:"The Reddit authorization expired. Please try again.",
+    missing_code:"Reddit did not return an authorization code.",
+    scope_missing:"Reddit did not grant the identity and submit permissions.",
+    username_mismatch:"The signed-in Reddit account does not match the username recorded here.",
+    refresh_token_missing:"Reddit did not provide ongoing access. Please try again.",
+    secure_storage_failed:"Reddit authorization could not be stored securely.",
+    token_exchange_failed:"Reddit could not complete authorization. Please try again.",
+    profile_check_failed:"The signed-in Reddit account could not be verified.",
+    connection_save_failed:"Reddit authorized, but its connection record could not be saved."
+  };
+  redditOAuthNotice=result==="connected"?{message:"Reddit connected. Approved drafts for this account can now post through the official API.",ok:true}:{message:reasons[reason]||"Reddit authorization did not complete."};
+  ["reddit","reason"].forEach(k=>u.searchParams.delete(k));
   history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||"#/studio"));
 }
 function handleMetaReturn(){
@@ -1249,7 +1271,7 @@ function automationQueueHtml(p,binding){
   const drafts=myDrafts.filter(d=>d.persona_id===p.id).sort((a,b)=>new Date(a.publish_at||a.created_at)-new Date(b.publish_at||b.created_at)),unassigned=myDrafts.filter(d=>!d.persona_id),bindingActive=binding?.status==="active"&&["self_attested","verified"].includes(binding?.claim_state),level=Number(binding?.autonomy_level||0);
   return `<div class="autocallout"><b>Review is content-bound.</b> Approval locks the persona, exact text, media, destination, platform, and time. Editing any locked field clears approval. Published history cannot be edited or requeued.</div><div class="queuelist">${drafts.map(d=>{
     const a=myAccounts.find(x=>x.id===d.account_id),native=autoIsNativeDestination(d.account_id,d.platform),target=native?autoDestination(d.persona_id,null):d.account_id?autoDestination(d.persona_id,d.account_id):null,mode=target?.mode||(native?"approval":"manual"),approval=d.approval_state||"draft",pub=d.publish_state||"not_queued",terminal=pub==="publishing"||pub==="published",levelReady=mode==="auto"?level>=3:level>=2,canApprove=!terminal&&bindingActive&&levelReady&&mode!=="manual"&&approval!=="approved"&&approval!=="rejected",canQueueApproved=!terminal&&bindingActive&&level>=3&&native&&mode==="auto"&&approval==="approved"&&pub!=="queued",accountUrl=safeHttpUrl(a?.url),mediaUrl=safeHttpUrl(d.media_url);
-    return `<div class="queueitem"><div class="queuetop"><div><b>${esc(d.title||(d.body||"").slice(0,60)||"Untitled draft")}</b><div class="muted">${esc(autoTargetName(d.account_id,d.platform))} · ${esc(d.content_kind||"post")} · ${d.publish_at?autoTaskDate(d.publish_at,autoTz()):"no post time"}</div></div><div><span class="pill ${approval==="approved"?"connected":approval==="pending"?"verified":approval==="rejected"?"attention":"recorded"}">${esc(approval)}</span> <span class="pill ${pub==="published"?"connected":pub==="failed"||pub==="blocked"?"attention":"recorded"}">${esc(pub.replace(/_/g," "))}</span></div></div><div class="queuebody" onclick="this.classList.toggle('open')">${esc(d.body||"")}</div>${d.tags?`<div class="muted" style="margin-top:5px">${esc(d.tags)}</div>`:""}${mediaUrl?`<div class="muted" style="margin-top:5px">Media handoff: <a href="${esc(mediaUrl)}" target="_blank" rel="noopener">open asset ↗</a></div>`:""}${d.publish_error?`<div class="muted" style="color:var(--red);margin-top:5px">${esc(d.publish_error)}</div>`:""}${!bindingActive?'<div class="muted" style="margin-top:5px">Activate this persona agent in Direction before approving or publishing.</div>':level<2?'<div class="muted" style="margin-top:5px">Set this persona to L2 or L3 before approval.</div>':mode==="auto"&&level<3?'<div class="muted" style="margin-top:5px">This auto target needs L3 before it can be queued.</div>':""}${!native&&!a?'<div class="muted" style="margin-top:5px">The original account link is missing. Choose a current destination when editing, or copy the text and mark it manually posted.</div>':""}${native&&mode==="manual"?'<div class="muted" style="margin-top:5px">This native target is copy-only until you choose and save Approval or L3 Auto in Targets.</div>':""}${terminal?'<div class="muted" style="margin-top:5px">Published history is locked. Copy the text to start a new draft.</div>':""}<div class="queueactions">${terminal?"":`<button class="btn sm sec" onclick="openDraftEditor('${d.id}')">Edit</button>`}<button class="btn sm sec" onclick="copyDraft('${d.id}')">Copy package</button>${canApprove?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">${native?"Approve & schedule":"Approve for manual post"}</button>`:""}${canQueueApproved?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">Queue approved draft for L3</button>`:""}${!terminal&&approval!=="rejected"?`<button class="btn sm danger" onclick="rejectAutomationDraft('${d.id}')">Skip</button>`:""}${!terminal&&bindingActive&&level>=2&&native&&mode==="approval"&&approval==="approved"?`<button class="btn sm" onclick="publishAutomationDraft('${d.id}')">Publish now</button>`:""}${!terminal&&!native&&a&&a.provider==="discord"&&discordWebhookReady(a.id)&&approval==="approved"?`<button class="btn sm" onclick="publishDiscordDraft('${d.id}')">Post to Discord now</button>`:""}${!terminal&&!native?`<button class="btn sm sec" onclick="markManualDraftPosted('${d.id}')">Mark manually posted</button>`:""}${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}${terminal?"":`<button class="btn sm danger" onclick="deleteDraft('${d.id}')">Delete</button>`}</div></div>`;
+    return `<div class="queueitem"><div class="queuetop"><div><b>${esc(d.title||(d.body||"").slice(0,60)||"Untitled draft")}</b><div class="muted">${esc(autoTargetName(d.account_id,d.platform))} · ${esc(d.content_kind||"post")} · ${d.publish_at?autoTaskDate(d.publish_at,autoTz()):"no post time"}</div></div><div><span class="pill ${approval==="approved"?"connected":approval==="pending"?"verified":approval==="rejected"?"attention":"recorded"}">${esc(approval)}</span> <span class="pill ${pub==="published"?"connected":pub==="failed"||pub==="blocked"?"attention":"recorded"}">${esc(pub.replace(/_/g," "))}</span></div></div><div class="queuebody" onclick="this.classList.toggle('open')">${esc(d.body||"")}</div>${d.tags?`<div class="muted" style="margin-top:5px">${esc(d.tags)}</div>`:""}${mediaUrl?`<div class="muted" style="margin-top:5px">Media handoff: <a href="${esc(mediaUrl)}" target="_blank" rel="noopener">open asset ↗</a></div>`:""}${d.publish_error?`<div class="muted" style="color:var(--red);margin-top:5px">${esc(d.publish_error)}</div>`:""}${!bindingActive?'<div class="muted" style="margin-top:5px">Activate this persona agent in Direction before approving or publishing.</div>':level<2?'<div class="muted" style="margin-top:5px">Set this persona to L2 or L3 before approval.</div>':mode==="auto"&&level<3?'<div class="muted" style="margin-top:5px">This auto target needs L3 before it can be queued.</div>':""}${!native&&!a?'<div class="muted" style="margin-top:5px">The original account link is missing. Choose a current destination when editing, or copy the text and mark it manually posted.</div>':""}${native&&mode==="manual"?'<div class="muted" style="margin-top:5px">This native target is copy-only until you choose and save Approval or L3 Auto in Targets.</div>':""}${terminal?'<div class="muted" style="margin-top:5px">Published history is locked. Copy the text to start a new draft.</div>':""}<div class="queueactions">${terminal?"":`<button class="btn sm sec" onclick="openDraftEditor('${d.id}')">Edit</button>`}<button class="btn sm sec" onclick="copyDraft('${d.id}')">Copy package</button>${canApprove?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">${native?"Approve & schedule":"Approve for manual post"}</button>`:""}${canQueueApproved?`<button class="btn sm" onclick="approveAutomationDraft('${d.id}')">Queue approved draft for L3</button>`:""}${!terminal&&approval!=="rejected"?`<button class="btn sm danger" onclick="rejectAutomationDraft('${d.id}')">Skip</button>`:""}${!terminal&&bindingActive&&level>=2&&native&&mode==="approval"&&approval==="approved"?`<button class="btn sm" onclick="publishAutomationDraft('${d.id}')">Publish now</button>`:""}${!terminal&&!native&&a&&a.provider==="discord"&&discordWebhookReady(a.id)&&approval==="approved"?`<button class="btn sm" onclick="publishDiscordDraft('${d.id}')">Post to Discord now</button>`:""}${!terminal&&!native&&a&&a.provider==="reddit"&&redditConnectionReady(a.id)&&approval==="approved"?`<button class="btn sm" onclick="publishRedditDraft('${d.id}')">Post to Reddit now</button>`:""}${!terminal&&!native?`<button class="btn sm sec" onclick="markManualDraftPosted('${d.id}')">Mark manually posted</button>`:""}${accountUrl?`<a class="btn sm sec" href="${esc(accountUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open account</a>`:""}${terminal?"":`<button class="btn sm danger" onclick="deleteDraft('${d.id}')">Delete</button>`}</div></div>`;
   }).join("")||'<p class="muted">No drafts for this persona yet.</p>'}</div>
     ${unassigned.length?`<hr><h3>Unassigned drafts</h3><div class="autocallout warn">Choose where each older or HQ-created draft belongs before approval.</div><div class="queuelist">${unassigned.map(d=>{const terminal=["publishing","published"].includes(d.publish_state);return `<div class="queueitem"><div class="queuetop"><div><b>${esc(d.title||(d.body||"").slice(0,60)||"Untitled draft")}</b><div class="muted">${esc(d.content_kind||"post")} · created ${autoDate(d.created_at)}</div></div><span class="pill attention">needs persona</span></div><div class="queuebody" onclick="this.classList.toggle('open')">${esc(d.body||"")}</div>${terminal?'<div class="muted" style="margin-top:5px">Published history is locked, but you can copy its text.</div>':""}<div class="queueactions">${terminal?"":`<button class="btn sm" onclick="assignDraftToPersona('${d.id}','${p.id}')">Assign to ${esc(p.name)}</button>`}<button class="btn sm sec" onclick="copyDraft('${d.id}')">Copy text</button>${terminal?"":`<button class="btn sm danger" onclick="deleteDraft('${d.id}')">Delete</button>`}</div></div>`}).join("")}</div>`:""}
     <hr><h3>Add a manual draft</h3><div class="autogrid"><div><label>Destination</label><select id="aqTarget"><option value="">AliaSpaces native feed</option>${autoAssignedAccounts(p.id).map(a=>`<option value="${a.id}">${esc(autoTargetName(a.id))}</option>`).join("")}</select></div><div><label>Format</label><select id="aqKind">${["post","reel","article","image","newsletter","promo"].map(k=>`<option>${k}</option>`).join("")}</select></div><div><label>Title</label><input id="aqTitle"></div><div><label>Planned time</label><input id="aqAt" type="datetime-local"></div><div class="autofull"><label>Text</label><textarea id="aqBody"></textarea></div><div><label>Tags</label><input id="aqTags"></div><div><label>Media URL</label><input id="aqMedia" type="url"></div></div><button class="btn sm" style="margin-top:8px" onclick="createAutomationDraft()">Save manual draft</button>`;
@@ -2339,6 +2361,7 @@ function switchAcctTab(t){
   document.querySelectorAll('#acctTabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   document.querySelectorAll('#acctPanels .tabpanel').forEach(p=>p.style.display=(p.dataset.p===t?'block':'none'));
   if(t==="accounts"&&accountLedgerReady&&!document.querySelector("#ledgerBatch .ledgerrow"))addLedgerRow();
+  if(t==="accounts"&&myAccounts.some(a=>a.provider==="reddit")&&!redditOAuthCapability.loaded)loadRedditCapability().then(()=>{if(acctTab==="accounts")renderStudio()});
   if(t==="inbox")mailboxEnsureLoaded();
 }
 function accountArea(){
@@ -3082,6 +3105,12 @@ function ledgerConnectorGuidance(provider){
       ?{title:"Ready to choose Pages",note:"Authorize Meta, then choose which Facebook Page records to pair. This discovery grant does not enable posting."}
       :{title:"Linked professional Instagram only",note:"This connector discovers an eligible Business or Creator Instagram account through its linked Facebook Page. Standalone Instagram Login is a separate future connector."};
   }
+  if(provider==="reddit"){
+    if(!redditOAuthCapability.loaded)return{title:"Checking Reddit connector setup",note:"The Connect button becomes available after the Reddit connector confirms its client credentials are installed."};
+    if(redditOAuthCapability.error)return{title:"Reddit connector unavailable",note:"The Reddit authorization service could not confirm its setup. Deploy reddit-oauth and check again."};
+    if(!redditOAuthCapability.configured)return{title:"Reddit app credentials missing",note:"Create a web app at reddit.com/prefs/apps with the exact callback from the setup guide, then install REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET as deployment secrets. No Reddit password belongs here."};
+    return{title:"Ready to connect",note:"Official Reddit OAuth for identity and submit. After connecting, approved drafts can post to a subreddit named in their tags (r/name) or to the account's own profile."};
+  }
   if(CONNECTOR_GUIDANCE[provider])return CONNECTOR_GUIDANCE[provider];
   if(OFFICIAL_CONNECTOR_PROVIDERS.has(provider))return{title:"Provider connector not installed",note:"This provider offers developer access, but MyPersonas still needs its own approved app, scopes, secure token lifecycle, and live connector tests before this account can be managed."};
   return{title:"Record only",note:"No supported MyPersonas management connector is installed for this provider. The account remains available for planning and persona assignment."};
@@ -3143,12 +3172,59 @@ function ledgerAuthPanel(a,info){
   const metaSetup=!isMeta?"":!metaOAuthCapability.loaded||metaOAuthCapability.error
     ?`<button class="btn sm sec" onclick="retryMetaCapability()">Check Meta connector</button>`
     :!metaOAuthCapability.configured?`<a class="btn sm sec" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Open Meta apps ↗</a>`:"";
+  const reddit=a.provider!=="reddit"?"":redditConnectionReady(a.id)
+    ?`<button class="btn sm danger" onclick="disconnectReddit('${a.id}')">Disconnect Reddit</button>`
+    :`<button class="btn sm" onclick="connectReddit('${a.id}')" ${normalizeLedgerUsername(a.username)&&redditOAuthCapability.configured?"":"disabled"}>Connect Reddit</button>`;
+  const redditSetup=a.provider!=="reddit"?"":!redditOAuthCapability.loaded||redditOAuthCapability.error
+    ?`<button class="btn sm sec" onclick="loadRedditCapability().then(()=>{acctTab='accounts';renderStudio()})">Check Reddit connector</button>`
+    :!redditOAuthCapability.configured?`<a class="btn sm sec" href="https://www.reddit.com/prefs/apps" target="_blank" rel="noopener">Open Reddit apps ↗</a>`:"";
   const discord=a.provider!=="discord"?"":discordWebhookReady(a.id)
     ?`<button class="btn sm sec" onclick="connectDiscordWebhook('${a.id}')">Replace webhook</button><button class="btn sm danger" onclick="disconnectDiscordWebhook('${a.id}')">Disconnect webhook</button>`
     :`<button class="btn sm" onclick="connectDiscordWebhook('${a.id}')">Connect channel webhook</button>`;
   const guide=ledgerConnectorGuidance(a.provider),showGuide=info.state!=="connected"||(a.provider==="twitter"&&!twitterOAuthCapability.configured)||(isMeta&&!metaOAuthCapability.configured),providerDetail=showGuide?` ${guide.title}. ${guide.note}`:"";
   const providerPrompt=a.provider==="gmail"&&info.state!=="connected"?" Google will ask you to choose the exact recorded Gmail account and approve inbox access. If Google shows “403 Access blocked,” that address is not yet an approved test user; code cannot bypass Google verification. MyPersonas never receives its password and cannot send mail or permanently delete it.":a.provider==="gmail"&&!gmailCleanup?" Google will ask you to upgrade this existing grant before labels, archive, or trash can be queued.":a.provider==="twitter"&&info.state!=="connected"?(normalizeLedgerUsername(a.username)?" X will ask you to authorize the exact recorded username after the production developer credentials are installed; MyPersonas never receives its password.":" Add the X username in Edit details before connecting."):isMeta&&metaPending?" Resolve the retained Meta authorization cleanup above before starting another connection.":isMeta&&!hasFacebookRecord?" Add at least one Facebook Page ledger record first; Meta returns Pages, then MyPersonas can pair an optional linked professional Instagram account discovered on each Page.":isMeta?" Meta will show its own sign-in and consent screen. MyPersonas receives no Meta password. This first connector pairs Pages and Page-linked professional Instagram accounts for identity/read access only; publishing remains disabled.":"";
-  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${gmail}${twitter}${twitterSetup}${meta}${metaSetup}${discord}</div>`;
+  return `<div class="ledgerauth" id="ledgerAuth_${a.id}"><p><b>${esc(info.label)}</b><br><span class="muted">${esc(info.note)}${esc(providerDetail)}${esc(providerPrompt)}</span></p>${gmail}${twitter}${twitterSetup}${meta}${metaSetup}${discord}${reddit}${redditSetup}</div>`;
+}
+async function redditOAuthAction(action,id){
+  const{data}=await sb.auth.getSession(),s=data&&data.session;
+  if(!s)return{error:"Sign in again before connecting Reddit."};
+  try{
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/reddit-oauth",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
+      body:JSON.stringify({action,ledgerId:id})});
+    const j=await r.json().catch(()=>({}));
+    return r.ok?{data:j}:{error:j.error||("Reddit authorization failed (HTTP "+r.status+")")};
+  }catch(e){return{error:"Could not reach Reddit authorization: "+(e.message||e)}}
+}
+async function loadRedditCapability(){
+  const result=await redditOAuthAction("capabilities",null);
+  redditOAuthCapability=result.error?{loaded:true,configured:false,error:result.error}:{loaded:true,configured:result.data?.configured===true,error:""};
+}
+function redditConnectionReady(accountId){
+  const c=myAccountConnections.find(x=>x.ledger_id===accountId);
+  return !!(c&&c.provider==="reddit"&&c.connection_state==="connected"&&(c.verification_method||"")==="reddit_oauth");
+}
+async function connectReddit(id){
+  const result=await redditOAuthAction("start",id);
+  if(result.error){toast(result.error);return}
+  const url=result.data?.authorizationUrl||"";
+  if(!/^https:\/\/www\.reddit\.com\//.test(url)){toast("Reddit did not return a valid authorization link");return}
+  location.href=url;
+}
+async function disconnectReddit(id){
+  if(!confirm("Disconnect this Reddit account? Its stored access is revoked and deleted."))return;
+  const result=await redditOAuthAction("disconnect",id);
+  if(result.error){toast(result.error);return}
+  await loadMine();acctTab="accounts";renderStudio();toast("Reddit disconnected");
+}
+async function publishRedditDraft(id){
+  if(!confirm("Post this approved draft through the connected Reddit account now?"))return;
+  const{data:{session:s}}=await sb.auth.getSession();if(!s){toast("Sign in again");return}
+  try{
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/reddit-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},body:JSON.stringify({draftId:id})}),j=await r.json().catch(()=>({}));
+    if(!r.ok){toast(j.error||"Reddit publishing is not available for this draft yet");await loadMine();autoTab="queue";renderStudio();return}
+    await loadMine();autoTab="queue";renderStudio();toast(j.url?"Posted to Reddit: "+j.url:"Posted to Reddit");
+  }catch(e){toast("Could not reach the Reddit publisher: "+e.message)}
 }
 function discordWebhookReady(accountId){
   const c=myAccountConnections.find(x=>x.ledger_id===accountId);
@@ -3458,7 +3534,7 @@ async function saveLedgerBatch(){
       if(error){toast("Added "+added+" and updated "+updated+"; stopped: "+error.message);await loadMine();renderStudio();return}
       if(x.ledger_id)updated++;else added++;
     }
-    await loadMine();if(myAccounts.some(account=>account.provider==="twitter")&&!twitterOAuthCapability.loaded)await loadTwitterCapability();if(myAccounts.some(account=>account.provider==="facebook"||account.provider==="instagram")&&!metaOAuthCapability.loaded)await loadMetaCapability();acctTab="accounts";renderStudio();
+    await loadMine();if(myAccounts.some(account=>account.provider==="twitter")&&!twitterOAuthCapability.loaded)await loadTwitterCapability();if(myAccounts.some(account=>account.provider==="facebook"||account.provider==="instagram")&&!metaOAuthCapability.loaded)await loadMetaCapability();if(myAccounts.some(account=>account.provider==="reddit")&&!redditOAuthCapability.loaded)await loadRedditCapability();acctTab="accounts";renderStudio();
     const parts=[];if(added)parts.push("added "+added);if(updated)parts.push("updated "+updated);toast("Accounts saved: "+parts.join(" and ")+". No external access was granted.");
   }finally{
     ledgerBatchSaving=false;const currentButton=document.getElementById("ledgerBatchSaveBtn");if(currentButton){currentButton.disabled=false;currentButton.textContent="Save accounts"}

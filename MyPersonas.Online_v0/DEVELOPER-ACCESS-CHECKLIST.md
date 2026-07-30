@@ -57,7 +57,17 @@ The connector is live; Google gates it while the OAuth app is in Testing.
 4. MyPersonas → Matrix → Accounts → Discord → **Connect channel webhook** → paste it once.
 5. Approve a draft for that account in the Queue → **Post to Discord now**.
 
-## 6. Not needed yet
+## 6. Reddit — create the app, then it's fully automatic
+
+1. Open [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) signed in as the Reddit account → **create another app** → type **web app**.
+2. Redirect URI (paste exactly):
+   `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/reddit-oauth`
+3. Install the app's client id (under the app name) and secret as secrets **`REDDIT_CLIENT_ID`** and **`REDDIT_CLIENT_SECRET`** ([secrets page](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/settings/functions)).
+4. Run `sql-updates/021-reddit-oauth.sql` in the SQL editor.
+5. Deploy: `supabase functions deploy reddit-oauth --no-verify-jwt` and `supabase functions deploy reddit-post`.
+6. Matrix → Accounts → Reddit → **Connect Reddit** (username must match), then approved drafts get **Post to Reddit now**. Put `r/subredditname` in a draft's tags to target a subreddit; otherwise it posts to the account's profile.
+
+## 7. Not needed yet
 
 - **Outlook/Yahoo/iCloud/Proton** mailboxes: connectors not built (roadmap).
 - **OnlyFans and other record-only providers**: manual staging only, by design — nothing to authenticate.

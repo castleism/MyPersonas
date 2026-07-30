@@ -93,6 +93,9 @@ browser scenarios retain their own verification evidence.
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
       age assurance
+- [x] Reddit connector (Order 4 complete): official OAuth (identity/submit/read,
+      server-completed callback, Vault-only tokens, username binding) plus reddit-post
+      publishing to a tags-named subreddit or the account profile, with Queue button
 - [x] Shared account managers: migration 020 `account_persona_links` lets many personas
       co-manage one ledger account (primary stays on the ledger row); share-aware
       editor checkboxes, targets, staging, and Discord publishing. Follow-up: teach

@@ -3,6 +3,27 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Reddit connector: OAuth + posting (2026-07-30)
+
+- Built the full official Reddit connector. Migration `021-reddit-oauth.sql` adds
+  single-use hashed OAuth state records and service-role-only Vault RPCs for token
+  storage, read, rotation, and revocation — no token or authorization code ever
+  reaches a browser (the GET callback completes the exchange server-side).
+- `reddit-oauth` (deploy `--no-verify-jwt`): capabilities/start/disconnect actions,
+  identity+submit+read scopes with `duration=permanent`, exact recorded-username
+  binding before storage, and best-effort provider revocation on disconnect.
+- `reddit-post` (default JWT): same guard order as discord-post — pause, approved
+  non-terminal owned draft, share-aware persona check, connected state with submit
+  scope, atomic lease — then posts via `/api/submit` with one automatic token
+  refresh. Destination: `r/<name>` from the draft's tags, else the account's own
+  profile (`u_<username>`). Link post when media-only, self post otherwise; Reddit
+  API errors land verbatim in `publish_error`.
+- Accounts → Reddit gains Connect/Disconnect with live connector-capability
+  guidance; the Queue gains **Post to Reddit now** on eligible drafts.
+- Owner setup: create the web app at reddit.com/prefs/apps with the exact callback,
+  install `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET`, run migration 021, deploy
+  both functions.
+
 ## Released — Shared account managers (2026-07-30)
 
 - Multiple personas can now manage the same account. Migration
