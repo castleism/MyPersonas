@@ -1,0 +1,68 @@
+# Developer access checklist — finish authenticating your connected accounts
+
+**Owner:** Christian · **Updated:** 2026-07-30
+Secrets always go here, never into the site or a chat:
+**[Supabase → Project Settings → Edge Functions secrets](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/settings/functions)**
+
+Full detail lives in `PROVIDER-SETUP-GUIDE.md`; this is the short do-it list.
+
+---
+
+## 1. X / Twitter — unlocks the already-deployed connector
+
+1. Open the [X Developer Console](https://console.x.com) → accept developer terms.
+2. Create a Project → App → **confidential Web App** (OAuth 2.0).
+3. Callback URL (paste exactly):
+   `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitter-oauth`
+4. Website URL: `https://mypersonas.online`
+5. Scopes for the current read/identity connector: `tweet.read`, `users.read`, `offline.access`.
+6. Copy the client ID + secret → install as secrets **`X_CLIENT_ID`** and **`X_CLIENT_SECRET`** (link above).
+7. Activate [X API billing/credits](https://docs.x.com/x-api/getting-started/pricing) with a low spending cap.
+8. In MyPersonas → Matrix → Accounts → your X account → **Connect X**.
+
+## 2. Gmail — if a mailbox still gets a 403
+
+The connector is live; Google gates it while the OAuth app is in Testing.
+
+1. Open [Google Cloud Console → your project → OAuth consent screen / Audience](https://console.cloud.google.com/auth/audience).
+2. Either add each mailbox you own as a **test user** (fast), or submit the app for
+   production verification (slow, needed eventually).
+3. No new secrets required. Reconnect the mailbox from Matrix → Accounts afterward.
+
+## 3. Meta — Facebook Page + linked Instagram pairing
+
+1. [Meta for Developers → My Apps](https://developers.facebook.com/apps/) → Create App → type **Business**.
+2. In [Meta Business](https://business.facebook.com/), confirm you admin the Page(s); Instagram must be **Business/Creator** and linked to the Page, same Business Portfolio.
+3. Add **Facebook Login for Business** to the app; callback (paste exactly):
+   `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth`
+4. App domains: `mypersonas.online`; policy URLs: [privacy](https://mypersonas.online/privacy.html), [terms](https://mypersonas.online/terms.html), [data deletion](https://mypersonas.online/data-deletion.html).
+5. Install secrets **`META_APP_ID`**, **`META_APP_SECRET`** (+ **`META_LOGIN_CONFIG_ID`** if Login for Business shows a configuration ID).
+6. While in development mode: add yourself as app tester with Page access.
+7. Discovery scopes first: `pages_show_list`, `pages_read_engagement`, `instagram_basic`.
+8. Start [business verification](https://developers.facebook.com/docs/development/release/business-verification) early — it's the slow gate; [app review](https://developers.facebook.com/docs/app-review/) comes later for advanced access.
+9. Then Matrix → Accounts → Facebook Page → pair.
+
+## 4. Adobe Lightroom — file the request now, build later
+
+1. [Adobe Developer Console](https://developer.adobe.com/console) → Create project.
+2. Try to add the **Lightroom API**; if it isn't self-serve, request partner access per the
+   [getting-started docs](https://developer.adobe.com/lightroom/lightroom-api-docs/getting-started).
+3. No site secrets yet — the connector gets built after Adobe grants a production key.
+
+## 5. Discord — works as soon as you deploy it (no external approval needed)
+
+1. Run `sql-updates/019-discord-webhook.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/sql/new).
+2. Deploy the function: `supabase functions deploy discord-post` (from the repo's `supabase` folder).
+3. In Discord: Server Settings → Integrations → Webhooks → New Webhook → pick the channel → Copy URL.
+4. MyPersonas → Matrix → Accounts → Discord → **Connect channel webhook** → paste it once.
+5. Approve a draft for that account in the Queue → **Post to Discord now**.
+
+## 6. Not needed yet
+
+- **Outlook/Yahoo/iCloud/Proton** mailboxes: connectors not built (roadmap).
+- **OnlyFans and other record-only providers**: manual staging only, by design — nothing to authenticate.
+- **Bluesky/Discord/Telegram/TikTok/YouTube/LinkedIn/Reddit/Snapchat**: wait until their write connectors are on deck (see PROVIDER-SETUP-GUIDE.md rollout order).
+
+---
+
+**Never enter a provider password, app password, cookie, or API secret anywhere in MyPersonas or in chat. Consent screens belong to the provider; secrets belong in the Supabase secret store.**

@@ -3,6 +3,54 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Discord webhook posting + connector build orders (2026-07-30)
+
+- Added the first external **posting** connector: Discord channel webhooks. Migration
+  `019-discord-webhook.sql` stores an owner-pasted webhook URL only in Supabase Vault
+  through owner-authenticated RPCs (never readable back), and the new `discord-post`
+  Edge Function publishes exactly one approved, non-terminal draft per owner press —
+  after checking the global pause, draft/account/persona ownership and assignment,
+  connection state, and an atomic publishing lease. Mentions are suppressed
+  (`allowed_mentions: none`), content is capped at Discord's 2,000 characters, and
+  failures record a human-readable `publish_error` with no false "posted" state.
+- Accounts → Discord now offers Connect/Replace/Disconnect channel webhook, and the
+  Queue shows **Post to Discord now** on approved external drafts bound to a
+  webhook-connected Discord account. User-account automation remains unsupported;
+  scheduled/L3 Discord posting is intentionally excluded from this release.
+- Added `CONNECTOR-BUILD-ORDERS.md`: the honest platform-by-platform physics table
+  (what can authenticate, what can auto-post, what never will — OnlyFans, personal
+  Snapchat, Twitch feed) plus implementation orders for X write, Facebook Page,
+  Instagram professional, Reddit, YouTube, and Patreon identity.
+
+## Released — Persona website field (2026-07-30)
+
+- Added a dedicated **Website** field to the persona editor (under Tagline). It stores
+  through the existing atomic links pipeline as the first `website` link — no database
+  migration — auto-prefixes `https://`, and shows as a prominent 🌐 chip at the top of
+  the persona's public page header. Extra Website/Store chips in the links list are
+  untouched; the first one is treated as the persona's own site.
+
+## Released — Persona Timeline tab (2026-07-30)
+
+- Added a **Timeline** tab to the persona agent studio: an owner-private, newest-first
+  merge of the persona's native AliaSpaces posts and every external draft recorded as
+  posted, each entry showing destination account, format, time, native/external badge,
+  tags, media handoff link, and an open-account link. External entries reflect what
+  MyPersonas recorded; imports of full provider history arrive with the read connectors.
+- Nothing new is shown publicly — the opt-in public page module is a separate roadmap
+  item requiring a public-readable posted-history table.
+
+## Released — Persona editor account picker (2026-07-30)
+
+- Added a **Managed accounts** section to the persona editor: every saved Account
+  Ledger record is listed by provider with its live connection-state pill; checking a
+  box assigns the account to the persona being edited, unchecking releases it back to
+  Unassigned, and an account currently assigned to another persona says so before a
+  move. Assignments apply atomically with the Save button (including right after a
+  brand-new persona is created) and remain private — nothing appears on the public page.
+- No new credentials, scopes, or provider access are involved; this writes the same
+  `account_ledger.persona_id` field the Accounts tab already manages.
+
 ## Released — Provider management and Meta Page pairing (2026-07-29)
 
 - Added a provider-level **Manage** workspace to every saved account. Eligible

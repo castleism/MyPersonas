@@ -93,6 +93,20 @@ browser scenarios retain their own verification evidence.
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
       age assurance
+- [x] Discord channel-webhook posting connector: migration 019 stores an owner-pasted
+      channel webhook in Vault (never returned to a browser), the discord-post Edge
+      Function publishes one approved draft per owner press with an atomic publishing
+      lease, and the Queue gains a "Post to Discord now" button. Owner still runs the
+      SQL + deploys the function. Scheduled/L3 Discord posting deliberately excluded.
+- [x] Connector build orders: CONNECTOR-BUILD-ORDERS.md documents, for every ledger
+      platform, whether authentication and automated posting are physically possible,
+      and specs Orders 1–6 (X write, FB Page, IG professional, Reddit, YouTube,
+      Patreon identity) for follow-on build sessions
+- [x] Persona website field: dedicated editor field stored as the first website link,
+      rendered as a header chip on the public page (no migration needed)
+- [x] Persona editor Managed accounts picker: assign or release saved Account Ledger
+      accounts with checkboxes directly in the persona editor; accounts held by another
+      persona show where they live before a move, and assignments apply on Save
 - [ ] Notifications: Supabase Realtime for friend requests/accepts (replace
       load-time polling badge)
 - [ ] Comments and reactions on feed posts
@@ -101,6 +115,15 @@ browser scenarios retain their own verification evidence.
 - [ ] Proper "act as persona" picker modal (replace prompt() dialogs)
 - [ ] Extensions page: full catalog view with release notes + version history;
       Personas app switched to the same releases-driven model as Concept
+- [ ] Lightroom watched-folder import (free path): Lightroom auto-export/synced
+      folder watched by the Personas/Concept desktop app, new exports uploaded to
+      Supabase Storage tagged to a persona for page images and training sets
+- [x] Persona cross-account timeline (free path, owner view): Timeline tab in the agent
+      studio merging the persona's native posts and posted external drafts into one
+      chronological owner-private history with native/external badges and account links
+- [ ] Persona timeline public page module: opt-in per-account public display feeding a
+      page timeline section (accounts stay private unless explicitly shown; needs a
+      public-readable posted-history table, not owner-only drafts)
 - [ ] Resolve persona-save session bug from verification round (error_logs driven)
 - [ ] SEO: path-based routing + prerendered persona pages so Google indexes each
       persona individually, and per-persona OG images for rich link previews
@@ -115,6 +138,14 @@ browser scenarios retain their own verification evidence.
 - [ ] External provider write connectors: publish through official APIs only
       (for example Facebook/Instagram Graph or TikTok Content Posting), after required
       write scopes, app review, verified account assignment, and reconciliation are in place
+- [ ] Synced post history (official path): per-provider read connectors importing real
+      post history into a synced_posts table feeding the persona timeline — Meta Page
+      posts via Graph after review, Bluesky/YouTube/RSS public feeds (free), X read
+      tier (paid) — with per-account public/private display control
+- [ ] Adobe Lightroom read connector (official path): Lightroom Partner API OAuth
+      integration after Adobe grants a production API key — browse catalogs/albums,
+      pull renditions into the image picker and SD panel, opt-in per-asset training-set
+      flag for Concept LoRA sets (verify Adobe ToS on ML use of API-pulled assets)
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
 - [ ] PWA: installable mobile experience, push notifications
