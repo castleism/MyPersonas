@@ -3,6 +3,21 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — Shared account managers (2026-07-30)
+
+- Multiple personas can now manage the same account. Migration
+  `020-shared-account-managers.sql` adds owner-only `account_persona_links` co-manager
+  rows; `account_ledger.persona_id` stays the primary manager so every existing flow
+  keeps working. The persona editor's Managed accounts checkboxes become share-aware:
+  checking an account another persona holds **adds** this persona as co-manager
+  (no more stealing), unchecking removes only this persona, and each row lists its
+  other managers. Targets, draft destinations, Manage staging, and the discord-post
+  publisher all accept co-managed accounts.
+- Until migration 020 is run, the editor falls back to the previous move semantics.
+  Keep a primary persona set for the provider Manage workspace, and note that
+  server-side scheduled generation (`run-tasks`) still validates the primary
+  assignment — schedule through the primary persona until its share-join ships.
+
 ## Released — Discord webhook posting + connector build orders (2026-07-30)
 
 - Added the first external **posting** connector: Discord channel webhooks. Migration

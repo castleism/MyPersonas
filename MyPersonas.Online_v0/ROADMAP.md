@@ -93,6 +93,10 @@ browser scenarios retain their own verification evidence.
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
       age assurance
+- [x] Shared account managers: migration 020 `account_persona_links` lets many personas
+      co-manage one ledger account (primary stays on the ledger row); share-aware
+      editor checkboxes, targets, staging, and Discord publishing. Follow-up: teach
+      `run-tasks` the share-join so schedules can run as co-managers
 - [x] Discord channel-webhook posting connector: migration 019 stores an owner-pasted
       channel webhook in Vault (never returned to a browser), the discord-post Edge
       Function publishes one approved draft per owner press with an atomic publishing

@@ -359,6 +359,15 @@ let myAgentSettings=null,myAgentBindings=[],myAgentDestinations=[],myContentPlan
 let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBatchSaving=false;
 let ledgerOpenProvider="",ledgerSelectedAccounts=new Map();
 let timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};
+let myAccountPersonaLinks=[],sharedAccountLinksReady=true;
+function personaManagesAccount(a,personaId){
+  if(!a||!personaId)return false;
+  return a.persona_id===personaId||myAccountPersonaLinks.some(l=>l.ledger_id===a.id&&l.persona_id===personaId);
+}
+function accountManagerNames(a,excludeId=null){
+  const ids=[a.persona_id,...myAccountPersonaLinks.filter(l=>l.ledger_id===a.id).map(l=>l.persona_id)].filter(Boolean);
+  return [...new Set(ids)].filter(id=>id!==excludeId).map(id=>myPersonas.find(p=>p.id===id)?.name).filter(Boolean);
+}
 let automationReady=true,agentMessagesReady=true,fanInboxReady=true,autoPersonaId="",autoTab="direction",autoTaskEditId="";
 let gmailOAuthNotice=null,gmailOAuthPending=null,gmailOAuthCompleting=false;
 let twitterOAuthNotice=null,twitterOAuthPending=null,twitterOAuthCompleting=false;
@@ -513,7 +522,7 @@ async function loadFanSessionRows(owner=session?.user?.id){
   if(priority.error||recent.error)return{data:null,error:priority.error||recent.error};const unique=new Map();[...(priority.data||[]),...(recent.data||[])].forEach(row=>unique.set(row.id,row));return{data:[...unique.values()].sort((a,b)=>new Date(b.last_seen_at)-new Date(a.last_seen_at)),error:null}
 }
 function resetMineState(){
-  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myAgentSettings=null;
+  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAccountPersonaLinks=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myAgentSettings=null;
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
   updateBadge();
 }
@@ -523,7 +532,7 @@ async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadG
   const requestId=++mineLoadRequest;
   if(!expectedUid){const current=mineLoadCurrent(null,generation,requestId);if(current)resetMineState();return current}
   if(!mineLoadCurrent(expectedUid,generation,requestId))return false;
-  const[psRes,blRes,beRes,beStatusRes,tkRes,profRes,drRes,acctRes,connRes,setRes,bindRes,destRes,planRes,actionRes,fanSessionRes,fanMessageRes,msgProbe]=await Promise.all([
+  const[psRes,blRes,beRes,beStatusRes,tkRes,profRes,drRes,acctRes,connRes,acctLinkRes,setRes,bindRes,destRes,planRes,actionRes,fanSessionRes,fanMessageRes,msgProbe]=await Promise.all([
     loadOwnerPersonaRows(),
     sb.from("blocks").select("*").eq("blocker",expectedUid),
     loadOwnedPages("ai_backends","id,owner,name,base_url,model,provider,extra,created_at","created_at",true,expectedUid),
@@ -533,6 +542,7 @@ async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadG
     loadOwnedPages("drafts","*","created_at",false,expectedUid),
     loadOwnedPages("account_ledger","*","created_at",false,expectedUid),
     loadOwnedPages("account_connections","*","created_at",false,expectedUid),
+    loadOwnedPages("account_persona_links","*","created_at",true,expectedUid),
     sb.from("agent_owner_settings").select("*").eq("owner",expectedUid).maybeSingle(),
     loadOwnedPages("agent_bindings","*","created_at",true,expectedUid),
     loadOwnedPages("agent_destinations","*","created_at",true,expectedUid),
@@ -553,6 +563,7 @@ async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadG
   myPersonas=psRes.data||[];myBlocks=blRes.data||[];myBackends=beRes.data||[];myBackendCredentialIds=new Set((beStatusRes.data||[]).filter(row=>row.has_credential===true).map(row=>row.backend_id));myTasks=tkRes.data||[];myProfile=profRes.data||null;myDrafts=drRes.data||[];
   if(acctRes.error){accountLedgerReady=false;myAccounts=[]}else myAccounts=acctRes.data||[];
   if(connRes.error){accountConnectionsReady=false;myAccountConnections=[]}else myAccountConnections=connRes.data||[];
+  if(acctLinkRes.error){sharedAccountLinksReady=false;myAccountPersonaLinks=[]}else{sharedAccountLinksReady=true;myAccountPersonaLinks=acctLinkRes.data||[]}
   if(setRes.error||bindRes.error||destRes.error||planRes.error||actionRes.error){automationReady=false}else{
     myAgentSettings=setRes.data||null;myAgentBindings=bindRes.data||[];myAgentDestinations=destRes.data||[];myContentPlans=planRes.data||[];myAgentActions=actionRes.data||[];myAgentActionTotal=Number.isInteger(actionRes.count)?actionRes.count:myAgentActions.length;
   }
@@ -1124,7 +1135,7 @@ function autoPersona(){return myPersonas.find(p=>p.id===autoPersonaId)||myPerson
 function autoBinding(pid){return myAgentBindings.find(b=>b.persona_id===pid)||null}
 function autoPlan(pid){return myContentPlans.find(p=>p.persona_id===pid)||null}
 function autoDestination(pid,accountId=null){return myAgentDestinations.find(d=>d.persona_id===pid&&(d.account_id||null)===(accountId||null))||null}
-function autoAssignedAccounts(pid){return myAccounts.filter(a=>a.persona_id===pid)}
+function autoAssignedAccounts(pid){return myAccounts.filter(a=>personaManagesAccount(a,pid))}
 function autoTz(){return myAgentSettings?.default_timezone||prefsObj().account?.tz||Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}
 function autoDate(v,withTime=true){if(!v)return "not scheduled";try{return new Date(v).toLocaleString([],{dateStyle:"medium",...(withTime?{timeStyle:"short"}:{})})}catch(e){return v}}
 function autoTaskDate(v,tz){if(!v)return "not scheduled";const zone=validTimezone(tz)?tz:"UTC";try{return new Intl.DateTimeFormat([],{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:zone,timeZoneName:"short"}).format(new Date(v))}catch(e){return v}}
@@ -1484,7 +1495,7 @@ async function saveChatDraft(){
   if(!last){toast("Nothing to save yet");return}
   const personaId=context.personaId||await chooseChatDraftPersona();if(!personaId)return;const persona=myPersonas.find(p=>p.id===personaId),account=context.draftAccountId?myAccounts.find(a=>a.id===context.draftAccountId):null;
   if(context.draftAccountId&&!account){toast("That destination account is no longer available");return}
-  if(account&&account.persona_id!==personaId){toast("That account is no longer assigned to this persona");return}
+  if(account&&!personaManagesAccount(account,personaId)){toast("That account is no longer assigned to this persona");return}
   if(account&&LEDGER_EMAIL_PROVIDERS.has(account.provider)){toast("Managed reply drafts are not available for mailbox records");return}
   if(chatCtx!==context||session?.user?.id!==uid||context.ownerUid!==uid)return;
   const{error}=await sb.from("drafts").insert({owner:uid,
@@ -1721,8 +1732,11 @@ function editAccountsHtml(){
   return providers.map(prov=>{
     const providerName=(PLATS[prov]||{}).name||prov;
     const rows=myAccounts.filter(a=>a.provider===prov).map(a=>{
-      const info=ledgerConnectionInfo(a),other=a.persona_id&&a.persona_id!==editId?myPersonas.find(p=>p.id===a.persona_id):null;
-      return `<label style="margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text)"><input type="checkbox" data-acct="${esc(a.id)}" ${editId&&a.persona_id===editId?"checked":""}> ${esc(a.username||a.login_email||a.url||"Saved account")} <span class="pill ${info.klass}">${esc(info.label)}</span>${other?`<span class="muted">currently: ${esc(other.name)} — checking moves it to this persona</span>`:""}</label>`;
+      const info=ledgerConnectionInfo(a),manages=!!editId&&personaManagesAccount(a,editId),others=accountManagerNames(a,editId);
+      const note=sharedAccountLinksReady
+        ?(others.length?`also managed by ${others.join(", ")} — accounts can be shared`:"")
+        :(a.persona_id&&a.persona_id!==editId?`currently: ${myPersonas.find(p=>p.id===a.persona_id)?.name||"another persona"} — checking moves it to this persona`:"");
+      return `<label style="margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text)"><input type="checkbox" data-acct="${esc(a.id)}" ${manages?"checked":""}> ${esc(a.username||a.login_email||a.url||"Saved account")} <span class="pill ${info.klass}">${esc(info.label)}</span>${note?`<span class="muted">${esc(note)}</span>`:""}</label>`;
     }).join("");
     return `<div style="margin-bottom:10px"><b>${esc(providerName)}</b><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">${rows}</div></div>`;
   }).join("");
@@ -1787,9 +1801,21 @@ async function savePersona(){
   await loadMine(uid,authLoadGeneration);if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   const savedPersona=targetId?myPersonas.find(p=>p.id===targetId):myPersonas.find(p=>p.handle===handle);
   if(savedPersona&&acctSel.length&&accountLedgerReady){
-    const changes=acctSel.filter(s=>{const a=myAccounts.find(x=>x.id===s.id);if(!a)return false;return s.on?a.persona_id!==savedPersona.id:a.persona_id===savedPersona.id});
-    if(changes.length){
-      const results=await Promise.all(changes.map(s=>sb.from("account_ledger").update({persona_id:s.on?savedPersona.id:null,updated_at:new Date().toISOString()}).eq("id",s.id)));
+    const P=savedPersona.id,ops=[];
+    for(const s of acctSel){
+      const a=myAccounts.find(x=>x.id===s.id);if(!a)continue;
+      const primary=a.persona_id===P,linked=myAccountPersonaLinks.some(l=>l.ledger_id===a.id&&l.persona_id===P);
+      if(s.on&&!primary&&!linked){
+        if(!a.persona_id||!sharedAccountLinksReady)ops.push(sb.from("account_ledger").update({persona_id:P,updated_at:new Date().toISOString()}).eq("id",s.id));
+        else ops.push(sb.from("account_persona_links").insert({ledger_id:a.id,persona_id:P,owner:uid}));
+      }else if(!s.on&&primary){
+        ops.push(sb.from("account_ledger").update({persona_id:null,updated_at:new Date().toISOString()}).eq("id",s.id));
+      }else if(!s.on&&linked){
+        ops.push(sb.from("account_persona_links").delete().eq("ledger_id",a.id).eq("persona_id",P));
+      }
+    }
+    if(ops.length){
+      const results=await Promise.all(ops);
       if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
       const failed=results.filter(r=>r.error).length;
       await loadMine(uid,authLoadGeneration);if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;

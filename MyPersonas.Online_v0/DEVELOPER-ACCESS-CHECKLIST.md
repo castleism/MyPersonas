@@ -51,7 +51,7 @@ The connector is live; Google gates it while the OAuth app is in Testing.
 
 ## 5. Discord — works as soon as you deploy it (no external approval needed)
 
-1. Run `sql-updates/019-discord-webhook.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/sql/new).
+1. Run `sql-updates/019-discord-webhook.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/sql/new) — and `sql-updates/020-shared-account-managers.sql` while you're there (enables multi-persona account sharing).
 2. Deploy the function: `supabase functions deploy discord-post` (from the repo's `supabase` folder).
 3. In Discord: Server Settings → Integrations → Webhooks → New Webhook → pick the channel → Copy URL.
 4. MyPersonas → Matrix → Accounts → Discord → **Connect channel webhook** → paste it once.

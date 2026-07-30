@@ -131,7 +131,13 @@ serve(async (req: Request): Promise<Response> => {
     .eq("id", draft.account_id).eq("owner", uid).eq("provider", "discord").maybeSingle();
   if (!ledger) return json(origin, 409, { error: "The Discord account for this draft is no longer in your ledger" });
   if (draft.persona_id && ledger.persona_id !== draft.persona_id) {
-    return json(origin, 409, { error: "That Discord account is no longer assigned to this draft's persona" });
+    // Shared co-managers (migration 020) may also publish through this account.
+    const { data: shareLink } = await service
+      .from("account_persona_links").select("ledger_id")
+      .eq("ledger_id", ledger.id).eq("persona_id", draft.persona_id).eq("owner", uid).maybeSingle();
+    if (!shareLink) {
+      return json(origin, 409, { error: "That Discord account is no longer assigned to this draft's persona" });
+    }
   }
 
   const { data: connection } = await service
