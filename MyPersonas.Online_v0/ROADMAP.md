@@ -93,6 +93,9 @@ browser scenarios retain their own verification evidence.
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
       age assurance
+- [x] X API cost guard: per-draft cost badge, link-cost confirmation before approval,
+      and month-to-date + projected spend on Targets. Automated drafts are barred from
+      linking to the persona's own AliaSpaces page (run-tasks system rule)
 - [x] Reddit connector (Order 4 complete): official OAuth (identity/submit/read,
       server-completed callback, Vault-only tokens, username binding) plus reddit-post
       publishing to a tags-named subreddit or the account profile, with Queue button

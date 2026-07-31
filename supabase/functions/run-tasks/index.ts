@@ -742,6 +742,8 @@ function personaSystem(
     hardRules,
     "Never claim that content was posted, an account was contacted, a link was checked, or a real-world action was completed.",
     "Do not invent current events, source facts, testimonials, performance results, prices, or affiliate terms.",
+    "Never link to, mention, or promote this persona's AliaSpaces or MyPersonas page, and never include any mypersonas.online or aliaspaces URL. These accounts are operated as themselves and must not advertise the tool that drafts for them.",
+    "Write the post without any URL unless the owner's 'Offers and approved links' direction above supplies the exact link and the task calls for it. Links are the exception, not the default: on X a post containing a URL costs the owner roughly thirteen times a link-free post.",
     "",
     "OWNER CONTENT DIRECTION:",
     `Primary goal: ${safeText(plan?.primary_goal)}.`,

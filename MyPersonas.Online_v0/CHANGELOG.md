@@ -3,6 +3,20 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Released — X API cost guard and no-backlink rule (2026-07-31)
+
+- X moved every new developer to pay-per-use credits on 2026-02-06 (Basic/Pro are
+  grandfathered-only), and a post whose text carries a URL costs about $0.20 against
+  about $0.015 for a link-free post — roughly 13x. The Queue now shows a per-draft
+  cost badge, warns before approving a link-carrying X draft, and the Targets tab
+  shows month-to-date estimated spend plus a monthly projection from active
+  schedules. All estimates are client-side against a local rate table; the X
+  Developer Console remains the billing source of truth.
+- Product rule: automated posts never advertise the persona's own AliaSpaces page.
+  `run-tasks` now forbids any mypersonas.online/aliaspaces URL in generated drafts and
+  treats links as the exception — only the owner's explicitly approved links may
+  appear, and only when the task calls for one.
+
 ## Released — Reddit connector: OAuth + posting (2026-07-30)
 
 - Built the full official Reddit connector. Migration `021-reddit-oauth.sql` adds
