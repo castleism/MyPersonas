@@ -3,6 +3,20 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Fixed — connector capability checks aborted by token refresh (2026-07-31)
+
+- The X and Meta capability loads ran behind an auth-generation guard. When Supabase
+  auto-refreshed the access token mid-load the generation bumped and the check aborted
+  silently, leaving `loaded:false` — which the Accounts panel reported as "X still needs
+  its developer Web App credentials," even with correct credentials installed and the
+  connector answering `configured:true`. The message was wrong, not the setup.
+- Owner-pressed checks ("Check X connector" / "Check Meta connector") and opening the
+  Accounts tab now force a fresh capability fetch that ignores the generation guard;
+  background loads keep the guard so stale state can never overwrite fresher state.
+  A failed check now surfaces the real error instead of a generic credentials message.
+- Note for setup: Edge Function secret names are case-sensitive. `X_Client_ID` is not
+  `X_CLIENT_ID`, and a mismatch presents exactly as "credentials missing."
+
 ## Released — X API cost guard and no-backlink rule (2026-07-31)
 
 - X moved every new developer to pay-per-use credits on 2026-02-06 (Basic/Pro are

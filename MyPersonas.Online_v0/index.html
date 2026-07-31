@@ -2405,6 +2405,13 @@ function switchAcctTab(t){
   document.querySelectorAll('#acctPanels .tabpanel').forEach(p=>p.style.display=(p.dataset.p===t?'block':'none'));
   if(t==="accounts"&&accountLedgerReady&&!document.querySelector("#ledgerBatch .ledgerrow"))addLedgerRow();
   if(t==="accounts"&&myAccounts.some(a=>a.provider==="reddit")&&!redditOAuthCapability.loaded)loadRedditCapability().then(()=>{if(acctTab==="accounts")renderStudio()});
+  // Background capability loads can be skipped by an auth-generation bump (token
+  // refresh mid-load). Opening Accounts is an explicit owner action, so retry any
+  // connector whose capability never landed rather than showing a false "needs setup".
+  if(t==="accounts"&&myAccounts.some(a=>a.provider==="twitter")&&!twitterOAuthCapability.loaded)
+    loadTwitterCapability(session?.user?.id||null,authLoadGeneration,true).then(()=>{if(acctTab==="accounts")renderStudio()});
+  if(t==="accounts"&&myAccounts.some(a=>a.provider==="facebook"||a.provider==="instagram")&&!metaOAuthCapability.loaded)
+    loadMetaCapability(session?.user?.id||null,authLoadGeneration,true).then(()=>{if(acctTab==="accounts")renderStudio()});
   if(t==="inbox")mailboxEnsureLoaded();
 }
 function accountArea(){
@@ -3670,10 +3677,13 @@ async function twitterOAuthAction(action,id,extra={}){
     return r.ok?{data:j}:{error:j.error||("X authorization failed (HTTP "+r.status+")"),details:j};
   }catch(e){return{error:"Could not reach X authorization: "+(e.message||e)}}
 }
-async function loadTwitterCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
-  if(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+async function loadTwitterCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration,force=false){
+  // force=true is the owner-pressed path. Background loads stay guarded so a stale
+  // generation cannot overwrite fresher state, but an explicit check must never be
+  // silently skipped just because a token refresh bumped the generation mid-load.
+  if(!force&&(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   const result=await twitterOAuthAction("capabilities",null);
-  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+  if(!force&&(session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   if(result.error){
     twitterOAuthCapability={loaded:true,configured:false,authenticationEnabled:false,postingEnabled:false,error:result.error};
     return false;
@@ -3683,9 +3693,11 @@ async function loadTwitterCapability(expectedUid=session?.user?.id||null,generat
   return true;
 }
 async function retryTwitterCapability(){
-  await loadTwitterCapability();
+  await loadTwitterCapability(session?.user?.id||null,authLoadGeneration,true);
   acctTab="accounts";renderStudio();
-  toast(twitterOAuthCapability.configured?"X authorization is ready.":"X still needs its developer Web App credentials and API access before accounts can connect.");
+  toast(twitterOAuthCapability.configured?"X authorization is ready."
+    :twitterOAuthCapability.error?("X connector check failed: "+twitterOAuthCapability.error)
+    :"X still needs its developer Web App credentials and API access before accounts can connect.");
 }
 async function connectTwitter(id){
   const account=myAccounts.find(a=>a.id===id);
@@ -3751,10 +3763,10 @@ async function metaOAuthAction(action,id=null,extra={}){
     return r.ok?{data:j}:{error:j.error||("Meta authorization failed (HTTP "+r.status+")"),details:j};
   }catch(e){return{error:"Could not reach Meta authorization: "+(e.message||e)}}
 }
-async function loadMetaCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
-  if(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+async function loadMetaCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration,force=false){
+  if(!force&&(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   const result=await metaOAuthAction("capabilities");
-  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return false;
+  if(!force&&(session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   if(result.error){
     const prior=metaOAuthCapability;
     metaOAuthCapability={loaded:true,configured:false,authenticationEnabled:false,postingEnabled:false,error:result.error,callbackUrl:"",
@@ -3798,7 +3810,7 @@ async function refreshMetaCleanupAfterError(details,expectedUid=session?.user?.i
   return true;
 }
 async function retryMetaCapability(){
-  await loadMetaCapability();acctTab="accounts";renderStudio();
+  await loadMetaCapability(session?.user?.id||null,authLoadGeneration,true);acctTab="accounts";renderStudio();
   toast(metaOAuthCapability.pendingAuthorizationCleanupRequired?"Resolve the retained Meta authorization cleanup before starting another connection.":metaOAuthCapability.error?metaOAuthCapability.error:metaOAuthCapability.configured?"Meta Page pairing is ready. Direct publishing remains locked.":"Meta still needs its Business app credentials and approved configuration.");
 }
 async function cancelPendingMetaAuthorization(manualAcknowledgement=false){

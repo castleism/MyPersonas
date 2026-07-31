@@ -17,6 +17,9 @@ Full detail lives in `PROVIDER-SETUP-GUIDE.md`; this is the short do-it list.
 4. Website URL: `https://mypersonas.online`
 5. Scopes for the current read/identity connector: `tweet.read`, `users.read`, `offline.access`.
 6. Copy the client ID + secret → install as secrets **`X_CLIENT_ID`** and **`X_CLIENT_SECRET`** (link above).
+   **Names are case-sensitive.** `X_Client_ID` will not be found and shows up in the app
+   as "X still needs its developer Web App credentials." No redeploy is needed after
+   setting secrets — they take effect immediately.
 7. Activate [X API billing/credits](https://docs.x.com/x-api/getting-started/pricing) with a low spending cap.
 8. In MyPersonas → Matrix → Accounts → your X account → **Connect X**.
 
