@@ -22,9 +22,11 @@ Full detail lives in `PROVIDER-SETUP-GUIDE.md`; this is the short do-it list.
 
 **X policy compliance (binding — read before registering):**
 
-- Use-case description is binding; include posting honestly up front, e.g.: "Manage my
-  own X accounts: verify identity, draft and publish my own posts with my explicit
-  per-post approval. No third-party users, no resale, no model training."
+- Use-case description is binding; declare the full direction up front: owner-verified
+  accounts; reading the account's own profile/posts/metrics for a unified history and
+  performance view; publishing owner-created or owner-approved content immediately or
+  on schedule (caps + quiet hours); owner-reviewed reply drafting. Scheduled posting of
+  approved content is allowed — per-post manual pressing is NOT required by X.
 - Register ONE app for MyPersonas (up to 3 only as dev/staging/prod of the same service).
 - Never post identical or substantially similar content across multiple accounts —
   each persona's drafts must be distinct. This is the top suspension risk.
