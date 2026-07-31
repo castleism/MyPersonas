@@ -360,7 +360,24 @@ let accountLedgerReady=true,accountConnectionsReady=true,ledgerRowSeq=0,ledgerBa
 let ledgerOpenProvider="",ledgerSelectedAccounts=new Map();
 let timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};
 let myAccountPersonaLinks=[],sharedAccountLinksReady=true;
-let redditOAuthCapability={loaded:false,configured:false,error:""},redditOAuthNotice=null;
+let redditOAuthCapability={loaded:false,configured:false,error:"",unreachable:false},redditOAuthNotice=null;
+// ----- connector capability retry -----
+// A platform blip (gateway 5xx, dropped connection) is indistinguishable from
+// "not configured" at the UI layer unless we say so. Transient failures are
+// retried with backoff, and a capability that never answered is reported as
+// unreachable rather than as missing credentials.
+const CAPABILITY_TRANSIENT_STATUS=new Set([408,425,429,500,502,503,504]);
+const CAPABILITY_RETRY_DELAYS=[600,1600,3200];
+function capabilityDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function capabilityWithRetry(run,attempts=CAPABILITY_RETRY_DELAYS.length+1){
+  let result=null;
+  for(let attempt=0;attempt<attempts;attempt++){
+    result=await run();
+    if(!result||!result.error||!result.transient)return result;
+    if(attempt<attempts-1)await capabilityDelay(CAPABILITY_RETRY_DELAYS[attempt]||3200);
+  }
+  return result;
+}
 // ----- provider API cost model (owner-facing estimates; no provider call is made to price anything) -----
 // X moved every new developer to pay-per-use credits on 2026-02-06. A post carrying a
 // URL costs about 13x a plain post, so the queue warns before an expensive approval.
@@ -569,7 +586,7 @@ function resetMineState(){
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;
   updateBadge();
 }
-function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};redditOAuthCapability={loaded:false,configured:false,error:""};redditOAuthNotice=null;twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
+function resetPrivateUiState(){pageState={};editId=null;editLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();timelinePosts={personaId:"",loading:false,loaded:false,error:"",rows:[]};redditOAuthCapability={loaded:false,configured:false,error:"",unreachable:false};redditOAuthNotice=null;twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
 async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   const requestId=++mineLoadRequest;
@@ -3143,12 +3160,14 @@ function twitterResetOnlyError(code){return["twitter_already_connected","shared_
 function ledgerConnectorGuidance(provider){
   if(provider==="twitter"){
     if(!twitterOAuthCapability.loaded)return{title:"Checking X connector setup",note:"The Connect button will become available only after the production X OAuth connector confirms that its developer credentials are installed."};
+    if(twitterOAuthCapability.unreachable)return{title:"X connector unreachable right now",note:"The authorization service did not answer after several retries, so its setup could not be confirmed. This does not mean your credentials are missing — it usually clears on its own. Press Check X connector again in a few minutes."};
     if(twitterOAuthCapability.error)return{title:"X connector unavailable",note:"The production authorization service could not confirm its setup. Try again after the connector is deployed and healthy."};
     if(!twitterOAuthCapability.configured)return{title:"X client credentials missing",note:"The deployed connector is healthy, but its production Web App client ID and secret are not installed. Create a confidential X Web App with the exact callback, install those two secrets, then confirm current API credits. No X password should be entered here."};
     return{title:"Ready to connect",note:"The production X OAuth connector is configured for identity/read access and secure refresh/revocation. Automated posting is not enabled."};
   }
   if(provider==="facebook"||provider==="instagram"){
     if(!metaOAuthCapability.loaded)return{title:"Checking Meta connector setup",note:"MyPersonas is checking whether the official Page-pairing service has its Meta Business app credentials."};
+    if(metaOAuthCapability.unreachable)return{title:"Meta connector unreachable right now",note:"The Page-pairing service did not answer after several retries. This does not mean your credentials are missing — try the connector check again in a few minutes."};
     if(metaOAuthCapability.error)return{title:"Meta connector unavailable",note:"The Page-pairing service could not confirm its setup. Try the connector check again."};
     if(!metaOAuthCapability.configured)return{title:"Meta app credentials missing",note:"Create a Meta Business app, add the exact callback shown in the public setup guide, then install its app ID and secret directly in Supabase. No Facebook or Instagram password belongs here."};
     return provider==="facebook"
@@ -3157,6 +3176,7 @@ function ledgerConnectorGuidance(provider){
   }
   if(provider==="reddit"){
     if(!redditOAuthCapability.loaded)return{title:"Checking Reddit connector setup",note:"The Connect button becomes available after the Reddit connector confirms its client credentials are installed."};
+    if(redditOAuthCapability.unreachable)return{title:"Reddit connector unreachable right now",note:"The authorization service did not answer after several retries. This does not mean your credentials are missing — try the connector check again in a few minutes."};
     if(redditOAuthCapability.error)return{title:"Reddit connector unavailable",note:"The Reddit authorization service could not confirm its setup. Deploy reddit-oauth and check again."};
     if(!redditOAuthCapability.configured)return{title:"Reddit app credentials missing",note:"Create a web app at reddit.com/prefs/apps with the exact callback from the setup guide, then install REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET as deployment secrets. No Reddit password belongs here."};
     return{title:"Ready to connect",note:"Official Reddit OAuth for identity and submit. After connecting, approved drafts can post to a subreddit named in their tags (r/name) or to the account's own profile."};
@@ -3241,14 +3261,17 @@ async function redditOAuthAction(action,id){
   try{
     const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/reddit-oauth",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
-      body:JSON.stringify({action,ledgerId:id})});
+      body:JSON.stringify(Object.assign({action},id?{ledgerId:id}:{}))});
     const j=await r.json().catch(()=>({}));
-    return r.ok?{data:j}:{error:j.error||("Reddit authorization failed (HTTP "+r.status+")")};
-  }catch(e){return{error:"Could not reach Reddit authorization: "+(e.message||e)}}
+    if(r.ok)return{data:j};
+    return{error:j.error||("Reddit authorization failed (HTTP "+r.status+")"),transient:CAPABILITY_TRANSIENT_STATUS.has(r.status)};
+  }catch(e){return{error:"Could not reach Reddit authorization: "+(e.message||e),transient:true}}
 }
 async function loadRedditCapability(){
-  const result=await redditOAuthAction("capabilities",null);
-  redditOAuthCapability=result.error?{loaded:true,configured:false,error:result.error}:{loaded:true,configured:result.data?.configured===true,error:""};
+  const result=await capabilityWithRetry(()=>redditOAuthAction("capabilities",null));
+  redditOAuthCapability=result.error
+    ?{loaded:true,configured:false,error:result.error,unreachable:result.transient===true}
+    :{loaded:true,configured:result.data?.configured===true,error:"",unreachable:false};
 }
 function redditConnectionReady(accountId){
   const c=myAccountConnections.find(x=>x.ledger_id===accountId);
@@ -3623,7 +3646,7 @@ async function gmailOAuthAction(action,id,extra={}){
   try{
     const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/gmail-oauth",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
-      body:JSON.stringify(Object.assign({action,ledgerId:id},extra))});
+      body:JSON.stringify(Object.assign({action},id?{ledgerId:id}:{},extra))});
     const j=await r.json().catch(()=>({}));
     return r.ok?{data:j}:{error:j.error||("Gmail authorization failed (HTTP "+r.status+")")};
   }catch(e){return{error:"Could not reach Gmail authorization: "+(e.message||e)}}
@@ -3672,20 +3695,21 @@ async function twitterOAuthAction(action,id,extra={}){
   try{
     const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/twitter-oauth",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},
-      body:JSON.stringify(Object.assign({action,ledgerId:id},extra))});
+      body:JSON.stringify(Object.assign({action},id?{ledgerId:id}:{},extra))});
     const j=await r.json().catch(()=>({}));
-    return r.ok?{data:j}:{error:j.error||("X authorization failed (HTTP "+r.status+")"),details:j};
-  }catch(e){return{error:"Could not reach X authorization: "+(e.message||e)}}
+    if(r.ok)return{data:j};
+    return{error:j.error||("X authorization failed (HTTP "+r.status+")"),details:j,transient:CAPABILITY_TRANSIENT_STATUS.has(r.status)};
+  }catch(e){return{error:"Could not reach X authorization: "+(e.message||e),transient:true}}
 }
 async function loadTwitterCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration,force=false){
   // force=true is the owner-pressed path. Background loads stay guarded so a stale
   // generation cannot overwrite fresher state, but an explicit check must never be
   // silently skipped just because a token refresh bumped the generation mid-load.
   if(!force&&(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
-  const result=await twitterOAuthAction("capabilities",null);
+  const result=await capabilityWithRetry(()=>twitterOAuthAction("capabilities",null));
   if(!force&&(session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   if(result.error){
-    twitterOAuthCapability={loaded:true,configured:false,authenticationEnabled:false,postingEnabled:false,error:result.error};
+    twitterOAuthCapability={loaded:true,configured:false,authenticationEnabled:false,postingEnabled:false,error:result.error,unreachable:result.transient===true};
     return false;
   }
   const data=result.data||{};
@@ -3696,6 +3720,7 @@ async function retryTwitterCapability(){
   await loadTwitterCapability(session?.user?.id||null,authLoadGeneration,true);
   acctTab="accounts";renderStudio();
   toast(twitterOAuthCapability.configured?"X authorization is ready."
+    :twitterOAuthCapability.unreachable?"The X connector did not answer after several retries. Your credentials were not checked — try again in a few minutes."
     :twitterOAuthCapability.error?("X connector check failed: "+twitterOAuthCapability.error)
     :"X still needs its developer Web App credentials and API access before accounts can connect.");
 }
@@ -3760,12 +3785,13 @@ async function metaOAuthAction(action,id=null,extra={}){
     const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/meta-oauth",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+s.access_token},body:JSON.stringify(payload)});
     const j=await r.json().catch(()=>({}));
-    return r.ok?{data:j}:{error:j.error||("Meta authorization failed (HTTP "+r.status+")"),details:j};
-  }catch(e){return{error:"Could not reach Meta authorization: "+(e.message||e)}}
+    if(r.ok)return{data:j};
+    return{error:j.error||("Meta authorization failed (HTTP "+r.status+")"),details:j,transient:CAPABILITY_TRANSIENT_STATUS.has(r.status)};
+  }catch(e){return{error:"Could not reach Meta authorization: "+(e.message||e),transient:true}}
 }
 async function loadMetaCapability(expectedUid=session?.user?.id||null,generation=authLoadGeneration,force=false){
   if(!force&&(!expectedUid||session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
-  const result=await metaOAuthAction("capabilities");
+  const result=await capabilityWithRetry(()=>metaOAuthAction("capabilities"));
   if(!force&&(session?.user?.id!==expectedUid||generation!==authLoadGeneration))return false;
   if(result.error){
     const prior=metaOAuthCapability;

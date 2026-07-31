@@ -93,6 +93,12 @@ browser scenarios retain their own verification evidence.
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
       age assurance
+- [x] X connector check unblocked: ledgerId:null crashed the Edge Function worker
+      mid-request (null bypasses JS parameter defaults → null.trim() throw); client
+      now omits null ids and the function coerces non-string ids to "" defensively
+- [x] Connector capability hardening: forced checks on owner action, retry-with-backoff
+      on transient failures, and an explicit unreachable state so a platform blip is
+      never reported to the owner as missing credentials
 - [x] X API cost guard: per-draft cost badge, link-cost confirmation before approval,
       and month-to-date + projected spend on Targets. Automated drafts are barred from
       linking to the persona's own AliaSpaces page (run-tasks system rule)
@@ -134,6 +140,8 @@ browser scenarios retain their own verification evidence.
 - [ ] Persona timeline public page module: opt-in per-account public display feeding a
       page timeline section (accounts stay private unless explicitly shown; needs a
       public-readable posted-history table, not owner-only drafts)
+- [x] Persona deletion unblocked: migration 022 makes destination audit inserts
+      cascade-safe (was aborting deletes via agent_actions binding FK)
 - [ ] Resolve persona-save session bug from verification round (error_logs driven)
 - [ ] SEO: path-based routing + prerendered persona pages so Google indexes each
       persona individually, and per-persona OG images for rich link previews

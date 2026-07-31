@@ -3,6 +3,50 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Fixed — persona deletion blocked by audit trigger (2026-07-31)
+
+- Deleting a persona failed with `agent_actions_binding_id_fkey` violations. The
+  cascade (persona → agent binding → destinations) fired the destination audit
+  trigger, which inserted an audit row referencing the binding and persona already
+  deleted earlier in the same cascade. Migration `022-fix-persona-delete-audit.sql`
+  makes the audit inserts reference those rows only if they still exist (NULL
+  otherwise, with the persona id preserved inside the action detail). Standalone
+  destination deletes keep exactly the audit context they had before.
+- Run `sql-updates/022-fix-persona-delete-audit.sql` in the Supabase SQL Editor;
+  no app or function deploy is required.
+
+## Fixed — connector capability checks now retry and report unreachable honestly (2026-07-31)
+
+- Capability checks for X, Meta, and Reddit retry transient failures with backoff
+  (roughly 0.6s, 1.6s, 3.2s across four attempts). Network drops and gateway
+  408/425/429/5xx are treated as transient; a definitive answer — including a clean
+  "not configured" or an auth/origin rejection — is accepted on the first attempt and
+  never retried.
+- A capability that never answered is now tracked as `unreachable` and reported as
+  "connector unreachable right now — this does not mean your credentials are missing,"
+  instead of the previous claim that developer credentials were absent.
+
+## Fixed — X connector check crashed on ledgerId:null (2026-07-31)
+
+- True root cause of every "Failed to fetch" on the X capability check, found by
+  deterministic A/B (3/3 fail with the field, 9/9 pass without): the client sent
+  `{action:"capabilities", ledgerId:null}`, and in the Edge Function the handler
+  signature `capabilities(req, origin, ledgerIdInput = "")` never applied its
+  default — JS defaults apply to undefined, not null — so `null.trim()` threw and
+  killed the worker before any response was written. Browsers surface that dropped
+  connection as a bare "Failed to fetch". The check had never succeeded; earlier
+  masking made it look intermittent, and prior cold-start/platform theories in this
+  log were wrong.
+- Client fix: twitterOAuthAction, gmailOAuthAction, and redditOAuthAction now omit
+  `ledgerId` entirely when absent (the pattern metaOAuthAction already used — which
+  is why Meta checks never failed).
+- Server hardening (twitter-oauth): the dispatch layer rejects non-object bodies and
+  coerces any non-string `ledgerId` to "" before reaching the five action handlers,
+  so a raw null can never crash the worker again. Client fix alone unblocks the flow;
+  the function redeploy applies the defense-in-depth.
+- Verified live end-to-end with the patched call: capability returns
+  `configured:true` and the account rows show **Connect X** enabled.
+
 ## Fixed — connector capability checks aborted by token refresh (2026-07-31)
 
 - The X and Meta capability loads ran behind an auth-generation guard. When Supabase

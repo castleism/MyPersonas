@@ -1932,6 +1932,14 @@ serve(async (req) => {
   } catch {
     return json({ error: "Invalid request" }, 400, origin);
   }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return json({ error: "Invalid request" }, 400, origin);
+  }
+  // Clients may send ledgerId:null (JS default parameters do not apply to null,
+  // so a raw null used to reach ledgerIdInput.trim() and crash the worker before
+  // any response was written — surfacing in browsers as a bare "Failed to fetch").
+  // Coerce every non-string ledgerId to "" so all action handlers stay total.
+  if (typeof body.ledgerId !== "string") body.ledgerId = "";
   if (body.action === "capabilities") {
     return capabilities(req, origin, body.ledgerId);
   }
