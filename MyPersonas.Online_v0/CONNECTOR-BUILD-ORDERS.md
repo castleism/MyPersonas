@@ -39,6 +39,12 @@ account connected. Then:
 4. Reconciliation: on 403/429 map to human-readable errors; on timeout, verify via
    GET tweet lookup before marking failed (prevent double-post on retry).
 5. UI: reuse the Queue "Post to … now" pattern gated on write-scope connection.
+6. Policy guards (X Developer Agreement/Policy, read 2026-07-31): block publishing a
+   draft whose text is identical/near-identical to another account's recent draft
+   (similarity check before lease — duplicate cross-account content is X's top
+   enforcement trigger); never feed API-fetched X content into any training path
+   (Section III.A.k prohibits model training on X API content); one registered app
+   for the whole service, use-case description includes owner-approved posting.
 
 ## Order 2 — Facebook Page publish (`meta-post`, hard-gated)
 

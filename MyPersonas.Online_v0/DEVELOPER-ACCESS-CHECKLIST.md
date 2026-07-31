@@ -20,6 +20,17 @@ Full detail lives in `PROVIDER-SETUP-GUIDE.md`; this is the short do-it list.
 7. Activate [X API billing/credits](https://docs.x.com/x-api/getting-started/pricing) with a low spending cap.
 8. In MyPersonas → Matrix → Accounts → your X account → **Connect X**.
 
+**X policy compliance (binding — read before registering):**
+
+- Use-case description is binding; include posting honestly up front, e.g.: "Manage my
+  own X accounts: verify identity, draft and publish my own posts with my explicit
+  per-post approval. No third-party users, no resale, no model training."
+- Register ONE app for MyPersonas (up to 3 only as dev/staging/prod of the same service).
+- Never post identical or substantially similar content across multiple accounts —
+  each persona's drafts must be distinct. This is the top suspension risk.
+- Never use X API content for AI/model training (explicitly prohibited) — training
+  sets must come from your own local originals, not API-pulled X data.
+
 ## 2. Gmail — if a mailbox still gets a 403
 
 The connector is live; Google gates it while the OAuth app is in Testing.
