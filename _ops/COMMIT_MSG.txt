@@ -31,3 +31,12 @@ Verified: inline script passes node --check; CRLF preserved.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01BxUcNtqNCN7j81MHrXkoR5
+
+Cowork session additions (2026-08-07)
+- Persona brain: split-post engine, daily-discovery research, Brain discovery inbox.
+- Data: backup/export (roster CSV + multi-tab XLSX + JSON) and full in-app restore.
+- First-persona onboarding wizard; left persona sidebar (root/persona navigation).
+- Persona Title + Focus fields + roster columns; primary-account marking.
+- Email+password login (with Google + magic link); page-aware chat bubble.
+- Groups/family; page-aware assistant. Fixed the Meta OAuth cleanup guard regression.
+- Migrations sql-updates/016,017,018 + weekly-batch Edge Function (run 016-018 in SQL editor).
