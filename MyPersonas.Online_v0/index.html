@@ -1922,7 +1922,9 @@ async function renderEdit(id,epoch=++renderEpoch){
         <button class="btn" onclick="openWizard()">Quick setup</button>
         <button class="btn sec" onclick="openBuilder()">Build with AI instead</button>
         <button class="btn sec" onclick="document.getElementById('advWrap').style.display='';document.getElementById('advGate').style.display='none'">Fill manually</button>
-      </div></div>
+      </div>
+      <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Already have an AI-generated JSON? Paste it here to fill the form</summary><textarea id="pastePersonaJson" placeholder="Paste the AI's {...} JSON here" style="width:100%;min-height:90px;margin-top:6px"></textarea><div><button class="btn sm" style="margin-top:6px" onclick="applyPastedPersonaJson()">Apply JSON to form</button></div></details>
+      </div>
     <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
     <hr>
     <h3>${ico("image")}Page looks</h3>
@@ -2085,7 +2087,9 @@ async function t8Search(){
 }
 function t8Add(d){if(editT8.length>=8){toast("Top 8 is full!");return}editT8.push(d);document.getElementById("t8results").innerHTML="";renderT8()}
 async function savePersona(){
-  const targetId=editId,epoch=renderEpoch,uid=session?.user?.id,accessToken=session?.access_token,handle=document.getElementById("eHandle").value.trim().toLowerCase();
+  const startEditId=editId,epoch=renderEpoch,uid=session?.user?.id,accessToken=session?.access_token,handle=document.getElementById("eHandle").value.trim().toLowerCase();
+  let targetId=startEditId;
+  if(!targetId){const _mine=(myPersonas||[]).find(p=>p.handle===handle);if(_mine)targetId=_mine.id;}
   if(!/^[a-z0-9._]{3,30}$/.test(handle)){toast("Handle: 3-30 chars, lowercase letters/numbers/dots/underscores");return}
   if(!uid||!accessToken){toast("Your session expired — sign in again (your form is still here)");return}
   const existing=targetId?myPersonas.find(p=>p.id===targetId)||{}:{};if(!inputsWithinUtf8Limits([["eName",256,"Name",...(targetId?[existing.name]:[])],["eTagline",512,"Tagline",...(targetId?[existing.tagline]:[])],["eBio",2048,"Bio",...(targetId?[existing.bio]:[])],["ePurpose",1024,"Purpose",...(targetId?[existing.purpose]:[])],["eVoice",2048,"Personality and voice",...(targetId?[existing.voice]:[])],["eTopics",1024,"Core topics",...(targetId?[existing.topics]:[])],["eAudience",1024,"Audience",...(targetId?[existing.audience]:[])],["eHashtags",1024,"Default hashtags",...(targetId?[existing.hashtags]:[])],["eDont",3072,"Never-do rules",...(targetId?[existing.dont]:[])]]))return;
@@ -2105,10 +2109,10 @@ async function savePersona(){
   const links=editLinks.map((l,i)=>({platform:l.platform,handle:l.handle,url:l.url,sort:i})),note=document.getElementById("eNotes").value.trim();
   if(!d.name){toast("Name required");return}
   const{error}=await fixedSessionClient(accessToken).rpc("save_persona_bundle",{p_persona_id:targetId,p_persona:d,p_links:links,p_note:note});
-  if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
-  if(error){toast(error.message.includes("duplicate")?"That handle is taken!":error.message);return}
+  if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
+  if(error){toast(error.message.includes("duplicate")?"That handle is taken by another account — pick a different one.":error.message);return}
   const _title=document.getElementById("eTitle")?.value.trim()||"",_focus=document.getElementById("eFocus")?.value.trim()||"";
-  await loadMine(uid,authLoadGeneration);if(editId!==targetId||epoch!==renderEpoch||session?.user?.id!==uid)return;
+  await loadMine(uid,authLoadGeneration);if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   const _pid=targetId||(myPersonas.find(p=>p.handle===handle)||{}).id;
   if(_pid)await sb.rpc("set_persona_meta",{p_persona_id:_pid,p_title:_title,p_focus:_focus}).catch(()=>{});
   toast("Saved");go("p/"+handle);
@@ -2352,8 +2356,25 @@ function openBuilder(){
   const name=document.getElementById("eName")?.value||"this persona";
   openChat({title:"Persona builder — "+name,backendId:document.getElementById("eBackend")?.value||null,
     storeKey:"ps_build_"+(editId||"new"),personaId:editId||null,extract:true,
-    system:`You are a persona-building interviewer for a MySpace-style persona network. The user is creating a persona named "${name}". Ask short, friendly questions ONE at a time to flesh out: what the persona covers (purpose), personality & voice, core topics, target audience, hashtags, hard rules (never-do), a tagline and a short bio. Keep it fun and quick — 6-8 questions max, then summarize what you've got.`,
+    system:`You are a persona-building interviewer for a MySpace-style persona network. The user is creating a persona named "${name}". Ask short, friendly questions ONE at a time to flesh out: what the persona covers (purpose), personality & voice, core topics, target audience, hashtags, hard rules (never-do), a tagline and a short bio. Keep it fun and quick — 6-8 questions max, then give a SHORT plain-English recap of the persona (a sentence or two). Do NOT print JSON or code blocks. Then tell the user to click the "Apply to profile" button at the top of this chat, which fills the persona form for them automatically.`,
     autoSend:"Hi! Help me flesh out this persona. Ask me your first question."});
+}
+function applyPersonaProfileObj(j){
+  if(!j||typeof j!=="object")return 0;
+  const map={name:"eName",tagline:"eTagline",title:"eTitle",focus:"eFocus",bio:"eBio",purpose:"ePurpose",voice:"eVoice",topics:"eTopics",audience:"eAudience",hashtags:"eHashtags",dont:"eDont"};
+  let n=0;
+  for(const k in map){const el=document.getElementById(map[k]);if(!el)continue;const v=j[k];if(v==null)continue;const s=Array.isArray(v)?v.join(", "):String(v);if(!s.trim())continue;if(k==="name"&&el.value.trim())continue;el.value=s;n++}
+  const aw=document.getElementById("advWrap"),ag=document.getElementById("advGate");
+  if(aw)aw.style.display="";if(ag)ag.style.display="none";
+  return n;
+}
+function parseLoosePersonaJson(raw){let s=String(raw||"").replace(/^```json?\s*/i,"").replace(/```\s*$/,"").trim();const a=s.indexOf("{"),b=s.lastIndexOf("}");if(a>=0&&b>a)s=s.slice(a,b+1);return JSON.parse(s)}
+function applyPastedPersonaJson(){
+  const ta=document.getElementById("pastePersonaJson");if(!ta)return;
+  if(!String(ta.value||"").trim()){toast("Paste the AI's JSON first");return}
+  let j;try{j=parseLoosePersonaJson(ta.value)}catch(e){toast("That isn't valid JSON. Copy the whole {...} block. ("+e.message+")");return}
+  const n=applyPersonaProfileObj(j);
+  toast(n?("Filled "+n+" field"+(n>1?"s":"")+". Review and hit Save."):"No matching persona fields were found in that JSON.");
 }
 async function chatExtract(){
   if(!chatCtx)return;
