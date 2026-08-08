@@ -506,10 +506,23 @@ async function debugToken(accessToken: string) {
       "Meta did not validate this token for the configured app.",
     );
   }
+  const granular = Array.isArray((data as Record<string, unknown>).granular_scopes)
+    ? (data as Record<string, unknown>).granular_scopes as Array<Record<string, unknown>>
+    : [];
+  const pageIds = [
+    ...new Set(
+      granular
+        .filter((g) => String(g?.scope || "") === "pages_show_list")
+        .flatMap((g) => Array.isArray(g?.target_ids) ? g.target_ids : [])
+        .map((v) => String(v || ""))
+        .filter((v) => validProviderId(v)),
+    ),
+  ];
   return {
     userId: String(data.user_id),
     scopes: normalizeScopes(data.scopes),
     expiresAt: safeExpiry(data.expires_at),
+    grantedPageIds: pageIds,
   };
 }
 
@@ -556,6 +569,67 @@ async function discoverInstagram(
   };
 }
 
+// Business-portfolio pages are frequently absent from /me/accounts even when the
+// user granted them (granular business asset grants). The token's debug data lists
+// the exact granted page ids; fetch each one directly as a fallback.
+async function discoverPagesByIds(
+  pageIds: string[],
+  userAccessToken: string,
+): Promise<PageAsset[]> {
+  const discovered: PageAsset[] = [];
+  for (const pageId of pageIds.slice(0, MAX_DISCOVERED_PAGES)) {
+    let payload: unknown = null;
+    try {
+      payload = await graphGet(`/${pageId}`, userAccessToken, {
+        fields: "id,name,access_token,tasks,instagram_business_account",
+      });
+    } catch (error) {
+      console.error(
+        "page fetch failed:",
+        pageId,
+        error instanceof Error ? error.message : String(error),
+      );
+      continue;
+    }
+    const page = payload && typeof payload === "object"
+      ? payload as Record<string, unknown>
+      : {};
+    const pageToken = typeof page.access_token === "string"
+      ? page.access_token.trim()
+      : "";
+    if (!validProviderId(page.id) || String(page.id) !== pageId || !pageToken) {
+      continue;
+    }
+    const linked = page.instagram_business_account &&
+        typeof page.instagram_business_account === "object"
+      ? page.instagram_business_account as Record<string, unknown>
+      : null;
+    const instagramId = linked && validProviderId(linked.id)
+      ? String(linked.id)
+      : "";
+    let instagram: InstagramAsset | null = null;
+    if (instagramId) {
+      try {
+        instagram = await discoverInstagram(instagramId, pageToken);
+      } catch (_error) {
+        instagram = null;
+      }
+    }
+    discovered.push({
+      page_id: pageId,
+      page_name: typeof page.name === "string"
+        ? page.name.trim().slice(0, 255)
+        : "",
+      page_access_token: pageToken,
+      page_tasks: Array.isArray(page.tasks)
+        ? page.tasks.map((task) => String(task || "").slice(0, 64)).slice(0, 20)
+        : [],
+      instagram,
+    });
+  }
+  return discovered;
+}
+
 async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
   const discovered: PageAsset[] = [];
   const seen = new Set<string>();
@@ -572,6 +646,16 @@ async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
       ? payload as Record<string, unknown>
       : {};
     const rows = Array.isArray(record.data) ? record.data : [];
+    console.error(
+      "me/accounts probe:",
+      JSON.stringify({
+        n: rows.length,
+        names: rows.slice(0, 30).map((r) =>
+          String((r as Record<string, unknown>)?.name || "")
+        ),
+        err: (record as Record<string, unknown>).error || null,
+      }).slice(0, 900),
+    );
 
     for (const row of rows) {
       const page = row && typeof row === "object"
@@ -606,9 +690,20 @@ async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
       const instagramId = linked && validProviderId(linked.id)
         ? String(linked.id)
         : "";
-      const instagram = instagramId
-        ? await discoverInstagram(instagramId, pageToken)
-        : null;
+      let instagram: InstagramAsset | null = null;
+      if (instagramId) {
+        try {
+          instagram = await discoverInstagram(instagramId, pageToken);
+        } catch (error) {
+          // A page whose linked Instagram can't be read should still pair as a
+          // Facebook Page; log and continue instead of failing the whole connect.
+          console.error(
+            "instagram discovery failed:",
+            instagramId,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
       discovered.push({
         page_id: pageId,
         page_name: typeof page.name === "string"
@@ -1633,7 +1728,11 @@ async function completeAuthorization(
       );
     }
     const expiresAt = tokenDebug.expiresAt ||
-      safeExpiry(undefined, extended.expiresIn);
+      safeExpiry(undefined, extended.expiresIn) ||
+      // Business-login configs can issue never-expiring tokens (debug expires_at=0,
+      // no expires_in on the exchange). Keep them with a 60-day safety window so
+      // rotation still happens on reconnect instead of rejecting the authorization.
+      new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
     if (!expiresAt) {
       throw new MetaProviderError(
         "Meta did not return a safe long-lived token expiry.",
@@ -1678,7 +1777,14 @@ async function completeAuthorization(
       );
     }
 
-    const pages = await discoverPages(longToken);
+    let pages = await discoverPages(longToken);
+    if (pages.length === 0 && (tokenDebug.grantedPageIds || []).length) {
+      console.error(
+        "me/accounts empty; falling back to granular page ids:",
+        JSON.stringify(tokenDebug.grantedPageIds.slice(0, 30)),
+      );
+      pages = await discoverPagesByIds(tokenDebug.grantedPageIds, longToken);
+    }
     if (pages.length === 0) {
       throw new MetaProviderError(
         "No eligible Facebook Pages were returned. Personal profiles are not supported.",
@@ -1732,6 +1838,7 @@ async function completeAuthorization(
       origin,
     );
   } catch (error) {
+    console.error("meta-oauth complete failed:", error instanceof Error ? error.message : String(error));
     const providerFailure = error instanceof MetaProviderError;
     if (candidateCreated) {
       return json(

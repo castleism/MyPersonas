@@ -328,14 +328,14 @@ tiktok:{name:"TikTok",icon:"🎵"},onlyfans:{name:"OnlyFans",icon:"🔒"},patreo
 snapchat:{name:"Snapchat",icon:"👻"},discord:{name:"Discord",icon:"💬"},reddit:{name:"Reddit",icon:"👽"},
 youtube:{name:"YouTube",icon:"▶️"},twitch:{name:"Twitch",icon:"🎮"},kick:{name:"Kick",icon:"🟢"},
 rumble:{name:"Rumble",icon:"📹"},steam:{name:"Steam",icon:"🎲"},psn:{name:"PlayStation",icon:"🕹️"},
-xbox:{name:"Xbox",icon:"🟩"},nintendo:{name:"Nintendo",icon:"🍄"},epic:{name:"Epic Games",icon:"🏰"},
+xbox:{name:"Xbox",icon:"🟩"},nintendo:{name:"Nintendo",icon:"🍄"},epic:{name:"Epic Games",icon:"🏰"},battlenet:{name:"Battle.net",icon:"⚔️"},
 linkedin:{name:"LinkedIn",icon:"💼"},signal:{name:"Signal",icon:"🔵"},whatsapp:{name:"WhatsApp",icon:"🟢"},
 telegram:{name:"Telegram",icon:"✈️"},bluesky:{name:"Bluesky",icon:"🦋"},threads:{name:"Threads",icon:"🧵"},
 legalzoom:{name:"LegalZoom",icon:"📜"},wix:{name:"Wix",icon:"🧩"},fiverr:{name:"Fiverr",icon:"🛠️"},
 amazon:{name:"Amazon / Affiliate",icon:"🛒"},etsy:{name:"Etsy",icon:"🧶"},yelp:{name:"Yelp",icon:"⭐"},
 trustpilot:{name:"Trustpilot",icon:"✅"},gmail:{name:"Gmail",icon:"📧"},outlook:{name:"Outlook",icon:"📨"},yahoo:{name:"Yahoo Mail",icon:"📮"},
 icloud:{name:"iCloud Mail",icon:"☁️"},proton:{name:"Proton Mail",icon:"🔐"},
-website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
+family:{name:"Family / Relationship",icon:"👪"},website:{name:"Website / Store",icon:"🌐"},email:{name:"Email / Newsletter",icon:"✉️"},other:{name:"Other",icon:"🔗"}};
 const LEDGER_EMAIL_PROVIDERS=new Set(["gmail","outlook","yahoo","icloud","proton"]);
 const LEDGER_ONLY_PROVIDERS=new Set(["yahoo","icloud"]);
 const CONNECTOR_GUIDANCE={
@@ -569,7 +569,7 @@ async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadG
   }
   if(!mineLoadCurrent(expectedUid,generation,requestId))return false;
   resetMineState();
-  myPersonas=psRes.data||[];myBlocks=blRes.data||[];myBackends=beRes.data||[];myBackends.sort((a,b)=>(((b&&b.extra&&b.extra.is_default)?1:0)-((a&&a.extra&&a.extra.is_default)?1:0)));myBackendCredentialIds=new Set((beStatusRes.data||[]).filter(row=>row.has_credential===true).map(row=>row.backend_id));myTasks=tkRes.data||[];myProfile=profRes.data||null;myDrafts=drRes.data||[];
+  myPersonas=(psRes.data||[]).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base"}));myBlocks=blRes.data||[];myBackends=beRes.data||[];myBackends.sort((a,b)=>(((b&&b.extra&&b.extra.is_default)?1:0)-((a&&a.extra&&a.extra.is_default)?1:0)));myBackendCredentialIds=new Set((beStatusRes.data||[]).filter(row=>row.has_credential===true).map(row=>row.backend_id));myTasks=tkRes.data||[];myProfile=profRes.data||null;myDrafts=drRes.data||[];
   if(acctRes.error){accountLedgerReady=false;myAccounts=[]}else myAccounts=acctRes.data||[];
   if(connRes.error){accountConnectionsReady=false;myAccountConnections=[]}else myAccountConnections=connRes.data||[];
   if(setRes.error||bindRes.error||destRes.error||planRes.error||actionRes.error){automationReady=false}else{
@@ -1606,7 +1606,7 @@ async function restoreImport(data){
     if(error){skipped++;continue}
     done++; await loadMine(uid,authLoadGeneration);
     const np=(myPersonas||[]).find(x=>x.handle===p.handle);if(!np)continue;
-    if(p.title||p.focus)await sb.rpc("set_persona_meta",{p_persona_id:np.id,p_title:p.title||"",p_focus:p.focus||""}).catch(()=>{});
+    if(p.title||p.focus){try{await sb.rpc("set_persona_meta",{p_persona_id:np.id,p_title:p.title||"",p_focus:p.focus||""})}catch(e){}}
     const pl=plans.find(x=>x.persona_id===p.id);
     if(pl)await sb.from("persona_content_plans").upsert({owner:uid,persona_id:np.id,primary_goal:pl.primary_goal||"",success_metric:pl.success_metric||"",audience_focus:pl.audience_focus||"",content_pillars:pl.content_pillars||"",current_campaign:pl.current_campaign||"",calls_to_action:pl.calls_to_action||"",offers_and_links:pl.offers_and_links||"",affiliate_disclosure:pl.affiliate_disclosure||"",source_notes:pl.source_notes||"",platform_guidance:pl.platform_guidance||""},{onConflict:"persona_id"}).catch(()=>{});
     const ks=knows.filter(x=>x.persona_id===p.id).slice(0,100);
@@ -1713,7 +1713,7 @@ async function executeOnboard(){
     const np=(myPersonas||[]).find(p=>p.handle===handle);
     if(!np){onboardBusy=false;toast("Persona created — opening your studio");go("studio");return}
     const pid=np.id;
-    await sb.rpc("set_persona_meta",{p_persona_id:pid,p_title:onboardData.title||"",p_focus:onboardData.focus||""}).catch(()=>{});
+    try{await sb.rpc("set_persona_meta",{p_persona_id:pid,p_title:onboardData.title||"",p_focus:onboardData.focus||""})}catch(e){}
     await sb.from("persona_content_plans").upsert({owner:uid,persona_id:pid,primary_goal:onboardData.goal||"",content_pillars:onboardData.pillars||"",audience_focus:onboardData.audienceFocus||onboardData.audience||"",calls_to_action:onboardData.cta||"",platform_guidance:onboardData.platform||"",source_notes:onboardData.sources||""},{onConflict:"persona_id"}).catch(()=>{});
     const facts=String(onboardData.knowledge||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,50);
     if(facts.length)await sb.from("persona_knowledge").insert(facts.map(f=>({owner:uid,persona_id:pid,topic:"",fact:f.slice(0,8000),status:"known",origin:"owner"}))).catch(()=>{});
@@ -1964,6 +1964,7 @@ async function renderEdit(id,epoch=++renderEpoch){
     <select id="eBackend"><option value="">(first ready hosted model)</option>${backendOptions(p.ai_backend||"")}</select>
     <hr>
     <h3>Social &amp; gaming links (public — shown on your page)</h3>
+    <p class="muted" style="margin-top:-2px">These are display-only links for your public page. To actually <b>connect</b> an account so this persona can post or read, save first, then open the Accounts hub: <button class="btn sec sm" type="button" onclick="acctTab='accounts';go('studio');setTimeout(()=>{var e=document.getElementById('acctTabs');if(e)e.scrollIntoView({behavior:'smooth'})},150)">Go to Accounts →</button></p>
     <div id="eLinks"></div>
     <div class="linkrow">
       <select id="lPlat" style="max-width:170px">${Object.entries(PLATS).filter(([k])=>!LEDGER_ONLY_PROVIDERS.has(k)).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("")}</select>
@@ -2111,10 +2112,11 @@ async function savePersona(){
   const{error}=await fixedSessionClient(accessToken).rpc("save_persona_bundle",{p_persona_id:targetId,p_persona:d,p_links:links,p_note:note});
   if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   if(error){toast(error.message.includes("duplicate")?"That handle is taken by another account — pick a different one.":error.message);return}
+  toast("Saved — refreshing…");
   const _title=document.getElementById("eTitle")?.value.trim()||"",_focus=document.getElementById("eFocus")?.value.trim()||"";
   await loadMine(uid,authLoadGeneration);if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   const _pid=targetId||(myPersonas.find(p=>p.handle===handle)||{}).id;
-  if(_pid)await sb.rpc("set_persona_meta",{p_persona_id:_pid,p_title:_title,p_focus:_focus}).catch(()=>{});
+  if(_pid){try{await sb.rpc("set_persona_meta",{p_persona_id:_pid,p_title:_title,p_focus:_focus})}catch(e){}}
   toast("Saved");go("p/"+handle);
 }
 async function deletePersona(){
@@ -2478,63 +2480,59 @@ function openSD(targetKey){
   sdTarget=targetKey||"avatar_url";
   const name=document.getElementById("eName")?.value||"";
   const voice=document.getElementById("eVoice")?.value||"";
+  const focus=document.getElementById("eFocus")?.value||"";
+  const base=name?(name+(focus?", "+focus:"")+(voice?", "+voice:"")+", portrait, detailed, high quality, clean background"):"";
+  const labels={avatar_url:"Profile image",banner_url:"Banner",bg_url:"Page background",feed_img_url:"Feed header"};
   const d=document.createElement("div");d.id="sdPanel";
-  d.innerHTML=`<div class="sdh">Character image — Stable Diffusion
+  d.innerHTML=`<div class="sdh">Character image — Gemini
       <span style="margin-left:auto"><button class="btn sm" style="background:rgba(255,255,255,.15);box-shadow:none" onclick="closeSD()">Close</button></span></div>
     <div class="sdb">
-      <label style="margin-top:0">Your Stable Diffusion API (AUTOMATIC1111 / Forge with --api)</label>
-      <input id="sdUrl" value="${esc(localStorage.getItem("sd_url")||"http://127.0.0.1:7860")}">
       <div class="row">
-        <div><label>For</label><select id="sdFor" onchange="sdTarget=this.value">
-          ${Object.keys(SD_SIZES).map(k=>`<option value="${k}" ${k===sdTarget?"selected":""}>${{avatar_url:"Profile image",banner_url:"Banner",bg_url:"Page background",feed_img_url:"Feed header"}[k]}</option>`).join("")}
+        <div><label style="margin-top:0">For</label><select id="sdFor" onchange="sdTarget=this.value">
+          ${Object.keys(SD_SIZES).map(k=>`<option value="${k}" ${k===sdTarget?"selected":""}>${labels[k]}</option>`).join("")}
         </select></div>
-        <div><label>Steps</label><input id="sdSteps" type="number" value="28" min="10" max="60"></div>
+        <div><label style="margin-top:0">Base image (optional)</label><input id="sdBase" type="file" accept="image/*"></div>
       </div>
-      <label>Character / scene prompt</label>
-      <textarea id="sdPrompt" style="min-height:80px">${esc(name?name+", "+(voice?voice+", ":"")+"portrait, detailed, high quality":"")}</textarea>
-      <label>Negative prompt</label>
-      <input id="sdNeg" value="lowres, blurry, bad anatomy, watermark, text">
-      <button class="btn" style="margin-top:10px;width:100%" id="sdGo" onclick="sdGenerate()">Generate</button>
-      <p class="muted" style="margin-top:8px;text-align:center">Want full character consistency (references, tagging, LoRA training)?
-      <a href="http://localhost:4780" target="_blank" rel="noopener">Open the Concept studio</a> — start it from your Extensions folder first.</p>
+      <label>Prompt (edit freely)</label>
+      <textarea id="sdPrompt" style="min-height:90px">${esc(base)}</textarea>
+      <p class="muted" style="margin-top:4px">Add a base image to have Gemini edit or restyle it; leave it empty to generate from the prompt alone. Gemini's image model is a paid Google model — your Gemini key needs billing enabled.</p>
+      <button class="btn" style="margin-top:10px;width:100%" id="sdGo" onclick="sdGenerate()">Generate with Gemini</button>
       <div class="sdout" id="sdOut"></div>
     </div>`;
   document.body.appendChild(d);
 }
 function closeSD(){const d=document.getElementById("sdPanel");if(d)d.remove()}
 async function sdGenerate(){
-  const url=document.getElementById("sdUrl").value.trim().replace(/\/$/,"");
-  localStorage.setItem("sd_url",url);
-  const[w,h]=SD_SIZES[sdTarget]||[768,768];
+  const prompt=(document.getElementById("sdPrompt")?.value||"").trim();
+  if(!prompt){toast("Enter a prompt first");return}
   const btn=document.getElementById("sdGo");btn.disabled=true;btn.textContent="Generating…";
-  const out=document.getElementById("sdOut");out.innerHTML='<p class="muted">Working — this can take a minute…</p>';
+  const out=document.getElementById("sdOut");out.innerHTML='<p class="muted">Working — Gemini is drawing this…</p>';
   try{
-    const r=await fetch(url+"/sdapi/v1/txt2img",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({prompt:document.getElementById("sdPrompt").value,
-        negative_prompt:document.getElementById("sdNeg").value,
-        width:w,height:h,steps:parseInt(document.getElementById("sdSteps").value)||28})});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const j=await r.json();
-    const b64=j.images&&j.images[0];
-    if(!b64)throw new Error("no image returned");
-    out.innerHTML=`<img src="data:image/png;base64,${b64}">
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
-        <button class="btn sm" onclick="sdUse('${sdTarget}')">Use this image</button>
-        <button class="btn sec sm" onclick="sdGenerate()">Try again</button></div>`;
-    out.dataset.b64=b64;
+    const{data:sd}=await sb.auth.getSession();const sess=sd&&sd.session;if(!sess)throw new Error("Your session expired — sign in again");
+    let baseImage=null;const f=document.getElementById("sdBase")?.files?.[0];
+    if(f){if(f.size>8*1024*1024)throw new Error("Base image must be under 8 MB");baseImage=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error("Could not read the base image"));rd.readAsDataURL(f)});}
+    let burl=CONFIG.SUPABASE_URL||"";if(burl.endsWith("/"))burl=burl.slice(0,-1);
+    const r=await fetch(burl+"/functions/v1/gemini-image",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+sess.access_token},body:JSON.stringify({prompt,target:sdTarget,baseImage})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.image)throw new Error(j.error||("Image generation failed (HTTP "+r.status+")"));
+    const dataUrl=String(j.image);const comma=dataUrl.indexOf(",");
+    out.innerHTML=`<img src="${dataUrl}"><div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn sm" onclick="sdUse('${sdTarget}')">Use this image</button><button class="btn sec sm" onclick="sdGenerate()">Try again</button></div>`;
+    out.dataset.b64=comma>=0?dataUrl.slice(comma+1):dataUrl;
+    out.dataset.mime=dataUrl.startsWith("data:")?dataUrl.slice(5).split(";")[0]:"image/png";
   }catch(e){
-    out.innerHTML=`<p class="muted">Error: ${esc(e.message)}.<br>Is Stable Diffusion running with<br><code>--api --cors-allow-origins=${esc(location.origin)}</code> ?</p>`;
+    out.innerHTML='<p class="muted">Error: '+esc(e.message||String(e))+'</p>';
   }
-  btn.disabled=false;btn.textContent="Generate";
+  btn.disabled=false;btn.textContent="Generate with Gemini";
 }
 async function sdUse(k){
   const out=document.getElementById("sdOut");
   const b64=out.dataset.b64;if(!b64)return;
+  const mime=out.dataset.mime||"image/png";let ext=(mime.split("/")[1]||"png").toLowerCase().replace(/[^a-z0-9]/g,"");if(!ext)ext="png";
   toast("Uploading…");
   try{
-    const blob=await(await fetch("data:image/png;base64,"+b64)).blob();
-    const path=`${session.user.id}/${Date.now()}-sd.png`;
-    const{error}=await sb.storage.from("media").upload(path,blob,{contentType:"image/png"});
+    const blob=await(await fetch("data:"+mime+";base64,"+b64)).blob();
+    const path=`${session.user.id}/${Date.now()}-gen.${ext}`;
+    const{error}=await sb.storage.from("media").upload(path,blob,{contentType:mime});
     if(error)throw error;
     setPrev(k,sb.storage.from("media").getPublicUrl(path).data.publicUrl);
     toast("Applied — remember to Save");closeSD();
@@ -2543,9 +2541,10 @@ async function sdUse(k){
 
 // ---------- session timeout warning ----------
 let sessTimer=null;
-setInterval(()=>{
+setInterval(async()=>{
   if(!session||!session.expires_at){hideSessWarn();return}
-  const remaining=session.expires_at*1000-Date.now();
+  let remaining=session.expires_at*1000-Date.now();
+  if(remaining<600000){try{const{data}=await sb.auth.getSession();if(data&&data.session&&(!session||data.session.expires_at>=session.expires_at)){session=data.session;remaining=session.expires_at*1000-Date.now()}}catch(e){}}
   if(remaining<=0){hideSessWarn();markStale();session=null;updateAuthBtn();return}
   if(remaining<120000)showSessWarn(remaining);else hideSessWarn();
 },15000);
@@ -2704,7 +2703,7 @@ function accountArea(){
         <div><label>City / region</label><input id="acCity" value="${esc(acc.city||"")}"></div>
       </div>
       <div class="row">
-        <div><label>Phone (optional)</label><input id="acPhone" value="${esc(acc.phone||"")}" placeholder="+1 555 000 0000"></div>
+        <div><label>Phone number(s) (optional — add as many as you like, comma-separated)</label><input id="acPhone" value="${esc(acc.phone||"")}" placeholder="+1 555 000 0000, +1 555 111 2222"></div>
         <div><label>Time zone</label><input id="acTz" value="${esc(acc.tz||tzGuess)}"></div>
       </div>
       <button class="btn sm" style="margin-top:12px" onclick="saveAccount()">Save account details</button>
@@ -3305,7 +3304,7 @@ function val(id){const e=document.getElementById(id);return e?e.value.trim():""}
 
 // ----- private account ledger (metadata only; never credentials) -----
 function ledgerProviderOptions(selected=""){
-  const opts=Object.entries(PLATS).map(([k,v])=>[k,v.name]);
+  const opts=Object.entries(PLATS).filter(([k])=>k!=="family").map(([k,v])=>[k,v.name]);
   return opts.map(([k,n])=>`<option value="${k}" ${selected===k?"selected":""}>${esc(n)}</option>`).join("");
 }
 function ledgerPersonaOptions(selected="",allowQuick=false){
@@ -3489,7 +3488,7 @@ function ledgerEditPanel(a){
     <div><label for="ledgerEditEmail_${a.id}">Login email (optional)</label><input id="ledgerEditEmail_${a.id}" name="ledger_edit_email_${a.id}" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" value="${esc(a.login_email||"")}" placeholder="name@example.com" ${ledgerEmailLocked(a)?"disabled":""}></div>
     <div><label for="ledgerEditUrl_${a.id}">Profile / account URL (optional)</label><input id="ledgerEditUrl_${a.id}" name="ledger_edit_url_${a.id}" type="url" inputmode="url" autocomplete="${section} url" autocapitalize="none" spellcheck="false" value="${esc(a.url||"")}" placeholder="https://..."></div>
     <div><label for="ledgerEditNotes_${a.id}">Private notes (optional — no secrets)</label><input id="ledgerEditNotes_${a.id}" name="ledger_edit_notes_${a.id}" autocomplete="off" value="${esc(a.notes||"")}" placeholder="Purpose, status, reminders"></div>
-    <div class="ledgereditactions"><button class="btn sm" onclick="saveLedgerDetails('${a.id}')">Save details</button><button class="btn sm sec" onclick="cancelLedgerEdit('${a.id}')">Cancel</button>${locked?'<span class="muted">Disconnect or reset the provider connection before changing its protected identity fields.</span>':''}</div></div>`;
+    <div><label for="ledgerEditAliases_${a.id}">${LEDGER_EMAIL_PROVIDERS.has(a.provider)?"Email aliases":"Aliases / alternate names"} (optional — comma-separated, unlimited)</label><input id="ledgerEditAliases_${a.id}" name="ledger_edit_aliases_${a.id}" autocomplete="off" value="${esc(a.aliases||"")}" placeholder="alias1@example.com, alias2@example.com"></div><div><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ledgerEditSusp_${a.id}" style="width:auto" ${a.suspended?"checked":""}> Account is suspended</label></div><div class="ledgereditactions"><button class="btn sm" onclick="saveLedgerDetails('${a.id}')">Save details</button><button class="btn sm sec" onclick="cancelLedgerEdit('${a.id}')">Cancel</button>${locked?'<span class="muted">Disconnect or reset the provider connection before changing its protected identity fields.</span>':''}</div></div>`;
 }
 function ledgerProviderGroups(){
   const groups=new Map(),order=new Map(Object.keys(PLATS).map((provider,index)=>[provider,index]));
@@ -3521,7 +3520,7 @@ function ledgerAccountItemHtml(a){
     <select id="ledgerPersona_${a.id}" data-current="${esc(a.persona_id||"")}" aria-label="Assigned persona" onchange="toggleSavedLedgerQuick('${a.id}',this)">${ledgerPersonaOptions(a.persona_id||"",true)}</select>
     <button class="btn sm sec" onclick="updateLedgerPersona('${a.id}')">Save persona</button>
     <button class="btn sm" onclick="openManagedAccount('${a.id}')">Manage</button>
-    <button class="btn sm sec" onclick="toggleLedgerEdit('${a.id}')">Edit details</button>
+    ${a.suspended?'<span class="pill attention">suspended</span>':''}<button class="btn sm sec" onclick="toggleLedgerEdit('${a.id}')">Edit details</button>
     <button class="btn sm sec" onclick="toggleLedgerAuth('${a.id}')">Connection</button>
     <button class="btn sm danger" onclick="deleteLedgerAccount('${a.id}')">Delete</button>
     ${p?`<span class="pill priv">${esc(p.name)}</span>`:'<span class="pill priv">Unassigned</span>'}
@@ -3674,9 +3673,9 @@ function accountLedgerHtml(){
 }
 function addLedgerRow(seed={}){
   const box=document.getElementById("ledgerBatch");if(!box)return;
-  const n=++ledgerRowSeq,row=document.createElement("div"),provider=seed.provider||Object.keys(PLATS)[0],saved=ledgerSavedAccountOptions(provider,seed.id||"");row.className="ledgerrow";row.dataset.row=n;row.dataset.ledgerId=seed.id||"";
+  const n=++ledgerRowSeq,row=document.createElement("div"),provider=seed.provider||(function(){try{const v=localStorage.getItem("mp_last_prov");return (v&&PLATS[v]&&v!=="family")?v:""}catch(e){return ""}})()||Object.keys(PLATS)[0],saved=ledgerSavedAccountOptions(provider,seed.id||"");row.className="ledgerrow";row.dataset.row=n;row.dataset.ledgerId=seed.id||"";
   const section="section-ledger"+n;
-  row.innerHTML=`<div><label for="ledgerProvider_${n}">Platform / site</label><select id="ledgerProvider_${n}" name="ledger_provider_${n}" class="lrProvider" onchange="refreshLedgerSavedPicker(this)" ${seed.id?"disabled":""}>${ledgerProviderOptions(provider)}</select></div>
+  row.innerHTML=`<div><label for="ledgerProvider_${n}">Platform / site</label><select id="ledgerProvider_${n}" name="ledger_provider_${n}" class="lrProvider" onchange="try{localStorage.setItem('mp_last_prov',this.value)}catch(e){};refreshLedgerSavedPicker(this)" ${seed.id?"disabled":""}>${ledgerProviderOptions(provider)}</select></div>
     <div class="ledgersaved"><label for="ledgerSaved_${n}">Saved account (optional)</label><select id="ledgerSaved_${n}" name="ledger_saved_${n}" class="lrSavedAccount" aria-describedby="ledgerSavedHelp_${n}" onchange="applyLedgerSavedAccount(this)" ${saved.count?"":"disabled"}>${saved.html}</select><span class="muted lrSavedHelp" id="ledgerSavedHelp_${n}" aria-live="polite"></span></div>
     <div><label for="ledgerUser_${n}">Handle / username</label><input id="ledgerUser_${n}" name="ledger_username_${n}" class="lrUser" autocomplete="${section} username" autocapitalize="none" spellcheck="false" enterkeyhint="next" value="${esc(seed.username||"")}" placeholder="@handle or account name"></div>
     <div><label for="ledgerEmail_${n}">Login email (optional)</label><input id="ledgerEmail_${n}" name="ledger_email_${n}" class="lrEmail" type="email" inputmode="email" autocomplete="${section} email" autocapitalize="none" spellcheck="false" enterkeyhint="next" value="${esc(seed.login_email||"")}" placeholder="name@example.com"></div>
@@ -3708,14 +3707,14 @@ function cancelLedgerEdit(id){
 function validLedgerEmail(v){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
 async function saveLedgerDetails(id){
   const a=myAccounts.find(x=>x.id===id);if(!a){toast("That account is no longer available");return}
-  const username=val("ledgerEditUser_"+id),login_email=val("ledgerEditEmail_"+id),url=val("ledgerEditUrl_"+id),notes=val("ledgerEditNotes_"+id);
+  const username=val("ledgerEditUser_"+id),login_email=val("ledgerEditEmail_"+id),url=val("ledgerEditUrl_"+id),notes=val("ledgerEditNotes_"+id),aliases=val("ledgerEditAliases_"+id),suspended=!!(document.getElementById("ledgerEditSusp_"+id)||{}).checked;
   if(!username&&!login_email&&!url){toast("Add a username, login email, or account URL");return}
   if(!validLedgerEmail(login_email)){toast("Enter a valid login email");return}
   if(url&&!/^https?:\/\//i.test(url)){toast("Account URLs must begin with https:// or http://");return}
   if(ledgerUsernameLocked(a)&&normalizeLedgerUsername(username)!==normalizeLedgerUsername(a.username)){toast(`Disconnect or reset ${(PLATS[a.provider]||{}).name||a.provider} before changing the protected username`);return}
   if(ledgerEmailLocked(a)&&normalizeLedgerEmail(login_email)!==normalizeLedgerEmail(a.login_email)){toast("Disconnect Gmail before changing the authenticated login email");return}
   if(myAccounts.some(x=>x.id!==id&&sameLedgerAccount(x,{provider:a.provider,username,login_email,url}))){toast("Another saved account already uses those details");return}
-  const{error}=await sb.from("account_ledger").update({username,login_email,url,notes,updated_at:new Date().toISOString()}).eq("id",id);
+  const{error}=await sb.from("account_ledger").update({username,login_email,url,notes,updated_at:new Date().toISOString(),aliases:aliases||"",suspended}).eq("id",id);
   if(error){toast(error.message);return}await loadMine();acctTab="accounts";renderStudio();toast("Account details saved. You can open Connection now.");
 }
 async function createPrivatePersona(name,handle){
