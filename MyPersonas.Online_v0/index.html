@@ -3551,7 +3551,7 @@ function releaseOwnerModal(id){
   document.getElementById(id)?.remove();ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];const target=ownerModalReturnFocus;ownerModalReturnFocus=null;target?.focus?.();
 }
 function ownerModalKeydown(event,kind){
-  if(event.key==="Escape"){event.preventDefault();if(kind==="meta")cancelMetaSelection();else if(kind==="erase")releaseOwnerModal("eraseProviderWarning");else closeManagedAccount();return}
+  if(event.key==="Escape"){event.preventDefault();if(kind==="meta")closeMetaSelection();else if(kind==="erase")releaseOwnerModal("eraseProviderWarning");else closeManagedAccount();return}
   if(event.key!=="Tab")return;
   const dialog=event.currentTarget,focusable=[...dialog.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
   if(!focusable.length){event.preventDefault();dialog.focus();return}
@@ -4016,10 +4016,11 @@ async function connectMeta(id){
   let navigating=false;
   try{
     if(!metaOAuthCapability.loaded)await loadMetaCapability();
-    if(metaOAuthCapability.pendingAuthorizationCleanupRequired){toast("Resolve the previous Meta authorization cleanup in Accounts before starting another connection");acctTab="accounts";renderStudio();return}
+    if(metaOAuthCapability.pendingAuthorizationCleanupRequired&&!await dismissStaleMetaCandidate()){toast("Resolve the previous Meta authorization cleanup in Accounts before starting another connection");acctTab="accounts";renderStudio();return}
     if(!metaOAuthCapability.configured){toast(metaOAuthCapability.error||"Install the Meta Business app ID and secret before connecting Pages");return}
     toast("Opening Meta authorization…");
-    const result=await metaOAuthAction("start");
+    let result=await metaOAuthAction("start");
+    if(result.error&&result.details?.pendingAuthorizationCleanupRequired&&await dismissStaleMetaCandidate())result=await metaOAuthAction("start");
     if(result.error){if(await refreshMetaCleanupAfterError(result.details)){acctTab="accounts";renderStudio()}toast(result.error);return}
     const destination=new URL(result.data.authorizationUrl),state=destination.searchParams.get("state")||"",browserNonce=result.data.browserNonce||"";
     if(destination.protocol!=="https:"||!(destination.hostname==="facebook.com"||destination.hostname.endsWith(".facebook.com")))throw new Error("Unexpected Meta authorization destination");
@@ -4085,7 +4086,7 @@ function openMetaSelection(){
   const manualRevocationUrl=safeHttpUrl(selection.manualRevocationUrl)||"https://www.facebook.com/settings?tab=business_tools";
   const o=document.createElement("div");o.className="overlay";o.id="metaSelectionOv";
   o.innerHTML=`<div class="wizbox" id="metaSelectionDialog" style="max-width:820px" role="dialog" aria-modal="true" aria-labelledby="metaSelectionTitle" aria-describedby="metaSelectionIntro" aria-busy="false" tabindex="-1" onkeydown="ownerModalKeydown(event,'meta')">
-    <div class="modalsticky"><h2 id="metaSelectionTitle">Pair Facebook Pages and linked Instagram</h2><button class="btn sec sm" data-meta-action="cancel" onclick="cancelMetaSelection()" aria-label="${hasConnectedAssets?"Cancel Meta pairing and disconnect the shared grant":"Cancel Meta pairing and revoke the temporary grant"}">${selection.manualRevocationRequired?"I removed it — clear":hasConnectedAssets?"Cancel & disconnect":"Cancel connection"}</button></div>
+    <div class="modalsticky"><h2 id="metaSelectionTitle">Pair Facebook Pages and linked Instagram</h2><button class="btn sec sm" data-meta-action="close" onclick="closeMetaSelection()" aria-label="Close this pairing window without revoking anything">Close — keep everything</button></div>
     <p class="muted" id="metaSelectionIntro">Signed in to Meta as ${esc(selection.metaUser?.name||"the authorized member")}. This selection expires ${esc(expires)}. Choose saved Page records only; Meta-discovered Page and Instagram IDs cannot be typed or replaced here.</p>
     <div class="autocallout warn"><b>Pairing only — no automated posts yet.</b><br>MyPersonas stores the authorized assets securely, but publishing stays off until Meta grants the write permissions, any required review is complete, and the posting adapter passes live tests.</div>
     ${hasConnectedAssets?'<div class="autocallout warn"><b>Cancellation affects the shared Meta grant.</b><br>Because Meta authorizes these assets together, cancelling this new selection revokes the shared provider grant and disconnects every Page and linked Instagram record already paired through it.</div>':""}
@@ -4101,6 +4102,16 @@ function openMetaSelection(){
     </fieldset>
     <div class="managedactions">${pages.length?`<button class="btn" data-meta-action="finalize" onclick="finalizeMetaSelection()">Pair selected assets</button>`:""}<button class="btn sec" data-meta-action="cancel" onclick="cancelMetaSelection()">${selection.manualRevocationRequired?"I removed it — clear selection":hasConnectedAssets?"Cancel and disconnect shared grant":"Cancel and revoke temporary grant"}</button></div>
   </div>`;document.body.appendChild(o);syncMetaLedgerAvailability();activateOwnerModal(o);
+}
+function closeMetaSelection(){
+  releaseOwnerModal("metaSelectionOv");
+  toast("Pairing window closed. Nothing was revoked; an unused selection expires on its own and is cleared automatically on the next connect.");
+}
+async function dismissStaleMetaCandidate(){
+  const result=await metaOAuthAction("dismiss");
+  if(result.error)return false;
+  await loadMetaCapability();
+  return !metaOAuthCapability.pendingAuthorizationCleanupRequired;
 }
 async function cancelMetaSelection(){
   const selection=metaOAuthSelection;if(!selection){releaseOwnerModal("metaSelectionOv");return}

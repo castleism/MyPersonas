@@ -3,6 +3,23 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Ops — Meta connect unblocked, gemini-image deployed (2026-08-08)
+
+- Meta assets consolidated into one Business portfolio (WAIS); `META_LOGIN_CONFIG_ID`
+  now points at the system-user login configuration `28345689651788755` (verified by
+  secret digest = SHA-256 of the ID).
+- Verified the meta-oauth Instagram-discovery guard is live in production (deployed
+  code hash-matches the repo): a page whose linked IG can't be read still pairs as a
+  Facebook Page instead of failing the whole connect.
+- Cleared the stale `meta_oauth_candidates` lock for the owner; verified migrations
+  023 (cancel-cleanup self-heal) and 024 (ledger suspended/aliases) are applied in
+  production.
+- Deployed the `gemini-image` Edge Function via the dashboard editor and registered
+  it in `supabase/config.toml` (`verify_jwt = true`, matching ai-proxy).
+- Known issue while reconnecting: Facebook's Business Login dialog intermittently
+  shows "Something went wrong" after asset selection on the fresh login config —
+  retry, smaller asset batches, or incognito; grants merge across passes.
+
 ## Fixed — persona deletion blocked by audit trigger (2026-07-31)
 
 - Deleting a persona failed with `agent_actions_binding_id_fkey` violations. The

@@ -148,6 +148,14 @@ browser scenarios retain their own verification evidence.
       (today: hash routes = one indexable URL; JS-set titles/descriptions only)
 - [ ] Auto-generated per-persona sitemap (Edge Function serving sitemap.xml
       from the personas table)
+- [x] gemini-image Edge Function deployed (2026-08-08): server-side Gemini image
+      generation/editing with the owner's Vault key; registered in supabase/config.toml
+- [ ] Migrate off legacy anon/service_role JWT keys to the new sb_publishable_/sb_secret_
+      API keys (dashboard marks legacy keys deprecated; they still work and are
+      auto-injected today — schedule before Supabase retires them)
+- [ ] Wire externally generated persona images into personas (image generation
+      delegated to ChatGPT/Gemini; wiring + storage on our side)
+- [ ] Second Castleborn doc link from owner (pending input)
 
 ## v1 — The platform (major milestone)
 

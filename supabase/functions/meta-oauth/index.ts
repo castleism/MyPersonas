@@ -14,6 +14,10 @@
 //   { action:"cancel", selectionToken, browserNonce,
 //       manualRevocationAcknowledged? }
 //   { action:"cancel_pending", manualRevocationAcknowledged? }
+//   { action:"dismiss" }  — local-discard of the owner's pending candidate,
+//       allowed only when a shared Meta grant already exists for the same
+//       identity (provider authorization is intentionally kept for the
+//       existing connections, so nothing revocable is orphaned).
 //   { action:"disconnect", ledgerId }
 //   { action:"reset", ledgerId, manualRevocationAcknowledged:true }
 //
@@ -2219,6 +2223,119 @@ async function finalizeSelection(
     : await finalizeRevalidated();
 }
 
+// Local-only discard of the owner's pending candidate. Never touches the
+// provider. Fail-closed rules: refused while a cleanup hold exists, refused
+// when no shared grant exists for the same Meta identity (the retained
+// candidate token would be the only revocation handle), and refused while a
+// cleanup claim is in flight. Mirrors the cross-owner
+// cleanupSkippedToProtectSharedGrant precedent for the owner's own grant.
+async function dismissPendingCandidate(req: Request, origin: string) {
+  const user = await caller(req);
+  if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
+  const pending = await admin.from("meta_oauth_candidates")
+    .select("selection_hash,meta_user_id,revocation_state,revocation_started_at")
+    .eq("owner", user.id)
+    .maybeSingle();
+  if (pending.error) {
+    return json(
+      { error: "Could not inspect the pending Meta authorization" },
+      500,
+      origin,
+    );
+  }
+  if (!pending.data) {
+    return json(
+      { dismissed: true, alreadyResolved: true, postingEnabled: false },
+      200,
+      origin,
+    );
+  }
+  const startedAt = pending.data.revocation_started_at
+    ? new Date(pending.data.revocation_started_at).getTime()
+    : 0;
+  if (
+    pending.data.revocation_state === "revoking" &&
+    startedAt > Date.now() - 3 * 60 * 1000
+  ) {
+    return json(
+      {
+        error:
+          "Another Meta authorization cleanup is already running. Please wait a moment and try again.",
+        pendingAuthorizationCleanupRequired: true,
+      },
+      409,
+      origin,
+    );
+  }
+  const hold = await admin.from("meta_oauth_cleanup_holds")
+    .select("cleanup_kind")
+    .eq("owner", user.id)
+    .maybeSingle();
+  if (hold.error) {
+    return json(
+      { error: "Could not inspect ambiguous Meta authorization cleanup" },
+      500,
+      origin,
+    );
+  }
+  if (hold.data) {
+    return json(
+      {
+        error:
+          "This Meta authorization has a recorded cleanup hold and needs the guided cleanup in Accounts; it cannot be quietly dismissed.",
+        pendingAuthorizationCleanupRequired: true,
+      },
+      409,
+      origin,
+    );
+  }
+  const grant = await admin.from("meta_grants")
+    .select("id")
+    .eq("meta_user_id", pending.data.meta_user_id)
+    .maybeSingle();
+  if (grant.error) {
+    return json(
+      { error: "Could not inspect the existing shared Meta grant" },
+      500,
+      origin,
+    );
+  }
+  if (!grant.data) {
+    return json(
+      {
+        error:
+          "No shared Meta grant exists for this identity yet, so the retained authorization must be cancelled (with provider revocation) instead of dismissed.",
+        pendingAuthorizationCleanupRequired: true,
+      },
+      409,
+      origin,
+    );
+  }
+  const removed = await deleteCandidate(pending.data.selection_hash, user.id);
+  if (!removed) {
+    return json(
+      {
+        error: "The pending Meta selection could not be discarded locally.",
+        pendingAuthorizationCleanupRequired: true,
+      },
+      500,
+      origin,
+    );
+  }
+  console.log("dismissed stale candidate for", pending.data.meta_user_id);
+  return json(
+    {
+      dismissed: true,
+      providerRevocationConfirmed: false,
+      cleanupSkippedToProtectSharedGrant: true,
+      sharedGrantDisconnected: false,
+      postingEnabled: false,
+    },
+    200,
+    origin,
+  );
+}
+
 async function cancelAuthorization(
   req: Request,
   origin: string,
@@ -2522,6 +2639,11 @@ async function cancelAuthorization(
       ? claimedResult.data[0] as ClaimedCandidateRow | undefined
       : undefined;
     if (claimedResult.error) {
+      console.error(
+        "cancel claim rpc failed:",
+        claimedResult.error.code || "",
+        claimedResult.error.message || String(claimedResult.error),
+      );
       return json(
         { error: "Could not lock the Meta authorization for cleanup" },
         500,
@@ -3081,6 +3203,9 @@ serve(async (req) => {
   }
   if (body.action === "cancel_pending") {
     return cancelAuthorization(req, origin, body, true);
+  }
+  if (body.action === "dismiss") {
+    return dismissPendingCandidate(req, origin);
   }
   if (body.action === "disconnect") {
     return disconnect(req, origin, body.ledgerId);

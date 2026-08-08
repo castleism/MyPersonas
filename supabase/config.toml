@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.gemini-image]
+verify_jwt = true
