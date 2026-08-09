@@ -1,0 +1,55 @@
+name: CI (checks)
+
+# Fast, safe pre-merge checks. Deploys nothing — see supabase-deploy.yml for CD.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit tests (pure helpers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run tests
+        run: npm test
+
+  edge-typecheck:
+    name: Deno type-check edge functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check every edge function entrypoint
+        run: |
+          set -e
+          shopt -s nullglob
+          failed=0
+          for fn in supabase/functions/*/index.ts; do
+            echo "::group::deno check $fn"
+            deno check "$fn" || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed
+
+  frontend-syntax:
+    name: Frontend script syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Extract inline scripts and syntax-check them
+        run: node scripts/check-frontend-syntax.mjs

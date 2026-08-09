@@ -3,6 +3,48 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Tooling + refactor groundwork — overnight batch (2026-08-08)
+
+Repo-only changes (nothing deployed to prod; all reviewable before it ships):
+
+- **CI/CD scaffolding (P0):** `.github/workflows/ci.yml` runs unit tests, `deno
+  check` on every edge function, and a frontend syntax check on PRs/pushes;
+  `.github/workflows/supabase-deploy.yml` deploys functions on merge to main once
+  `SUPABASE_ACCESS_TOKEN` is set. Setup documented in `CI-CD-SETUP.md`.
+- **Test suite (P1):** `tests/` with `npm test` — 7 passing tests covering the
+  tricky pure helpers (instagramAssetFromLinked, parseBindings, safeExpiry,
+  normalizeScopes, validators, email normalization). `scripts/check-frontend-syntax.mjs`
+  parse-checks the single-file app. `package.json` added for tooling.
+- **Email normalization (P1):** `saveLedgerDetails` and `saveLedgerBatch` now
+  trim+lowercase `login_email` at write via the existing `normalizeLedgerEmail`,
+  guarding the casing/whitespace class of exact-match connect failures.
+- **Retention migration WRITTEN, not applied (P0):** `028-retention-jobs.sql`
+  (pg_cron pruning for mailbox_findings/refs, error_logs, expired transient state;
+  defensively guarded; excludes meta_oauth_candidates by design). Review before run.
+- **P2 docs/drafts:** `KEY-ROTATION.md` (migrate off deprecated anon/service_role
+  keys to sb_*), `CONNECTOR-CORE-DESIGN.md` (shared-core plan for the 5 connectors),
+  `029-anon-execute-review.DRAFT.sql` (review-only; REVOKEs commented pending
+  staging tests). Backup of index.html saved to _to_delete/backups-2026-08-08/.
+- **Connector-core seed (P2):** extracted the pure helpers into
+  `supabase/functions/_shared/connector/pure.ts` (validators, normalizeScopes,
+  safeExpiry, instagramAssetFromLinked, parseBindings, normalizeEmail) with an
+  adoption README. `tests/pure-core.test.mjs` imports the REAL module via Node
+  type-stripping, so it's tested with no mirrored-copy drift. ADDITIVE — not yet
+  imported by any function, so no deployed behavior changed.
+- Local CI dry-run green: 17/17 functions compile, 14/14 tests pass, frontend parses.
+
+## Docs + hygiene — architecture review and data audit (2026-08-08)
+
+- Added ARCHITECTURE-REVIEW.md: retrospective (achievements, lessons), target
+  architecture, and a prioritized P0–P3 refactor backlog (CI/CD, connector core,
+  frontend modularization + tests, data lifecycle, observability, key rotation).
+- Data hygiene audit: production DB is already clean of transient junk (0 rows in
+  meta_oauth_transactions, leases, cleanup holds). Established an `archive` schema
+  backup convention; archived error_logs to archive.error_logs_20260808 and
+  removed the 1 stale (>30d) row. Left active/app data untouched; flagged the 97
+  unconnected account_ledger inventory rows and unbounded mailbox_findings growth
+  for owner review + a retention job (P0).
+
 ## Fixed — linked Instagram accounts not offered for pairing (2026-08-08)
 
 - Root cause: for each discovered Page the connector made a SEPARATE

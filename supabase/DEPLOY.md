@@ -2,6 +2,13 @@
 
 The browser app is hosted by GitHub Pages. Supabase provides authentication, the
 database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
+> **CI/CD (2026-08-08):** function deploys can now be automated — see
+> [`CI-CD-SETUP.md`](../CI-CD-SETUP.md). On merge to `main`, `supabase-deploy.yml`
+> deploys the edge functions (once the `SUPABASE_ACCESS_TOKEN` secret is set);
+> `ci.yml` runs tests + `deno check` + a frontend syntax check on every PR. The
+> manual commands below remain valid as a fallback and for migrations, which stay
+> deliberate (not auto-applied).
+
 This is a deployment runbook for the repository state. The 2026-07-24 production rollout
 applied migration 016, deployed the matching mailbox/Gmail/erasure functions, and enabled
 the mailbox cron. The 2026-07-29 rollout applied migrations 017 and 018 and deployed

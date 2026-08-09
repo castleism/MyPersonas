@@ -164,6 +164,39 @@ browser scenarios retain their own verification evidence.
 - [x] Fixed linked Instagram not offered for pairing: inline
       instagram_business_account{...} expansion replaces the rejected per-page
       GET /{ig-id} (migration-free; deployed)
+- [x] Architecture review + prioritized refactor plan written (ARCHITECTURE-REVIEW.md,
+      2026-08-08): achievements, lessons, target architecture, P0–P3 backlog
+- [x] Data hygiene audit (2026-08-08): transient tables already clean (0 rows);
+      archived+removed 1 stale error_log; `archive` schema backup convention set
+- [x] P0 refactor: CI/CD scaffolded (2026-08-08). `.github/workflows/ci.yml`
+      (tests + deno check + frontend syntax) and `supabase-deploy.yml` (function
+      deploy on merge); `CI-CD-SETUP.md`. Owner to add `SUPABASE_ACCESS_TOKEN`
+      secret to enable auto-deploy. Local CI dry-run green (17 fns, 7 tests).
+- [x] P1: unit test suite for pure helpers (`tests/`, `npm test`, 7 passing) +
+      frontend syntax check script
+- [x] P1: email normalized (trim+lowercase) at ledger write in both save paths
+      (guards the casing/whitespace class of exact-match failures)
+- [x] P0: retention-jobs migration WRITTEN (028-retention-jobs.sql) — pg_cron
+      pruning for mailbox_findings/refs, error_logs, expired transient state.
+      REVIEW + APPLY pending (not run against prod; excludes oauth candidates).
+- [x] P2 docs: KEY-ROTATION.md (sb_* keys), CONNECTOR-CORE-DESIGN.md,
+      029-anon-execute-review.DRAFT.sql (review-only, REVOKEs commented)
+- [x] P2 connector-core (slice 1): extracted pure helpers to
+      supabase/functions/_shared/connector/pure.ts, tested directly via Node
+      type-stripping (tests/pure-core.test.mjs). ADDITIVE — not yet imported by any
+      function, so zero deployed-behavior change. Adoption guide in that dir's README.
+- [ ] P2 connector-core (next): adopt pure.ts per connector (reddit-oauth first),
+      then extract http.ts/respond.ts/leases.ts/revocation.ts — needs per-function
+      deploy + verify
+- [ ] APPLY when awake/verified: migration 028 (retention) after review; enable
+      pg_cron schedule; review + selectively apply 029 anon-EXECUTE on staging
+- [ ] P0: persona media/docs → Storage — upload art to persona-media bucket,
+      repoint app to Storage URLs, remove assets/personas/ from repo (needs
+      dashboard upload + verify; not safe to do unattended)
+- [ ] Owner review: 97 of 156 account_ledger rows have no connection (inventory) —
+      identify truly-abandoned ones for archive-then-delete in batches
+- [ ] SQL editor housekeeping: archive useful named snippets to repo, clear the
+      untitled scratch tabs (dashboard-side; do when the dashboard is stable)
 - [ ] Push app changes to GitHub Pages (modal close/Escape/auto-dismiss) — owner push;
       clear stale .git/index.lock first if a git tool is holding it
 - [ ] User-controlled persona media/data storage: move persona avatars/banners and any
@@ -179,8 +212,11 @@ browser scenarios retain their own verification evidence.
       bucket file-listing on media + persona-media; pinned concept_touch search_path
 - [ ] Enable leaked-password protection (Auth → Attack Protection toggle + Save) —
       deferred: Supabase Management API returning 503s; retry when healthy
-- [ ] Security Advisor deferred pass: review anonymous EXECUTE on owns_persona /
-      can_request (public SECURITY DEFINER); the other definer RPCs are by-design
+- [x] Security Advisor anon-EXECUTE review COMPLETE (2026-08-09): audited the 5
+      anon-executable definer functions. Conclusion — no change: owns_persona is an
+      RLS helper that already returns false for anon (revoking risks RLS breakage);
+      can_request is an unreferenced core-schema helper needing a usage trace before
+      any grant change; the other three power public pages. Documented in 029.
 
 ## v1 — The platform (major milestone)
 

@@ -3707,7 +3707,7 @@ function cancelLedgerEdit(id){
 function validLedgerEmail(v){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
 async function saveLedgerDetails(id){
   const a=myAccounts.find(x=>x.id===id);if(!a){toast("That account is no longer available");return}
-  const username=val("ledgerEditUser_"+id),login_email=val("ledgerEditEmail_"+id),url=val("ledgerEditUrl_"+id),notes=val("ledgerEditNotes_"+id),aliases=val("ledgerEditAliases_"+id),suspended=!!(document.getElementById("ledgerEditSusp_"+id)||{}).checked;
+  const username=val("ledgerEditUser_"+id),login_email=normalizeLedgerEmail(val("ledgerEditEmail_"+id)),url=val("ledgerEditUrl_"+id),notes=val("ledgerEditNotes_"+id),aliases=val("ledgerEditAliases_"+id),suspended=!!(document.getElementById("ledgerEditSusp_"+id)||{}).checked;
   if(!username&&!login_email&&!url){toast("Add a username, login email, or account URL");return}
   if(!validLedgerEmail(login_email)){toast("Enter a valid login email");return}
   if(url&&!/^https?:\/\//i.test(url)){toast("Account URLs must begin with https:// or http://");return}
@@ -3725,7 +3725,7 @@ async function saveLedgerBatch(){
   const rows=[...document.querySelectorAll("#ledgerBatch .ledgerrow")];
   if(!rows.length){toast("Add at least one account row");return}
   const items=rows.map(r=>({row:r,ledger_id:r.dataset.ledgerId||"",provider:r.querySelector(".lrProvider").value,username:r.querySelector(".lrUser").value.trim(),
-    login_email:r.querySelector(".lrEmail").value.trim(),persona_id:r.querySelector(".lrPersona").value,url:r.querySelector(".lrUrl").value.trim(),
+    login_email:normalizeLedgerEmail(r.querySelector(".lrEmail").value),persona_id:r.querySelector(".lrPersona").value,url:r.querySelector(".lrUrl").value.trim(),
     notes:r.querySelector(".lrNotes").value.trim(),newName:r.querySelector(".lrNewName").value.trim(),newHandle:r.querySelector(".lrNewHandle").value.trim().toLowerCase()}));
   const seen=[],selectedIds=new Set();
   for(const x of items){
