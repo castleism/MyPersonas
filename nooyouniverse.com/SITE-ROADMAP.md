@@ -4,30 +4,39 @@ Updated: 2026-08-09 (overnight session) · Owner: Christian · Persona: Cillian 
 
 Stack (best practice = free here): static site → **Cloudflare Pages** (zone already on Cloudflare, matches awareofmyfood.com pattern) + Supabase free tier waitlist. GitHub Pages remains a fallback (CNAME file included). $0/month.
 
-## Status
+## Status — 🟢 LIVE at https://nooyouniverse.com (2026-08-09)
 
 | Item | State |
 |---|---|
-| Landing page (`index.html`) | ✅ Built + validated |
-| Phase 2 Mission Log (`log.html`, 10 concepts, optimized images) | ✅ Built + validated (moved up from "later phases") |
-| 404 page, robots, sitemap, CNAME | ✅ Built |
-| Committed to MyPersonas repo | ✅ `006390d` + `72645cc` on main (local; push pending) |
-| Deploy repo `GitHub/nooyouniverse` | ✅ Created locally, commit `d37b4c0`, remote pre-set to `castleism/nooyouniverse` |
-| One-shot deploy script | ✅ `_ops/deploy-nooyouniverse.ps1` |
-| DNS | ✅ Verified: nameservers already on Cloudflare (camilo/brianna), zone empty — custom-domain attach will auto-create records |
-| Waitlist migration run | ⬜ Owner (SQL editor tab left open; automation blocked by safety classifier) |
-| GitHub pushes | ⬜ Owner (sandbox has no push credentials) |
-| Cloudflare Pages project + custom domain | ⬜ Owner (browser automation blocked by safety classifier) |
-| End-to-end form test | ⬜ After the above |
+| Landing page | ✅ Live |
+| Mission Log — 10 concepts (`/log`) | ✅ Live |
+| 404 page, robots, sitemap | ✅ Live |
+| Waitlist table + RLS (migration 027) | ✅ Run in Supabase |
+| Waitlist end-to-end | ✅ Verified: insert 201 · duplicate 409 · bad email 400 · anon read 401 (denied) |
+| Deploy repo `castleism/nooyouniverse` | ✅ Pushed; Cloudflare auto-builds on push |
+| Cloudflare Worker + custom domain | ✅ `nooyouniverse.com` attached, HTTPS live, 18 assets served |
+| Clean-URL canonicals | ✅ Committed (`6872279` deploy repo / `a5afcf9` source) — **awaiting next push** |
 
-## Morning checklist (~5 min)
+### Only outstanding items
 
-Run one script, then two dashboard clicks-throughs:
+1. **Push the clean-URL commit** — `cd "$HOME\Documents\GitHub\nooyouniverse"; git push` (Cloudflare rebuilds automatically). Same for the MyPersonas source copy: `git push origin main`.
+2. **Delete 2 test rows** in Supabase → Table Editor → `noo_waitlist`: `deploy-test-2026-08-09@nooyouniverse.com` and one `verify-…@example.com`.
+3. Optional: add `www.nooyouniverse.com` as a second custom domain.
 
-1. **PowerShell:** `& "$HOME\Documents\GitHub\MyPersonas\_ops\deploy-nooyouniverse.ps1"` — cleans stale git locks, pushes both repos, prints the rest.
-2. **Supabase:** SQL editor → paste/run `MyPersonas.Online_v0/sql-updates/027-noo-waitlist.sql` (a partially-typed editor tab may be open from last night — safe to clear and paste fresh).
-3. **Cloudflare:** Workers & Pages → connect `castleism/nooyouniverse` → deploy → Custom domains → `nooyouniverse.com` (+ optional `www`).
-4. **Test:** site loads over HTTPS · Mission Log renders · waitlist submit → "You're aboard" → row visible in Supabase → duplicate submit → "already aboard".
+## Deploy architecture (as built)
+
+Cloudflare **Worker with static assets** (not Pages — Cloudflare's Git-connect flow now defaults to Workers).
+
+- `wrangler.jsonc` at deploy-repo root declares `./public` as the asset dir, `not_found_handling: "404-page"`.
+- Build settings: build command *none*, deploy command `npx wrangler deploy`, root `/`.
+- Everything served lives in `public/`; nothing above it is public.
+
+### Gotchas learned during this deploy
+
+- **Empty-repo build failure:** connecting Cloudflare to a repo *before* pushing code fails with "error occurred while fetching repository". Fix is Retry build after the first push, not reconfiguration.
+- **Worker ≠ Pages:** a dashboard-created Worker ships a "Hello world" script that serves the domain until a successful asset build replaces it. Seeing "Hello world" means the build never succeeded.
+- **Clean URLs:** Workers assets 301s `/log.html` → `/log`. Internal links, canonicals, og:url and sitemap all use the extensionless form.
+- **Sandbox git:** locks can't be unlinked on this mount — rename them aside and commit via `GIT_INDEX_FILE` + `write-tree`/`commit-tree`/`update-ref`. `_ops/deploy-nooyouniverse.ps1` sweeps the debris.
 
 ## Overnight session notes (2026-08-09)
 
