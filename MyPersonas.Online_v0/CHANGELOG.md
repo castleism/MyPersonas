@@ -11,12 +11,18 @@ trailing letters are hotfixes. Releases are git tags.
   failures like email mismatch, scope not granted, or `google_revoke_required` —
   appeared to do nothing. Now finishPendingGmail re-renders and toasts the result
   immediately (matching disconnectGmail's pattern), respecting the uid/epoch guard.
-- Diagnosed a wedged account alongside this: girl.gamers.wp@gmail.com was stuck
-  in connection_state=error / google_revoke_required (a prior attempt issued a
-  Google token then failed verification; the token was retained as an encrypted
-  recovery handle). This identity is not shared with any other ledger, so
-  Disconnect Gmail cleanly revokes + clears it for a fresh connect. Root cause of
-  repeat failures is the wedged state + the silent-notice bug above.
+- Diagnosed + corrected a wedged account: the ledger email was mistyped
+  girl.gamers.wp@gmail.com (plural) vs the real girl.gamer.wp@gmail.com, which
+  failed the connector's exact-email match every time; the gmail connection was
+  stuck in connection_state=error / google_revoke_required with a retained token.
+  Fix applied in one transaction (verified): deleted the retained gmail_credential
+  (delete trigger cleaned the vault secret, which also lifts the login_email guard),
+  corrected login_email -> girl.gamer.wp@gmail.com on all 3 of this identity's
+  ledger rows (twitter/instagram/gmail; the Twitter guard only blocks
+  username/provider changes so its live connection was untouched), and reset the
+  gmail account_connections row to a clean disconnected state. Ready for a fresh
+  Connect. Note: any stale Google grant from the failed attempts is harmless — a
+  fresh connect (prompt=consent, access_type=offline) issues a new token.
 
 ## Fixed — Security Advisor warnings, safe subset (2026-08-08)
 
