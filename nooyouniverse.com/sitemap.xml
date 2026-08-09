@@ -2,7 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://nooyouniverse.com/</loc>
-    <lastmod>2026-08-08</lastmod>
+    <lastmod>2026-08-09</lastmod>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://nooyouniverse.com/log.html</loc>
+    <lastmod>2026-08-09</lastmod>
     <changefreq>weekly</changefreq>
   </url>
 </urlset>

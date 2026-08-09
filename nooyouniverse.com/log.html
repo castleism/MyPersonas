@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Log — Noo YouNiverse</title>
+<meta name="description" content="The Noo YouNiverse mission log: ten evidence-literacy flight notes on claims, studies, sleep context, confounders, null results and honest tracking — from Cillian, a fictional AI-assisted Castleborn character.">
+<link rel="canonical" href="https://nooyouniverse.com/log.html">
+<meta name="referrer" content="no-referrer">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nooyouniverse.com/log.html">
+<meta property="og:site_name" content="Noo YouNiverse">
+<meta property="og:title" content="Mission Log — Noo YouNiverse">
+<meta property="og:description" content="Ten evidence-literacy flight notes: claims, studies, sleep context, confounders, null results and honest tracking.">
+<meta property="og:image" content="https://nooyouniverse.com/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<style>
+:root{
+  --ink:#0b0e24;--navy:#121736;--navy2:#1a2047;--line:#2b3163;
+  --text:#e9ebf7;--muted:#a7add0;--amber:#f2b25c;--brass:#c9973f;--violet:#8f7dff;
+  --good:#5dd39e;--prom:#5db8d3;--mix:#f2b25c;--unsup:#e2726e;--unk:#9aa0bf;
+  --radius:14px;--maxw:880px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--amber);text-decoration:none}
+a:hover,a:focus-visible{text-decoration:underline}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:4px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+.kicker{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--violet);font-weight:700}
+nav{position:sticky;top:0;z-index:50;background:rgba(11,14,36,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:18px;height:58px;max-width:1080px;margin:0 auto;padding:0 20px}
+.wordmark{font-weight:800;letter-spacing:.14em;font-size:.95rem;color:var(--text);white-space:nowrap}
+.wordmark .star{color:var(--amber)}
+.nav-links{display:flex;gap:16px;margin-left:auto;align-items:center;font-size:.9rem}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.btn{display:inline-block;padding:8px 16px;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid transparent;cursor:pointer}
+.btn-amber{background:var(--amber);color:#231803}
+.btn-amber:hover{text-decoration:none}
+header.page{padding:72px 0 40px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(1.8rem,4.5vw,2.6rem);line-height:1.15;margin:.3em 0 .4em}
+.page-sub{color:var(--muted);max-width:62ch}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;letter-spacing:.06em;font-weight:600;color:var(--text);background:rgba(18,23,54,.72);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-top:18px}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px var(--violet)}
+.toc{padding:28px 0 8px}
+.toc ol{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;counter-reset:t}
+@media (max-width:640px){.toc ol{grid-template-columns:1fr}}
+.toc a{display:flex;gap:10px;align-items:baseline;color:var(--muted);font-size:.9rem;padding:4px 0}
+.toc a::before{counter-increment:t;content:counter(t,decimal-leading-zero);color:var(--brass);font-weight:800;font-size:.75rem;letter-spacing:.08em}
+.toc a:hover{color:var(--text);text-decoration:none}
+main{padding:24px 0 72px}
+.entry{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:36px}
+.entry img{width:100%;height:auto;display:block;border-bottom:1px solid var(--line)}
+.entry-body{padding:26px 26px 24px}
+@media (max-width:640px){.entry-body{padding:20px 16px}}
+.entry .meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.entry .num{font-size:.72rem;letter-spacing:.18em;color:var(--brass);font-weight:800}
+.entry .logged{font-size:.75rem;color:var(--unk)}
+.entry h2{font-size:1.35rem;line-height:1.25;margin-bottom:14px}
+.entry p{margin-bottom:14px;font-size:.97rem}
+.entry ul,.entry ol{margin:0 0 14px 1.2em}
+.entry li{margin-bottom:6px;font-size:.95rem}
+.entry .ask{color:var(--violet);font-weight:600}
+.entry .src{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-top:18px;margin-bottom:0}
+.entry .disc{font-size:.78rem;color:var(--unk);margin:10px 0 0;font-style:italic}
+.backline{margin-top:40px;text-align:center}
+footer{border-top:1px solid var(--line);padding:40px 0 64px;font-size:.85rem;color:var(--muted)}
+.disclosure{background:var(--navy);border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:10px;padding:18px 20px;max-width:760px;margin:0 auto 24px}
+footer .fine{text-align:center;font-size:.78rem}
+</style>
+</head>
+<body>
+
+<nav aria-label="Main">
+  <div class="nav-inner">
+    <a href="index.html" style="color:inherit"><span class="wordmark">NOO<span class="star"> ✦ </span>YOUNIVERSE</span></a>
+    <div class="nav-links">
+      <a href="index.html#mission">Mission</a>
+      <a href="index.html#evidence">Evidence</a>
+      <a href="log.html" aria-current="page" style="color:var(--text)">Mission Log</a>
+      <a class="btn btn-amber" href="index.html#waitlist">Join the waitlist</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <span class="kicker">Flight notes</span>
+    <h1>The Mission Log</h1>
+    <p class="page-sub">Ten flight notes from the Noo YouNiverse launch sequence: how this ship reads claims, studies, labels, confounders and null results — and why the tracker doesn't exist yet. Sources linked; uncertainty kept visible.</p>
+    <span class="chip"><span class="dot" aria-hidden="true"></span>Fictional Castleborn character · AI-assisted imagery &amp; copy · Human-reviewed · Educational only</span>
+  </div>
+</header>
+
+<div class="toc wrap" aria-label="Missions">
+  <ol>
+    <li><a href="#mission-01">Welcome aboard Noo YouNiverse</a></li>
+    <li><a href="#mission-02">The Evidence Ladder</a></li>
+    <li><a href="#mission-03">The One-Switch Rule</a></li>
+    <li><a href="#mission-04">Check the Ship's Basics</a></li>
+    <li><a href="#mission-05">A Label Is Not a Verdict</a></li>
+    <li><a href="#mission-06">Confounders Are Stowaways</a></li>
+    <li><a href="#mission-07">Null Results Belong in the Log</a></li>
+    <li><a href="#mission-08">“Clinically Studied” Is a Doorway</a></li>
+    <li><a href="#mission-09">Tracker Build Diary</a></li>
+    <li><a href="#mission-10">The Noo YouNiverse Charter</a></li>
+  </ol>
+</div>
+
+<main class="wrap">
+
+<article class="entry" id="mission-01">
+  <img loading="lazy" src="assets/log/01-brand-introduction.jpg" width="1200" height="675" alt="AI-assisted cinematic landscape portrait of fictional character Cillian O'Sullivan at an observatory console, glancing toward the viewer against an indigo star field and warm brass instruments.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 01</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>Welcome aboard Noo YouNiverse</h2>
+    <p>Meet Cillian O'Sullivan — a fictional Castleborn character and the evidence scout at Noo YouNiverse. Cillian is AI-assisted, every post is human-reviewed, and his portraits are AI-generated.</p>
+    <p>Welcome aboard.</p>
+    <p>The brain is the only spaceship any of us will ever pilot, and the internet keeps offering us shiny, poorly labelled switches for the cockpit. Cillian's job is not to hand out miracle stacks, invent testimonials, or pretend he has personally tested a product. It is to take an exciting claim, trace its wires, inspect the evidence behind it, and translate what survives into plain English.</p>
+    <p>Expect source-linked dossiers on evidence quality, study language, sleep and focus claims, quantified-self habits, and the tools Noo YouNiverse is considering building. Expect curiosity, a little cosmic mischief, and corrections whenever the evidence changes or we get something wrong.</p>
+    <p>Most importantly, expect a firm distinction between “interesting,” “plausible,” and “established.”</p>
+    <p class="ask">What kind of claim should Cillian put under the glass first? Share the topic wherever you follow Noo YouNiverse — but please keep diagnoses and private health details private.</p>
+    <p class="disc">Transparency: Cillian is fictional. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice or personal product experience.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-02">
+  <img loading="lazy" src="assets/log/02-evidence-ladder.jpg" width="1200" height="675" alt="AI-assisted cinematic side view of fictional Cillian examining a brass orrery and anonymous study pages as orbital rings progress across a wide indigo observatory.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 02</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>The Evidence Ladder</h2>
+    <p>Mechanisms are catnip for curious minds.</p>
+    <p>A pathway glows on a diagram, a molecule appears to fit a target, and suddenly the whole ship seems cleared for launch. But a plausible mechanism is a clue — not proof that a meaningful outcome occurs in people.</p>
+    <p>Before Noo YouNiverse calls a claim convincing, Cillian's evidence ladder asks:</p>
+    <ol>
+      <li>What exactly is being claimed?</li>
+      <li>Is the support coming from a laboratory model, animals, observation, or a controlled human study?</li>
+      <li>Was the relevant ingredient, product, or intervention actually studied?</li>
+      <li>Was the comparison fair?</li>
+      <li>Did the study measure an outcome people genuinely care about?</li>
+      <li>Were uncertainty, unwanted effects, limitations, and conflicts disclosed?</li>
+      <li>Has the result been repeated by anyone independent?</li>
+    </ol>
+    <p>Different questions need different forms of evidence, so this is not a magic ranking machine. It is a defence against turning the first interesting clue into a final verdict.</p>
+    <p>The next time you see “science-backed,” ask which part of the science is doing the backing.</p>
+    <p class="ask">Which rung of the ladder would be most useful to unpack next?</p>
+    <p class="src">Source: <a href="https://www.nccih.nih.gov/health/know-science" rel="noopener">NCCIH — Know the Science</a></p>
+    <p class="disc">Transparency: Cillian is a fictional character. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-03">
+  <img loading="lazy" src="assets/log/03-one-variable.jpg" width="1200" height="675" alt="AI-assisted wide side view of fictional Cillian at a long observatory instrument panel where one brass control glows and the remaining controls stay dark.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 03</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>The One-Switch Rule</h2>
+    <p>If five cockpit switches move at once, even a spectacular result tells you very little about which switch mattered.</p>
+    <p>For ordinary, low-risk routines — such as comparing two ways of structuring a work block — the useful version is quieter:</p>
+    <ul>
+      <li>Decide what one thing is changing.</li>
+      <li>Define what you will observe before the result arrives.</li>
+      <li>Record the surrounding context.</li>
+      <li>Keep the inconvenient days instead of deleting them from the story.</li>
+      <li>Repeat enough times to avoid crowning one unusually good afternoon.</li>
+    </ul>
+    <p>A diary does not magically turn personal observation into a controlled study. It can, however, make the limits of the observation easier to see.</p>
+    <p><strong>This principle is not permission to experiment with medicines, supplements, combinations, or doses.</strong> Those should never be changed because of a social post or content challenge. Questions involving them belong with an appropriately qualified professional.</p>
+    <p class="ask">What ordinary, non-medical variable do people most often forget to record: time, workload, environment, expectation, or something else?</p>
+    <p class="src">Methodology reference: <a href="https://effectivehealthcare.ahrq.gov/products/n-1-trials/research-2014-5" rel="noopener">AHRQ — Design and Implementation of N-of-1 Trials</a></p>
+    <p class="disc">Transparency: Cillian is fictional. Image and copy are AI-assisted and human-reviewed. Educational content only; not individualized advice.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-04">
+  <img loading="lazy" src="assets/log/04-ships-basics.jpg" width="1200" height="675" alt="AI-assisted panoramic view of fictional Cillian placing a cosmic observatory cockpit into quiet mode beneath a star-filled window.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 04</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>Check the Ship's Basics</h2>
+    <p>Before a shiny focus claim gets the captain's chair, the ship's ordinary instrument readings belong in the file.</p>
+    <p>Sleep opportunity and schedule are part of that context. So are workload, stress, food, movement, illness, environment, and the timing of familiar stimulants such as caffeine. If those conditions changed, an observation about “focus” may not be comparing like with like.</p>
+    <p>That does not mean sleep explains every focus problem. It is not a diagnosis, a moral achievement, or a universal cure. It means a confident product story is incomplete when it ignores an obvious change in the surrounding conditions.</p>
+    <p>Cillian's rule is simple: inspect the whole cockpit before blaming — or praising — the newest switch.</p>
+    <p>When Noo YouNiverse discusses sleep or focus, we will distinguish general education from individualized health guidance, link the evidence being discussed, and avoid pretending one routine fits every person.</p>
+    <p class="ask">Which basic context reading is most often missing from online focus stories?</p>
+    <p class="src">Source: <a href="https://www.nhlbi.nih.gov/health/sleep-deprivation/health-effects" rel="noopener">NHLBI — How Sleep Deprivation and Deficiency Affect Health</a></p>
+    <p class="disc">Transparency: Cillian is fictional. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-05">
+  <img loading="lazy" src="assets/log/05-label-not-verdict.jpg" width="1200" height="675" alt="AI-assisted wide split composition showing an anonymous blank container on one side and fictional Cillian inspecting research papers on the other.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 05</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>A Label Is Not a Verdict</h2>
+    <p>A polished label can tell you what a seller says is inside a product. It cannot, by itself, establish that the promised outcome will occur.</p>
+    <p>Noo YouNiverse separates three different questions:</p>
+    <p><strong>Identity:</strong> What is the product or ingredient supposed to be?</p>
+    <p><strong>Claim:</strong> What precise result is being promised or implied?</p>
+    <p><strong>Evidence:</strong> Was that exact claim tested fairly in the relevant people, using the relevant finished product or formulation?</p>
+    <p>Then come the less glamorous questions: Was the outcome meaningful? How uncertain was the result? Were unwanted effects reported? Was the work independently repeated? Who funded it?</p>
+    <p>Packaging, testimonials, technical vocabulary, and the phrase “clinically studied” can all coexist with weak support for the specific outcome being advertised. That does not automatically prove a product is useless; it means the claim still has work to do.</p>
+    <p class="ask">If you want Cillian to examine a public claim, bring the exact sentence and its source — not a pile-on against an individual or brand.</p>
+    <p class="src">Sources: <a href="https://www.fda.gov/food/dietary-supplements-guidance-documents-regulatory-information/dietary-supplement-labeling-guide-chapter-vi-claims" rel="noopener">FDA — Dietary-Supplement Claims Guidance</a> · <a href="https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance" rel="noopener">FTC — Health Products Compliance Guidance</a></p>
+    <p class="disc">Transparency: Cillian is fictional and does not personally use or endorse products. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-06">
+  <img loading="lazy" src="assets/log/06-confounders.jpg" width="1200" height="675" alt="AI-assisted panoramic composition of a blank ship's log and contextual clues extending across fictional Cillian's observatory desk.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 06</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>Confounders Are Stowaways</h2>
+    <p>A bright result can have stowaways.</p>
+    <p>Perhaps the new routine seemed wonderful on the same day the deadline disappeared, the room grew quieter, sleep improved, caffeine arrived at a different hour, or simple novelty raised expectations. Perhaps the reverse happened.</p>
+    <p>These are confounders: surrounding differences that make a clean causal story harder to defend.</p>
+    <p>A context log cannot remove every confounder, and it does not transform self-observation into clinical evidence. It can stop us from forgetting that the rest of the world moved while we were watching one instrument.</p>
+    <p>Cillian's useful starter fields for an ordinary, non-medical observation are:</p>
+    <ul>
+      <li>Date and time</li>
+      <li>What changed</li>
+      <li>What stayed roughly comparable</li>
+      <li>Sleep and workload context</li>
+      <li>Environment</li>
+      <li>Expectation before the result</li>
+      <li>The observation itself</li>
+      <li>Anything unusual</li>
+    </ul>
+    <p>The goal is not to produce a perfect number. It is to make overconfident storytelling more difficult.</p>
+    <p class="ask">Which neutral context field would make a personal log more honest? Please do not share diagnoses, medications, or private health information.</p>
+    <p class="src">Methodology reference: <a href="https://effectivehealthcare.ahrq.gov/products/n-1-trials/research-2014-5" rel="noopener">AHRQ — Design and Implementation of N-of-1 Trials</a></p>
+    <p class="disc">Transparency: Cillian is fictional. Image and copy are AI-assisted and human-reviewed. Educational content only.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-07">
+  <img loading="lazy" src="assets/log/07-null-results.jpg" width="1200" height="675" alt="AI-assisted wide star-map scene in which one route remains dim while fictional Cillian records it rather than erasing it.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 07</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>Null Results Belong in the Log</h2>
+    <p>“Nothing noticeable happened” is not a useless entry.</p>
+    <p>A ship's log that records only glorious launches is advertising, not navigation.</p>
+    <p>An honestly recorded null observation can stop us from rewriting history around the moments we liked. It can reveal when an apparent pattern does not repeat. It can also keep Noo YouNiverse from turning every wobble into a miracle.</p>
+    <p>A null personal observation does not prove that something has no effect for anyone. One positive observation does not establish the opposite, either. The useful questions are whether the observation was defined clearly, whether it repeated, what the surrounding context looked like, and how it fits with stronger external evidence.</p>
+    <p>Our operating promise is that future content and product experiments will report misses, revisions, and inconclusive results — not quietly hide them behind the winner.</p>
+    <p class="ask">Would a public “nothing happened” entry make an evidence project more trustworthy to you? If so, what information would it need to include?</p>
+    <p class="disc">Transparency: Cillian is fictional. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice. This entry is an editorial research-integrity promise; formal publication-bias claims will carry primary sources.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-08">
+  <img loading="lazy" src="assets/log/08-clinically-studied.jpg" width="1200" height="675" alt="AI-assisted wide research-library scene in which a corridor of anonymous papers leads toward fictional Cillian's inspection desk.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 08</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>“Clinically Studied” Is a Doorway</h2>
+    <p>“Clinically studied” should open a door to questions. It should not close the discussion.</p>
+    <p>When that phrase appears, Cillian wants to know:</p>
+    <ul>
+      <li>Was the exact finished product studied, or only one ingredient related to it?</li>
+      <li>Who participated, and how closely do they resemble the people hearing the claim?</li>
+      <li>Was there a meaningful comparison group?</li>
+      <li>Were the outcome and analysis chosen before the results were known?</li>
+      <li>What changed in practical terms — not only in relative percentages?</li>
+      <li>How much uncertainty surrounds the result?</li>
+      <li>Were unwanted effects, dropouts, funding, and conflicts reported?</li>
+      <li>Has an independent team found something similar?</li>
+    </ul>
+    <p>A real study can exist while an advertisement still stretches beyond what that study supports. Conversely, limitations do not automatically erase every finding. The job is to match the confidence of the statement to the strength and relevance of the evidence.</p>
+    <p class="ask">Which phrase should the next plain-English dossier explain: “statistically significant,” “clinically meaningful,” or “peer reviewed”?</p>
+    <p class="src">Sources: <a href="https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance" rel="noopener">FTC — Health Products Compliance Guidance</a> · <a href="https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/structurefunction-claims" rel="noopener">FDA — Structure/Function Claims</a></p>
+    <p class="disc">Transparency: Cillian is fictional and has no personal product experience. Image and copy are AI-assisted and human-reviewed. Educational content only.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-09">
+  <img loading="lazy" src="assets/log/09-tracker-build-diary.jpg" width="1200" height="675" alt="AI-assisted wide workshop view of fictional Cillian sketching a data flow beside a monitor made only of neutral unlabeled interface shapes.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 09</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>Tracker Build Diary — Entry One</h2>
+    <p>Noo YouNiverse is exploring an evidence-aware observation log.</p>
+    <p><strong>This is an early concept — not a released product, treatment tool, or recommendation engine.</strong></p>
+    <p>The useful version could help someone record what they chose to observe, the timing and surrounding context, what they expected beforehand, what actually happened, and whether the pattern repeated. It should also make it easy to record a null result, export the data, correct an entry, and delete personal information.</p>
+    <p>The tool should not diagnose, prescribe, recommend combinations, tell someone to change a medicine or supplement, or turn a subjective entry into a fake scientific verdict. It should display uncertainty instead of hiding it.</p>
+    <p>Before interface design begins, we want to understand the smallest honest log.</p>
+    <p class="ask">Without sharing diagnoses, medicines, or other private health information — which field would make a log most useful: sleep window, timing, workload, environment, expectation, outcome notes, or something else? <a href="index.html#waitlist">Join the waitlist</a> to follow the build.</p>
+    <p class="disc">Transparency: Cillian is fictional. This is an unbuilt product concept awaiting owner, privacy, safety, and technical approval. Image and copy are AI-assisted and human-reviewed. Educational content only.</p>
+  </div>
+</article>
+
+<article class="entry" id="mission-10">
+  <img loading="lazy" src="assets/log/10-nooyouniverse-charter.jpg" width="1200" height="675" alt="AI-assisted cinematic landscape of fictional Cillian at one side of a sweeping brass celestial map, placing a glowing route marker beneath an open indigo star field.">
+  <div class="entry-body">
+    <div class="meta"><span class="num">MISSION 10</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <h2>The Noo YouNiverse Charter</h2>
+    <p>One launch sequence later, this is the Noo YouNiverse charter:</p>
+    <ul>
+      <li>Curiosity before certainty.</li>
+      <li>Sources before slogans.</li>
+      <li>Context before causal stories.</li>
+      <li>Meaningful outcomes before impressive-sounding mechanisms.</li>
+      <li>Null results beside wins.</li>
+      <li>Corrections without theatrics.</li>
+      <li>No invented product experience.</li>
+      <li>No miracle stacks, private-health fishing, or confidence the evidence cannot carry.</li>
+    </ul>
+    <p>Cillian's job is to make careful thinking feel like an expedition rather than a lecture. The mischief stays; the false certainty does not.</p>
+    <p>The next dossiers can travel in four directions:</p>
+    <ol>
+      <li><strong>Evidence vocabulary:</strong> plain-English explanations of correlation, blinding, endpoints, effect size, and replication.</li>
+      <li><strong>Claim anatomy:</strong> taking a public claim apart without harassing the person or company behind it.</li>
+      <li><strong>Study-reading:</strong> learning what to inspect before sharing a headline.</li>
+      <li><strong>Build diary:</strong> designing an observation tool whose limits are as visible as its features.</li>
+    </ol>
+    <p class="ask">Which route should lead the next week? Tell us wherever you follow Noo YouNiverse — but keep personal medical details out of public comments.</p>
+    <p class="disc">Transparency: Cillian is a fictional Castleborn character. Image and copy are AI-assisted and human-reviewed. Educational content only; not medical advice.</p>
+  </div>
+</article>
+
+<p class="backline"><a class="btn btn-amber" href="index.html#waitlist">Join the flight log waitlist</a></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="disclosure">
+      <strong>Who — and what — is Cillian?</strong><br>
+      Cillian O'Sullivan is a fictional Castleborn character and AI-assisted guide. He does not have a human body, a medical license, or any personal supplement-use history. Real-world health content on this project is educational, source-backed and human-reviewed. Nothing here is medical advice, diagnosis or treatment — talk to a qualified clinician or pharmacist about your own care.
+    </div>
+    <p class="fine">© 2026 Noo YouNiverse · A Castleborn project · <a href="index.html">Home</a> · <a href="https://mypersonas.online/#/p/castleborn.cillian" rel="noopener">Cillian on AliaSpaces</a> · <a href="https://mypersonas.online/privacy.html" rel="noopener">Privacy</a> · <a href="https://mypersonas.online/data-deletion.html" rel="noopener">Data deletion</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
