@@ -573,6 +573,31 @@ async function discoverInstagram(
   };
 }
 
+// Build the linked Instagram asset from the page's inline-expanded
+// instagram_business_account{...} field. This replaces a separate GET /{ig-id}
+// call (which Meta rejects for granular business-asset grants, and which — at
+// one extra request per page — hit rate limits once many pages were opted in,
+// the reason linked IGs never appeared except in tiny batches). We keep the IG
+// whenever a valid id is present, so it is always offered for pairing even if
+// username/name/account_type came back empty.
+function instagramAssetFromLinked(
+  linked: Record<string, unknown> | null,
+): InstagramAsset | null {
+  if (!linked || !validProviderId(linked.id)) return null;
+  return {
+    id: String(linked.id),
+    username: typeof linked.username === "string"
+      ? linked.username.trim().slice(0, 255)
+      : "",
+    name: typeof linked.name === "string"
+      ? linked.name.trim().slice(0, 255)
+      : "",
+    account_type: typeof linked.account_type === "string"
+      ? linked.account_type.trim().slice(0, 64)
+      : "",
+  };
+}
+
 // Business-portfolio pages are frequently absent from /me/accounts even when the
 // user granted them (granular business asset grants). The token's debug data lists
 // the exact granted page ids; fetch each one directly as a fallback.
@@ -585,7 +610,8 @@ async function discoverPagesByIds(
     let payload: unknown = null;
     try {
       payload = await graphGet(`/${pageId}`, userAccessToken, {
-        fields: "id,name,access_token,tasks,instagram_business_account",
+        fields:
+          "id,name,access_token,tasks,instagram_business_account{id,username,name,account_type}",
       });
     } catch (error) {
       console.error(
@@ -608,17 +634,7 @@ async function discoverPagesByIds(
         typeof page.instagram_business_account === "object"
       ? page.instagram_business_account as Record<string, unknown>
       : null;
-    const instagramId = linked && validProviderId(linked.id)
-      ? String(linked.id)
-      : "";
-    let instagram: InstagramAsset | null = null;
-    if (instagramId) {
-      try {
-        instagram = await discoverInstagram(instagramId, pageToken);
-      } catch (_error) {
-        instagram = null;
-      }
-    }
+    const instagram = instagramAssetFromLinked(linked);
     discovered.push({
       page_id: pageId,
       page_name: typeof page.name === "string"
@@ -641,7 +657,8 @@ async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
 
   while (true) {
     const params: Record<string, string> = {
-      fields: "id,name,access_token,tasks,instagram_business_account",
+      fields:
+        "id,name,access_token,tasks,instagram_business_account{id,username,name,account_type}",
       limit: "100",
     };
     if (after) params.after = after;
@@ -691,23 +708,9 @@ async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
           typeof page.instagram_business_account === "object"
         ? page.instagram_business_account as Record<string, unknown>
         : null;
-      const instagramId = linked && validProviderId(linked.id)
-        ? String(linked.id)
-        : "";
-      let instagram: InstagramAsset | null = null;
-      if (instagramId) {
-        try {
-          instagram = await discoverInstagram(instagramId, pageToken);
-        } catch (error) {
-          // A page whose linked Instagram can't be read should still pair as a
-          // Facebook Page; log and continue instead of failing the whole connect.
-          console.error(
-            "instagram discovery failed:",
-            instagramId,
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      }
+      // Linked IG comes inline from the page's expanded field (see
+      // instagramAssetFromLinked) — no separate GET /{ig-id} that Meta rejects.
+      const instagram = instagramAssetFromLinked(linked);
       discovered.push({
         page_id: pageId,
         page_name: typeof page.name === "string"
