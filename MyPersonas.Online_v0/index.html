@@ -3828,8 +3828,17 @@ async function finishPendingGmail(expectedUid=session?.user?.id||null,generation
   const result=await gmailOAuthAction("complete",null,pending);
   gmailOAuthCompleting=false;
   if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
-  gmailOAuthNotice={message:result.error||"Gmail connected. Inbox reports and owner-approved cleanup are available; sending and permanent deletion remain unavailable.",returnTab:pending.returnTab};
+  const gmailNoticeMessage=result.error||"Gmail connected. Inbox reports and owner-approved cleanup are available; sending and permanent deletion remain unavailable.";
+  gmailOAuthNotice={message:gmailNoticeMessage,returnTab:pending.returnTab};
   await loadMine(expectedUid,generation);
+  if(session?.user?.id!==expectedUid||generation!==authLoadGeneration)return;
+  // finishPendingGmail resolves AFTER the initial studio route() has already run,
+  // so the notice-toast in route() would not fire until the next navigation —
+  // making Gmail connect outcomes (success or failure) look silent. Surface it now.
+  acctTab=pending.returnTab==="inbox"?"inbox":"accounts";
+  gmailOAuthNotice=null;
+  renderStudio();
+  toast(gmailNoticeMessage);
 }
 async function disconnectGmail(id){
   if(!confirm("Disconnect Gmail and revoke MyPersonas inbox access? Your Gmail account and messages will not be deleted."))return;

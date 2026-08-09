@@ -156,6 +156,28 @@ browser scenarios retain their own verification evidence.
 - [ ] Wire externally generated persona images into personas (image generation
       delegated to ChatGPT/Gemini; wiring + storage on our side)
 - [ ] Second Castleborn doc link from owner (pending input)
+- [x] Meta cleanup "Could not lock" root-caused and fixed (2026-08-08): migration 025
+      (#variable_conflict use_column in the claim function); safe modal close + Escape
+      fix + auto-dismiss shipped in app code
+- [ ] Deploy meta-oauth `dismiss` action + claim-error logging (code committed
+      58273ee; dashboard Edge Function editor was degraded — deploy when it recovers)
+- [ ] Push app changes to GitHub Pages (modal close/Escape/auto-dismiss) — owner push;
+      clear stale .git/index.lock first if a git tool is holding it
+- [ ] User-controlled persona media/data storage: move persona avatars/banners and any
+      persona documents out of the website repo into owner-controlled storage.
+      Best practice: Supabase Storage per-owner bucket (RLS + signed URLs) with
+      in-app upload/download/delete wired to the existing erase-content and
+      delete-account flows, plus optional links to owner cloud (Drive/OneDrive).
+      Free version: same Supabase Storage (free tier, 1 GB) — no new cost; repo keeps
+      only site chrome (bg, favicon, hero). Added 2026-08-08 after owner privacy review.
+- [x] Root .gitignore guard added (2026-08-08): /outputs/, roadmap-prompt docs,
+      dossiers, backups can no longer be committed even by git add -A
+- [x] Security Advisor safe fixes (2026-08-08, migration 027): removed public
+      bucket file-listing on media + persona-media; pinned concept_touch search_path
+- [ ] Enable leaked-password protection (Auth → Attack Protection toggle + Save) —
+      deferred: Supabase Management API returning 503s; retry when healthy
+- [ ] Security Advisor deferred pass: review anonymous EXECUTE on owns_persona /
+      can_request (public SECURITY DEFINER); the other definer RPCs are by-design
 
 ## v1 — The platform (major milestone)
 

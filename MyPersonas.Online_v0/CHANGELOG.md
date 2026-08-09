@@ -3,6 +3,82 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Fixed — Gmail connect failing silently (2026-08-08)
+
+- `finishPendingGmail` set `gmailOAuthNotice` but never surfaced it: it resolves
+  after the initial studio `route()` already ran, so the notice-toast in route()
+  wouldn't fire until the next navigation. Gmail connect outcomes — success AND
+  failures like email mismatch, scope not granted, or `google_revoke_required` —
+  appeared to do nothing. Now finishPendingGmail re-renders and toasts the result
+  immediately (matching disconnectGmail's pattern), respecting the uid/epoch guard.
+- Diagnosed a wedged account alongside this: girl.gamers.wp@gmail.com was stuck
+  in connection_state=error / google_revoke_required (a prior attempt issued a
+  Google token then failed verification; the token was retained as an encrypted
+  recovery handle). This identity is not shared with any other ledger, so
+  Disconnect Gmail cleanly revokes + clears it for a fresh connect. Root cause of
+  repeat failures is the wedged state + the silent-notice bug above.
+
+## Fixed — Security Advisor warnings, safe subset (2026-08-08)
+
+- Migration `027-advisor-warning-fixes.sql` (applied + verified in prod):
+  - Dropped the broad public SELECT policies `media public read` and
+    `persona media public read` that let anyone ENUMERATE every file across all
+    owners ("Public Bucket Allows Listing"). Both buckets stay `public=true`, so
+    getPublicUrl serving is unaffected; only anonymous listing is removed.
+    (persona-media's policy was introduced by 026 earlier today — corrected.)
+  - Pinned `public.concept_touch` search_path ("Function Search Path Mutable");
+    it's a 157-char trigger touching no tables, so this is behavior-neutral.
+  - Verified after: 0 leftover listing policies, concept_touch pinned, both
+    buckets still public.
+- Leaked-password protection (Auth → Attack Protection): NOT changed. Supabase's
+  Management API was returning 503s all session, so the toggle's save never
+  confirmed; changes were reloaded away to avoid a half-set state. One manual
+  toggle + Save for the owner when the dashboard is healthy.
+- Left deliberately: ~29 SECURITY DEFINER function warnings (definer-by-design
+  with internal auth checks) and pg_net-in-public (moving it risks cron/webhook
+  references). Both are low-value / higher-risk and need a separate careful pass.
+
+## Added — owner-controlled persona storage foundation (2026-08-08)
+
+- Privacy review outcome: persona working documents and persona page art move out
+  of the website git repo into Supabase Storage the owner controls. Migration
+  `026-persona-storage-buckets.sql` (applied in production, verified) creates:
+  `persona-media` (public page art; writes RLS-scoped to the owner's own <uid>/
+  prefix, public read) and `persona-docs` (fully private; owner-only read/write
+  under their own <uid>/ prefix). 8 storage policies total.
+- Root `.gitignore` added so /outputs/, roadmap-prompt docs, dossiers, and *.bak
+  can never be committed, even by `git add -A` (push.ps1 was already scoped).
+- Still to build (ordered): app upload/replace/delete UI for both buckets; persona
+  art served from Storage URLs; migrate the 30 tracked avatar/banner files and the
+  ~26 local persona docs; then remove assets/personas/ from the repo (history purge
+  optional, owner's call).
+
+## Fixed — "Could not lock the Meta authorization for cleanup" root cause (2026-08-08)
+
+- Root cause found by running the claim function directly in the SQL editor:
+  migration 023's `meta_claim_oauth_candidate_for_revocation` RETURNS
+  TABLE(... meta_user_id ...), and PL/pgSQL treats OUT columns as in-scope
+  variables, so the SELF-HEAL 2 upsert's `on conflict (meta_user_id)` raised
+  42702 "column reference is ambiguous" on every cancel — surfacing as the
+  dead-end "Could not lock" while the candidate stayed `pending`. Migration
+  `025-meta-claim-variable-conflict.sql` re-creates the function with
+  `#variable_conflict use_column` (all variables are p_*/v_*-prefixed).
+  Applied in production and verified: the same direct call now claims cleanly
+  (row returned, bundle decrypts, state advances).
+- New safe recovery paths so abandoned pairing selections can never wedge
+  connects again:
+  - meta-oauth `dismiss` action: local-only discard of the owner's pending
+    candidate, allowed only when a shared Meta grant already exists for the
+    identity (mirrors the cross-owner cleanupSkippedToProtectSharedGrant
+    precedent); refused during in-flight cleanup or recorded holds. Claim RPC
+    failures in cancel now log code+message to the function console.
+  - App: pairing modal gained "Close — keep everything" (plain close, nothing
+    revoked); Escape now closes instead of triggering the destructive cancel;
+    Connect Meta auto-dismisses a stale candidate (and retries start once)
+    before telling the owner to resolve cleanup manually.
+- The stuck candidate from today's pairing attempts was cleared; the existing
+  Christian Cody page connection survived throughout.
+
 ## Ops — Meta connect unblocked, gemini-image deployed (2026-08-08)
 
 - Meta assets consolidated into one Business portfolio (WAIS); `META_LOGIN_CONFIG_ID`

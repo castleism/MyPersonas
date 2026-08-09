@@ -1,0 +1,9 @@
+# Root guard: personal working material must never enter the repo, even via
+# a careless `git add -A`. push.ps1 already scopes its add (line 29), but this
+# makes the protection unconditional.
+/outputs/
+/_to_delete/
+/*-ROADMAP-PROMPT.md
+/*-PERSONA-PROMPT*.md
+/*-DOSSIER*.md
+*.bak

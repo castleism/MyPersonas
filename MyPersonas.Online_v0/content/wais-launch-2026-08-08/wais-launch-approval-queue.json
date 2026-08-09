@@ -1,0 +1,162 @@
+{
+  "version": "2026-08-08.1",
+  "persona_handle": "wais",
+  "persona_name": "WAIS",
+  "campaign": "Signal Acquired",
+  "timezone": "America/Anchorage",
+  "review_state": "awaiting_owner_approval",
+  "publishing_enabled": false,
+  "external_schedule_written": false,
+  "production_variance": "25 independently generated source scenes plus 5 distinct sibling-source crops or zooms: facebook 06, x 06, x 07, instagram 09, and x 09. See ASSET-MANIFEST.csv.",
+  "authorization_state": {
+    "instagram": "unverified_meta_authorization_blocker",
+    "facebook": "unverified_meta_authorization_blocker",
+    "x": "unverified_write_and_media_authorization"
+  },
+  "caption_source": "WAIS-30-POST-APPROVAL-PACK.md",
+  "visual_prompt_source": "VISUAL-PROMPT-MATRIX.md",
+  "approval_effect": "Approval changes selected records to approved_not_scheduled only. Scheduling requires verified destination mapping, authorization, account status, time, and native preview.",
+  "platform_exports": {
+    "instagram": {
+      "size": "1080x1350",
+      "format": "jpeg",
+      "aspect_ratio": "4:5",
+      "ai_disclosure_control": "set is_ai_generated=true when supported"
+    },
+    "facebook": {
+      "size": "1200x1500",
+      "format": "jpeg",
+      "aspect_ratio": "4:5",
+      "ai_disclosure_control": "use available AI info disclosure"
+    },
+    "x": {
+      "size": "1600x900",
+      "format": "jpeg",
+      "aspect_ratio": "16:9",
+      "ai_disclosure_control": "preserve caption disclosure and provenance metadata"
+    }
+  },
+  "concepts": [
+    {
+      "id": "01",
+      "slug": "signal-acquired",
+      "title": "Signal Acquired",
+      "slot": "2026-08-08T18:00:00-08:00",
+      "slot_condition": "launch only after owner approval and authorization verification",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/01-signal-acquired-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/01-signal-acquired-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/01-signal-acquired-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "02",
+      "slug": "a-planet-is-a-conversation",
+      "title": "A Planet Is a Conversation",
+      "slot": "2026-08-09T09:00:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/02-a-planet-is-a-conversation-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/02-a-planet-is-a-conversation-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/02-a-planet-is-a-conversation-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "03",
+      "slug": "connection-is-infrastructure",
+      "title": "Connection Is Infrastructure",
+      "slot": "2026-08-09T18:30:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/03-connection-is-infrastructure-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/03-connection-is-infrastructure-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/03-connection-is-infrastructure-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "04",
+      "slug": "what-the-grid-reveals",
+      "title": "What a Grid Reveals",
+      "slot": "2026-08-10T12:00:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/04-what-the-grid-reveals-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/04-what-the-grid-reveals-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/04-what-the-grid-reveals-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "05",
+      "slug": "restoration-begins-with-listening",
+      "title": "Restoration Begins With Listening",
+      "slot": "2026-08-11T18:30:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/05-restoration-begins-with-listening-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/05-restoration-begins-with-listening-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/05-restoration-begins-with-listening-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "06",
+      "slug": "protect-the-web",
+      "title": "Protect the Web, Not Only the Mascot",
+      "slot": "2026-08-12T12:00:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/06-protect-the-web-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/06-protect-the-web-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/06-protect-the-web-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "07",
+      "slug": "the-sky-has-weather",
+      "title": "The Sky Has Weather",
+      "slot": "2026-08-13T18:30:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/07-the-sky-has-weather-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/07-the-sky-has-weather-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/07-the-sky-has-weather-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "08",
+      "slug": "pattern-is-not-prophecy",
+      "title": "A Pattern Is Not a Prophecy",
+      "slot": "2026-08-14T09:00:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/08-pattern-is-not-prophecy-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/08-pattern-is-not-prophecy-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/08-pattern-is-not-prophecy-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "09",
+      "slug": "refusal-must-remain-refusal",
+      "title": "Refusal Must Remain Refusal",
+      "slot": "2026-08-14T18:30:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/09-refusal-must-remain-refusal-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/09-refusal-must-remain-refusal-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/09-refusal-must-remain-refusal-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    },
+    {
+      "id": "10",
+      "slug": "before-the-first-castle",
+      "title": "Before the First Castle",
+      "slot": "2026-08-15T11:00:00-08:00",
+      "state": "awaiting_owner_approval",
+      "variants": {
+        "instagram": { "offset_minutes": 0, "asset": "assets/instagram/10-before-the-first-castle-1080x1350.jpg", "state": "awaiting_owner_approval" },
+        "facebook": { "offset_minutes": 20, "asset": "assets/facebook/10-before-the-first-castle-1200x1500.jpg", "state": "awaiting_owner_approval" },
+        "x": { "offset_minutes": 40, "asset": "assets/x/10-before-the-first-castle-1600x900.jpg", "state": "awaiting_owner_approval" }
+      }
+    }
+  ]
+}
