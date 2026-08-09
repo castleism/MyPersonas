@@ -159,8 +159,11 @@ browser scenarios retain their own verification evidence.
 - [x] Meta cleanup "Could not lock" root-caused and fixed (2026-08-08): migration 025
       (#variable_conflict use_column in the claim function); safe modal close + Escape
       fix + auto-dismiss shipped in app code
-- [ ] Deploy meta-oauth `dismiss` action + claim-error logging (code committed
-      58273ee; dashboard Edge Function editor was degraded — deploy when it recovers)
+- [x] Deployed meta-oauth: `dismiss` action + claim-error logging + inline IG
+      field-expansion fix (2026-08-08, editor hash-verified against repo)
+- [x] Fixed linked Instagram not offered for pairing: inline
+      instagram_business_account{...} expansion replaces the rejected per-page
+      GET /{ig-id} (migration-free; deployed)
 - [ ] Push app changes to GitHub Pages (modal close/Escape/auto-dismiss) — owner push;
       clear stale .git/index.lock first if a git tool is holding it
 - [ ] User-controlled persona media/data storage: move persona avatars/banners and any

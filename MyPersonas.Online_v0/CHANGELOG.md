@@ -3,6 +3,26 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Fixed — linked Instagram accounts not offered for pairing (2026-08-08)
+
+- Root cause: for each discovered Page the connector made a SEPARATE
+  GET /{ig-id} call (discoverInstagram) to read the linked IG's
+  username/name/account_type. Meta rejected that call for granular
+  business-asset grants ("instagram discovery failed … Meta rejected the
+  request"), so the IG was dropped and the pairing modal showed "no linked
+  Instagram." At scale it was also one extra request per page, hitting rate
+  limits — which is why only tiny batches ever worked.
+- Fix (deployed to prod, editor content hash-verified against repo): read the
+  linked IG INLINE via field expansion
+  `instagram_business_account{id,username,name,account_type}` on the page fetch
+  in both discoverPages and discoverPagesByIds — no separate call. New
+  instagramAssetFromLinked() keeps the IG whenever a valid id is present, so it
+  is always offered for pairing even if detail fields come back empty.
+  discoverInstagram() is now unused (left in place, harmless).
+- Also deployed in the same push: the `dismiss` action + claim-error logging
+  from the earlier cancel-lock fix (finally live now that the dashboard editor
+  recovered).
+
 ## Fixed — Gmail connect failing silently (2026-08-08)
 
 - `finishPendingGmail` set `gmailOAuthNotice` but never surfaced it: it resolves
