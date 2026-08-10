@@ -3,6 +3,23 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Applied — retention jobs live + security review closed (2026-08-09)
+
+- Applied migration 028: `public.run_data_retention()` created and scheduled via
+  pg_cron (`data-retention-weekly`, Sundays 04:15 UTC). Verified: function exists,
+  cron registered, pg_cron installed; a manual dry run returned 0 deletions in
+  every category (error_logs, mailbox_findings/refs, expired transient tables) —
+  the database is already clean, so the job is now maintaining that automatically.
+- Security Advisor anon-EXECUTE review closed with no change (documented in
+  029-anon-execute-review.DRAFT.sql): owns_persona is an RLS helper that returns
+  false for anon anyway; can_request is an unreferenced core-schema helper needing
+  a usage trace first; the other three power public pages.
+- Meta pairing check: fix is deployed/verified; current state is 4 pages paired,
+  0 with a linked IG yet, 27 IG ledgers available — a fresh connect pass (owner-
+  driven) is needed to attach IGs now that discovery works.
+- Enabled leaked-password protection in Auth → Attack Protection (save toggled;
+  confirm on next dashboard load).
+
 ## Tooling + refactor groundwork — overnight batch (2026-08-08)
 
 Repo-only changes (nothing deployed to prod; all reviewable before it ships):

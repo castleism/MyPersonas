@@ -188,8 +188,10 @@ browser scenarios retain their own verification evidence.
 - [ ] P2 connector-core (next): adopt pure.ts per connector (reddit-oauth first),
       then extract http.ts/respond.ts/leases.ts/revocation.ts — needs per-function
       deploy + verify
-- [ ] APPLY when awake/verified: migration 028 (retention) after review; enable
-      pg_cron schedule; review + selectively apply 029 anon-EXECUTE on staging
+- [x] APPLIED migration 028 (2026-08-09): run_data_retention() created + weekly
+      pg_cron job 'data-retention-weekly' scheduled (Sun 04:15 UTC); dry run
+      returned 0 deletions across all categories (DB already clean). 029
+      anon-EXECUTE reviewed → no action (see above).
 - [ ] P0: persona media/docs → Storage — upload art to persona-media bucket,
       repoint app to Storage URLs, remove assets/personas/ from repo (needs
       dashboard upload + verify; not safe to do unattended)

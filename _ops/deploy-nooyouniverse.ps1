@@ -1,70 +1,77 @@
-# deploy-nooyouniverse.ps1 — one-shot morning deploy for nooyouniverse.com
-# Prepared 2026-08-09 (overnight session). Run from anywhere in PowerShell:
+# deploy-nooyouniverse.ps1 — publish nooyouniverse.com
+#
+# Run from anywhere in PowerShell:
 #   & "$HOME\Documents\GitHub\MyPersonas\_ops\deploy-nooyouniverse.ps1"
 #
-# What it does:
-#   1. Cleans stale git locks the sandbox left behind (known quirk).
-#   2. Pushes MyPersonas main (contains site source + migration 027).
-#   3. Pushes the ready-made deploy repo GitHub/nooyouniverse (creates it on
-#      GitHub via `gh` if installed; otherwise prints the manual step).
-#   4. Prints the 3 remaining dashboard steps (Supabase SQL, Cloudflare Pages,
-#      custom domain) — about 5 minutes total.
+# What it does, in order:
+#   1. Sweeps stale git locks the sandbox leaves behind (known mount quirk).
+#   2. Syncs the site from the source of truth (MyPersonas\nooyouniverse.com)
+#      into the deploy repo's public\ folder.
+#   3. Commits + pushes the deploy repo -> Cloudflare auto-builds and deploys.
+#   4. Commits + pushes the MyPersonas source copy.
+#
+# Live: https://nooyouniverse.com  (also www.)
+# Architecture + gotchas: MyPersonas\nooyouniverse.com\SITE-ROADMAP.md
+
+param(
+  [string]$Message = "nooyouniverse.com: content update"
+)
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot          # ...\GitHub\MyPersonas
-$deploy = Join-Path (Split-Path -Parent $root) "nooyouniverse"
+$root   = Split-Path -Parent $PSScriptRoot                        # ...\GitHub\MyPersonas
+$src    = Join-Path $root "nooyouniverse.com"                     # source of truth
+$deploy = Join-Path (Split-Path -Parent $root) "nooyouniverse"    # deploy repo
+$pub    = Join-Path $deploy "public"
 
 function Clear-StaleLocks($repo) {
-  Get-ChildItem (Join-Path $repo ".git") -Filter "*.lock*" -File -ErrorAction SilentlyContinue |
-    Remove-Item -Force -ErrorAction SilentlyContinue
-  Get-ChildItem (Join-Path $repo ".git\objects") -Recurse -Filter "tmp_obj_*" -File -ErrorAction SilentlyContinue |
-    Remove-Item -Force -ErrorAction SilentlyContinue
-  Remove-Item (Join-Path $repo ".git\claude-probe") -Force -ErrorAction SilentlyContinue
-  Remove-Item (Join-Path $repo ".git\objects\maintenance.lock") -Force -ErrorAction SilentlyContinue
+  $git = Join-Path $repo ".git"
+  if (-not (Test-Path $git)) { return }
+  Get-ChildItem $git -Recurse -Force -File -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -like "*.lock*" -or $_.Name -like "stale-*" -or
+      $_.Name -like "tmp_obj_*" -or $_.Name -eq "claude-probe"
+    } | Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "== 1/4 Pushing MyPersonas (site source) ==" -ForegroundColor Cyan
-Clear-StaleLocks $root
-Set-Location $root
-git push origin main
-
-Write-Host "== 2/4 Pushing deploy repo (castleism/nooyouniverse) ==" -ForegroundColor Cyan
-Clear-StaleLocks $deploy
-Set-Location $deploy
-$gh = Get-Command gh -ErrorAction SilentlyContinue
-if ($gh) {
-  gh repo view castleism/nooyouniverse 2>$null | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    gh repo create castleism/nooyouniverse --public --source . --push
-  } else {
-    git push -u origin main
-  }
-} else {
-  git push -u origin main
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "Remote missing. Create it at https://github.com/new (name: nooyouniverse, public, NO readme), then re-run this script." -ForegroundColor Yellow
-    exit 1
-  }
+function Push-Repo($repo, $msg) {
+  Clear-StaleLocks $repo
+  Push-Location $repo
+  try {
+    git add -A
+    if (git status --porcelain) {
+      git commit -m $msg
+    } else {
+      Write-Host "  (nothing to commit)" -ForegroundColor DarkGray
+    }
+    git push
+    Write-Host "  pushed: $(git rev-parse --short HEAD)" -ForegroundColor Green
+  } finally { Pop-Location }
 }
 
-Write-Host "== 3/4 Supabase waitlist table ==" -ForegroundColor Cyan
-Write-Host @"
-Open: https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/sql/new
-Paste + Run: $root\MyPersonas.Online_v0\sql-updates\027-noo-waitlist.sql
-(An editor tab from last night may already be open with this SQL typed partway.)
-"@
+# --- 1. Sync source -> deploy repo -------------------------------------------
+Write-Host "== Syncing site into deploy repo ==" -ForegroundColor Cyan
+if (-not (Test-Path $pub)) { New-Item -ItemType Directory -Path $pub -Force | Out-Null }
 
-Write-Host "== 4/4 Cloudflare Pages + domain (zone already on Cloudflare) ==" -ForegroundColor Cyan
-Write-Host @"
-Open: https://dash.cloudflare.com -> Workers & Pages -> Create -> Pages ->
-  Connect to Git -> castleism/nooyouniverse
-  Build command: (none)   Output dir: /   -> Deploy
-Then: project -> Custom domains -> add nooyouniverse.com (DNS auto-creates)
-       + add www.nooyouniverse.com if wanted.
+# Everything published lives in public\. Docs (SITE-ROADMAP.md) stay out.
+$pages = @("index.html","log.html","sources.html","corrections.html",
+           "404.html","robots.txt","sitemap.xml","CNAME")
+foreach ($f in $pages) {
+  $from = Join-Path $src $f
+  if (Test-Path $from) { Copy-Item $from (Join-Path $pub $f) -Force; Write-Host "  $f" }
+  else { Write-Host "  (missing, skipped) $f" -ForegroundColor Yellow }
+}
+Copy-Item (Join-Path $src "assets") $pub -Recurse -Force
+Write-Host "  assets\"
 
-Test after deploy:
-  1. https://nooyouniverse.com loads with HTTPS, hero + Mission Log page work
-  2. Waitlist form: submit an email -> 'You're aboard' -> row appears in
-     Supabase Table Editor (noo_waitlist); submit same email -> 'already aboard'
-"@
-Write-Host "Done. Full details: $root\nooyouniverse.com\SITE-ROADMAP.md" -ForegroundColor Green
+# --- 2. Push deploy repo (triggers Cloudflare build) -------------------------
+Write-Host "== Pushing deploy repo (castleism/nooyouniverse) ==" -ForegroundColor Cyan
+Push-Repo $deploy $Message
+
+# --- 3. Push source repo -----------------------------------------------------
+Write-Host "== Pushing MyPersonas source ==" -ForegroundColor Cyan
+Push-Repo $root $Message
+
+Write-Host ""
+Write-Host "Cloudflare builds automatically (~1 min). Watch:" -ForegroundColor Green
+Write-Host "  https://dash.cloudflare.com/?to=/:account/workers/services/view/nooyouniverse/production/deployments"
+Write-Host "Then check: https://nooyouniverse.com  /log  /sources  /corrections"

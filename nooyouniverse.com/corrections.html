@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corrections log — Noo YouNiverse</title>
+<meta name="description" content="The Noo YouNiverse corrections log: how mistakes are handled, and every correction published so far — including the ones nobody would have noticed.">
+<link rel="canonical" href="https://nooyouniverse.com/corrections">
+<meta name="referrer" content="no-referrer">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nooyouniverse.com/corrections">
+<meta property="og:site_name" content="Noo YouNiverse">
+<meta property="og:title" content="Corrections log — Noo YouNiverse">
+<meta property="og:description" content="How mistakes are handled here, and every correction published so far.">
+<meta property="og:image" content="https://nooyouniverse.com/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<style>
+:root{
+  --ink:#0b0e24;--navy:#121736;--navy2:#1a2047;--line:#2b3163;
+  --text:#e9ebf7;--muted:#a7add0;--amber:#f2b25c;--brass:#c9973f;--violet:#8f7dff;
+  --good:#5dd39e;--unk:#9aa0bf;
+  --radius:14px;--maxw:880px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--amber);text-decoration:none}
+a:hover,a:focus-visible{text-decoration:underline}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:4px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+.kicker{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--violet);font-weight:700}
+nav{position:sticky;top:0;z-index:50;background:rgba(11,14,36,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:18px;height:58px;max-width:1080px;margin:0 auto;padding:0 20px}
+.wordmark{font-weight:800;letter-spacing:.14em;font-size:.95rem;color:var(--text);white-space:nowrap}
+.wordmark .star{color:var(--amber)}
+.nav-links{display:flex;gap:16px;margin-left:auto;align-items:center;font-size:.9rem}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.btn{display:inline-block;padding:8px 16px;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid transparent;cursor:pointer}
+.btn-amber{background:var(--amber);color:#231803}
+.btn-amber:hover{text-decoration:none}
+header.page{padding:72px 0 40px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(1.8rem,4.5vw,2.6rem);line-height:1.15;margin:.3em 0 .4em}
+.page-sub{color:var(--muted);max-width:64ch}
+.updated{font-size:.8rem;color:var(--unk);margin-top:8px}
+main{padding:8px 0 72px}
+section{padding:44px 0 0}
+h2{font-size:1.4rem;margin:.2em 0 .5em}
+p{margin-bottom:14px}
+.panel{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+ol.steps{margin:0 0 0 1.2em}
+ol.steps li{margin-bottom:10px}
+.empty{background:var(--navy);border:1px dashed var(--line);border-radius:var(--radius);padding:36px 26px;text-align:center;margin-top:18px}
+.empty .mark{font-size:1.6rem;color:var(--brass);letter-spacing:.3em}
+.empty h3{margin:10px 0 8px;font-size:1.1rem}
+.empty p{color:var(--muted);max-width:52ch;margin:0 auto;font-size:.94rem}
+.grades{display:grid;gap:10px;margin-top:18px}
+.grade{display:grid;grid-template-columns:180px 1fr;gap:14px;background:var(--navy);border:1px solid var(--line);border-radius:12px;padding:14px 18px;align-items:start}
+@media (max-width:640px){.grade{grid-template-columns:1fr;gap:6px}}
+.tag{display:inline-block;font-size:.68rem;letter-spacing:.06em;font-weight:800;padding:3px 10px;border-radius:999px;border:1px solid;white-space:nowrap}
+.t-note{color:#9aa0bf;border-color:var(--line);background:rgba(154,160,191,.10)}
+.t-clar{color:#5db8d3;border-color:rgba(93,184,211,.45);background:rgba(93,184,211,.10)}
+.t-corr{color:#f2b25c;border-color:rgba(242,178,92,.45);background:rgba(242,178,92,.10)}
+.t-retr{color:#e2726e;border-color:rgba(226,114,110,.45);background:rgba(226,114,110,.10)}
+.grade p{font-size:.9rem;color:var(--muted);margin:0}
+footer{border-top:1px solid var(--line);padding:40px 0 64px;font-size:.85rem;color:var(--muted);margin-top:56px}
+.disclosure{background:var(--navy);border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:10px;padding:18px 20px;max-width:760px;margin:0 auto 24px}
+footer .fine{text-align:center;font-size:.78rem}
+</style>
+</head>
+<body>
+
+<nav aria-label="Main">
+  <div class="nav-inner">
+    <a href="/" style="color:inherit"><span class="wordmark">NOO<span class="star"> ✦ </span>YOUNIVERSE</span></a>
+    <div class="nav-links">
+      <a href="/#mission">Mission</a>
+      <a href="/log">Mission Log</a>
+      <a href="/sources">Sources</a>
+      <a href="/corrections" aria-current="page" style="color:var(--text)">Corrections</a>
+      <a class="btn btn-amber" href="/#waitlist">Join the waitlist</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <span class="kicker">Corrections without theatrics</span>
+    <h1>The corrections log</h1>
+    <p class="page-sub">A ship's log that records only glorious launches is advertising, not navigation. The same applies to mistakes: if this project gets something wrong, the fix is published here with the same visibility as the original — not quietly edited away.</p>
+    <p class="updated">Fictional Castleborn character · AI-assisted &amp; human-reviewed · Educational only<br>Last reviewed: 9 August 2026</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="log">
+  <span class="kicker">The record</span>
+  <h2>Corrections published so far</h2>
+  <div class="empty">
+    <div class="mark" aria-hidden="true">— · —</div>
+    <h3>Nothing to correct yet</h3>
+    <p>This page went up with the site rather than after the first mistake, so the promise exists before it is tested. An empty log here means nothing has needed fixing — not that nothing ever will.</p>
+  </div>
+</section>
+
+<section id="grades">
+  <span class="kicker">How entries are labelled</span>
+  <h2>Four kinds of change</h2>
+  <div class="grades">
+    <div class="grade"><span class="tag t-note">Note added</span><p>The original stands, but useful context was missing. Nothing published was wrong.</p></div>
+    <div class="grade"><span class="tag t-clar">Clarification</span><p>The substance was right but the wording could reasonably mislead. Rewritten and flagged.</p></div>
+    <div class="grade"><span class="tag t-corr">Correction</span><p>Something published was factually wrong. The error is stated plainly alongside the fix — the mistake is not deleted.</p></div>
+    <div class="grade"><span class="tag t-retr">Retraction</span><p>The claim should not have been made at all. It is withdrawn, and anything that depended on it is reviewed.</p></div>
+  </div>
+</section>
+
+<section id="process">
+  <span class="kicker">The process</span>
+  <h2>What happens when something is wrong</h2>
+  <div class="panel">
+    <ol class="steps">
+      <li><strong>Say what was wrong</strong> — the specific claim, not a vague "an earlier post."</li>
+      <li><strong>Say what changed and why</strong>, and which source now governs the corrected version.</li>
+      <li><strong>Publish it where the mistake lived</strong>, at comparable visibility. A quiet edit is not a correction.</li>
+      <li><strong>Pause anything downstream</strong> — if the error could cause harm, related scheduled content and links stop until reviewed.</li>
+      <li><strong>Keep the record</strong>, including the original wording. This log is append-only; entries are never removed once posted.</li>
+    </ol>
+    <p style="margin-bottom:0">No defensiveness, no burying the update at the bottom of a longer post, and no arguing with the person who caught it.</p>
+  </div>
+</section>
+
+<section id="report">
+  <span class="kicker">Flag something</span>
+  <h2>How to report an error</h2>
+  <div class="panel">
+    <p>Bring the <strong>exact sentence</strong> and, where possible, the source that contradicts it. Precision gets things fixed faster than outrage, and it lets the correction be specific.</p>
+    <p>Reach Cillian through the channels listed on <a href="https://mypersonas.online/#/p/castleborn.cillian" rel="noopener">his AliaSpaces profile</a>, or reply on whichever platform carried the post.</p>
+    <p style="margin-bottom:0">Please keep diagnoses, medications and other private health details out of public messages. Questions about your own care belong with a qualified clinician or pharmacist — this project cannot answer them, and will not pretend otherwise.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="disclosure">
+      <strong>Who — and what — is Cillian?</strong><br>
+      Cillian O'Sullivan is a fictional Castleborn character and AI-assisted guide. He does not have a human body, a medical license, or any personal supplement-use history. Real-world health content on this project is educational, source-backed and human-reviewed. Nothing here is medical advice, diagnosis or treatment — talk to a qualified clinician or pharmacist about your own care.
+    </div>
+    <p class="fine">© 2026 Noo YouNiverse · A Castleborn project · <a href="/">Home</a> · <a href="/log">Mission Log</a> · <a href="/sources">Sources</a> · <a href="https://mypersonas.online/#/p/castleborn.cillian" rel="noopener">Cillian on AliaSpaces</a> · <a href="https://mypersonas.online/privacy.html" rel="noopener">Privacy</a> · <a href="https://mypersonas.online/data-deletion.html" rel="noopener">Data deletion</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

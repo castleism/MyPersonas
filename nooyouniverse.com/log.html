@@ -59,6 +59,12 @@ main{padding:24px 0 72px}
 .entry .meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .entry .num{font-size:.72rem;letter-spacing:.18em;color:var(--brass);font-weight:800}
 .entry .logged{font-size:.75rem;color:var(--unk)}
+.entry .basis{font-size:.68rem;letter-spacing:.04em;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid}
+.b-agency{color:#5db8d3;border-color:rgba(93,184,211,.45);background:rgba(93,184,211,.10)}
+.b-method{color:#5dd39e;border-color:rgba(93,211,158,.45);background:rgba(93,211,158,.10)}
+.b-reg{color:#f2b25c;border-color:rgba(242,178,92,.45);background:rgba(242,178,92,.10)}
+.b-edit{color:#9aa0bf;border-color:var(--line);background:rgba(154,160,191,.10)}
+.b-intro{color:#8f7dff;border-color:rgba(143,125,255,.45);background:rgba(143,125,255,.10)}
 .entry h2{font-size:1.35rem;line-height:1.25;margin-bottom:14px}
 .entry p{margin-bottom:14px;font-size:.97rem}
 .entry ul,.entry ol{margin:0 0 14px 1.2em}
@@ -81,6 +87,7 @@ footer .fine{text-align:center;font-size:.78rem}
       <a href="/#mission">Mission</a>
       <a href="/#evidence">Evidence</a>
       <a href="/log" aria-current="page" style="color:var(--text)">Mission Log</a>
+      <a href="/sources">Sources</a>
       <a class="btn btn-amber" href="/#waitlist">Join the waitlist</a>
     </div>
   </div>
@@ -92,6 +99,7 @@ footer .fine{text-align:center;font-size:.78rem}
     <h1>The Mission Log</h1>
     <p class="page-sub">Ten flight notes from the Noo YouNiverse launch sequence: how this ship reads claims, studies, labels, confounders and null results — and why the tracker doesn't exist yet. Sources linked; uncertainty kept visible.</p>
     <span class="chip"><span class="dot" aria-hidden="true"></span>Fictional Castleborn character · AI-assisted imagery &amp; copy · Human-reviewed · Educational only</span>
+    <p class="page-sub" style="margin-top:16px;font-size:.9rem">Each entry carries a badge naming <em>what kind of support it rests on</em> — a health-agency source, a methodology reference, regulatory guidance, or an honest note that the entry makes no factual claim at all. Every source is listed on the <a href="/sources">sources page</a>.</p>
   </div>
 </header>
 
@@ -115,7 +123,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-01">
   <img loading="lazy" src="assets/log/01-brand-introduction.jpg" width="1200" height="675" alt="AI-assisted cinematic landscape portrait of fictional character Cillian O'Sullivan at an observatory console, glancing toward the viewer against an indigo star field and warm brass instruments.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 01</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 01</span><span class="basis b-intro">Introduction · no factual claim</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>Welcome aboard Noo YouNiverse</h2>
     <p>Meet Cillian O'Sullivan — a fictional Castleborn character and the evidence scout at Noo YouNiverse. Cillian is AI-assisted, every post is human-reviewed, and his portraits are AI-generated.</p>
     <p>Welcome aboard.</p>
@@ -130,7 +138,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-02">
   <img loading="lazy" src="assets/log/02-evidence-ladder.jpg" width="1200" height="675" alt="AI-assisted cinematic side view of fictional Cillian examining a brass orrery and anonymous study pages as orbital rings progress across a wide indigo observatory.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 02</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 02</span><span class="basis b-agency">Health-agency source</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>The Evidence Ladder</h2>
     <p>Mechanisms are catnip for curious minds.</p>
     <p>A pathway glows on a diagram, a molecule appears to fit a target, and suddenly the whole ship seems cleared for launch. But a plausible mechanism is a clue — not proof that a meaningful outcome occurs in people.</p>
@@ -155,7 +163,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-03">
   <img loading="lazy" src="assets/log/03-one-variable.jpg" width="1200" height="675" alt="AI-assisted wide side view of fictional Cillian at a long observatory instrument panel where one brass control glows and the remaining controls stay dark.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 03</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 03</span><span class="basis b-method">Methodology reference</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>The One-Switch Rule</h2>
     <p>If five cockpit switches move at once, even a spectacular result tells you very little about which switch mattered.</p>
     <p>For ordinary, low-risk routines — such as comparing two ways of structuring a work block — the useful version is quieter:</p>
@@ -177,7 +185,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-04">
   <img loading="lazy" src="assets/log/04-ships-basics.jpg" width="1200" height="675" alt="AI-assisted panoramic view of fictional Cillian placing a cosmic observatory cockpit into quiet mode beneath a star-filled window.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 04</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 04</span><span class="basis b-agency">Health-agency source</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>Check the Ship's Basics</h2>
     <p>Before a shiny focus claim gets the captain's chair, the ship's ordinary instrument readings belong in the file.</p>
     <p>Sleep opportunity and schedule are part of that context. So are workload, stress, food, movement, illness, environment, and the timing of familiar stimulants such as caffeine. If those conditions changed, an observation about “focus” may not be comparing like with like.</p>
@@ -193,7 +201,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-05">
   <img loading="lazy" src="assets/log/05-label-not-verdict.jpg" width="1200" height="675" alt="AI-assisted wide split composition showing an anonymous blank container on one side and fictional Cillian inspecting research papers on the other.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 05</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 05</span><span class="basis b-reg">Regulatory guidance</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>A Label Is Not a Verdict</h2>
     <p>A polished label can tell you what a seller says is inside a product. It cannot, by itself, establish that the promised outcome will occur.</p>
     <p>Noo YouNiverse separates three different questions:</p>
@@ -211,7 +219,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-06">
   <img loading="lazy" src="assets/log/06-confounders.jpg" width="1200" height="675" alt="AI-assisted panoramic composition of a blank ship's log and contextual clues extending across fictional Cillian's observatory desk.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 06</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 06</span><span class="basis b-method">Methodology reference</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>Confounders Are Stowaways</h2>
     <p>A bright result can have stowaways.</p>
     <p>Perhaps the new routine seemed wonderful on the same day the deadline disappeared, the room grew quieter, sleep improved, caffeine arrived at a different hour, or simple novelty raised expectations. Perhaps the reverse happened.</p>
@@ -238,7 +246,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-07">
   <img loading="lazy" src="assets/log/07-null-results.jpg" width="1200" height="675" alt="AI-assisted wide star-map scene in which one route remains dim while fictional Cillian records it rather than erasing it.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 07</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 07</span><span class="basis b-edit">Editorial promise · no efficacy claim</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>Null Results Belong in the Log</h2>
     <p>“Nothing noticeable happened” is not a useless entry.</p>
     <p>A ship's log that records only glorious launches is advertising, not navigation.</p>
@@ -253,7 +261,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-08">
   <img loading="lazy" src="assets/log/08-clinically-studied.jpg" width="1200" height="675" alt="AI-assisted wide research-library scene in which a corridor of anonymous papers leads toward fictional Cillian's inspection desk.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 08</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 08</span><span class="basis b-reg">Regulatory guidance</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>“Clinically Studied” Is a Doorway</h2>
     <p>“Clinically studied” should open a door to questions. It should not close the discussion.</p>
     <p>When that phrase appears, Cillian wants to know:</p>
@@ -277,7 +285,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-09">
   <img loading="lazy" src="assets/log/09-tracker-build-diary.jpg" width="1200" height="675" alt="AI-assisted wide workshop view of fictional Cillian sketching a data flow beside a monitor made only of neutral unlabeled interface shapes.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 09</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 09</span><span class="basis b-edit">Unbuilt concept · no product claim</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>Tracker Build Diary — Entry One</h2>
     <p>Noo YouNiverse is exploring an evidence-aware observation log.</p>
     <p><strong>This is an early concept — not a released product, treatment tool, or recommendation engine.</strong></p>
@@ -292,7 +300,7 @@ footer .fine{text-align:center;font-size:.78rem}
 <article class="entry" id="mission-10">
   <img loading="lazy" src="assets/log/10-nooyouniverse-charter.jpg" width="1200" height="675" alt="AI-assisted cinematic landscape of fictional Cillian at one side of a sweeping brass celestial map, placing a glowing route marker beneath an open indigo star field.">
   <div class="entry-body">
-    <div class="meta"><span class="num">MISSION 10</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
+    <div class="meta"><span class="num">MISSION 10</span><span class="basis b-intro">Charter · no factual claim</span><span class="logged">Launch sequence CIL-LW01 · August 2026</span></div>
     <h2>The Noo YouNiverse Charter</h2>
     <p>One launch sequence later, this is the Noo YouNiverse charter:</p>
     <ul>
@@ -327,7 +335,7 @@ footer .fine{text-align:center;font-size:.78rem}
       <strong>Who — and what — is Cillian?</strong><br>
       Cillian O'Sullivan is a fictional Castleborn character and AI-assisted guide. He does not have a human body, a medical license, or any personal supplement-use history. Real-world health content on this project is educational, source-backed and human-reviewed. Nothing here is medical advice, diagnosis or treatment — talk to a qualified clinician or pharmacist about your own care.
     </div>
-    <p class="fine">© 2026 Noo YouNiverse · A Castleborn project · <a href="/">Home</a> · <a href="https://mypersonas.online/#/p/castleborn.cillian" rel="noopener">Cillian on AliaSpaces</a> · <a href="https://mypersonas.online/privacy.html" rel="noopener">Privacy</a> · <a href="https://mypersonas.online/data-deletion.html" rel="noopener">Data deletion</a></p>
+    <p class="fine">© 2026 Noo YouNiverse · A Castleborn project · <a href="/">Home</a> · <a href="/sources">Sources</a> · <a href="/corrections">Corrections</a> · <a href="https://mypersonas.online/#/p/castleborn.cillian" rel="noopener">Cillian on AliaSpaces</a> · <a href="https://mypersonas.online/privacy.html" rel="noopener">Privacy</a> · <a href="https://mypersonas.online/data-deletion.html" rel="noopener">Data deletion</a></p>
   </div>
 </footer>
 

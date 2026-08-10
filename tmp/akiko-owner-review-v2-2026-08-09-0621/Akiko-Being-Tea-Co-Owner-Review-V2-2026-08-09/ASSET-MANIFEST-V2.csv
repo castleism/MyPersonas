@@ -1,0 +1,31 @@
+record_id,concept,platform,relative_path,dimensions,bytes,sha256,status,disclosure_required,owner_approval_required
+AKI-V2-01-INSTAGRAM,01 - Meet Akiko / The attention is the point,instagram,images-v2/instagram/01.jpg,1080x1440,307042,bcb9f9cfbd21ced379f2f19a953c6731b705b64581f572cd2ebb7d025c0e88d5,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-02-INSTAGRAM,"02 - One plant, many paths",instagram,images-v2/instagram/02.jpg,1080x1440,303849,04adc9f6098ec135e4ec5d3e5db1e09c24c1bc7ce780134a886612b9f218ae4c,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-03-INSTAGRAM,03 - Tea or tisane?,instagram,images-v2/instagram/03.jpg,1080x1440,266854,c1fedbfe25e2b976b23a2d3aec875c30041c5c478df63ba42365cc696b1014d5,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-04-INSTAGRAM,04 - Read the opened leaf,instagram,images-v2/instagram/04.jpg,1080x1440,289202,98a4fb59666ae8280523700c135cfba885dbd5bc7f9abf3a0528fc7f242775e2,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-05-INSTAGRAM,05 - Finding the golden light,instagram,images-v2/instagram/05.jpg,1080x1440,239346,90e444af2e3284d475c81e702a9efd99661b1692957bb2340f2a1535bbe9a72a,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-06-INSTAGRAM,06 - The five-pass cup reading,instagram,images-v2/instagram/06.jpg,1080x1440,257153,af7b52dcb6779d2977662850fd1970179ec6cb31a493d209b6401258ea2d0b99,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-07-INSTAGRAM,"07 - One leaf, three brews",instagram,images-v2/instagram/07.jpg,1080x1440,270272,3c01249463fdf9ee1c8bcde0f0ce248e34491b8b27b7b9c27d13c6966a6528c2,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-08-INSTAGRAM,"08 - Four variables, one cup",instagram,images-v2/instagram/08.jpg,1080x1440,256963,f84ff2a3d6c1fd169cca0fda9c6e34ed80b418cc95895fe86e57b0ee3fd7bb6c,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-09-INSTAGRAM,09 - Water is an ingredient,instagram,images-v2/instagram/09.jpg,1080x1440,300029,1be9b344b3d2e9a902e1232a8a82721ae90669a1a940296717bd378f3b7cfb46,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-10-INSTAGRAM,10 - The one-line brewing log,instagram,images-v2/instagram/10.jpg,1080x1440,259997,74af12127d10702b1a232ba08fe16d7087e71ff3ba405f018b66163ecec163d4,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-01-FACEBOOK,01 - Meet Akiko / The attention is the point,facebook,images-v2/facebook/01.jpg,1080x1350,380152,836fd1e5b717dab1006c7b3df811425b97d6fab8f5dcfcec2eb47a9323b13970,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-02-FACEBOOK,"02 - One plant, many paths",facebook,images-v2/facebook/02.jpg,1080x1350,375346,5caa714a6e08f2cca82e317936e0732fd899d0decbca546c528c0e5e7b17d7f6,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-03-FACEBOOK,03 - Tea or tisane?,facebook,images-v2/facebook/03.jpg,1080x1350,395449,e555a60ab393a029f78d08329aa883b364648d739f213024711ae1068a4cb037,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-04-FACEBOOK,04 - Read the opened leaf,facebook,images-v2/facebook/04.jpg,1080x1350,357491,b90400ffd84cadcec4db4f7654a46b7a835c6eb124161eb5eb08e2e6dc087dc2,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-05-FACEBOOK,05 - Finding the golden light,facebook,images-v2/facebook/05.jpg,1080x1350,348008,24a853061f9b80f3532427549ba92809ecfb38e110aee3b0a45400fd0be1caec,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-06-FACEBOOK,06 - The five-pass cup reading,facebook,images-v2/facebook/06.jpg,1080x1350,339753,1484831bec40ae4cd1f8b5220a38874003ef34e24b10259c667ed8308de93e21,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-07-FACEBOOK,"07 - One leaf, three brews",facebook,images-v2/facebook/07.jpg,1080x1350,353910,ae631564a9f0ff3e53951a74e991fadde43926d056b11f4c6a75f7705f62a235,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-08-FACEBOOK,"08 - Four variables, one cup",facebook,images-v2/facebook/08.jpg,1080x1350,381362,5e27509dec127bec3a51c0f52ea107063f31ddf2ab7b62f9c90fe7df73a95123,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-09-FACEBOOK,09 - Water is an ingredient,facebook,images-v2/facebook/09.jpg,1080x1350,333034,c7c1d7b4add67c9db62f56b6cc746d380331aa2fe763fdf0ee282e15f5f42366,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-10-FACEBOOK,10 - The one-line brewing log,facebook,images-v2/facebook/10.jpg,1080x1350,344059,949f117049bc4ae10ed64ae9acfe0852a311445930ebdc3597c025eb9898cead,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-01-X,01 - Meet Akiko / The attention is the point,x,images-v2/x/01.jpg,1600x900,280387,5759e4225a299b614c493861629e9832bb56eef420c4cf5f87adec0b4e8fce76,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-02-X,"02 - One plant, many paths",x,images-v2/x/02.jpg,1600x900,318507,2b83ffb6d33e3cdfff7ae1278ac1f97fff6f0f942bd14e73c1a5beb0b183cc20,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-03-X,03 - Tea or tisane?,x,images-v2/x/03.jpg,1600x900,354935,d8404fd7d794a2a872b880609b2f436c650122563f58c0f65ec2ff8bf5095d0a,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-04-X,04 - Read the opened leaf,x,images-v2/x/04.jpg,1600x900,255645,9fcfe34ee8018f3bf80f42561a2f6f696c75841deed03227fbd541121d6792fb,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-05-X,05 - Finding the golden light,x,images-v2/x/05.jpg,1600x900,240311,a609d472f326d80d91e477dd0e564b086f859bd89e871c228cec121b49566a9a,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-06-X,06 - The five-pass cup reading,x,images-v2/x/06.jpg,1600x900,234701,d1cee5feefab2857d0f180d6d4503d0c5f3a0509fdc1273c636decf3e19e8fba,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-07-X,"07 - One leaf, three brews",x,images-v2/x/07.jpg,1600x900,313164,c49ec388b4562056e95549c4edbe32ca6cc1471a2dd777176b2d647d27fc4812,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-08-X,"08 - Four variables, one cup",x,images-v2/x/08.jpg,1600x900,321479,45b069da5715b0796182601b3f05db310119f683b5b9779170dfec89eec60f6d,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-09-X,09 - Water is an ingredient,x,images-v2/x/09.jpg,1600x900,285280,a5688a5bffe1787d81c2d2cb9ffb4b15c77053c4f7ecc64a5dc12d306b1cf432,READY_FOR_OWNER_REVIEW,true,true
+AKI-V2-10-X,10 - The one-line brewing log,x,images-v2/x/10.jpg,1600x900,273488,5dbee56007bae129bbb1838d3330d9bcc3c4b26d92c2f409d5787f1f9528feb7,READY_FOR_OWNER_REVIEW,true,true

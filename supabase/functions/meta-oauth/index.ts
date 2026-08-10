@@ -611,7 +611,7 @@ async function discoverPagesByIds(
     try {
       payload = await graphGet(`/${pageId}`, userAccessToken, {
         fields:
-          "id,name,access_token,tasks,instagram_business_account{id,username,name,account_type}",
+          "id,name,access_token,tasks,instagram_business_account",
       });
     } catch (error) {
       console.error(
@@ -658,7 +658,7 @@ async function discoverPages(userAccessToken: string): Promise<PageAsset[]> {
   while (true) {
     const params: Record<string, string> = {
       fields:
-        "id,name,access_token,tasks,instagram_business_account{id,username,name,account_type}",
+        "id,name,access_token,tasks,instagram_business_account",
       limit: "100",
     };
     if (after) params.after = after;

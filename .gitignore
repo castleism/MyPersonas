@@ -7,3 +7,8 @@
 /*-PERSONA-PROMPT*.md
 /*-DOSSIER*.md
 *.bak
+
+# Dev tooling / OS junk — never commit
+/node_modules/
+.DS_Store
+Thumbs.db
