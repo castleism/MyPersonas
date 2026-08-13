@@ -3,6 +3,22 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## 3-part staged posting system + pet-project field (2026-08-13)
+
+- **Live FB posting verified:** real test post published to the "Jokes from Dads" page and
+  confirmed, then deleted. The full pipeline works.
+- **3-part staged posting system** (`POSTING-3PART-SPEC.md` + migration 033 `post_drafts`,
+  applied + verified): one post authored once, staged as three platform-tailored variants —
+  Facebook landscape 1.91:1 / detailed caption, Instagram square 1:1 / optimal caption, X
+  portrait 4:5 / ≤280 caption — grouped into a weekly schedule reviewed/edited and approved on
+  approval day, then published via meta-post (FB+IG) and twitter-post (X). Persona AI drafts all
+  three captions. `post_drafts` is owner-scoped (RLS), 23 columns incl. per-platform captions +
+  image crops + results + scheduling.
+- **Pet-project field** (migration 032 `personas.pet_project`, applied + verified): a short
+  product/project label shown as a ★ chip next to the persona's name + handle on the profile
+  header and roster cards, editable in the persona form. Saved via the same post-bundle pattern
+  as title/focus (owner-scoped update on the resolved persona id). Frontend syntax check passes.
+
 ## Meta FB/IG posting enabled (code complete, deploy pending) (2026-08-13)
 
 - **Discovery:** the Meta app (App ID 2042281049742621) is fully configured. Login config

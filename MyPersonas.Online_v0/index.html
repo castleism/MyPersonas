@@ -887,7 +887,7 @@ function pCard(p){
   return `<div class="pcard" style="--pc:${safeTheme(p.theme)}" data-handle="${esc(p.handle)}" onclick="go('p/'+this.dataset.handle)">
     <div class="ph" style="${safeBgStyle(p.banner_url)}"></div>
     <div class="pb"><div class="av" style="${safeBgStyle(p.avatar_url)}"></div>
-    <b>${esc(p.name)}</b>${p.title?` <span class="muted">${esc(p.title)}</span>`:""} <span class="muted">@${esc(p.handle)}</span> ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">LIVE</span>':""}
+    <b>${esc(p.name)}</b>${p.title?` <span class="muted">${esc(p.title)}</span>`:""} <span class="muted">@${esc(p.handle)}</span> ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">LIVE</span>':""}
     <div class="muted" style="margin-top:4px">${esc(p.tagline)}</div></div></div>`;
 }
 
@@ -958,7 +958,7 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   <div class="pp-head">
     <div class="pp-av" style="${safeBgStyle(p.avatar_url)}"></div>
     <div style="flex:1;padding-bottom:6px">
-      <div class="pp-name">${esc(p.name)} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">LIVE</span>':""}</div>
+      <div class="pp-name">${esc(p.name)} ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">LIVE</span>':""}</div>
       <div class="muted" style="background:rgba(255,255,255,.8);display:inline-block;padding:2px 8px;border-radius:8px">@${esc(p.handle)} · ${friends.length} friend${friends.length===1?"":"s"} — ${esc(p.tagline)}</div>
     </div>
     <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
@@ -1920,6 +1920,7 @@ async function renderEdit(id,epoch=++renderEpoch){
       <div><label>Theme color</label><input id="eTheme" type="color" value="${safeTheme(p.theme)}" style="height:38px;padding:2px"></div>
     </div>
     <label>Tagline</label><input id="eTagline" maxlength="512" value="${esc(p.tagline||"")}">
+    <label>Pet project (product shown next to the name)</label><input id="ePet" maxlength="120" value="${esc(p.pet_project||"")}" placeholder="e.g. Classwoods Case Files">
     <div class="row">
       <div><label>Title (shown with the name)</label><input id="eTitle" maxlength="200" value="${esc(p.title||"")}" placeholder="Founder · Chef · Dr."></div>
       <div><label>Focus (niche — used in your roster)</label><input id="eFocus" maxlength="2000" value="${esc(p.focus||"")}" placeholder="what this persona is about"></div>
@@ -2123,10 +2124,11 @@ async function savePersona(){
   if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   if(error){toast(error.message.includes("duplicate")?"That handle is taken by another account — pick a different one.":error.message);return}
   toast("Saved — refreshing…");
-  const _title=document.getElementById("eTitle")?.value.trim()||"",_focus=document.getElementById("eFocus")?.value.trim()||"";
+  const _title=document.getElementById("eTitle")?.value.trim()||"",_focus=document.getElementById("eFocus")?.value.trim()||"",_pet=document.getElementById("ePet")?.value.trim()||"";
   await loadMine(uid,authLoadGeneration);if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   const _pid=targetId||(myPersonas.find(p=>p.handle===handle)||{}).id;
   if(_pid){try{await sb.rpc("set_persona_meta",{p_persona_id:_pid,p_title:_title,p_focus:_focus})}catch(e){}}
+  if(_pid){try{await sb.from("personas").update({pet_project:_pet}).eq("id",_pid)}catch(e){}}
   toast("Saved");go("p/"+handle);
 }
 async function deletePersona(){
