@@ -3,6 +3,26 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Applied migrations + auth hardening + responsive polish (2026-08-12)
+
+- **Migrations 030 + 031 applied and verified live:** `personas.context_log` (context
+  box, 20k-char cap) and `chat_workspaces` (owner-scoped RLS) + nullable
+  `agent_messages.workspace_id`. All four schema checks return present=1.
+- **Leaked-password protection ENABLED** (Auth → email provider → HaveIBeenPwned); the
+  badge reads ENABLED after a full reload — the previously-unconfirmed toggle is now on.
+- **Responsive:** `viewport-fit=cover` + safe-area insets (header, stale bar, main,
+  overlay, fanbox/sdPanel) and a tablet tier (768–1024px → studio `.cols` 280px/1fr).
+  Additive and no-op on desktop (env insets resolve to 0); all 6 rules parse valid in
+  Blink and the frontend syntax check passes. Pre-edit backup in `_to_delete/backups/`.
+- **Function drift documented → `supabase/functions/DRIFT.md`:** confirmed 8
+  deployed-but-unversioned functions live (daily-discovery, gemini-models, gemini-probe,
+  image-probe, meta-ig-attach, meta-ig-discover, split-post, twitter-post). Can't be
+  pulled from here (dashboard "deploy status unavailable"; body API returns an eszip
+  bundle; source carries inline secrets). Checklist with `supabase functions download`
+  + secret-scrub steps written for the next CLI session.
+- Prior accumulated batch (persona briefs, 030/031 files, meta-post scaffold,
+  App-Review + V2/mobile blueprints, soulular note) committed as 55d80a5.
+
 ## Meta posting scaffold + mobile/app blueprints (2026-08-10)
 
 - **Meta posting build started (App-Review-gated):** `supabase/functions/meta-post/`

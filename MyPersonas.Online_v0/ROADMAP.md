@@ -212,8 +212,8 @@ browser scenarios retain their own verification evidence.
       dossiers, backups can no longer be committed even by git add -A
 - [x] Security Advisor safe fixes (2026-08-08, migration 027): removed public
       bucket file-listing on media + persona-media; pinned concept_touch search_path
-- [ ] Enable leaked-password protection (Auth → Attack Protection toggle + Save) —
-      deferred: Supabase Management API returning 503s; retry when healthy
+- [x] Enable leaked-password protection (2026-08-12): turned on via Auth → email
+      provider (HaveIBeenPwned); badge reads ENABLED after a full reload
 - [x] Security Advisor anon-EXECUTE review COMPLETE (2026-08-09): audited the 5
       anon-executable definer functions. Conclusion — no change: owns_persona is an
       RLS helper that already returns false for anon (revoking risks RLS breakage);
@@ -224,9 +224,10 @@ browser scenarios retain their own verification evidence.
 
 - [ ] REDEPLOY meta-oauth: account_type regression patched in repo (bare IG edge) —
       deploy to unblock Meta connect (dashboard editor was down; use CLI/CI)
-- [ ] Ship context-box feature: apply migration 030, wire `eContext` textarea +
-      appendContextLog in index.html, fold bounded slice into ai-proxy prompt
-      (CONTEXT-BOX-SPEC.md)
+- [~] Context-box feature: migration 030 APPLIED + verified (personas.context_log,
+      20k cap, 2026-08-12). NEXT: wire `eContext` textarea + appendContextLog in
+      index.html, fold bounded slice into ai-proxy prompt (CONTEXT-BOX-SPEC.md) —
+      UI deferred (auto-deploys on push; needs logged-in verify)
 - [ ] Apply persona updates: Sherlock Chomes (cannabis podcast), Song/Rhythm
       (warrior-gamer siblings) — copy ready in persona-briefs/
 - [ ] Personas = personalized AI news feed (owner vision): AI researches assigned
@@ -235,20 +236,26 @@ browser scenarios retain their own verification evidence.
       collaboration. See V2-BLUEPRINT.md §6.
 - [ ] "soulular" identity layer (parallel to cellular) — confirm intent
       (concepts/soulular.md); likely the persona follow/graph/discovery layer
-- [ ] V2 rebuild blueprint written (V2-BLUEPRINT.md) — incremental migration path,
+- [x] V2 rebuild blueprint written (V2-BLUEPRINT.md) — incremental migration path,
       not a big-bang rewrite
 - [~] Meta posting: meta-post scaffold in repo (gated) + APP-REVIEW-META.md. NEXT:
       owner starts Meta App Review (long pole); then apply meta-oauth PUBLISH_SCOPES
       opt-in, finish meta-post token/queue wiring, live tests
-- [ ] Pull drifted prod functions into repo (meta-post, meta-ig-attach,
-      meta-ig-discover, daily-discovery, gemini-models/probe, image-probe) via
-      `supabase functions download`
-- [ ] Responsive: add tablet tier (768–1024px) + safe-area insets + sticky mobile CTA
-      (plan in MOBILE-BLUEPRINT.md; reviewable CSS diff on request — needs visual verify)
+- [~] Pull drifted prod functions into repo — CONFIRMED 8 live 2026-08-12
+      (daily-discovery, gemini-models, gemini-probe, image-probe, meta-ig-attach,
+      meta-ig-discover, split-post, twitter-post). Blocked from here (dashboard
+      "deploy status unavailable" / body API returns eszip / inline secrets);
+      `supabase functions download` checklist + secret-scrub in functions/DRIFT.md
+- [~] Responsive: SHIPPED 2026-08-12 — safe-area insets (viewport-fit=cover; header,
+      stale bar, main, overlay, fanbox/sdPanel) + tablet tier (768–1024px → studio
+      `.cols` 280px/1fr). Additive, no-op on desktop, all rules parse valid in Blink,
+      syntax check passes, backup in _to_delete/backups/. PENDING: sticky mobile CTA
+      (needs logged-in visual verify) — MOBILE-BLUEPRINT.md
 - [ ] Native apps: PWA-first (manifest + SW + push) → Expo/React Native; surfaces =
       persona chat, post approvals, AI news feed (MOBILE-BLUEPRINT.md)
-- [ ] Chat workspaces: saved persona conversations that distill into context_log
-      (chat_workspaces table + Save/Attach-context actions) — MOBILE-BLUEPRINT.md §3
+- [~] Chat workspaces: migration 031 APPLIED + verified (chat_workspaces + owner RLS +
+      agent_messages.workspace_id, 2026-08-12). NEXT: Save/Attach-context UI actions
+      that distill into context_log — MOBILE-BLUEPRINT.md §3
 
 ## v1 — The platform (major milestone)
 
