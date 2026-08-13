@@ -3,6 +3,52 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Meta posting scaffold + mobile/app blueprints (2026-08-10)
+
+- **Meta posting build started (App-Review-gated):** `supabase/functions/meta-post/`
+  scaffold — shape-correct IG two-step publish + FB Page photo post, but **gated OFF**
+  (returns 409 until the grant carries the publish scopes), so it's safe to deploy.
+  `APP-REVIEW-META.md` = the full path to live posting (business verification →
+  request pages_manage_posts/instagram_content_publish/business_management → screencast
+  script → the meta-oauth opt-in scope change to apply AFTER approval). App Review is
+  the long pole — start it first. Cannabis personas can't publish via Meta regardless
+  (content policy). Compiles; not deployed.
+- **MOBILE-BLUEPRINT.md:** responsive-web tuning + a missing tablet tier (site already
+  has 10 breakpoints + 44px targets, so it's optimization not a rebuild); native apps
+  via PWA-first → Expo/React Native, focused on persona chat + post approvals + the AI
+  news feed; and **chat workspaces** (saved conversations that distill into the persona
+  `context_log` to build context over time). Sequenced, backend reused, no rewrite.
+- **Flagged:** repo↔prod function drift (meta-post, meta-ig-attach, meta-ig-discover,
+  daily-discovery, gemini-models/probe, image-probe exist in prod, not in repo) — pull
+  them into source control (`supabase functions download <name>`).
+- Verify green: 18 functions + pure.ts compile, 18/18 tests, frontend parses.
+
+## Persona batch + Meta regression fix + v2 blueprint (2026-08-10)
+
+- **Meta connect regression FOUND + patched (repo; redeploy pending):** the IG
+  inline-expansion fix requested `account_type`, a Basic-Display field that's invalid
+  on the Instagram *Graph* node — Graph rejects the whole request if any field is
+  invalid, which broke the connect ("meta rejected request"). Reverted both field
+  strings to the bare `instagram_business_account` edge (proven-working; returns
+  `{id}`, which is all pairing needs); `instagramAssetFromLinked` builds the IG from
+  that id. Compiles; needs deploy (dashboard code editor was down — deploy via
+  `supabase functions deploy meta-oauth --no-verify-jwt`).
+- **Persona content** (persona-briefs/2026-08-10-persona-updates.md): Sherlock Chomes
+  (cannabis podcast) and Song/Rhythm (combat-trained gamer siblings; Song girly /
+  Rhythm tomboy) — ready-to-paste Focus/Bio/Voice/Topics + context-log seeds.
+- **Context-box feature** designed: migration 030 adds `personas.context_log`
+  (AI-fed roadmap journal, distinct from private notes); CONTEXT-BOX-SPEC.md covers
+  UI + auto-append + bounded prompt inclusion. Apply 030 before shipping the UI.
+- **V2-BLUEPRINT.md**: full from-scratch rebuild plan (SvelteKit + TS, shared `_core`
+  connector library, CLI migrations + CI/CD, RLS/pgTAP, the "personas = personalized
+  AI news feed" direction, projects/multi-persona, the soulular identity layer).
+- **soulular** captured as a concept (concepts/soulular.md) — my interpretation
+  (identity layer parallel to cellular), flagged for owner confirmation.
+- **Cleanup + verify:** scanned — repo already clean of stale/unused committed files
+  (junk is in _to_delete; outputs/tmp are active work). Full verify green: 17 fns +
+  pure.ts compile, 18/18 tests, frontend parses. Flagged 2 ambiguous items for review
+  (assets/marketing/x-integration-slide.html; root persona-prompt md files).
+
 ## Applied — retention jobs live + security review closed (2026-08-09)
 
 - Applied migration 028: `public.run_data_retention()` created and scheduled via

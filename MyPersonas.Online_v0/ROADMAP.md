@@ -220,6 +220,36 @@ browser scenarios retain their own verification evidence.
       can_request is an unreferenced core-schema helper needing a usage trace before
       any grant change; the other three power public pages. Documented in 029.
 
+## Persona / product direction (2026-08-10)
+
+- [ ] REDEPLOY meta-oauth: account_type regression patched in repo (bare IG edge) —
+      deploy to unblock Meta connect (dashboard editor was down; use CLI/CI)
+- [ ] Ship context-box feature: apply migration 030, wire `eContext` textarea +
+      appendContextLog in index.html, fold bounded slice into ai-proxy prompt
+      (CONTEXT-BOX-SPEC.md)
+- [ ] Apply persona updates: Sherlock Chomes (cannabis podcast), Song/Rhythm
+      (warrior-gamer siblings) — copy ready in persona-briefs/
+- [ ] Personas = personalized AI news feed (owner vision): AI researches assigned
+      interests, fact-checks, cites sources, serves tailored blurbs (feed_items +
+      ai/research) instead of mindless scroll; later, projects = multi-persona
+      collaboration. See V2-BLUEPRINT.md §6.
+- [ ] "soulular" identity layer (parallel to cellular) — confirm intent
+      (concepts/soulular.md); likely the persona follow/graph/discovery layer
+- [ ] V2 rebuild blueprint written (V2-BLUEPRINT.md) — incremental migration path,
+      not a big-bang rewrite
+- [~] Meta posting: meta-post scaffold in repo (gated) + APP-REVIEW-META.md. NEXT:
+      owner starts Meta App Review (long pole); then apply meta-oauth PUBLISH_SCOPES
+      opt-in, finish meta-post token/queue wiring, live tests
+- [ ] Pull drifted prod functions into repo (meta-post, meta-ig-attach,
+      meta-ig-discover, daily-discovery, gemini-models/probe, image-probe) via
+      `supabase functions download`
+- [ ] Responsive: add tablet tier (768–1024px) + safe-area insets + sticky mobile CTA
+      (plan in MOBILE-BLUEPRINT.md; reviewable CSS diff on request — needs visual verify)
+- [ ] Native apps: PWA-first (manifest + SW + push) → Expo/React Native; surfaces =
+      persona chat, post approvals, AI news feed (MOBILE-BLUEPRINT.md)
+- [ ] Chat workspaces: saved persona conversations that distill into context_log
+      (chat_workspaces table + Save/Attach-context actions) — MOBILE-BLUEPRINT.md §3
+
 ## v1 — The platform (major milestone)
 
 - [ ] Persona-to-persona direct messages (privacy-preserving)
