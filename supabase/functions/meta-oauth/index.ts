@@ -67,6 +67,20 @@ const REQUIRED_SCOPES = [
   "pages_read_engagement",
   "instagram_basic",
 ] as const;
+// Standard-access publish scopes. When a connected grant carries all of these,
+// posting to the owner's own Pages/IG works (the meta-post publisher enforces the
+// same check at publish time). Reported back as capabilities.postingEnabled.
+const PUBLISH_SCOPES = [
+  "pages_manage_posts",
+  "instagram_content_publish",
+  "business_management",
+] as const;
+function hasPublishScopes(scopes: unknown): boolean {
+  const granted = new Set(
+    Array.isArray(scopes) ? scopes.map((s) => String(s)) : [],
+  );
+  return PUBLISH_SCOPES.every((scope) => granted.has(scope));
+}
 const MAX_DISCOVERED_PAGES = 100;
 const MANUAL_REVOCATION_URL =
   "https://www.facebook.com/settings?tab=business_tools";
@@ -1225,6 +1239,8 @@ async function capabilities(
       );
     }
     result.credentialPresent = true;
+    // Posting is enabled for this asset when its grant carries the publish scopes.
+    result.postingEnabled = hasPublishScopes(grantResult.data.granted_scopes);
     result.grant = {
       id: grantResult.data.id,
       metaUserId: grantResult.data.meta_user_id,

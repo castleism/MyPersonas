@@ -12,13 +12,15 @@ This folder is the owner-review package for WAIS's first coordinated Instagram, 
 6. `wais-launch-approval-queue.json` — machine-readable proposed queue with all external states held at `awaiting_owner_approval`.
 7. `VISUAL-PROMPT-MATRIX.md` and `ASSET-MANIFEST.csv` — reproducible prompts, dimensions, hashes, and provenance paths.
 8. `PLATFORM-COMPLIANCE-NOTES.md` — current official source links and production constraints.
+9. `MYPERSONAS-IMPORT-RECEIPT-2026-08-10.md` — verified live profile and Direction import record.
 
 ## Truthful state
 
 - Working personality and voice: complete for review.
 - Captions and accessibility copy: complete for review.
 - Images: thirty platform-ready exports complete and visually checked. Twenty-five use independently generated source scenes; five use distinct crops/zooms from the strongest sibling-platform source after an image-generation authorization interruption or a visual-clarity correction. All remain subject to owner approval.
-- External account changes: none.
+- MyPersonas profile: verified live August 10, 2026 at `https://mypersonas.online/#/p/wais`; profile visuals, voice card, owner-only roadmap note, and Control Center Direction were updated.
+- External social-account changes: none.
 - External scheduling: none.
 - Publishing: none.
 - Meta authorization: unresolved; publishing must remain disabled.

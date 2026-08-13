@@ -1,22 +1,28 @@
-// meta-post — Facebook Page + Instagram publisher (SCAFFOLD, gated OFF).
+// meta-post — Facebook Page + Instagram publisher.
 //
-// STATUS: not production-ready and NOT wired live. It is shape-correct (the real
-// IG two-step publish + FB feed/photo calls) but will refuse to post until:
-//   1) meta-oauth requests the publish scopes (pages_manage_posts,
-//      instagram_content_publish, business_management) — see APP-REVIEW-META.md,
-//   2) Meta App Review approves those scopes for this app,
-//   3) the grant actually carries them (checked at runtime below), and
-//   4) it's integration-tested against a real Page/IG and wired into
-//      run-publish-queue as the "meta" destination.
-// Until then every call returns 409 postingNotEnabled, so deploying it is safe.
+// Publishes an owner-approved image post to a paired Facebook Page and/or its
+// linked Instagram professional account. It is owner-scoped and scope-gated:
+//   • the caller must own the paired asset (meta_page_connections.owner),
+//   • the grant must carry the publish scopes (pages_manage_posts,
+//     instagram_content_publish, business_management) — these are standard-access
+//     permissions granted through the Login-for-Business config, so posting to the
+//     owner's OWN pages/IG works in development mode without App Review. App Review
+//     is only needed to post on behalf of other people. See APP-REVIEW-META.md.
+//
+// It never stores Page tokens: it retrieves the durable user token for the grant
+// (meta_get_grant_token_bundle, the same record meta-oauth writes at finalize) and
+// derives a fresh Page token at publish time.
 //
 // Contract (POST, owner bearer token):
 //   { action:"publish", facebookLedgerId, imageUrl, caption?, target? }
-//     target: "facebook" | "instagram" | "both" (default "both" where paired)
-//   -> { facebook?: {postId}, instagram?: {mediaId}, skipped?: [...] }
+//     facebookLedgerId: the FB (or linked IG) ledger id of the paired asset
+//     imageUrl:         a public https image URL (Meta fetches it server-side)
+//     target:           "facebook" | "instagram" | "both" (default "both")
+//   -> { facebook?: {postId}, instagram?: {mediaId} }  (only the targets that ran)
 //
-// Deploy (later): supabase functions deploy meta-post
-// Requires secrets: M="MENV" MENV: SUPABASE_URL, SERVICE_ROLE_KEY, META_APP_ID, META_APP_SECRET
+// Deploy: supabase functions deploy meta-post --project-ref nwsqyuucwzihruszocge
+// Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, META_APP_SECRET
+// Optional: META_GRAPH_API_VERSION
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -28,12 +34,15 @@ const GRAPH = `https://graph.facebook.com/${
   Deno.env.get("META_GRAPH_API_VERSION") || "v25.0"
 }`;
 
-// Advanced-access scopes that must be granted (post App Review) for publishing.
+// Standard-access publish scopes the grant must carry to post.
 const PUBLISH_SCOPES = [
   "pages_manage_posts",
   "instagram_content_publish",
   "business_management",
 ] as const;
+
+const IG_CAPTION_MAX = 2200;
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/; // ledger ids are uuids; guards the .or() filter
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -47,7 +56,7 @@ const ORIGINS = new Set([
 ]);
 
 function json(body: unknown, status = 200, origin = "") {
-  return new Response(JSON.stringify(body), {
+  return new Response(body === null ? null : JSON.stringify(body), {
     status,
     headers: {
       ...(origin && ORIGINS.has(origin)
@@ -88,6 +97,26 @@ async function caller(req: Request) {
   return error ? null : data.user;
 }
 
+async function graphGet(
+  path: string,
+  token: string,
+  params: Record<string, string>,
+) {
+  const url = new URL(`${GRAPH}${path}`);
+  const sp = new URLSearchParams(params);
+  sp.set("access_token", token);
+  sp.set("appsecret_proof", await appSecretProof(token));
+  url.search = sp.toString();
+  const r = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = (j as { error?: { message?: string } })?.error?.message ||
+      `Meta rejected the request (HTTP ${r.status})`;
+    throw new Error(msg);
+  }
+  return j as Record<string, unknown>;
+}
+
 async function graphPost(
   path: string,
   token: string,
@@ -111,9 +140,16 @@ async function graphPost(
   return j as Record<string, unknown>;
 }
 
-// Instagram Content Publishing is a two step flow: create a media container,
-// then publish it. Requires instagram_content_publish + a Page token that manages
-// the linked IG professional account. image_url must be a public https URL.
+// A Page token derived fresh from the durable user token (never stored here).
+async function getPageToken(pageId: string, userToken: string) {
+  const j = await graphGet(`/${pageId}`, userToken, { fields: "access_token" });
+  const token = typeof j.access_token === "string" ? j.access_token.trim() : "";
+  if (!token) throw new Error("Could not obtain a Page access token.");
+  return token;
+}
+
+// Instagram content publishing: create a media container, then publish it.
+// image_url must be a public https URL; the Page token manages the linked IG.
 async function publishInstagram(
   igUserId: string,
   pageToken: string,
@@ -132,7 +168,7 @@ async function publishInstagram(
   return { mediaId: String(published.id || "") };
 }
 
-// Facebook Page photo post. Requires pages_manage_posts + the Page token.
+// Facebook Page photo post.
 async function publishFacebook(
   pageId: string,
   pageToken: string,
@@ -160,20 +196,48 @@ serve(async (req) => {
     return json({ error: "Unknown action" }, 400, origin);
   }
 
-  // ── GATE: publishing is not enabled until App Review + publish scopes land. ──
-  // The grant's granted_scopes must include every PUBLISH_SCOPE. We look up the
-  // paired page's grant and its scopes; if any are missing we refuse (safely).
   const facebookLedgerId = String(body.facebookLedgerId || "");
-  const { data: conn } = await admin.from("meta_page_connections")
-    .select("facebook_page_id, instagram_business_id, grant_id, owner")
-    .eq("owner", user.id)
-    .eq("facebook_ledger_id", facebookLedgerId)
-    .maybeSingle();
-  if (!conn) return json({ error: "That paired Meta page was not found." }, 404, origin);
+  const imageUrl = String(body.imageUrl || "");
+  const caption = typeof body.caption === "string"
+    ? body.caption.slice(0, IG_CAPTION_MAX)
+    : "";
+  const target = ["facebook", "instagram", "both"].includes(String(body.target))
+    ? String(body.target)
+    : "both";
 
+  if (!SAFE_ID.test(facebookLedgerId)) {
+    return json({ error: "A valid facebookLedgerId is required." }, 400, origin);
+  }
+  if (!/^https:\/\/\S+$/i.test(imageUrl)) {
+    return json({ error: "A public https imageUrl is required." }, 400, origin);
+  }
+
+  // The paired asset must belong to the caller (owner-scoped).
+  const { data: asset, error: assetErr } = await admin
+    .from("meta_page_connections")
+    .select(
+      "owner,grant_id,facebook_page_id,facebook_page_name,instagram_business_id,instagram_username",
+    )
+    .eq("owner", user.id)
+    .or(
+      `facebook_ledger_id.eq.${facebookLedgerId},instagram_ledger_id.eq.${facebookLedgerId}`,
+    )
+    .maybeSingle();
+  if (assetErr) {
+    return json({ error: "Could not look up the Meta connection." }, 500, origin);
+  }
+  if (!asset) {
+    return json(
+      { error: "That paired Meta page was not found for your account." },
+      404,
+      origin,
+    );
+  }
+
+  // The grant must carry every publish scope.
   const { data: grant } = await admin.from("meta_grants")
     .select("granted_scopes")
-    .eq("id", conn.grant_id)
+    .eq("id", asset.grant_id)
     .eq("owner", user.id)
     .maybeSingle();
   const granted = new Set(
@@ -183,38 +247,72 @@ serve(async (req) => {
   if (missing.length) {
     return json({
       error:
-        "Publishing to Meta is not enabled for this account yet. It requires Meta " +
-        "App Review approval and the publish permissions, then reconnecting. See " +
-        "APP-REVIEW-META.md.",
+        "Publishing isn't enabled for this account: the connection is missing " +
+        "the publish permissions. Reconnect Meta to grant them.",
       postingNotEnabled: true,
       missingScopes: missing,
     }, 409, origin);
   }
 
-  // Beyond this point is the real publish path (only reachable once approved).
-  // TODO before go-live: fetch the decrypted Page token from Vault for this grant
-  // (mirror meta-oauth's candidate/grant token handling), enforce per-account
-  // caps + owner approval, and record the result for reconciliation.
-  return json({
-    error:
-      "meta-post scaffold: token retrieval + publish wiring is intentionally not " +
-      "implemented until App Review is approved. See APP-REVIEW-META.md.",
-    postingNotEnabled: true,
-    scaffold: true,
-  }, 501, origin);
+  // Retrieve the durable user token (same record meta-oauth writes at finalize),
+  // then derive a fresh Page token from it.
+  const cred = await admin.rpc("meta_get_grant_token_bundle", {
+    p_grant_id: asset.grant_id,
+    p_owner: user.id,
+  });
+  const row = Array.isArray(cred.data)
+    ? cred.data[0] as { token_bundle?: { access_token?: string } } | undefined
+    : undefined;
+  const userToken = String(row?.token_bundle?.access_token || "");
+  if (cred.error || !userToken) {
+    return json(
+      { error: "Could not retrieve the Meta credential for this page." },
+      502,
+      origin,
+    );
+  }
 
-  // Reference implementation the go-live wiring will call (kept for review):
-  //   const pageToken = await getDecryptedPageToken(conn.grant_id, conn.facebook_page_id);
-  //   const out: Record<string, unknown> = {};
-  //   if (target !== "facebook" && conn.instagram_business_id) {
-  //     out.instagram = await publishInstagram(conn.instagram_business_id, pageToken, imageUrl, caption);
-  //   }
-  //   if (target !== "instagram") {
-  //     out.facebook = await publishFacebook(conn.facebook_page_id, pageToken, imageUrl, caption);
-  //   }
-  //   return json(out, 200, origin);
+  let pageToken: string;
+  try {
+    pageToken = await getPageToken(String(asset.facebook_page_id), userToken);
+  } catch (e) {
+    return json({ error: (e as Error).message }, 502, origin);
+  }
+
+  const out: { facebook?: unknown; instagram?: unknown } = {};
+  try {
+    if (target !== "facebook" && asset.instagram_business_id) {
+      out.instagram = await publishInstagram(
+        String(asset.instagram_business_id),
+        pageToken,
+        imageUrl,
+        caption,
+      );
+    }
+    if (target !== "instagram") {
+      out.facebook = await publishFacebook(
+        String(asset.facebook_page_id),
+        pageToken,
+        imageUrl,
+        caption,
+      );
+    }
+  } catch (e) {
+    // Return whatever already published plus the failure (so a partial IG+FB
+    // post isn't silently lost).
+    return json(
+      { error: (e as Error).message, ...out, partial: true },
+      502,
+      origin,
+    );
+  }
+
+  if (out.facebook === undefined && out.instagram === undefined) {
+    return json(
+      { error: "Nothing was published (no eligible target for this asset)." },
+      400,
+      origin,
+    );
+  }
+  return json(out, 200, origin);
 });
-
-// Silence "declared but never used" for the reference helpers in scaffold state.
-void publishInstagram;
-void publishFacebook;

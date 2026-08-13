@@ -3,6 +3,24 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Meta FB/IG posting enabled (code complete, deploy pending) (2026-08-13)
+
+- **Discovery:** the Meta app (App ID 2042281049742621) is fully configured. Login config
+  "MyPersonas Portfolio SU" (28345689651788755) already includes pages_manage_posts,
+  instagram_content_publish, business_management (standard access). Verified in the DB: all
+  25 connected Facebook pages + 25 Instagram accounts already GRANTED those 3 scopes. So
+  posting to the owner's OWN accounts works in dev mode — **no App Review / reconnect needed**
+  (App Review is only for posting on behalf of other people).
+- **meta-post finished:** real publisher — owner-scoped, verifies publish scopes on the grant,
+  pulls the durable user token via `meta_get_grant_token_bundle`, derives a fresh Page token,
+  posts to FB `/{page}/photos` and IG (create container -> media_publish). Removed the scaffold
+  gate. Compiles clean (esbuild + node strip-types).
+- **meta-oauth:** `capabilities.postingEnabled` now derives from the grant's scopes
+  (`hasPublishScopes`) instead of hardcoded false.
+- **config.toml:** added `[functions.meta-post] verify_jwt = true`.
+- **Deploy:** push to main -> supabase-deploy Action auto-deploys. Then a single owner-approved
+  test post before any wider use. Backups in _to_delete/backups/.
+
 ## Applied migrations + auth hardening + responsive polish (2026-08-12)
 
 - **Migrations 030 + 031 applied and verified live:** `personas.context_log` (context

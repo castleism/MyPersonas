@@ -82,7 +82,7 @@ function Get-SpecialPosts([string]$PersonaHandle, [string]$Provider, [string]$Us
     )
   }
   if ($Provider -eq 'onlyfans') {
-    if ($PersonaHandle -eq 'chriscodyak') {
+    if ($PersonaHandle -eq 'chris.cody.ak') {
       return @(
         'The braids are neat, the tools are put away, and I finally have time to be a little distracting. 18+ preview; AI-assisted draft for owner review.',
         'Contractor hands, good hair, and a very convincing "as you wish." Tell me which detail got your attention first. 18+; staged only.',

@@ -29,6 +29,9 @@ verify_jwt = false
 [functions.meta-oauth]
 verify_jwt = false
 
+[functions.meta-post]
+verify_jwt = true
+
 [functions.run-tasks]
 verify_jwt = false
 
