@@ -72,6 +72,17 @@ Cloudflare **Worker with static assets** (not Pages — Cloudflare's Git-connect
 - **Press/collab kit:** blocked until a qualified reviewer is named (see below).
 - **Content cadence:** publish future approved concepts as new `/log` entries as they clear the social approval queue (source of truth: `outputs/cillian-noo-youniverse/`). Give each a source-basis badge and add its source to `/sources`.
 
+## Adjacent workstreams (specced 2026-08-13, unapproved)
+
+The website is now the smallest piece of the plan. Three new drafts live in `outputs/cillian-noo-youniverse/`:
+
+- `app/NOO-APP-PRODUCT-SPEC.md` — mobile + web app: questionnaire, substance model, MyChart/FHIR, overclocking section, **risk-tier gating**
+- `app/NOO-APP-SECURITY-COMPLIANCE.md` — auth, encryption, RLS, audit, HIPAA/FTC/state-law posture, FDA device line
+- `supply-chain/NOOTROPIC-SUPPLY-CHAIN-ROADMAP.md` — sourcing, testing, cGMP, ethical audits, stability, personalisation-at-scale
+- `HANDOFF-TO-CHATGPT-2026-08-13.md` — delegation brief for the other model
+
+**The central decision** those docs raise: an app that suggests supplements or medicines *for a reported diagnosis* is a regulated medical device and contradicts this site's published promise ("we never tell you what to take"). The specs recommend **Track A** — same rich data collection, but output is information, interaction flags and clinician handoff, with hard suppression tiers for serious conditions. Owner decision required before any build.
+
 ## Open items the site cannot solve
 
 From the master roadmap, still genuinely unresolved — the site is built to be honest about these rather than paper over them:
