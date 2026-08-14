@@ -32,6 +32,12 @@ verify_jwt = false
 [functions.meta-post]
 verify_jwt = true
 
+[functions.compose-post]
+verify_jwt = true
+
+[functions.run-post-queue]
+verify_jwt = false
+
 [functions.run-tasks]
 verify_jwt = false
 

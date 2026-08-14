@@ -3,6 +3,37 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Scheduled publisher + shared publish module (2026-08-13)
+
+- **`_shared/meta-publish.ts`:** extracted the FB/IG publish primitives (Graph helpers,
+  `resolvePageContext`, `publishFacebook`/`publishInstagram`, `publishToMeta`) so the
+  interactive publisher and the cron share identical owner-scoped, scope-gated logic.
+  `meta-post` is now a thin HTTP wrapper over it.
+- **`run-post-queue`** (new cron, `--no-verify-jwt` + `CRON_SECRET`): finds owner-approved,
+  due `post_drafts`, **atomically claims each** (`scheduled` → `publishing`, so overlapping
+  runs can't double-post), publishes each platform's own image+caption to Facebook + Instagram,
+  writes back `fb_post_id`/`ig_media_id` + status, and defers X. Bounded batch (15/run, under
+  IG's ~25/24h cap).
+- **`compose-post`** now stores the draft's target Facebook account (`facebook_ledger_id`).
+- **Migration 034** (applied): `post_drafts.facebook_ledger_id` + a `publishing` claim status +
+  due-work index. **Migration 035** (opt-in, NOT applied): the pg_cron schedule — apply only
+  once the approval UI exists so nothing auto-publishes prematurely.
+- 20 functions compile; 18/18 tests pass. This completes the 3-part backend pipeline
+  (compose → stage → approve → publish); only the approval/compose UI and X wiring remain.
+
+## Posting build: compose-post + meta-post delete (2026-08-13)
+
+- **`compose-post`** (new edge function): stages a 3-part draft for a persona. Owner-scoped;
+  drafts the FB/IG/X captions in the persona's voice via the hardened `ai-proxy` (persona's
+  linked model, no history replay), derives the three image crops as Supabase image-transform
+  URLs (FB 1200×628 / IG 1080×1080 / X 1080×1350, resize=cover), and writes a `post_drafts` row
+  (status=draft). Accepts supplied captions too; 422 if a persona has no linked model and none
+  supplied. Compiles clean.
+- **`meta-post` delete action** + shared `resolvePageContext` resolver: `{action:"delete",
+  facebookLedgerId, postId}` removes an owner's Facebook Page post (IG API can't delete published
+  media). Publish path unchanged. Compiles clean.
+- **config.toml:** added `[functions.compose-post] verify_jwt = true`.
+
 ## 3-part staged posting system + pet-project field (2026-08-13)
 
 - **Live FB posting verified:** real test post published to the "Jokes from Dads" page and

@@ -55,10 +55,16 @@ approved_at, approved_by, created_at, updated_at }` — owner-scoped RLS.
 
 ## Build sequence
 
-1. **[this change]** `post_drafts` table + spec (foundation).
-2. Caption generation: an `ai/compose-post` path that calls the persona model for the 3 captions.
-3. Image crop service: 3 center-crops → `persona-media` → URLs on the draft.
-4. Approval-day UI: the week's schedule with inline caption edit + image swap + Approve.
-5. Scheduled publish: a job that posts `scheduled` drafts due now via `meta-post` + `twitter-post`,
-   respecting IG's ~25 posts/24h/account cap.
-6. X (`twitter-post`) wiring + verify (it's a drifted function — pull first, see DRIFT.md).
+1. **[done]** `post_drafts` table + spec (foundation) — migration 033.
+2. **[done]** Caption generation — `compose-post` edge function calls the persona model
+   (via `ai-proxy`) for the 3 captions.
+3. **[done]** Image crops — `compose-post` derives FB/IG/X **Supabase image-transform URLs**
+   (`/storage/v1/render/image/public/...?width=&height=&resize=cover`) from one source; no
+   crop code needed. Source images should live in the `persona-media` bucket.
+4. **[done, adjacent]** `meta-post` **delete** action for post cleanup/management.
+5. **[next]** Approval-day UI: the week's schedule with inline caption edit + image swap + Approve
+   (calls `compose-post` to stage, then sets `status`/`scheduled_for`).
+6. **[next]** Scheduled publisher: a cron that posts `scheduled` drafts due now. FB/IG reuse the
+   `meta-post` publish path (refactor into `_shared/meta-publish.ts` so the cron can call it with
+   the draft's owner via service role); respect IG's ~25 posts/24h/account cap.
+7. **[next]** X (`twitter-post`) wiring + verify (drifted function — pull first, see DRIFT.md).
