@@ -3,6 +3,19 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## 3-part pipeline proven live + composer UI (2026-08-13)
+
+- **End-to-end verified live:** `compose-post` staged a real draft (persona-voice FB/IG/X
+  captions + landscape/square/portrait transform crops), and `meta-post` published the tailored
+  FB + IG pair to the Christian Cody page (FB `postId`, IG `mediaId` both 200 — **Instagram
+  posting confirmed**). `meta-post` delete then removed the FB test post. Nothing needed the
+  cron; the whole flow is proven.
+- **Composer UI** (isolated: 9 new functions + one Menu entry "Compose posts (3-part)"): an
+  overlay to pick a persona + Facebook page, enter a brief, stage a 3-part draft (calls
+  `compose-post`), then review/edit the three captions, preview the three crops, **Publish now**
+  (FB+IG via `meta-post`), Save, or Delete. Owner-scoped via RLS. Frontend syntax check passes;
+  additive and self-contained so it can't affect the rest of the app.
+
 ## Scheduled publisher + shared publish module (2026-08-13)
 
 - **`_shared/meta-publish.ts`:** extracted the FB/IG publish primitives (Graph helpers,

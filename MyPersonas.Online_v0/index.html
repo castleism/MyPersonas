@@ -308,6 +308,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
         <button onclick="siteGo('discovery')">Brain — discovery inbox</button>
         <button onclick="closeSiteMenu();go('edit/new')">+ New persona</button>
         <button onclick="closeSiteMenu();openHQ()">HQ Assistant</button>
+        <button onclick="closeSiteMenu();openComposer()">Compose posts (3-part)</button>
         <button onclick="goAccount()">Account &amp; settings</button>
         <button onclick="goStudioScroll('extList')">Apps &amp; extensions</button>
         <button onclick="location.assign('provider-setup.html')">Provider setup guide</button>
@@ -4710,6 +4711,93 @@ async function handleOAuthReturn(){
 // ----- top nav site menu -----
 function toggleSiteMenu(e){if(e)e.stopPropagation();const m=document.getElementById('siteMenu');if(m)m.classList.toggle('open');}
 function closeSiteMenu(){const m=document.getElementById('siteMenu');if(m)m.classList.remove('open');}
+/* ---- 3-part post composer (calls compose-post + meta-post) ---- */
+function composerPageOptions(sel){
+  const fb=(myAccounts||[]).filter(a=>a.provider==="facebook");
+  if(!fb.length)return `<option value="">No connected Facebook page</option>`;
+  return fb.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(a.username||a.login_email||a.id)}</option>`).join("");
+}
+function composerPersonaChanged(){
+  const p=(myPersonas||[]).find(x=>x.id===val("cmpPersona"));
+  const img=document.getElementById("cmpImg");
+  if(img&&p&&!img.value)img.value=p.feed_img_url||p.banner_url||"";
+}
+async function openComposer(){
+  if(!session){toast("Sign in first");return}
+  const ex=document.getElementById("composerOv");if(ex)ex.remove();
+  const o=document.createElement("div");o.className="overlay";o.id="composerOv";
+  o.innerHTML=`<div class="wizbox" style="max-width:840px;text-align:left">
+    <h2>Compose 3-part post</h2>
+    <p class="muted">One brief → the persona drafts a Facebook (detailed), Instagram (optimal) and X (short) caption, with landscape / square / portrait image crops. Staged for review — nothing posts until you publish.</p>
+    <div class="row">
+      <div><label>Persona</label><select id="cmpPersona" onchange="composerPersonaChanged()">${(myPersonas||[]).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.ai_backend?"":" (no model)"}</option>`).join("")}</select></div>
+      <div><label>Facebook page</label><select id="cmpPage">${composerPageOptions()}</select></div>
+    </div>
+    <label>Brief — what is the post about?</label><textarea id="cmpBrief" style="min-height:64px" placeholder="e.g. Announce this week's podcast episode about terpenes"></textarea>
+    <label>Source image URL (public)</label><input id="cmpImg" placeholder="https://…">
+    <div class="autoformactions"><button class="btn" id="cmpStageBtn" onclick="composerStage()">Stage 3-part draft</button><button class="btn sec" onclick="document.getElementById('composerOv').remove()">Close</button></div>
+    <hr><h3>Recent drafts</h3><div id="cmpList" class="muted">Loading…</div>
+  </div>`;
+  document.body.appendChild(o);composerPersonaChanged();composerRefresh();
+}
+async function composerStage(){
+  const btn=document.getElementById("cmpStageBtn");if(!btn)return;
+  const personaId=val("cmpPersona"),facebookLedgerId=val("cmpPage"),brief=(val("cmpBrief")||"").trim(),sourceImageUrl=(val("cmpImg")||"").trim();
+  if(!brief){toast("Add a brief first");return}
+  btn.disabled=true;btn.textContent="Drafting…";
+  try{
+    const s=await sb.auth.getSession(),tok=s.data.session&&s.data.session.access_token;
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/compose-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({action:"compose",personaId,facebookLedgerId,brief,sourceImageUrl})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){toast(j.error||"Compose failed")}else{toast("Draft staged");const b=document.getElementById("cmpBrief");if(b)b.value="";composerRefresh()}
+  }catch(e){toast("Could not reach the composer service.")}finally{btn.disabled=false;btn.textContent="Stage 3-part draft"}
+}
+async function composerRefresh(){
+  const list=document.getElementById("cmpList");if(!list)return;
+  const r=await sb.from("post_drafts").select("*").order("created_at",{ascending:false}).limit(25);
+  if(r.error){list.innerHTML=`<span class="muted">${esc(r.error.message)}</span>`;return}
+  const rows=r.data||[];
+  list.innerHTML=rows.length?rows.map(composerDraftHtml).join(""):'<span class="muted">No drafts yet — stage one above.</span>';
+}
+function composerDraftHtml(d){
+  const pname=((myPersonas||[]).find(p=>p.id===d.persona_id)||{}).name||"—";
+  const pill=d.status==="posted"?"connected":d.status==="failed"?"attention":"verified";
+  const imgs=d.fb_image_url?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><img src="${esc(d.fb_image_url)}" style="height:64px;border-radius:6px" title="Facebook 1.91:1" loading="lazy"><img src="${esc(d.ig_image_url)}" style="height:64px;border-radius:6px" title="Instagram 1:1" loading="lazy"><img src="${esc(d.x_image_url)}" style="height:64px;border-radius:6px" title="X 4:5" loading="lazy"></div>`:"";
+  return `<div class="card" style="margin-top:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(pname)}</b><span class="pill ${pill}">${esc(d.status)}</span></div>
+    <label>Facebook (detailed)</label><textarea id="cmpFb_${d.id}" style="min-height:64px">${esc(d.fb_caption||"")}</textarea>
+    <label>Instagram</label><textarea id="cmpIg_${d.id}" style="min-height:46px">${esc(d.ig_caption||"")}</textarea>
+    <label>X (≤280)</label><input id="cmpX_${d.id}" maxlength="280" value="${esc(d.x_caption||"")}">
+    ${imgs}
+    ${d.fb_post_id?`<p class="muted">Posted · FB ${esc(d.fb_post_id)}${d.ig_media_id?` · IG ${esc(d.ig_media_id)}`:""}</p>`:""}
+    ${d.last_error?`<p class="muted" style="color:var(--red)">${esc(d.last_error)}</p>`:""}
+    <div class="autoformactions"><button class="btn sm sec" onclick="composerSave('${d.id}')">Save edits</button><button class="btn sm" onclick="composerPublish('${d.id}')">Publish now</button><button class="btn sm danger" onclick="composerDelete('${d.id}')">Delete</button></div>
+  </div>`;
+}
+async function composerSave(id){
+  const{error}=await sb.from("post_drafts").update({fb_caption:val("cmpFb_"+id)||"",ig_caption:val("cmpIg_"+id)||"",x_caption:val("cmpX_"+id)||"",updated_at:new Date().toISOString()}).eq("id",id);
+  toast(error?error.message:"Saved");
+}
+async function composerPublish(id){
+  if(!confirm("Publish this now to Facebook and Instagram?"))return;
+  await composerSave(id);
+  const r=await sb.from("post_drafts").select("*").eq("id",id).maybeSingle();const d=r.data;
+  if(!d){toast("Draft not found");return}
+  if(!d.facebook_ledger_id){toast("This draft has no target Facebook page.");return}
+  const s=await sb.auth.getSession(),tok=s.data.session&&s.data.session.access_token,base=CONFIG.SUPABASE_URL.replace(/\/$/,"");
+  const pub=async(imageUrl,caption,target)=>{try{const rr=await fetch(base+"/functions/v1/meta-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({action:"publish",facebookLedgerId:d.facebook_ledger_id,imageUrl,caption,target})});return await rr.json().catch(()=>({}))}catch(e){return{error:"unreachable"}}};
+  const upd={},errs=[],targets=Array.isArray(d.targets)?d.targets:["facebook","instagram"];
+  if(targets.includes("facebook")){const fr=await pub(d.fb_image_url||d.source_image_url,d.fb_caption,"facebook");if(fr.facebook)upd.fb_post_id=fr.facebook.postId;else errs.push("FB: "+(fr.error||"failed"))}
+  if(targets.includes("instagram")){const ir=await pub(d.ig_image_url||d.source_image_url,d.ig_caption,"instagram");if(ir.instagram)upd.ig_media_id=ir.instagram.mediaId;else errs.push("IG: "+(ir.error||"failed"))}
+  await sb.from("post_drafts").update({...upd,status:errs.length?"failed":"posted",last_error:errs.join(" | ")||null,updated_at:new Date().toISOString()}).eq("id",id);
+  toast(errs.length?("Posted with issues: "+errs.join(" | ")):"Published to "+Object.keys(upd).length+" platform(s)!");
+  composerRefresh();
+}
+async function composerDelete(id){
+  if(!confirm("Delete this draft? Already-published posts are not removed."))return;
+  const{error}=await sb.from("post_drafts").delete().eq("id",id);
+  toast(error?error.message:"Deleted");composerRefresh();
+}
 function siteGo(h){closeSiteMenu();go(h);}
 function goAccount(){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById('acctTabs');if(el){if(window.switchAcctTab)switchAcctTab('profile');el.scrollIntoView({behavior:'smooth',block:'start'});}},90);}
 function goStudioScroll(id){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},90);}
