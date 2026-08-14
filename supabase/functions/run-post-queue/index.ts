@@ -16,15 +16,20 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   isRestrictedMetaPersona,
+  providerOutcomeIsUncertain,
   publishFacebook,
   publishInstagram,
   resolvePageContext,
 } from "../_shared/meta-publish.ts";
+import {
+  type ApprovedMedia,
+  verifyApprovedMedia,
+} from "../_shared/approved-media.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
-const BATCH = 2;
+const BATCH = 1;
 const IG_ROLLING_LIMIT = 24; // conservative guard below the documented ~25/24h cap
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -51,6 +56,16 @@ type Draft = {
   approved_timezone: string;
   approved_facebook_page_id: string;
   approved_instagram_business_id: string;
+  approved_fb_media_sha256: string;
+  approved_fb_media_mime: ApprovedMedia["mime"] | "";
+  approved_fb_media_bytes: number;
+  approved_fb_media_path: string;
+  approved_fb_media_url: string;
+  approved_ig_media_sha256: string;
+  approved_ig_media_mime: ApprovedMedia["mime"] | "";
+  approved_ig_media_bytes: number;
+  approved_ig_media_path: string;
+  approved_ig_media_url: string;
   targets: string[] | null;
   fb_caption: string | null;
   ig_caption: string | null;
@@ -64,6 +79,8 @@ type Draft = {
   x_tweet_id: string | null;
   fb_published_at: string | null;
   ig_published_at: string | null;
+  publish_facebook_page_id: string;
+  publish_instagram_business_id: string;
 };
 
 async function expectedHash(d: Draft) {
@@ -83,14 +100,42 @@ async function expectedHash(d: Draft) {
     p_ig_image_url: d.ig_image_url || "",
     p_x_image_url: d.x_image_url || "",
     p_source_image_url: d.source_image_url || "",
+    p_fb_media_sha256: d.approved_fb_media_sha256 || "",
+    p_fb_media_mime: d.approved_fb_media_mime || "",
+    p_fb_media_bytes: d.approved_fb_media_bytes || 0,
+    p_fb_media_path: d.approved_fb_media_path || "",
+    p_fb_media_url: d.approved_fb_media_url || "",
+    p_ig_media_sha256: d.approved_ig_media_sha256 || "",
+    p_ig_media_mime: d.approved_ig_media_mime || "",
+    p_ig_media_bytes: d.approved_ig_media_bytes || 0,
+    p_ig_media_path: d.approved_ig_media_path || "",
+    p_ig_media_url: d.approved_ig_media_url || "",
   });
+}
+
+function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedMedia {
+  return target === "facebook"
+    ? {
+      sha256: d.approved_fb_media_sha256,
+      mime: d.approved_fb_media_mime as ApprovedMedia["mime"],
+      byteSize: d.approved_fb_media_bytes,
+      path: d.approved_fb_media_path,
+      url: d.approved_fb_media_url,
+    }
+    : {
+      sha256: d.approved_ig_media_sha256,
+      mime: d.approved_ig_media_mime as ApprovedMedia["mime"],
+      byteSize: d.approved_ig_media_bytes,
+      path: d.approved_ig_media_path,
+      url: d.approved_ig_media_url,
+    };
 }
 
 async function instagramPostsInWindow(d: Draft) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   return await admin.from("post_drafts").select("id", { count: "exact", head: true })
     .eq("owner", d.owner)
-    .eq("approved_instagram_business_id", d.approved_instagram_business_id)
+    .eq("publish_instagram_business_id", d.publish_instagram_business_id)
     .not("ig_media_id", "is", null)
     .gte("ig_published_at", since);
 }
@@ -110,14 +155,16 @@ async function rememberProviderResult(
     .eq("id", d.id)
     .eq("owner", d.owner)
     .eq("status", "publishing")
+    .is(field, null)
     .select("id")
     .maybeSingle();
-  return { saved: !error && !!data, error };
-}
-
-function uncertainProviderOutcome(error: unknown) {
-  const name = String((error as { name?: string })?.name || "");
-  return error instanceof TypeError || name === "AbortError" || name === "TimeoutError";
+  if (!error && data) return { saved: true, error: null };
+  const current = await admin.from("post_drafts").select(field)
+    .eq("id", d.id).eq("owner", d.owner).eq("status", "publishing")
+    .maybeSingle();
+  const same = !current.error && current.data &&
+    String((current.data as Record<string, unknown>)[field] || "") === value;
+  return { saved: !!same, error: error || current.error };
 }
 
 async function ownerPauseState(owner: string) {
@@ -135,6 +182,38 @@ async function transitionClaim(d: Draft, patch: Record<string, unknown>) {
     updated_at: new Date().toISOString(),
   }).eq("id", d.id).eq("owner", d.owner).eq("status", "publishing")
     .select("id").maybeSingle();
+  return !result.error && !!result.data;
+}
+
+async function finalizeClaim(
+  d: Draft,
+  status: "posted" | "failed",
+  lastError: string,
+  detail: Record<string, unknown>,
+) {
+  const result = await admin.rpc("finalize_post_draft_publish", {
+    p_draft_id: d.id,
+    p_owner: d.owner,
+    p_status: status,
+    p_last_error: lastError,
+    p_action_type: "post_draft.scheduled_publish",
+    p_detail: detail,
+  });
+  return !result.error && !!result.data;
+}
+
+async function noteReconciliation(
+  d: Draft,
+  note: string,
+  detail: Record<string, unknown>,
+) {
+  const result = await admin.rpc("note_post_draft_reconciliation", {
+    p_draft_id: d.id,
+    p_owner: d.owner,
+    p_note: note,
+    p_action_type: "post_draft.scheduled_publish",
+    p_detail: detail,
+  });
   return !result.error && !!result.data;
 }
 
@@ -162,22 +241,25 @@ serve(async (req) => {
         const restored = await transitionClaim(d, {
           status: "scheduled", last_error: message, publish_claimed_at: null,
         });
-        results.push({ id: d.id, status: restored ? "deferred" : "reconciliation_required", error: message });
+        results.push({ id: d.id, status: restored ? "deferred" : "publishing",
+          ...(!restored ? { reconciliationRequired: true } : {}), error: message });
         continue;
       }
       if (persona.error || !persona.data || isRestrictedMetaPersona(d.persona_id)) {
         const message = persona.data
           ? "This adult cannabis persona is not eligible for Meta publishing."
           : "The draft persona is missing or not owned.";
-        const failed = await transitionClaim(d, {
-          status: "failed", last_error: message, publish_claimed_at: null,
+        const failed = await finalizeClaim(d, "failed", message, {
+          phase: "persona_policy", errors: [message],
         });
-        results.push({ id: d.id, status: failed ? "failed" : "reconciliation_required", error: message });
+        results.push({ id: d.id, status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}), error: message });
         continue;
       }
 
       const targets = Array.isArray(d.targets) ? d.targets : [];
       const errs: string[] = [];
+      let approvalPhase = "approval";
       if (!targets.length) errs.push("draft: no publish targets");
       if (targets.some((target) => !["facebook", "instagram"].includes(target))) {
         errs.push("draft: scheduled publishing is Meta-only; X or an unknown target is present");
@@ -190,11 +272,30 @@ serve(async (req) => {
           errs.push("approval: content, target, image, destination, or schedule changed after approval");
         }
       }
+      if (!errs.length) {
+        for (const target of targets) {
+          if (target !== "facebook" && target !== "instagram") continue;
+          const media = approvedMediaFor(d, target);
+          const rowUrl = target === "facebook" ? d.fb_image_url : d.ig_image_url;
+          if (!media.url || rowUrl !== media.url) {
+            approvalPhase = "approved_media";
+            errs.push(`${target}: immutable approved-media URL is missing or changed`);
+            continue;
+          }
+          try {
+            await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, d.owner);
+          } catch (error) {
+            approvalPhase = "approved_media";
+            errs.push(`${target}: ${(error as Error).message}`);
+          }
+        }
+      }
       if (errs.length) {
-        const failed = await transitionClaim(d, {
-          status: "failed", last_error: errs.join(" | "), publish_claimed_at: null,
+        const failed = await finalizeClaim(d, "failed", errs.join(" | "), {
+          phase: approvalPhase, targets, errors: errs,
         });
-        results.push({ id: d.id, status: failed ? "failed" : "reconciliation_required", error: errs.join(" | ") });
+        results.push({ id: d.id, status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}), error: errs.join(" | ") });
         continue;
       }
 
@@ -219,15 +320,39 @@ serve(async (req) => {
       }
 
       if (errs.length) {
-        const failed = await transitionClaim(d, {
-          status: "failed", last_error: errs.join(" | "), publish_claimed_at: null,
+        const failed = await finalizeClaim(d, "failed", errs.join(" | "), {
+          phase: "destination", targets, errors: errs,
         });
-        results.push({ id: d.id, status: failed ? "failed" : "reconciliation_required", error: errs.join(" | ") });
+        results.push({ id: d.id, status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}), error: errs.join(" | ") });
         continue;
       }
 
-      if (targets.includes("facebook") && !d.fb_post_id && ctx?.ok) {
-        const img = d.fb_image_url || d.source_image_url || "";
+      if (d.publish_facebook_page_id || d.publish_instagram_business_id) {
+        if (d.publish_facebook_page_id !== d.approved_facebook_page_id ||
+          d.publish_instagram_business_id !== d.approved_instagram_business_id) {
+          reconciliationRequired = true;
+          errs.push("publish attempt destination snapshot does not match the approval");
+        }
+      } else {
+        const snap = await admin.from("post_drafts").update({
+          publish_facebook_page_id: d.approved_facebook_page_id,
+          publish_instagram_business_id: d.approved_instagram_business_id,
+          updated_at: new Date().toISOString(),
+        }).eq("id", d.id).eq("owner", d.owner).eq("status", "publishing")
+          .eq("publish_facebook_page_id", "").eq("publish_instagram_business_id", "")
+          .select("id").maybeSingle();
+        if (snap.error || !snap.data) {
+          reconciliationRequired = true;
+          errs.push("publish attempt destination snapshot could not be saved");
+        } else {
+          d.publish_facebook_page_id = d.approved_facebook_page_id;
+          d.publish_instagram_business_id = d.approved_instagram_business_id;
+        }
+      }
+
+      if (!reconciliationRequired && targets.includes("facebook") && !d.fb_post_id && ctx?.ok) {
+        const img = d.approved_fb_media_url;
         if (!img) errs.push("facebook: no image");
         else {
           try {
@@ -247,7 +372,7 @@ serve(async (req) => {
               errs.push(`facebook: provider accepted ${r.postId}, but its result was not saved`);
             }
           } catch (e) {
-            if (uncertainProviderOutcome(e)) {
+            if (providerOutcomeIsUncertain(e)) {
               safeToContinue = false;
               reconciliationRequired = true;
             }
@@ -256,7 +381,7 @@ serve(async (req) => {
         }
       }
 
-      if (safeToContinue && targets.includes("instagram") && !d.ig_media_id && ctx?.ok) {
+      if (!reconciliationRequired && safeToContinue && targets.includes("instagram") && !d.ig_media_id && ctx?.ok) {
         const pauseBeforeInstagram = await ownerPauseState(d.owner);
         if (!pauseBeforeInstagram.available || pauseBeforeInstagram.paused) {
           errs.push(pauseBeforeInstagram.paused
@@ -271,7 +396,7 @@ serve(async (req) => {
           if (recent.error) errs.push("instagram: could not verify the rolling publish guard");
           else if ((recent.count || 0) >= IG_ROLLING_LIMIT) errs.push("instagram: rolling 24-hour safety guard reached");
           else {
-            const img = d.ig_image_url || d.source_image_url || "";
+            const img = d.approved_ig_media_url;
             if (!img) errs.push("instagram: no image");
             else {
               try {
@@ -290,7 +415,7 @@ serve(async (req) => {
                   errs.push(`instagram: provider accepted ${r.mediaId}, but its result was not saved`);
                 }
               } catch (e) {
-                if (uncertainProviderOutcome(e)) reconciliationRequired = true;
+                if (providerOutcomeIsUncertain(e)) reconciliationRequired = true;
                 errs.push("instagram: " + (e as Error).message);
               }
             }
@@ -300,47 +425,42 @@ serve(async (req) => {
 
       const note = errs.join(" | ");
       if (reconciliationRequired) {
-        await admin.from("post_drafts").update({
-          last_error: `Reconciliation required before retry. ${note}`,
-          updated_at: new Date().toISOString(),
-        }).eq("id", d.id).eq("owner", d.owner).eq("status", "publishing");
-        results.push({ id: d.id, status: "reconciliation_required", ...upd, error: note });
+        const noted = await noteReconciliation(
+          d,
+          `Reconciliation required before retry. ${note}`,
+          { targets, ...upd, errors: errs, facebookPageId: d.publish_facebook_page_id,
+            instagramBusinessId: d.publish_instagram_business_id },
+        );
+        results.push({
+          id: d.id, status: "publishing", reconciliationRequired: true, ...upd,
+          error: noted ? note : `${note} | reconciliation audit could not be saved`,
+        });
         continue;
       }
 
       const status = errs.length ? "failed" : "posted";
-      const finalized = await transitionClaim(d, {
-        ...upd,
-        status,
-        last_error: note || null,
-        posted_at: status === "posted" ? new Date().toISOString() : null,
-        publish_claimed_at: null,
+      const finalized = await finalizeClaim(d, status, note, {
+        targets, ...upd, errors: errs, facebookPageId: d.publish_facebook_page_id,
+        instagramBusinessId: d.publish_instagram_business_id,
       });
       if (!finalized) {
         results.push({
           id: d.id,
-          status: "reconciliation_required",
+          status: "publishing",
+          reconciliationRequired: true,
           ...upd,
           error: "The publishing result state changed before finalization.",
         });
         continue;
       }
-      await admin.from("agent_actions").insert({
-        owner: d.owner,
-        persona_id: d.persona_id,
-        action_type: "post_draft.scheduled_publish",
-        entity_type: "post_draft",
-        entity_id: d.id,
-        outcome: status,
-        detail: { targets, ...upd, errors: errs },
-      });
       results.push({ id: d.id, status, ...upd, note: note || undefined });
     } catch (error) {
       const note = `Reconciliation required after an unexpected worker error: ${(error as Error).message}`;
-      await admin.from("post_drafts").update({
-        last_error: note, updated_at: new Date().toISOString(),
-      }).eq("id", d.id).eq("owner", d.owner).eq("status", "publishing");
-      results.push({ id: d.id, status: "reconciliation_required", error: note });
+      const noted = await noteReconciliation(d, note, { phase: "unexpected", error: (error as Error).message });
+      results.push({
+        id: d.id, status: "publishing", reconciliationRequired: true,
+        error: noted ? note : `${note} | reconciliation audit could not be saved`,
+      });
     }
   }
 

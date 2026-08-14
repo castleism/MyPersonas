@@ -26,6 +26,17 @@ verify_jwt = true
 [functions.twitter-oauth]
 verify_jwt = false
 
+# Reddit's OAuth callback validates its signed state; posting requires an owner JWT.
+[functions.reddit-oauth]
+verify_jwt = false
+
+[functions.reddit-post]
+verify_jwt = true
+
+# Source remains deployed fail-closed/dormant until the Discord safety rebuild is complete.
+[functions.discord-post]
+verify_jwt = true
+
 [functions.meta-oauth]
 verify_jwt = false
 
@@ -33,6 +44,9 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.compose-post]
+verify_jwt = true
+
+[functions.approve-post-draft]
 verify_jwt = true
 
 [functions.run-post-queue]

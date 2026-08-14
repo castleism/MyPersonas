@@ -1,6 +1,6 @@
 # nooyouniverse.com — Site Roadmap
 
-Updated: 2026-08-13 (Package A drafting session; live and deploy state unchanged) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
+Updated: 2026-08-13 (full roadmap execution reconciliation; live site state unchanged) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
 
 Stack: static site → **Cloudflare Worker with static assets** + Supabase free-tier email waitlist. This is not Cloudflare Pages. GitHub Pages remains a fallback (CNAME file included). Recorded infrastructure cost: $0/month; billing was not re-audited in this session.
 
@@ -17,16 +17,16 @@ Stack: static site → **Cloudflare Worker with static assets** + Supabase free-
 | Cloudflare Worker + apex domain | ✅ HTTPS live, 18 assets served |
 | `www.nooyouniverse.com` | ✅ Added; resolves, canonical points to apex (no duplicate content) |
 | **Phase 3** — source badges, `/sources`, `/corrections` | ✅ Built — **awaiting deploy** |
-| **Package A** — Missions 11–14 | 📝 Four internal drafts — **zero approved; not in site source; not deployed** |
+| **Package A** — Missions 11–14 | 📝 Four internal copy drafts + four visual candidates — **zero approved; not in site source; not deployed** |
 
-### Outstanding — one command plus one cleanup
+### Outstanding — one release decision plus one cleanup
 
-1. **Deploy everything pending:**
+1. **Review the Phase 3-only release candidate:**
    ```powershell
-   & "$HOME\Documents\GitHub\MyPersonas\_ops\deploy-nooyouniverse.ps1" -Message "Phase 3: source badges, sources page, corrections log"
+   & .\_ops\deploy-nooyouniverse.ps1
    ```
-   The script now syncs source → deploy repo → pushes both → Cloudflare rebuilds. Use it for every future content update.
-2. **Delete 2 test rows** in Supabase → Table Editor → `noo_waitlist`: `deploy-test-2026-08-09@nooyouniverse.com` and one `verify-…@example.com`.
+   The default is now a read-only preview. After Christian confirms the exact Phase 3-only scope, publish with `-Publish -Message "Phase 3: source badges, sources page, corrections log"`. The helper stages only the scoped site paths; it no longer stages the whole dirty repository. Full validation and rollback expectations are in `outputs/cillian-noo-youniverse/site/NOO-PHASE-3-RELEASE-READINESS-2026-08-13.md`.
+2. **Verify, then delete, 2 recorded test rows** in Supabase → Table Editor → `noo_waitlist`: `deploy-test-2026-08-09@nooyouniverse.com` and one `verify-…@example.com`. Their current presence was not rechecked in this session; confirm exact rows before deletion.
 
 ## Phase 3 (built 2026-08-09)
 
@@ -45,7 +45,7 @@ Four approval-only Mission Log drafts now live at `outputs/cillian-noo-younivers
 - Mission 13 — Read the Flight Plan Before the Landing (`Methodology reference`)
 - Mission 14 — Tracker Build Diary: A Field Is Not Yet a Measurement (`Methodology reference`)
 
-State: **four drafts prepared; zero owner approvals; zero human-review approvals; zero assets created; zero entries added to `log.html` or `sources.html`; zero deploys.** The first ten CIL-LW01 missions remain a closed launch sequence. The package proposes `CIL-ML02` as the new draft sequence key, but Christian must confirm it before use. If approved later, the new work should append as Missions 11–14.
+State: **four copy drafts and four visual candidates prepared; zero owner approvals; zero human-review approvals; zero approved public assets; zero entries added to `log.html` or `sources.html`; zero deploys.** The visual-candidate folder includes provenance, literal alt text, QA notes, and checksums; candidates are not approvals. The first ten CIL-LW01 missions remain a closed launch sequence. The package proposes `CIL-ML02` as the new draft sequence key, but Christian must confirm it before use. If approved later, the new work should append as Missions 11–14.
 
 The sources were checked on their current primary or official pages on August 13, 2026 and recorded in `SOURCE-AND-POLICY-LEDGER.md`. Mission 14 uses FDA measurement guidance only as a bounded design influence; it does not imply that the unbuilt consumer tracker is FDA governed, validated, compliant, cleared, or approved. Track A remains a recommendation awaiting an owner decision.
 
@@ -80,24 +80,53 @@ Cloudflare **Worker with static assets** (not Pages — Cloudflare's Git-connect
 - [x] Privacy/data-deletion links point to mypersonas.online pages for v1
 - [x] Social handles listed text-only until account ownership verified
 
+These content approvals do not mark the still-unpublished Phase 3 build as verified live. Because the deployment now has an explicit release manifest and Package A exists as a separate unapproved draft, confirm the exact Phase 3-only release scope before using `-Publish`.
+
 ## Later phases (aligned to master roadmap)
 
-- ~~**Phase 3:** per-post source-ledger pages, badges on each log entry.~~ ✅ Done 2026-08-09.
-- **Phase 4 (newsletter):** double opt-in ESP integration. The waitlist currently stores emails only; nothing is sent. Before the first send: confirmation flow, unsubscribe link, sender identity, and restating Cillian's fictional identity in every email.
+- **Phase 3:** per-post source-basis badges, Sources, and Corrections are **built locally; release still pending**.
+- **Phase 4 (newsletter):** the double-opt-in contract, lifecycle copy, ESP/compliance audit, QA, and owner-decision package are drafted under `outputs/cillian-noo-youniverse/newsletter/`. The waitlist currently stores emails only; nothing is sent. Before the first send: owner/operator decisions, lawful consent treatment, unsubscribe, sender identity and postal address, mailbox/domain authentication, current DNS verification, and restating Cillian's fictional identity in every email.
 - **Phase 5 (product):** Observation Log build-diary series → waitlist segmentation. Requires product, privacy, security, legal and health review before *any* capability claim. Mission 09 describes it as unbuilt — that must stay accurate.
 - **Press/collab kit:** blocked until a qualified reviewer is named (see below).
 - **Content cadence:** publish future approved concepts as new `/log` entries as they clear the social approval queue (source of truth: `outputs/cillian-noo-youniverse/`). Give each a source-basis badge and add its source to `/sources`.
 
 ## Adjacent workstreams (specced 2026-08-13, unapproved)
 
-The website is now the smallest piece of the plan. Three new drafts live in `outputs/cillian-noo-youniverse/`:
+The website is now the smallest piece of the plan. Current drafts and operating packages live in `outputs/cillian-noo-youniverse/`. Start with `strategy/NOO-EXECUTION-CONTROL-CENTER-2026-08-13.md`; it distinguishes finished local work from owner, specialist, and external gates.
 
-- `app/NOO-APP-PRODUCT-SPEC.md` — mobile + web app: questionnaire, substance model, MyChart/FHIR, overclocking section, **risk-tier gating**
-- `app/NOO-APP-SECURITY-COMPLIANCE.md` — auth, encryption, RLS, audit, HIPAA/FTC/state-law posture, FDA device line
-- `supply-chain/NOOTROPIC-SUPPLY-CHAIN-ROADMAP.md` — sourcing, testing, cGMP, ethical audits, stability, personalisation-at-scale
+- `app/NOO-APP-COMMUNITY-MODEL.md` v0.2 — reconciled detached-report proposal, Green-only/app-only launch recommendation, privacy/moderation gates
+- `app/NOO-APP-COMMUNITY-OWNER-DECISIONS-2026-08-13.md` — 14 explicit owner choices; none inferred approved
+- `app/NOO-APP-COMMUNITY-SOURCE-AUDIT-2026-08-13.md` — primary-source record for the corrected legal/privacy claims
+- `app/NOO-APP-PRODUCT-SPEC.md` v0.2 — questionnaire, private current-use log, MyChart/FHIR, narrower **risk-tier gating**; suggestions/Overclocking retired from current scope
+- `app/NOO-APP-SECURITY-COMPLIANCE.md` v0.2 — auth, encryption, RLS, audit, health-privacy posture, FDA function review, detached-publication addendum
+- `app/implementation/` — boundary ADR, gated backlog, private-log contracts, 40 tier cases, 54 acceptance criteria, detached-publication blockers, and a synthetic local prototype plan; documentation only
+- `mission-log/` — four Package A copy drafts and four unapproved visual candidates with provenance, alt text, QA, and checksums
+- `evidence-library/` — nine provisional claim cards plus schema/JSON and approval record; qualified review still required
+- `questionnaire/` — complete copy/field contract, tier and crisis messaging, 48-case QA, and owner choices; no intake system built
+- `newsletter/` — double-opt-in integration contract, ESP/compliance audit, lifecycle copy, 53 QA checks, and owner decisions; no account or send
+- `community-ops/` — voice, corrections, UGC, daily runbook, moderation, evidence preservation, and source/decision guide; no live operation
+- `platform-strategy/` — official-source audit, readiness/funnel strategy, and proposed 30-day experiment plan; live account state remains unverified
+- `category-intelligence/` — 12 positive project profiles, eight documented failure-side cases, and a combined original-format/guardrail synthesis; research only, with no outreach or copying authority
+- `analytics/` — blank-safe weekly operating workbook; no real social metrics imported and all experiments remain Proposed
+- `strategy/` — operating package plus the execution control center and ordered owner decision queue
+- `supply-chain/` — v0.2 deferred business-case roadmap and unqualified candidate research; commerce is on Hold, with zero outreach or spend
 - `HANDOFF-TO-CHATGPT-2026-08-13.md` — delegation brief for the other model
 
-**The central decision** those docs raise: an app that suggests supplements or medicines *for a reported diagnosis* is a regulated medical device and contradicts this site's published promise ("we never tell you what to take"). The specs recommend **Track A** — same rich data collection, but output is information, interaction flags and clinician handoff, with hard suppression tiers for serious conditions. Owner decision required before any build.
+**The central product boundary:** the current proposal makes no app-generated treatment, medicine, supplement, amount, stack, combination, schedule, cycle, washout, or Overclocking plan. The specs recommend a private neutral log plus curated research, with a possible detached community library only after separate owner, legal, clinical, privacy, security, moderation, and adversarial linkability-review gates. FDA status remains function-specific; user-generated content creates no automatic legal safe harbor. Owner decisions are required before any build.
+
+### Community model reconciliation — exact state
+
+The supplied v0.1 community model was already present locally but conflicted with the binding risk tiers and overstated several legal/privacy conclusions. The v0.2 reconciliation now makes the following explicit:
+
+- Amber and Red cannot browse or submit community reports; Red receives current-use/context logging, export/handoff, and immediate safety routing only.
+- Mission 09 supports a neutral observation log, not prospective stack building, cycles, washouts, or one-tap publication.
+- Individual reports are recommended app-only, authenticated, 21+, and Green-only at launch; public web receives no raw reports.
+- Detached publication is a recorded owner direction but remains an unverified design objective, not an anonymity claim.
+- Anonymous eligibility credentials, capability-based correction/deletion, separate security domains, human moderation, crisis interception before detachment, edge/log audit, and re-identification review are pre-launch gates.
+- `k ≥ 20` is a provisional privacy floor, not a guarantee or legal safe harbor.
+- Generic-compound-only/no-brand reporting is the recommended commerce boundary; it does not itself guarantee FTC compliance.
+
+State: **documentation reconciled; zero new owner decisions; zero app code; zero community infrastructure; zero reviews/sign-offs; zero public-site page/code changes; roadmap documentation only; zero deploys.** The live site and pending Phase 3 deploy scope are unchanged.
 
 ## Open items the site cannot solve
 
@@ -105,7 +134,10 @@ From the master roadmap, still genuinely unresolved — the site is built to be 
 
 - **No named human health-claim approver.** Until one exists, content stays on methodology, regulatory explanation and agency summaries. Ingredient-, dose-, interaction- or condition-specific content is gated on this.
 - **Social accounts unverified.** Instagram/Facebook/X appear as unlinked text ("coming online"). Link them only once ownership and write access are confirmed — a dead link on a trust-focused site is a self-inflicted wound.
-- **MyPersonas profile conflicts** remain open: the public bio lacks a fictional/AI disclosure and can imply lived self-experimentation, and the profile theme is hot pink against this site's indigo/amber. The website now sets the correct precedent for both.
+
+### MyPersonas profile — live verification closed 2026-08-13
+
+The signed-in profile was reopened in read-only mode and independently checked. The public About text now explicitly identifies Cillian as fictional, AI-assisted, human-reviewed, educational-only, and without personal product experience; the title is `Noo YouNiverse · Evidence Scout`; and the saved theme is deep auburn `#8f3f28`. The evidence-literacy focus and topic tags are aligned. No field was changed or saved in this verification session. The profile still has no posts and no public social links, which is the correct state while the launch packages and account ownership remain unapproved/unverified.
 
 ## Guardrails baked into the site
 

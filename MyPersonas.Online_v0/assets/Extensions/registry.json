@@ -1,9 +1,21 @@
 [
   {
     "id": "concept",
+    "displayName": "Concept Character Studio",
+    "description": "Local character-image and training workspace for AliaSpaces personas.",
     "githubRepo": "castleism/Concept_v0",
     "releasesUrl": "assets/Extensions/Concept/releases.json",
     "open": "http://localhost:4780",
     "note": "githubRepo is checked first (GitHub Releases API); releasesUrl is the static fallback. Update githubRepo when the repo is renamed to Concept."
+  },
+  {
+    "id": "personas",
+    "displayName": "Personas Desktop",
+    "description": "Desktop companion for persona goals, local models, and owner-controlled extensions.",
+    "githubRepo": "castleism/Personas_v0",
+    "currentUrl": "assets/Downloads/Personas/current.json",
+    "downloadBase": "assets/Downloads/Personas/",
+    "landingUrl": "assets/Downloads/Personas/index.html",
+    "note": "GitHub Releases are preferred when published; currentUrl is the checked-in owner download fallback."
   }
 ]

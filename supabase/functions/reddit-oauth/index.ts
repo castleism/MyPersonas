@@ -30,6 +30,7 @@ const CALLBACK_URL = Deno.env.get("REDDIT_OAUTH_REDIRECT_URI") ||
 const APP_ORIGIN = Deno.env.get("REDDIT_OAUTH_APP_ORIGIN") || "https://mypersonas.online";
 const USER_AGENT = "web:online.mypersonas:v0.5 (MyPersonas account connector)";
 const SCOPES = ["identity", "submit", "read"];
+const PROVIDER_TIMEOUT_MS = 30_000;
 
 const service = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
@@ -45,11 +46,22 @@ function corsHeaders(origin: string): HeadersInit {
   };
 }
 function json(origin: string, status: number, body: Record<string, unknown>): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders(origin),
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }
 function redirectToApp(params: Record<string, string>): Response {
   const search = new URLSearchParams(params).toString();
-  return new Response(null, { status: 302, headers: { Location: `${APP_ORIGIN}/?${search}#/studio` } });
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `${APP_ORIGIN}/?${search}#/studio`, "Cache-Control": "no-store" },
+  });
 }
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -62,6 +74,48 @@ function randomToken(): string {
 function basicAuth(): string { return "Basic " + btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`); }
 function normalizeUsername(v: string): string {
   return (v || "").normalize("NFKC").trim().toLowerCase().replace(/^\/?u\//, "").replace(/^@/, "");
+}
+
+async function revokeRedditGrant(
+  refreshToken: string,
+  accessToken: string,
+): Promise<boolean> {
+  if (!configured()) return false;
+  const token = refreshToken || accessToken;
+  if (!token) return true;
+  try {
+    const response = await fetch("https://www.reddit.com/api/v1/revoke_token", {
+      method: "POST",
+      headers: {
+        "Authorization": basicAuth(),
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": USER_AGENT,
+      },
+      body: new URLSearchParams({
+        token,
+        token_type_hint: refreshToken ? "refresh_token" : "access_token",
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function redirectAfterIssuedGrantFailure(
+  token: Record<string, unknown>,
+  reason: string,
+): Promise<Response> {
+  const revoked = await revokeRedditGrant(
+    String(token.refresh_token || ""),
+    String(token.access_token || ""),
+  );
+  return redirectToApp({
+    reddit: "error",
+    reason: revoked ? reason : "provider_revoke_unconfirmed",
+  });
 }
 
 async function requireUser(req: Request): Promise<string> {
@@ -122,27 +176,33 @@ async function callback(req: Request): Promise<Response> {
     method: "POST",
     headers: { "Authorization": basicAuth(), "Content-Type": "application/x-www-form-urlencoded", "User-Agent": USER_AGENT },
     body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: CALLBACK_URL }),
-  });
+    redirect: "error",
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  }).catch(() => null);
+  if (!tokenResponse) return redirectToApp({ reddit: "error", reason: "token_exchange_failed" });
   const token = await tokenResponse.json().catch(() => ({}));
   if (!tokenResponse.ok || !token.access_token) return redirectToApp({ reddit: "error", reason: "token_exchange_failed" });
   const grantedScopes = String(token.scope || "").split(/[ ,]+/).filter(Boolean);
   if (!grantedScopes.includes("identity") || !grantedScopes.includes("submit")) {
-    return redirectToApp({ reddit: "error", reason: "scope_missing" });
+    return await redirectAfterIssuedGrantFailure(token, "scope_missing");
   }
-  if (!token.refresh_token) return redirectToApp({ reddit: "error", reason: "refresh_token_missing" });
+  if (!token.refresh_token) return await redirectAfterIssuedGrantFailure(token, "refresh_token_missing");
 
   const meResponse = await fetch("https://oauth.reddit.com/api/v1/me", {
     headers: { "Authorization": `Bearer ${token.access_token}`, "User-Agent": USER_AGENT },
-  });
+    redirect: "error",
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  }).catch(() => null);
+  if (!meResponse) return await redirectAfterIssuedGrantFailure(token, "profile_check_failed");
   const me = await meResponse.json().catch(() => ({}));
   const redditUsername = normalizeUsername(String(me?.name || ""));
-  if (!meResponse.ok || !redditUsername) return redirectToApp({ reddit: "error", reason: "profile_check_failed" });
+  if (!meResponse.ok || !redditUsername) return await redirectAfterIssuedGrantFailure(token, "profile_check_failed");
 
   const { data: ledger } = await service.from("account_ledger")
     .select("id,owner,username").eq("id", stateRow.ledger_id).eq("owner", stateRow.owner).eq("provider", "reddit").maybeSingle();
-  if (!ledger) return redirectToApp({ reddit: "error", reason: "connection_save_failed" });
+  if (!ledger) return await redirectAfterIssuedGrantFailure(token, "connection_save_failed");
   if (normalizeUsername(ledger.username || "") !== redditUsername) {
-    return redirectToApp({ reddit: "error", reason: "username_mismatch" });
+    return await redirectAfterIssuedGrantFailure(token, "username_mismatch");
   }
 
   const expiresAt = new Date(Date.now() + Math.max(60, Number(token.expires_in || 3600)) * 1000).toISOString();
@@ -151,29 +211,41 @@ async function callback(req: Request): Promise<Response> {
     p_access_token: String(token.access_token), p_refresh_token: String(token.refresh_token),
     p_scopes: grantedScopes, p_expires_at: expiresAt,
   });
-  if (storeError) return redirectToApp({ reddit: "error", reason: "secure_storage_failed" });
+  if (storeError) return await redirectAfterIssuedGrantFailure(token, "secure_storage_failed");
   return redirectToApp({ reddit: "connected" });
 }
 
 async function disconnect(origin: string, uid: string, ledgerId: string): Promise<Response> {
   if (!/^[0-9a-f-]{36}$/i.test(ledgerId)) return json(origin, 400, { error: "A ledger id is required" });
-  const { data: ledger } = await service.from("account_ledger")
+  const { data: ledger, error: ledgerError } = await service.from("account_ledger")
     .select("id").eq("id", ledgerId).eq("owner", uid).eq("provider", "reddit").maybeSingle();
+  if (ledgerError) return json(origin, 503, { error: "The owned Reddit ledger record could not be verified. Nothing was disconnected." });
   if (!ledger) return json(origin, 404, { error: "Owned Reddit ledger record not found" });
-  if (configured()) {
-    const { data: tokens } = await service.rpc("reddit_get_tokens_service", { p_ledger_id: ledgerId });
-    const refresh = Array.isArray(tokens) ? tokens[0]?.refresh_token : tokens?.refresh_token;
-    if (refresh) {
-      await fetch("https://www.reddit.com/api/v1/revoke_token", {
-        method: "POST",
-        headers: { "Authorization": basicAuth(), "Content-Type": "application/x-www-form-urlencoded", "User-Agent": USER_AGENT },
-        body: new URLSearchParams({ token: String(refresh), token_type_hint: "refresh_token" }),
-      }).catch(() => null);
-    }
+  const { data: tokens, error: tokenError } = await service.rpc("reddit_get_tokens_service", { p_ledger_id: ledgerId });
+  if (tokenError) return json(origin, 503, { error: "Stored Reddit access could not be inspected. Nothing was disconnected." });
+  const tokenRow = Array.isArray(tokens) ? tokens[0] : tokens;
+  const refreshToken = String(tokenRow?.refresh_token || "");
+  const accessToken = String(tokenRow?.access_token || "");
+  const hasStoredGrant = Boolean(refreshToken || accessToken);
+  if (hasStoredGrant && !configured()) {
+    return json(origin, 409, { error: "Reddit app credentials are required to revoke the stored grant. Nothing was disconnected." });
+  }
+  if (hasStoredGrant && !await revokeRedditGrant(refreshToken, accessToken)) {
+    return json(origin, 502, { error: "Reddit did not confirm provider-side revocation. Local tokens were retained; retry before deleting this ledger record." });
   }
   const { error } = await service.rpc("reddit_clear_tokens_service", { p_ledger_id: ledgerId });
-  if (error) return json(origin, 500, { error: "Local cleanup failed. Try again." });
-  return json(origin, 200, { disconnected: true });
+  if (error) {
+    return json(origin, 500, {
+      error: hasStoredGrant
+        ? "Reddit access was revoked, but local token cleanup failed. Retry before deleting this ledger record."
+        : "Local cleanup failed. Try again.",
+    });
+  }
+  return json(origin, 200, {
+    disconnected: true,
+    providerRevoked: hasStoredGrant,
+    noStoredGrant: !hasStoredGrant,
+  });
 }
 
 serve(async (req: Request): Promise<Response> => {

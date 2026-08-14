@@ -1,8 +1,9 @@
 # 3-part staged posting system
 
-_Every AliaSpaces/MyPersonas post is authored once, then staged as three platform-tailored
-variants, reviewed and approved on a weekly cadence, and published to the persona's own
-Facebook Page, Instagram, and X. Confirmed with owner 2026-08-13._
+_A 3-part AliaSpaces/MyPersonas post is authored once, then staged as three platform-tailored
+variants and reviewed on a weekly cadence. The current exact-approved publisher is Meta-only
+(Facebook Page/Instagram); X stays an editable draft until its source and write authorization are
+verified. Confirmed with owner 2026-08-13._
 
 ## The three variants (thoroughness: website > Facebook > Instagram > X)
 
@@ -20,9 +21,9 @@ from that fuller story.
 One high-res **source image** per post (persona-generated or uploaded; should be ≥1350px on the
 short side so all three crops avoid upscaling). The system produces three center-crops:
 
-- Facebook → 1.91:1, Instagram → 1:1, X → 4:5.
-- Crops are uploaded to the **`persona-media` public bucket** (posting APIs need a public https
-  URL that Meta/X fetch server-side) and their URLs stored on the draft.
+- The source is uploaded to the owner-namespaced path in the public **`persona-media`** bucket.
+- Facebook 1.91:1, Instagram 1:1, and X 4:5 variants are Supabase image-transform URLs derived
+  from that one object and stored on the draft; the Composer does not create three crop objects.
 
 ## Caption pipeline (persona AI writes all three)
 
@@ -36,14 +37,20 @@ They are stored as editable drafts, never posted automatically.
    from `created_at` in the owner's time zone; approval persists the exact local-week bucket.
 2. **Approval day:** the owner reviews the week's schedule and edits captions/targets. **Approve &
    schedule** atomically records `status='scheduled'`, `scheduled_for`, owner/time-zone approval,
-   actual paired Meta asset IDs, and an exact content/destination hash. Image replacement remains a
-   Composer-v2 task; a legacy Meta draft without an image must be re-staged.
+   actual paired Meta asset IDs, and an exact caption/target/time/destination/**image-byte** hash.
+   Approval copies JPEG/PNG/WebP bytes to an owner-scoped content-addressed object and records its
+   SHA-256, MIME, byte size, path, and URL; the worker re-downloads and verifies those values before
+   a provider call. Image replacement remains a Composer-v2 task; a legacy Meta draft without an
+   image must be re-staged.
 3. **Publish:** on schedule, each approved draft posts to its `targets`:
-   - Facebook + Instagram via **`meta-post`** (already live),
+   - Facebook + Instagram via **`meta-post`**. An older owner-triggered version was proven live;
+     the hardened exact-draft implementation in this release is local/deploy-pending and scheduled
+     invocation remains dormant until migration 036 is deliberately activated,
    - X via **`twitter-post`** only after its deployed-only source is pulled, audited, versioned,
      and granted write access. Until then, the approval UI rejects X as a scheduled target.
-   Results are written back (`fb_post_id`, `ig_media_id`, `x_tweet_id`); failures set
-   `status='failed'` + `last_error`.
+   Results are checkpointed (`fb_post_id`, `ig_media_id`, `x_tweet_id`). Confirmed safe failures
+   set `status='failed'`; a timeout/5xx/accepted-without-ID outcome stays locked in `publishing`
+   for provider reconciliation and must never be blindly retried.
 
 Scheduled publishing requires the exact weekly owner approval. The separate **Publish now** action
 is also explicit owner intent, but uses a draft-scoped server claim rather than the weekly approval
@@ -51,12 +58,16 @@ hash; it checkpoints each provider result before attempting the next target.
 
 ## Data model — `post_drafts` (migration 033)
 
-`{ id, owner, persona_id, week_start, status(draft|approved|scheduled|publishing|posted|failed|skipped),
+`{ id, owner, persona_id, facebook_ledger_id, week_start, status(draft|approved|scheduled|publishing|posted|failed|skipped),
 scheduled_for, brief, source_image_url, fb_caption/ig_caption/x_caption,
 fb_image_url/ig_image_url/x_image_url, targets[], fb_post_id/ig_media_id/x_tweet_id, last_error,
 approved_at, approved_by, approved_content_hash, approved_timezone, approved_facebook_page_id,
-approved_instagram_business_id, publish_claimed_at, posted_at, fb_published_at, ig_published_at,
-created_at, updated_at }` — owner-scoped reads plus guarded mutation RPCs/server functions.
+approved_instagram_business_id, publish_facebook_page_id, publish_instagram_business_id,
+publish_claimed_at, posted_at, fb_published_at, ig_published_at, created_at, updated_at }` —
+owner-scoped reads plus guarded mutation RPCs/server functions.
+
+Migration 035 also adds `approved_fb_media_*` and `approved_ig_media_*` sets containing the
+selected target's SHA-256, detected MIME, byte size, owner path, and canonical public URL.
 
 ## Build sequence
 
@@ -70,7 +81,8 @@ created_at, updated_at }` — owner-scoped reads plus guarded mutation RPCs/serv
 5. **[code complete; deploy + migration pending]** Approval-day UI: per-week review, exact
    caption/target/time approval, owner-time-zone week grouping, unschedule-to-edit, terminal-state
    locking, race-safe persistence reload, and atomic server-side immediate publishing.
-   Migration 035 supplies the guarded approval RPCs and approval hash.
+   Migration 035 supplies the guarded mutation RPCs and approval hash; the authenticated
+   `approve-post-draft` Edge Function alone stages immutable media and invokes scheduling.
 6. **[code hardened; activation blocked]** Scheduled Meta publisher: shared FB/IG primitives,
    paused-owner-filtered current-row claim, exact approval + Meta-asset snapshot checks, owner pause,
    partial-result preservation, target truth, and an advisory local Instagram guard. Migration 036

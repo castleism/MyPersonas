@@ -1,6 +1,6 @@
 # Mobile Blueprint — responsive web, tablet, native apps, chat workspaces
 
-_2026-08-10. Covers three things: (1) optimizing the responsive **web** for phones and
+_Updated 2026-08-13. Covers three things: (1) optimizing the responsive **web** for phones and
 adding a proper **tablet** tier, (2) the **native iOS/Android apps** focused on talking
 to your personas and approving posts, and (3) **chat workspaces** — saved conversations
 that build a persona's context over time. Sequenced so each step ships on its own and
@@ -14,11 +14,10 @@ reuses the same Supabase backend (no rewrite)._
 760/560/440 px, 44 px touch targets, 16 px inputs (stops iOS zoom), correct viewport.
 So this is **tuning + one missing tier**, not a rebuild.
 
-Gaps and fixes:
-- **No dedicated tablet tier (768–1024 px).** On iPads the phone layout stretches or
-  the desktop layout cramps. Add a tablet band: 2-column where phone is 1-column,
-  content capped at a comfortable reading width, the persona rail as a slim sidebar
-  rather than a wrapped row.
+Current implementation and remaining gaps:
+- **Tablet tier (768–1024 px) is implemented.** The studio uses the dedicated intermediate
+  layout instead of stretching the phone or desktop arrangement. Keep this band in logged-in
+  phone/tablet visual regression checks.
   ```css
   @media (min-width: 768px) and (max-width: 1024px) {
     .appbody { /* keep rail as a narrow left column, not full-width wrap */ }
@@ -26,18 +25,18 @@ Gaps and fixes:
     .studio, .card { max-width: 900px; margin-inline: auto; }
   }
   ```
-- **Safe-area insets** (notch/home-bar): add `env(safe-area-inset-*)` padding to fixed
-  bars and modals so nothing hides under the notch or gesture bar.
+- **Safe-area insets are implemented** for the header, stale bar, main content, overlays,
+  fan chat, and image panel; verify them on real notched devices before release.
 - **Sticky bottom action bar on phones** for the primary action (Save / Approve /
   Send) so the main CTA is always thumb-reachable.
 - **Audit long forms** (persona edit, ledger, mailbox) for horizontal overflow at 320 px;
   a couple of grids still assume width.
 - **Images**: serve responsive sizes from Storage (`srcset`) once media moves to buckets.
 
-_How to ship safely:_ these are additive CSS. Do them behind the existing media-query
-block, screenshot on real phone + tablet widths (or the browser device toolbar) before
-push — CSS can't be unit-tested, so visual verification is the gate. I can implement the
-tablet tier + safe-area + sticky CTA as a reviewable diff whenever you want.
+_How to ship safely:_ tablet/safe-area code already exists; screenshot signed-in phone +
+tablet widths and exercise long forms before push. The remaining code task is a context-aware
+sticky phone CTA that never obscures fields, validation, or destructive actions. CSS cannot
+prove those interactions, so real-device visual verification remains the gate.
 
 ---
 
@@ -49,11 +48,11 @@ The **app is a companion** for the two things you do daily: **talk to your perso
 
 ### Recommended path (cheapest → most native)
 
-1. **PWA first (days, not weeks).** The responsive site is already close. Add a web
-   manifest + service worker + install prompt and you have an installable home-screen
-   app with offline shell and **push notifications** (for "a post needs your approval").
-   Reuses 100% of the backend and most of the UI. Best effort-to-value ratio; ship this
-   before building anything native.
+1. **PWA first (install shell complete locally).** The manifest, public-only offline
+   shell, service worker, install prompt, icons, Pages artifact, and package tests are
+   wired in this checkout. They still need an owner push and real-device install/offline
+   verification. **Push notifications are not part of that package**: permission UX,
+   subscriptions, delivery, and an approval-event backend remain a separate phase.
 2. **Native shell with Expo / React Native (weeks).** One TypeScript codebase → real
    iOS + Android apps in the App Store / Play Store. Use it for the **focused** surfaces
    (chat, approvals, feed), calling the same Supabase Auth + edge functions. Native push
@@ -64,19 +63,23 @@ The **app is a companion** for the two things you do daily: **talk to your perso
 
 - **Persona chat** — owner↔persona conversations (the existing `agent_messages` model),
   now organized into **workspaces** (§3).
-- **Approvals** — the L2 approval queue: pending drafts with Approve / Edit / Reject,
-  push-notified. Calls the existing publish/approval RPCs.
+- **Approvals** — the L2 approval queue: pending drafts with Approve / Edit / Reject.
+  The client calls owner-authenticated approval/publisher Edge Functions (including
+  `approve-post-draft` for immutable-media scheduling), never service-role-only internal RPCs.
+  Notification delivery is a later phase, not part of the initial screen.
 - **Feed** — the personalized AI news feed (V2-BLUEPRINT §6): each persona researches
   its interests, fact-checks, cites sources, serves short blurbs. Read-first, tappable
   to expand + sources.
 - **Not in the app (stays web):** connectors/OAuth, ledger, album management, App-Review
   publishing setup.
 
-### Reuse (nothing new server-side to start)
+### Reuse and new backend boundaries
 
-Supabase Auth (same accounts), Postgres + RLS (same data), edge functions
-(`ai-proxy` for chat, `run-publish-queue`/approval RPCs, `ai/research` for the feed).
-The app is a new client, not a new backend.
+Chat and review can reuse Supabase Auth, Postgres/RLS, `ai-proxy`, and the guarded owner
+approval/publisher functions. The sourced feed still needs its approved schema/research
+function/evidence model, and push needs subscription storage, revocation, delivery, and
+quiet-hours handling. The app is a new client over shared foundations, not a promise that
+every proposed surface already has a backend.
 
 ---
 
@@ -90,7 +93,7 @@ to future ones later as you continue to build the context for the persona."_ Thi
 
 - `chat_workspaces` — `{ id, owner, persona_id, title, pinned, created_at, updated_at }`.
   A workspace is a named, saved conversation (or a themed collection of them) with a
-  persona: e.g. "Sherlock — cannabis podcast season 1", "Song vs Rhythm bits".
+  persona: e.g. "Sherlock — cannabis podcast season 1", "Song — charity-literacy pilot".
 - Messages hang off a workspace (extend the existing owner-chat messages with a
   `workspace_id`), so a thread is resumable and nothing is lost between sessions.
 - **Save-to-context:** a "📌 Save to persona context" action on a message or a whole
@@ -111,22 +114,35 @@ to future ones later as you continue to build the context for the persona."_ Thi
 
 ### Build order
 
-1. Migration: `chat_workspaces` + `workspace_id` on owner messages (additive).
-2. Web + app UI: workspace list per persona, rename/pin, resume; "Save to context" +
-   "Attach context" actions calling `appendContextLog`.
-3. ai-proxy: fold the bounded `context_log` slice + any attached-workspace summaries into
-   the system prompt (one Edge Function deploy).
+1. [x] Migration: `chat_workspaces` + `workspace_id` on owner messages (additive; migration
+   031 recorded as applied and verified in the project handoff).
+2. [x] Web code ready locally: workspace list per persona, create/rename/pin/resume;
+   "Save context" + "Attach" actions. Both use model-distilled bounded excerpts rather than
+   storing or attaching raw conversation history; durable Save context takeaways are
+   owner-reviewed before they enter the persona memory.
+3. [x] ai-proxy code ready locally: fold the bounded `context_log` slice + bounded attached
+   workspace summaries into the system prompt as non-authoritative continuity reference.
+4. [ ] Deploy and live-verify in sequence: `ai-proxy` first, then the matching Pages build;
+   test concurrent context edits, workspace RLS, resume, distillation, and full-account export inclusion with
+   an owner test account. No deployment is implied by the completed code boxes above.
 
 ---
 
 ## Sequenced plan (what unblocks what)
 
-1. **PWA** (installable + push) — fastest app win, pure web.
-2. **Tablet tier + safe-area + sticky CTA** — responsive polish (reviewable CSS diff).
-3. **Context box** (migration 030 + UI) — the memory foundation.
-4. **Chat workspaces** (migration + UI) on top of the context box.
-5. **Expo native shell** — chat + approvals + feed, reusing the backend.
-6. **News-feed research pipeline** (`feed_items` + `ai/research`).
-7. **Meta publishing** — gated on App Review (APP-REVIEW-META.md), independent of the above.
+1. **PWA install/offline shell** — code complete locally; owner release + device verify.
+   Treat push as its own permission/backend project after the install shell is proven.
+2. **Responsive release verify** — tablet tier + safe-area are local; sticky phone CTA and
+   logged-in real-device checks remain.
+3. **Context + chat workspaces** — schema is recorded live and code is complete locally;
+   deploy `ai-proxy` before Pages, then verify conflict/RLS/distillation/export behavior.
+4. **Sourced news-feed research pipeline** (`feed_items` + `ai/research`) after the owner
+   approves source, citation, freshness, and feedback rules.
+5. **Push-notification pilot** — separate permission/subscription/delivery design after the
+   installed PWA is stable.
+6. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
+   camera/share/biometric/notification value justifies another client.
+7. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
+   guarded code first. App Review is needed only when posting for other users becomes a goal.
 
 Each step is shippable and verifiable on its own; none requires a big-bang rewrite.

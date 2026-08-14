@@ -19,6 +19,16 @@ export const PUBLISH_SCOPES = [
   "business_management",
 ] as const;
 
+export class ProviderOutcomeUncertainError extends Error {
+  override name = "ProviderOutcomeUncertainError";
+}
+
+export function providerOutcomeIsUncertain(error: unknown) {
+  const name = String((error as { name?: string })?.name || "");
+  return error instanceof ProviderOutcomeUncertainError || error instanceof TypeError ||
+    name === "AbortError" || name === "TimeoutError";
+}
+
 const RESTRICTED_META_PERSONAS = new Set([
   "56ebe05e-78c0-4dad-8e61-bcb7d245ab7b", // Chomes / Classwoods
   "288a472a-b286-43ae-b941-1731f406c23b", // Sherlock / CannaCandidz
@@ -28,8 +38,6 @@ const RESTRICTED_META_DESTINATIONS = [
   "cannacandidz",
   "cannacandids",
   "sherlockchomes",
-  "traditionalfamilyvalues",
-  "tradfamilyvalues",
 ];
 
 function policyKey(value: unknown) {
@@ -92,11 +100,16 @@ async function graphPost(
   path: string,
   token: string,
   params: Record<string, string>,
+  beforeProviderPost?: () => Promise<void>,
 ) {
   const url = new URL(`${GRAPH}${path}`);
   const body = new URLSearchParams(params);
   body.set("access_token", token);
   body.set("appsecret_proof", await appSecretProof(token));
+  // The caller's last-moment policy check belongs immediately beside fetch.
+  // Instagram uses this hook for both container creation and media_publish so
+  // a pause raised between those calls still prevents the second provider POST.
+  await beforeProviderPost?.();
   const r = await fetch(url, {
     method: "POST",
     body,
@@ -104,10 +117,14 @@ async function graphPost(
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    throw new Error(
-      (j as { error?: { message?: string } })?.error?.message ||
-        `Meta rejected the publish (HTTP ${r.status})`,
-    );
+    const message = (j as { error?: { message?: string } })?.error?.message ||
+      `Meta rejected the publish (HTTP ${r.status})`;
+    if (r.status >= 500 || r.status === 408) {
+      throw new ProviderOutcomeUncertainError(
+        `Meta returned HTTP ${r.status}; verify the account before retrying. ${message}`,
+      );
+    }
+    throw new Error(message);
   }
   return j as Record<string, unknown>;
 }
@@ -142,18 +159,27 @@ export async function publishInstagram(
   pageToken: string,
   imageUrl: string,
   caption: string,
+  beforeProviderPost?: () => Promise<void>,
 ) {
   const container = await graphPost(`/${igUserId}/media`, pageToken, {
     image_url: imageUrl,
     ...(caption ? { caption } : {}),
-  });
+  }, beforeProviderPost);
   const creationId = String(container.id || "");
-  if (!creationId) throw new Error("Instagram did not return a media container.");
+  if (!creationId) {
+    throw new ProviderOutcomeUncertainError(
+      "Instagram returned success without a media container ID; verify the account before retrying.",
+    );
+  }
   const published = await graphPost(`/${igUserId}/media_publish`, pageToken, {
     creation_id: creationId,
-  });
+  }, beforeProviderPost);
   const mediaId = String(published.id || "").trim();
-  if (!mediaId) throw new Error("Instagram accepted the container but did not return a media ID.");
+  if (!mediaId) {
+    throw new ProviderOutcomeUncertainError(
+      "Instagram accepted the publish but did not return a media ID; verify the account before retrying.",
+    );
+  }
   return { mediaId };
 }
 
@@ -162,14 +188,19 @@ export async function publishFacebook(
   pageToken: string,
   imageUrl: string,
   caption: string,
+  beforeProviderPost?: () => Promise<void>,
 ) {
   const res = await graphPost(`/${pageId}/photos`, pageToken, {
     url: imageUrl,
     ...(caption ? { caption } : {}),
     published: "true",
-  });
+  }, beforeProviderPost);
   const postId = String(res.post_id || res.id || "").trim();
-  if (!postId) throw new Error("Facebook accepted the request but did not return a post ID.");
+  if (!postId) {
+    throw new ProviderOutcomeUncertainError(
+      "Facebook accepted the publish but did not return a post ID; verify the Page before retrying.",
+    );
+  }
   return { postId };
 }
 

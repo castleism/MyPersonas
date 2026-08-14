@@ -21,10 +21,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   graphDelete,
   isRestrictedMetaPersona,
+  providerOutcomeIsUncertain,
   publishFacebook,
   publishInstagram,
   resolvePageContext,
 } from "../_shared/meta-publish.ts";
+import {
+  type ApprovedMedia,
+  stageApprovedMedia,
+  verifyApprovedMedia,
+} from "../_shared/approved-media.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,13 +53,59 @@ type Draft = {
   ig_caption: string | null;
   fb_post_id: string | null;
   ig_media_id: string | null;
+  approved_content_hash: string;
+  approved_fb_media_sha256: string;
+  approved_fb_media_mime: ApprovedMedia["mime"] | "";
+  approved_fb_media_bytes: number;
+  approved_fb_media_path: string;
+  approved_fb_media_url: string;
+  approved_ig_media_sha256: string;
+  approved_ig_media_mime: ApprovedMedia["mime"] | "";
+  approved_ig_media_bytes: number;
+  approved_ig_media_path: string;
+  approved_ig_media_url: string;
+  publish_facebook_page_id: string;
+  publish_instagram_business_id: string;
 };
 
 const DRAFT_COLUMNS = [
   "id", "owner", "persona_id", "facebook_ledger_id", "status", "targets",
   "source_image_url", "fb_image_url", "ig_image_url", "fb_caption", "ig_caption",
-  "fb_post_id", "ig_media_id",
+  "fb_post_id", "ig_media_id", "approved_content_hash",
+  "approved_fb_media_sha256", "approved_fb_media_mime", "approved_fb_media_bytes",
+  "approved_fb_media_path", "approved_fb_media_url", "approved_ig_media_sha256",
+  "approved_ig_media_mime", "approved_ig_media_bytes", "approved_ig_media_path",
+  "approved_ig_media_url", "publish_facebook_page_id",
+  "publish_instagram_business_id",
 ].join(",");
+
+function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): ApprovedMedia {
+  return target === "facebook"
+    ? {
+      sha256: draft.approved_fb_media_sha256,
+      mime: draft.approved_fb_media_mime as ApprovedMedia["mime"],
+      byteSize: draft.approved_fb_media_bytes,
+      path: draft.approved_fb_media_path,
+      url: draft.approved_fb_media_url,
+    }
+    : {
+      sha256: draft.approved_ig_media_sha256,
+      mime: draft.approved_ig_media_mime as ApprovedMedia["mime"],
+      byteSize: draft.approved_ig_media_bytes,
+      path: draft.approved_ig_media_path,
+      url: draft.approved_ig_media_url,
+    };
+}
+
+function hasApprovedMediaSnapshot(media: ApprovedMedia) {
+  return Boolean(
+    media.sha256 || media.mime || media.byteSize || media.path || media.url,
+  );
+}
+
+class PublishingPauseError extends Error {
+  override name = "PublishingPauseError";
+}
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -94,22 +146,118 @@ async function caller(req: Request) {
   return error ? null : data.user;
 }
 
-function uncertainProviderOutcome(error: unknown) {
-  const name = String((error as { name?: string })?.name || "");
-  return error instanceof TypeError || name === "AbortError" || name === "TimeoutError";
+async function ownerPauseState(owner: string) {
+  const result = await admin.from("agent_owner_settings")
+    .select("automation_paused").eq("owner", owner).maybeSingle();
+  return {
+    available: !result.error && !!result.data,
+    paused: result.data?.automation_paused === true,
+  };
+}
+
+function pauseMessage(state: { available: boolean; paused: boolean }) {
+  return state.paused
+    ? "Owner automation is paused."
+    : "Owner automation settings are unavailable.";
+}
+
+async function requireOwnerPublishingUnpaused(owner: string) {
+  const state = await ownerPauseState(owner);
+  if (!state.available || state.paused) {
+    throw new PublishingPauseError(pauseMessage(state));
+  }
+}
+
+async function ensureImmutableAttemptMedia(
+  draft: Draft,
+  targets: string[],
+): Promise<Draft> {
+  const patch: Record<string, unknown> = {};
+  for (const target of targets) {
+    if (target !== "facebook" && target !== "instagram") continue;
+    let media = approvedMediaFor(draft, target);
+    const hasSnapshot = hasApprovedMediaSnapshot(media);
+    const providerId = target === "facebook" ? draft.fb_post_id : draft.ig_media_id;
+    if (!hasSnapshot) {
+      if (draft.approved_content_hash) {
+        throw new Error(`${target}: exact approval has no immutable media snapshot.`);
+      }
+      if (providerId) {
+        throw new Error(`${target}: a provider result has no immutable media snapshot; reconciliation is required.`);
+      }
+      const source = target === "facebook"
+        ? draft.fb_image_url || draft.source_image_url || ""
+        : draft.ig_image_url || draft.source_image_url || "";
+      media = await stageApprovedMedia(
+        admin.storage,
+        SUPABASE_URL,
+        source,
+        draft.owner,
+      );
+    }
+    await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, draft.owner);
+    const prefix = target === "facebook" ? "approved_fb_media" : "approved_ig_media";
+    patch[`${prefix}_sha256`] = media.sha256;
+    patch[`${prefix}_mime`] = media.mime;
+    patch[`${prefix}_bytes`] = media.byteSize;
+    patch[`${prefix}_path`] = media.path;
+    patch[`${prefix}_url`] = media.url;
+    patch[target === "facebook" ? "fb_image_url" : "ig_image_url"] = media.url;
+  }
+
+  const saved = await admin.from("post_drafts").update({
+    ...patch,
+    updated_at: new Date().toISOString(),
+  }).eq("id", draft.id).eq("owner", draft.owner).eq("status", "publishing")
+    .select(DRAFT_COLUMNS).maybeSingle();
+  if (saved.error || !saved.data) {
+    throw new Error("The immutable publish-attempt media snapshot could not be saved.");
+  }
+  const persisted = saved.data as Draft;
+  for (const target of targets) {
+    if (target !== "facebook" && target !== "instagram") continue;
+    const media = approvedMediaFor(persisted, target);
+    await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, draft.owner);
+    const rowUrl = target === "facebook"
+      ? persisted.fb_image_url
+      : persisted.ig_image_url;
+    if (rowUrl !== media.url) {
+      throw new Error(`${target}: the immutable publish-attempt URL was not persisted.`);
+    }
+  }
+  return persisted;
 }
 
 async function finishClaim(
   userId: string,
   draftId: string,
-  patch: Record<string, unknown>,
+  status: "posted" | "failed",
+  lastError: string,
+  detail: Record<string, unknown>,
 ) {
-  return await admin.from("post_drafts").update({
-    ...patch,
-    publish_claimed_at: null,
-    updated_at: new Date().toISOString(),
-  }).eq("id", draftId).eq("owner", userId).eq("status", "publishing")
-    .select("id,status,fb_post_id,ig_media_id").maybeSingle();
+  return await admin.rpc("finalize_post_draft_publish", {
+    p_draft_id: draftId,
+    p_owner: userId,
+    p_status: status,
+    p_last_error: lastError,
+    p_action_type: "post_draft.manual_publish",
+    p_detail: detail,
+  });
+}
+
+async function noteReconciliation(
+  userId: string,
+  draftId: string,
+  note: string,
+  detail: Record<string, unknown>,
+) {
+  return await admin.rpc("note_post_draft_reconciliation", {
+    p_draft_id: draftId,
+    p_owner: userId,
+    p_note: note,
+    p_action_type: "post_draft.manual_publish",
+    p_detail: detail,
+  });
 }
 
 async function handlePublishDraft(
@@ -119,6 +267,14 @@ async function handlePublishDraft(
 ) {
   const draftId = String(body.draftId || "");
   if (!SAFE_UUID.test(draftId)) return json({ error: "A valid draftId is required." }, 400, origin);
+
+  // The global owner stop applies to interactive publishing too. Check once
+  // before taking the row and again after the atomic claim to close the race.
+  const pauseBeforeClaim = await ownerPauseState(userId);
+  if (!pauseBeforeClaim.available || pauseBeforeClaim.paused) {
+    return json({ error: pauseMessage(pauseBeforeClaim), paused: pauseBeforeClaim.paused },
+      pauseBeforeClaim.paused ? 409 : 503, origin);
+  }
 
   // The state transition is the concurrency guard. A second click/tab and the
   // scheduled worker both lose this compare-and-set before any provider call.
@@ -132,7 +288,20 @@ async function handlePublishDraft(
   if (!claim.data) {
     return json({ error: "This draft is scheduled, already publishing, or read-only. Reload it first." }, 409, origin);
   }
-  const draft = claim.data as Draft;
+  let draft = claim.data as Draft;
+  const pauseAfterClaim = await ownerPauseState(userId);
+  if (!pauseAfterClaim.available || pauseAfterClaim.paused) {
+    const message = pauseMessage(pauseAfterClaim);
+    const finished = await finishClaim(
+      userId, draftId, "failed", message,
+      { phase: "pause_after_claim", errors: [message] },
+    );
+    if (finished.error || !finished.data) {
+      return json({ status: "publishing", reconciliationRequired: true, error: message }, 500, origin);
+    }
+    return json({ status: "failed", error: message, paused: pauseAfterClaim.paused },
+      pauseAfterClaim.paused ? 409 : 503, origin);
+  }
   const targets = [...new Set((Array.isArray(draft.targets) ? draft.targets : []).map((v) => String(v).toLowerCase()))];
   const validationErrors: string[] = [];
   if (!targets.length || targets.some((target) => !["facebook", "instagram"].includes(target))) {
@@ -155,20 +324,45 @@ async function handlePublishDraft(
     validationErrors.push("Instagram needs a public HTTPS image.");
   }
   if (validationErrors.length) {
-    const finished = await finishClaim(userId, draftId, {
-      status: "failed", last_error: validationErrors.join(" | "),
-    });
+    const finished = await finishClaim(
+      userId, draftId, "failed", validationErrors.join(" | "),
+      { targets, errors: validationErrors, phase: "validation" },
+    );
     if (finished.error || !finished.data) {
-      return json({ error: "Validation failed and the claimed row needs reconciliation." }, 500, origin);
+      return json({ status: "publishing", reconciliationRequired: true,
+        error: "Validation failed and the claimed row could not be finalized." }, 500, origin);
+    }
+    return json({ status: "failed", errors: validationErrors }, 409, origin);
+  }
+
+  // Every interactive attempt gets an immutable, content-addressed media
+  // snapshot before destination credentials or providers are touched. A retry
+  // with an existing snapshot verifies and reuses it, ignoring mutable source
+  // URLs. The platform URL columns are pinned to the canonical snapshot too.
+  try {
+    draft = await ensureImmutableAttemptMedia(draft, targets);
+  } catch (error) {
+    validationErrors.push((error as Error).message);
+    const finished = await finishClaim(
+      userId, draftId, "failed", validationErrors.join(" | "),
+      { targets, errors: validationErrors, phase: "attempt_media" },
+    );
+    if (finished.error || !finished.data) {
+      return json({ status: "publishing", reconciliationRequired: true,
+        error: "Attempt media failed verification and the claim could not be finalized." }, 500, origin);
     }
     return json({ status: "failed", errors: validationErrors }, 409, origin);
   }
 
   const ctx = await resolvePageContext(admin, userId, draft.facebook_ledger_id!);
   if (!ctx.ok) {
-    const finished = await finishClaim(userId, draftId, { status: "failed", last_error: ctx.error });
+    const finished = await finishClaim(
+      userId, draftId, "failed", ctx.error,
+      { targets, errors: [ctx.error], phase: "destination" },
+    );
     if (finished.error || !finished.data) {
-      return json({ error: "The Meta check failed and the claimed row needs reconciliation." }, 500, origin);
+      return json({ status: "publishing", reconciliationRequired: true,
+        error: "The Meta check failed and the claimed row could not be finalized." }, 500, origin);
     }
     return json({
       error: ctx.error,
@@ -179,14 +373,61 @@ async function handlePublishDraft(
   const errors: string[] = [];
   const out: { facebook?: { postId: string }; instagram?: { mediaId: string } } = {};
   let reconciliationRequired = false;
+  let publishingBlocked = false;
 
-  if (targets.includes("facebook") && !draft.fb_post_id) {
+  const resolvedFacebookId = String(ctx.asset.facebook_page_id);
+  const resolvedInstagramId = targets.includes("instagram")
+    ? String(ctx.asset.instagram_business_id || "")
+    : "";
+  if (draft.publish_facebook_page_id && draft.publish_facebook_page_id !== resolvedFacebookId) {
+    errors.push("The Facebook destination changed after this publish attempt began.");
+  }
+  if (draft.publish_instagram_business_id &&
+    draft.publish_instagram_business_id !== resolvedInstagramId) {
+    errors.push("The Instagram destination changed after this publish attempt began.");
+  }
+  if ((draft.fb_post_id || draft.ig_media_id) &&
+    (!draft.publish_facebook_page_id ||
+      (targets.includes("instagram") && !draft.publish_instagram_business_id))) {
+    reconciliationRequired = true;
+    errors.push("A legacy provider result has no immutable destination snapshot.");
+  }
+  if (errors.length && !reconciliationRequired) {
+    const finished = await finishClaim(
+      userId, draftId, "failed", errors.join(" | "),
+      { targets, errors, phase: "destination_snapshot" },
+    );
+    if (finished.error || !finished.data) {
+      return json({ status: "publishing", reconciliationRequired: true, errors }, 500, origin);
+    }
+    return json({ status: "failed", errors }, 409, origin);
+  }
+  if (!reconciliationRequired && !draft.publish_facebook_page_id) {
+    const snap = await admin.from("post_drafts").update({
+      publish_facebook_page_id: resolvedFacebookId,
+      publish_instagram_business_id: resolvedInstagramId,
+      updated_at: new Date().toISOString(),
+    }).eq("id", draftId).eq("owner", userId).eq("status", "publishing")
+      .eq("publish_facebook_page_id", "").eq("publish_instagram_business_id", "")
+      .select("id").maybeSingle();
+    if (snap.error || !snap.data) {
+      reconciliationRequired = true;
+      errors.push("The immutable destination snapshot could not be saved.");
+    } else {
+      draft.publish_facebook_page_id = resolvedFacebookId;
+      draft.publish_instagram_business_id = resolvedInstagramId;
+    }
+  }
+
+  if (!reconciliationRequired && targets.includes("facebook") && !draft.fb_post_id) {
     try {
+      await requireOwnerPublishingUnpaused(userId);
       const result = await publishFacebook(
         ctx.asset.facebook_page_id,
         ctx.pageToken,
-        draft.fb_image_url || draft.source_image_url || "",
+        draft.approved_fb_media_url,
         draft.fb_caption || "",
+        () => requireOwnerPublishingUnpaused(userId),
       );
       const saved = await admin.from("post_drafts").update({
         fb_post_id: result.postId,
@@ -202,21 +443,24 @@ async function handlePublishDraft(
         out.facebook = result;
       }
     } catch (error) {
-      reconciliationRequired = uncertainProviderOutcome(error);
+      if (error instanceof PublishingPauseError) publishingBlocked = true;
+      reconciliationRequired = providerOutcomeIsUncertain(error);
       errors.push(`Facebook: ${(error as Error).message}`);
     }
   }
 
-  if (!reconciliationRequired && targets.includes("instagram") && !draft.ig_media_id) {
+  if (!reconciliationRequired && !publishingBlocked && targets.includes("instagram") && !draft.ig_media_id) {
     if (!ctx.asset.instagram_business_id) {
       errors.push("Instagram: the selected Page has no linked professional account.");
     } else {
       try {
+        await requireOwnerPublishingUnpaused(userId);
         const result = await publishInstagram(
           ctx.asset.instagram_business_id,
           ctx.pageToken,
-          draft.ig_image_url || draft.source_image_url || "",
+          draft.approved_ig_media_url,
           draft.ig_caption || "",
+          () => requireOwnerPublishingUnpaused(userId),
         );
         const saved = await admin.from("post_drafts").update({
           ig_media_id: result.mediaId,
@@ -232,7 +476,8 @@ async function handlePublishDraft(
           out.instagram = result;
         }
       } catch (error) {
-        reconciliationRequired = uncertainProviderOutcome(error);
+        if (error instanceof PublishingPauseError) publishingBlocked = true;
+        reconciliationRequired = providerOutcomeIsUncertain(error);
         errors.push(`Instagram: ${(error as Error).message}`);
       }
     }
@@ -240,33 +485,29 @@ async function handlePublishDraft(
 
   if (reconciliationRequired) {
     const note = `Reconciliation required before retry. ${errors.join(" | ")}`;
-    await admin.from("post_drafts").update({ last_error: note, updated_at: new Date().toISOString() })
-      .eq("id", draftId).eq("owner", userId).eq("status", "publishing");
-    return json({ status: "reconciliation_required", ...out, errors }, 502, origin);
+    const noted = await noteReconciliation(userId, draftId, note, {
+      targets, ...out, errors,
+      facebookPageId: draft.publish_facebook_page_id || resolvedFacebookId,
+      instagramBusinessId: draft.publish_instagram_business_id || resolvedInstagramId,
+    });
+    return json({
+      status: "publishing", reconciliationRequired: true, ...out,
+      errors: noted.error || !noted.data ? [...errors, "The reconciliation audit could not be saved."] : errors,
+    }, 502, origin);
   }
 
   const complete = (!targets.includes("facebook") || !!draft.fb_post_id) &&
     (!targets.includes("instagram") || !!draft.ig_media_id);
   const status = complete ? "posted" : "failed";
-  const finished = await finishClaim(userId, draftId, {
-    status,
-    last_error: errors.join(" | ") || null,
-    posted_at: complete ? new Date().toISOString() : null,
-  });
+  const finished = await finishClaim(
+    userId, draftId, status, errors.join(" | "),
+    { targets, ...out, errors, facebookPageId: resolvedFacebookId, instagramBusinessId: resolvedInstagramId },
+  );
   if (finished.error || !finished.data) {
-    return json({ status: "reconciliation_required", ...out, errors: [
+    return json({ status: "publishing", reconciliationRequired: true, ...out, errors: [
       ...errors, "Provider work finished, but the draft could not be finalized.",
     ] }, 500, origin);
   }
-  await admin.from("agent_actions").insert({
-    owner: userId,
-    persona_id: draft.persona_id,
-    action_type: "post_draft.manual_publish",
-    entity_type: "post_draft",
-    entity_id: draftId,
-    outcome: status,
-    detail: { targets, ...out, errors },
-  });
   return json({ status, ...out, ...(errors.length ? { errors } : {}) }, complete ? 200 : 502, origin);
 }
 

@@ -1,10 +1,13 @@
 # AliaSpaces / MyPersonas — What the site does today, and where it's going
 
-**Updated:** July 30, 2026 · mypersonas.online
+**Updated:** August 13, 2026 · mypersonas.online
 
 **The idea in one line:** one home for every side of you — each persona you carry gets
-its own MySpace-style page, fully anonymous by design, with its own AI layer and its
-own set of managed accounts.
+its own MySpace-style page, owner-private and unlinked from other personas by default,
+with explicit opt-in cross-links, its own AI layer, and its own managed accounts.
+
+This overview separates proven/live behavior from the coordinated next-release source.
+Local code, a queued migration, or a passing test is never presented as a deployed feature.
 
 ---
 
@@ -61,14 +64,18 @@ own set of managed accounts.
   protected-mail; optional AI classification; exact approval plans for label/archive/
   recoverable-trash with bounded Undo and a separate audit trail. Sending and
   permanent deletion are deliberately impossible.
-- **X / Twitter** — OAuth identity/read connector deployed (awaiting production client
-  credentials); posting adapter is specced as the next build order
+- **X / Twitter** — OAuth identity/read connector deployed. The deployed posting function is
+  not version-controlled and the current grant is read-only, so X publishing remains off
 - **Facebook Pages + linked professional Instagram** — official Meta pairing:
   discovers Pages and Page-linked IG professional accounts, binds only owner-selected
-  records, tokens in encrypted Vault; publishing intentionally off until app review
-- **Discord** — channel-webhook posting is live in code: paste a webhook once (stored
-  encrypted, never shown again), then approved drafts post to that channel with one
-  press. No user-account automation, ever.
+  records, tokens in encrypted Vault. Owner-triggered FB/IG publishing was proven on the
+  owner's assets; the new atomic/immutable approval hardening is local and scheduled cron is off
+- **Reddit** — official OAuth, confirmed revocation, and owner-triggered approved-post code is
+  complete locally, but credentials, deployment, OAuth round trip, and live post are still owner gates
+- **Discord** — migration/function source exists, but the current UI has no connector/post
+  controls and live state is unverified. The endpoint is deliberately dormant until its
+  exact-approval, reconciliation, audit, and Vault-erasure rebuild is complete. User-account
+  automation remains unsupported.
 - **OnlyFans and other record-only platforms** — safe manual staging: prepare the
   package, copy it, open the official site, mark it posted yourself. The site never
   asks for a password, cookie, or scraped session.
@@ -93,6 +100,16 @@ own set of managed accounts.
 - Optional SFW **fan chat**: visitors talk to a persona's AI (always disclosed as AI),
   with quotas, owner transcript review, and escalation flags
 
+### Coordinated next-release source (not yet claimed live)
+
+- Conflict-safe persona context, bounded AI continuity, content-plan change summaries, and
+  owner-reviewed Save/Attach context
+- Resumable owner chat workspaces with create/rename/pin, full-account export inclusion, and distilled attachments
+- Friend-request Realtime, while focus refresh remains a fallback
+- Installable PWA manifest/public offline shell (no push permission or subscription yet)
+- Full release-history extension cards with truthful local fallbacks
+- Fail-closed Reddit and four-prefix owner-storage erasure hardening
+
 ### Trust & safety
 
 - Pixel-burned watermarks (your page URL) on uploads; right-click/drag guards
@@ -105,7 +122,8 @@ own set of managed accounts.
 - **Personas** desktop companion: animated AI characters for your personas that live
   on your screen and react to your work
 - **Concept** character studio (SD/LoRA tooling) with a releases-driven extension
-  catalog
+  catalog. The local catalog now supports history for both tools; public GitHub releases
+  still need to be published and verified
 
 ---
 
@@ -115,16 +133,17 @@ own set of managed accounts.
 
 - Outlook, Yahoo, iCloud, and Proton Inbox Concierge adapters (each via its official
   or app-password route; no password ever typed into the site)
-- X **posting** adapter (Order 1) the moment production credentials are installed;
-  then Reddit posting, YouTube uploads, and Meta publishing after app review — every
+- Pull, scrub, and version X **posting** (Order 1), then explicitly obtain write/media
+  authorization; release and live-test the already-versioned Reddit connector — every
   buildable connector is specced in CONNECTOR-BUILD-ORDERS.md, and the impossible
   ones (OnlyFans, personal Snapchat, Twitch feed) are documented as permanently manual
 - Adobe **Lightroom** integration: watched-folder import first, official Partner API
   connector after Adobe approval — cloud photos feeding pages and training sets
 - Public **persona timeline module** (opt-in per account) and full provider post-history
   sync into the timeline
-- Realtime notifications, feed comments/reactions, feed pagination + hashtag pages
-- Proper "act as persona" picker modal, extensions catalog page
+- Release and verify friend Realtime; comments/reactions, feed pagination/hashtags, and
+  the Act as persona modal already exist in source
+- Publish real Concept/Personas GitHub releases for the new catalog history view
 - SEO: path-based routing, prerendered persona pages, per-persona OG images and
   sitemaps so every persona is individually searchable
 
@@ -133,7 +152,7 @@ own set of managed accounts.
 - Persona-to-persona direct messages (privacy-preserving)
 - Native live streaming (replacing embeds)
 - Trending/discovery ranking, moderation pipeline with user reports
-- Installable mobile PWA with push notifications
+- Verify the installable PWA/offline shell; design push notifications as a separate phase
 - Branded auth domain, profile analytics for owners
 
 ### v1.5+ — the ecosystem

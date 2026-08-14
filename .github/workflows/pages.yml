@@ -33,6 +33,11 @@ jobs:
             --prune-empty-dirs \
             --include '/index.html' \
             --include '/assets/***' \
+            --include '/brand/app-icon/***' \
+            --include '/manifest.webmanifest' \
+            --include '/service-worker.js' \
+            --include '/pwa.js' \
+            --include '/offline.html' \
             --include '/CNAME' \
             --include '/.nojekyll' \
             --include '/robots.txt' \

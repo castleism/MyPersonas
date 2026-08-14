@@ -6,18 +6,31 @@ the recurring job is a separate production decision.
 
 ## What is ready locally
 
-- The Composer groups up to 200 drafts by owner-time-zone week and ignores stale overlapping reloads.
-- `035-post-draft-approval-hardening.sql` adds an exact content/target/image/time/actual-Meta-asset hash plus
-  owner-only save, approve-and-schedule, unschedule, and delete RPCs. It also returns any legacy
-  unhashed scheduled rows to draft review and removes direct browser mutation of queue state/results.
+- The Composer paginates every active draft, adds the newest 50 terminal history rows, groups them
+  by owner-time-zone week, and ignores stale overlapping reloads.
+- `035-post-draft-approval-hardening.sql` adds an exact caption/target/time/actual-Meta-asset/**image-byte**
+  hash plus owner-only save, unschedule, and delete RPCs. Scheduling is no longer a browser RPC: the
+  owner-authenticated `approve-post-draft` function snapshots the exact JPEG/PNG/WebP bytes first and
+  alone can invoke the service-role scheduling RPC. The migration also returns legacy unhashed
+  scheduled rows to draft review and removes direct browser mutation of queue state/results.
+- Approved FB/IG images are copied into the public `post-approved-media` bucket at the immutable,
+  owner-scoped content address `owners/<owner-uuid>/sha256/<prefix>/<sha256>.<ext>`. An explicit
+  restrictive Storage policy denies anon/authenticated writes even if another permissive policy is
+  introduced. The approval records and hashes canonical URL, path, SHA-256, detected MIME, and byte
+  size; the queue downloads the stored object and re-verifies every value before any Meta call.
+  Account deletion and content-only erasure recursively remove and verify only that owner's
+  `owners/<owner-uuid>` prefix before owned database rows are deleted, including unreferenced objects
+  left by an interrupted approval.
 - Immediate publishing is draft-scoped and server-side: `meta-post` atomically claims the row,
-  checkpoints each provider ID, and locks uncertain outcomes for reconciliation.
+  snapshots its actual destinations, checkpoints each provider ID, atomically finalizes with an
+  audit event, and locks uncertain outcomes for reconciliation.
 - Scheduling is deliberately Meta-only. X remains a generated draft, but the UI and database reject
   X as a scheduled target until `twitter-post` is version-controlled and write-authorized.
 - Scheduled and terminal rows are locked against browser edits. The worker claims and publishes the
-  current due row, verifies its approval hash, honors the owner-wide pause, fails missing targets,
+  current due row, verifies its approval hash and stored image bytes, honors the owner-wide pause, fails missing targets,
   fails missing Instagram linkage or changed paired assets, skips provider IDs already recorded, and
-  applies a best-effort local rolling Instagram guard.
+  applies a best-effort local rolling Instagram guard. Each invocation is limited to one draft and
+  migration 036 gives the one-draft HTTP call a 145-second timeout.
 - The shared Meta publisher blocks the project-policy destinations before retrieving a Page token.
 
 ## Blockers before recurring activation
@@ -43,14 +56,34 @@ Do not apply migration 036 until every item below is closed:
    and reconcile provider-side/manual posts so overlapping workers cannot exceed the account quota.
 6. Verify the durable production UUID/account policy mapping for every Meta-blocked persona and
    destination; do not rely on mutable display names as the sole production control.
-7. Verify migrations 033 and 034 are present in production, then deploy the matching source and apply
+7. Reconcile legacy terminal history that has a provider ID but no `publish_*` destination or
+   `*_published_at` attribution. Do not guess those values. Until each recent Instagram post is
+   attributed or older than the rolling window, the local quota counter is incomplete.
+8. Verify migrations 033 and 034 are present in production, then deploy the matching source and apply
    035 in the coordinated order below.
 
 ## Safe deployment order while the cron remains off
 
-1. Verify migrations 033 and 034 and the migration-035 target preflight in production. Announce a
+1. Verify migrations 033 and 034 and the first-application migration-035 target preflight in production. Announce a
    short Composer maintenance window; do not stage, edit, or publish a draft during steps 2–3.
-2. Review and push the source changes. The GitHub workflows deploy the static frontend and all
+
+   ```sql
+   select id, status, targets, fb_post_id, ig_media_id, x_tweet_id
+   from public.post_drafts
+   where cardinality(targets) = 0
+      or not (targets <@ array['facebook','instagram','twitter']::text[])
+      or ('twitter' = any(targets) and status not in ('posted','skipped')
+          and (fb_post_id is not null or ig_media_id is not null or x_tweet_id is not null))
+      or (status not in ('posted','skipped')
+          and (fb_post_id is not null or ig_media_id is not null or x_tweet_id is not null));
+   ```
+
+   This must return zero rows. Reconcile any result manually; do not erase provider history or invent
+   targets just to make the migration pass. On later re-runs, migration 035's internal preflight
+   accepts a legitimate partial result only when its immutable attempt destination is present and
+   consistent with any approval snapshot.
+2. Review and push the source changes, including `approve-post-draft`, the shared approved-media
+   helper, the worker, and the frontend contract below. The GitHub workflows deploy the static frontend and all
    versioned Edge Functions; wait for both workflows to succeed. Until 035 lands, new mutation RPCs
    safely fail and the new draft publisher cannot claim a row; do not use Composer in this gap.
 3. In the Supabase SQL editor, run `sql-updates/035-post-draft-approval-hardening.sql` as one
@@ -59,7 +92,9 @@ Do not apply migration 036 until every item below is closed:
    - each time is displayed in the owner time zone;
    - X cannot be scheduled;
    - missing Page/image/Instagram linkage is rejected;
+   - an invalid/private image URL, MIME/byte mismatch, or image over 10 MiB is rejected before scheduling;
    - `draft → scheduled` persists after a full reload;
+   - every scheduled FB/IG image URL points into `post-approved-media/owners/<your-uuid>/sha256/`;
    - scheduled captions/targets are locked;
    - Unschedule clears approval and allows edits;
    - posted/publishing history cannot be approved or deleted.
@@ -70,6 +105,10 @@ select id, owner, persona_id, facebook_ledger_id, week_start, status,
        scheduled_for, targets, approved_at, approved_by, approved_timezone,
        approved_facebook_page_id, approved_instagram_business_id,
        char_length(approved_content_hash) as approval_hash_length,
+       approved_fb_media_sha256, approved_fb_media_mime, approved_fb_media_bytes,
+       approved_fb_media_path, approved_fb_media_url,
+       approved_ig_media_sha256, approved_ig_media_mime, approved_ig_media_bytes,
+       approved_ig_media_path, approved_ig_media_url,
        fb_post_id, ig_media_id, x_tweet_id, last_error
 from public.post_drafts
 order by week_start desc nulls last, scheduled_for nulls last, created_at desc;
@@ -77,7 +116,35 @@ order by week_start desc nulls last, scheduled_for nulls last, created_at desc;
 
 Every scheduled row must show an owner approver, an approval time + time zone, a future scheduled
 time, a 64-character hash, exact paired FB/IG asset IDs, only `facebook`/`instagram` targets, and no
-provider ID.
+provider ID. Every selected Meta target must also have a 64-character media SHA-256, accepted MIME,
+positive byte size no greater than 10 MiB, owner-scoped content path, and canonical public URL. An
+unselected target must have empty/zero approved-media metadata.
+
+## Frontend scheduling contract
+
+Composer must not call `approve_and_schedule_post_draft` through `supabase.rpc`; authenticated users
+do not have execute permission on that internal function. Call the owner-authenticated Edge Function:
+
+```text
+POST <SUPABASE_URL>/functions/v1/approve-post-draft
+Authorization: Bearer <current owner access token>
+Content-Type: application/json
+
+{
+  "draftId": "<uuid>",
+  "scheduledFor": "<ISO-8601 instant>",
+  "timezone": "America/Anchorage",
+  "fbCaption": "<exact approved Facebook caption>",
+  "igCaption": "<exact approved Instagram caption>",
+  "xCaption": "<retained draft-only X caption>",
+  "targets": ["facebook", "instagram"]
+}
+```
+
+The response is `{ "draft": <scheduled post_drafts row> }`. Display the returned `error` on any
+non-2xx response and reload the draft after a conflict. Keep the Schedule button busy/disabled for
+the whole request: fetching, hashing, uploading, rereading, and transactionally approving two large
+images can take longer than a normal metadata-only save. Do not fall back to the retired RPC.
 
 ## Secret setup after the blockers are closed
 

@@ -3,21 +3,52 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Roadmap completion and release-safety pass (local only) (2026-08-13)
+
+- **Persona continuity:** conflict-safe manual context editing, bounded server-side context,
+  owner-time-zone persona/content-plan change summaries, resumable chat workspaces, reviewed Save
+  context, max-three distilled Attach context, and inclusion in the full account export are code-complete locally.
+- **Immutable posting approval:** migration 035 now stages exact owner-namespaced, content-addressed
+  approved image bytes; hashes their SHA-256/MIME/size/path/URL; and the queue re-verifies them before
+  Meta calls. Composer schedules through authenticated `approve-post-draft`, not the internal RPC.
+- **Provider reliability:** Meta attempt destinations/results and uncertain outcomes are durable;
+  Reddit OAuth/disconnect/erasure and owner-triggered publishing are versioned and fail closed around
+  revocation, mutable-state changes, provider IDs, and ambiguous POST outcomes. No connector was
+  configured or exercised live in this pass.
+- **Discord gate:** the stale unverified Discord endpoint is now explicitly dormant and has an
+  explicit JWT gateway setting. The current frontend has no Discord connector/post controls; do not
+  re-enable it until its approval fingerprint, pause/destination checks, reconciliation, audit,
+  provider-ID checkpoint, and Vault erasure contract are rebuilt and tested.
+- **Install/network/catalog:** the public-only PWA offline shell is wired into the app and Pages;
+  bounded friend-request Realtime is ready behind independent migration 037; Concept + Personas gain
+  safe release-history catalog cards with truthful checked-in fallbacks.
+- **Owner erasure:** exact recursive Storage cleanup now covers `media/<uid>`,
+  `persona-media/<uid>`, `persona-docs/<uid>`, and `post-approved-media/owners/<uid>` before owned-row
+  deletion, with verified Reddit grant revocation first when applicable. Discord webhook Vault
+  cleanup is still a release blocker, so complete erasure is not yet claimed for Discord owners.
+- **Truthful release plan:** roadmap, handoff, posting, connector, mobile, PWA, and overview docs now
+  distinguish local code from deployment/live verification. `ROADMAP-EXECUTION-2026-08-13.md` is the
+  coordinated apply/test/rollback sequence. Migration 036 remains dormant.
+- **Verification:** frontend syntax, changed Edge Function TypeScript syntax, 60/60 repository tests,
+  diff whitespace checks, migration 035/036 disposable PostgreSQL tests, and migration 037 apply +
+  reapply tests passed. No push, production SQL, provider call, secret change, or live post occurred.
+
 ## Weekly approval scheduling + queue hardening (code complete locally, activation blocked) (2026-08-13)
 
 - **Composer approval-day UI:** drafts are grouped by `week_start`, show the exact owner-time-zone
   schedule, and expose guarded Save, Approve & schedule, Unschedule, immediate Meta publish,
   partial retry, and Delete actions. Scheduled/publishing/posted rows are locked; X has a live
   character counter and remains draft-only until its publisher is versioned and write-authorized.
-- **Migration 035 (not applied):** adds an exact approval hash and security-definer save/schedule/
+- **Migration 035 (not applied):** adds an exact caption/target/image-byte/time/asset approval hash and security-definer save/schedule/
   unschedule/delete RPCs, invalidates legacy unhashed schedules, validates owned/paired Meta
   destinations and images, snapshots the actual FB/IG asset IDs + approval time zone, removes direct
   browser mutation of provider/approval state, blocks project-policy destinations, and writes audit events.
 - **Immediate Meta publish hardening (not deployed):** `meta-post` now accepts only an owner-scoped
-  `draftId`, atomically claims it, checkpoints each provider ID server-side, and leaves uncertain
-  provider outcomes locked for reconciliation. The browser no longer performs provider-result writes.
+  `draftId`, atomically claims it, snapshots the actual destinations, checkpoints each provider ID
+  server-side, and atomically finalizes state + audit. Uncertain outcomes remain locked for
+  reconciliation. The browser no longer performs provider-result writes.
 - **Scheduled worker hardening (not deployed):** claims and publishes the current due row, verifies
-  exact approval + paired asset snapshots, filters paused owners before its two-row batch, fails
+  exact approval + paired asset snapshots, filters paused owners before its one-row batch, fails
   missing/unsupported targets, retains/skips completed provider IDs, detects missing Instagram
   linkage, and applies an advisory local rolling safety guard.
   The shared interactive Meta path now applies the same project-policy destination gate.
@@ -40,6 +71,9 @@ trailing letters are hotfixes. Releases are git tags.
   additive and self-contained so it can't affect the rest of the app.
 
 ## Scheduled publisher + shared publish module (2026-08-13)
+
+_Historical implementation note: superseded by the one-row, exact-approval, reconciliation-
+locked hardening entry above. The earlier 15-row/cap wording is not the activation contract._
 
 - **`_shared/meta-publish.ts`:** extracted the FB/IG publish primitives (Graph helpers,
   `resolvePageContext`, `publishFacebook`/`publishInstagram`, `publishToMeta`) so the
@@ -70,6 +104,10 @@ trailing letters are hotfixes. Releases are git tags.
 - **config.toml:** added `[functions.compose-post] verify_jwt = true`.
 
 ## 3-part staged posting system + pet-project field (2026-08-13)
+
+_Historical design note: superseded by the current Meta-only exact-approved path above. X was
+described as part of the intended three-part workflow, but was not proven as a write connector and
+remains draft-only._
 
 - **Live FB posting verified:** real test post published to the "Jokes from Dads" page and
   confirmed, then deleted. The full pipeline works.
@@ -456,6 +494,9 @@ Repo-only changes (nothing deployed to prod; all reviewable before it ships):
   assignment — schedule through the primary persona until its share-join ships.
 
 ## Released — Discord webhook posting + connector build orders (2026-07-30)
+
+_Historical entry only: the 2026-08-13 audit found no current frontend controls or live evidence.
+The endpoint is now deliberately dormant; use the current roadmap gate above._
 
 - Added the first external **posting** connector: Discord channel webhooks. Migration
   `019-discord-webhook.sql` stores an owner-pasted webhook URL only in Supabase Vault

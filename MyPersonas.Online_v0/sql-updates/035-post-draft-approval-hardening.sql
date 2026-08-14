@@ -8,26 +8,94 @@ begin;
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- Exact approved publish bytes live in a dedicated public bucket because Meta
+-- must fetch the images without an application session. Object names are
+-- content-addressed by SHA-256. The public URL is readable, while this
+-- restrictive policy prevents anon/authenticated writes even if a broader
+-- permissive Storage policy is added elsewhere; service_role bypasses RLS.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'post-approved-media', 'post-approved-media', true, 10485760,
+  array['image/jpeg','image/png','image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "post approved media service writes only" on storage.objects;
+create policy "post approved media service writes only" on storage.objects
+  as restrictive for all to public
+  using (bucket_id <> 'post-approved-media' or auth.role() = 'service_role')
+  with check (bucket_id <> 'post-approved-media' or auth.role() = 'service_role');
+
 alter table public.post_drafts
   add column if not exists approved_content_hash text not null default '',
   add column if not exists approved_timezone text not null default '',
   add column if not exists approved_facebook_page_id text not null default '',
   add column if not exists approved_instagram_business_id text not null default '',
+  add column if not exists publish_facebook_page_id text not null default '',
+  add column if not exists publish_instagram_business_id text not null default '',
   add column if not exists publish_claimed_at timestamptz,
   add column if not exists posted_at timestamptz,
   add column if not exists fb_published_at timestamptz,
-  add column if not exists ig_published_at timestamptz;
+  add column if not exists ig_published_at timestamptz,
+  add column if not exists approved_fb_media_sha256 text not null default '',
+  add column if not exists approved_fb_media_mime text not null default '',
+  add column if not exists approved_fb_media_bytes bigint not null default 0,
+  add column if not exists approved_fb_media_path text not null default '',
+  add column if not exists approved_fb_media_url text not null default '',
+  add column if not exists approved_ig_media_sha256 text not null default '',
+  add column if not exists approved_ig_media_mime text not null default '',
+  add column if not exists approved_ig_media_bytes bigint not null default 0,
+  add column if not exists approved_ig_media_path text not null default '',
+  add column if not exists approved_ig_media_url text not null default '';
 
 -- Fail before changing privileges if old data needs an owner decision. Do not
 -- silently invent a destination for an empty or unknown legacy target list.
 do $$
-declare v_invalid integer;
+declare v_invalid integer; v_x_partial integer; v_retryable_results integer;
 begin
   select count(*) into v_invalid from public.post_drafts
   where cardinality(targets) = 0
      or not (targets <@ array['facebook','instagram','twitter']::text[]);
   if v_invalid > 0 then
     raise exception 'Migration 035 preflight: % post_drafts row(s) have empty or unsupported targets; review them before applying', v_invalid;
+  end if;
+  select count(*) into v_x_partial from public.post_drafts
+  where 'twitter' = any(targets)
+    and status not in ('posted','skipped')
+    and (fb_post_id is not null or ig_media_id is not null or x_tweet_id is not null);
+  if v_x_partial > 0 then
+    raise exception 'Migration 035 preflight: % partial/published row(s) still target unwired X; reconcile their targets and history before applying', v_x_partial;
+  end if;
+  select count(*) into v_retryable_results from public.post_drafts
+  where status not in ('posted','skipped')
+    and (
+      (
+        fb_post_id is not null
+        and (
+          publish_facebook_page_id = ''
+          or (
+            approved_facebook_page_id <> ''
+            and publish_facebook_page_id <> approved_facebook_page_id
+          )
+        )
+      )
+      or (
+        ig_media_id is not null
+        and (
+          publish_instagram_business_id = ''
+          or (
+            approved_instagram_business_id <> ''
+            and publish_instagram_business_id <> approved_instagram_business_id
+          )
+        )
+      )
+      or x_tweet_id is not null
+    );
+  if v_retryable_results > 0 then
+    raise exception 'Migration 035 preflight: % nonterminal row(s) already contain provider results without immutable attempt destinations; reconcile them before applying', v_retryable_results;
   end if;
 end $$;
 
@@ -42,6 +110,50 @@ alter table public.post_drafts drop constraint if exists post_drafts_approval_ha
 alter table public.post_drafts add constraint post_drafts_approval_hash_check
   check (approved_content_hash = '' or char_length(approved_content_hash) = 64);
 
+alter table public.post_drafts drop constraint if exists post_drafts_approved_fb_media_check;
+alter table public.post_drafts add constraint post_drafts_approved_fb_media_check check (
+  (
+    approved_fb_media_sha256 = '' and approved_fb_media_mime = ''
+    and approved_fb_media_bytes = 0 and approved_fb_media_path = ''
+    and approved_fb_media_url = ''
+  ) or (
+    approved_fb_media_sha256 ~ '^[0-9a-f]{64}$'
+    and approved_fb_media_mime in ('image/jpeg','image/png','image/webp')
+    and approved_fb_media_bytes between 1 and 10485760
+    and approved_fb_media_path = concat(
+      'owners/',lower(owner::text),'/sha256/',left(approved_fb_media_sha256,2),'/',approved_fb_media_sha256,'.',
+      case approved_fb_media_mime when 'image/jpeg' then 'jpg'
+        when 'image/png' then 'png' else 'webp' end
+    )
+    and approved_fb_media_url = concat(
+      'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/post-approved-media/',
+      approved_fb_media_path
+    )
+  )
+);
+
+alter table public.post_drafts drop constraint if exists post_drafts_approved_ig_media_check;
+alter table public.post_drafts add constraint post_drafts_approved_ig_media_check check (
+  (
+    approved_ig_media_sha256 = '' and approved_ig_media_mime = ''
+    and approved_ig_media_bytes = 0 and approved_ig_media_path = ''
+    and approved_ig_media_url = ''
+  ) or (
+    approved_ig_media_sha256 ~ '^[0-9a-f]{64}$'
+    and approved_ig_media_mime in ('image/jpeg','image/png','image/webp')
+    and approved_ig_media_bytes between 1 and 10485760
+    and approved_ig_media_path = concat(
+      'owners/',lower(owner::text),'/sha256/',left(approved_ig_media_sha256,2),'/',approved_ig_media_sha256,'.',
+      case approved_ig_media_mime when 'image/jpeg' then 'jpg'
+        when 'image/png' then 'png' else 'webp' end
+    )
+    and approved_ig_media_url = concat(
+      'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/post-approved-media/',
+      approved_ig_media_path
+    )
+  )
+);
+
 -- The old UI could set scheduled without an exact approval hash. The cron has
 -- never been enabled, so return any such dormant rows to review rather than
 -- grandfathering an unverifiable approval.
@@ -50,6 +162,11 @@ update public.post_drafts set
   status = 'draft', scheduled_for = null, approved_at = null, approved_by = null,
   approved_content_hash = '', approved_timezone = '',
   approved_facebook_page_id = '', approved_instagram_business_id = '',
+  approved_fb_media_sha256 = '', approved_fb_media_mime = '',
+  approved_fb_media_bytes = 0, approved_fb_media_path = '', approved_fb_media_url = '',
+  approved_ig_media_sha256 = '', approved_ig_media_mime = '',
+  approved_ig_media_bytes = 0, approved_ig_media_path = '', approved_ig_media_url = '',
+  publish_facebook_page_id = '', publish_instagram_business_id = '',
   publish_claimed_at = null,
   last_error = 'Reapproval required after the exact-approval hardening migration.',
   updated_at = now()
@@ -59,6 +176,12 @@ where status = 'scheduled' and approved_content_hash = '';
 -- reviewed SECURITY DEFINER RPC or an owner-scoped edge function. This protects
 -- provider IDs, approval state, claims, and immutable publish history.
 revoke insert, update, delete on table public.post_drafts from anon, authenticated;
+grant select on table public.post_drafts to authenticated;
+grant select, insert, update, delete on table public.post_drafts to service_role;
+
+drop function if exists public.post_draft_hash(
+  uuid,text,text[],timestamptz,date,text,text,text,text,text,text,text,text,text,text
+);
 
 create or replace function public.post_draft_hash(
   p_persona_id uuid,
@@ -75,7 +198,17 @@ create or replace function public.post_draft_hash(
   p_fb_image_url text,
   p_ig_image_url text,
   p_x_image_url text,
-  p_source_image_url text
+  p_source_image_url text,
+  p_fb_media_sha256 text,
+  p_fb_media_mime text,
+  p_fb_media_bytes bigint,
+  p_fb_media_path text,
+  p_fb_media_url text,
+  p_ig_media_sha256 text,
+  p_ig_media_mime text,
+  p_ig_media_bytes bigint,
+  p_ig_media_path text,
+  p_ig_media_url text
 )
 returns text
 language sql stable set search_path = '' as $$
@@ -92,14 +225,24 @@ language sql stable set search_path = '' as $$
       coalesce(p_facebook_page_id,''), coalesce(p_instagram_business_id,''),
       coalesce(p_fb_caption,''), coalesce(p_ig_caption,''), coalesce(p_x_caption,''),
       coalesce(p_fb_image_url,''), coalesce(p_ig_image_url,''), coalesce(p_x_image_url,''),
-      coalesce(p_source_image_url,'')
+      coalesce(p_source_image_url,''),
+      coalesce(p_fb_media_sha256,''), coalesce(p_fb_media_mime,''),
+      coalesce(p_fb_media_bytes,0), coalesce(p_fb_media_path,''), coalesce(p_fb_media_url,''),
+      coalesce(p_ig_media_sha256,''), coalesce(p_ig_media_mime,''),
+      coalesce(p_ig_media_bytes,0), coalesce(p_ig_media_path,''), coalesce(p_ig_media_url,'')
     )::text,'UTF8'),
     'sha256'
   ), 'hex');
 $$;
-revoke all on function public.post_draft_hash(uuid,text,text[],timestamptz,date,text,text,text,text,text,text,text,text,text,text)
+revoke all on function public.post_draft_hash(
+  uuid,text,text[],timestamptz,date,text,text,text,text,text,text,text,text,text,text,
+  text,text,bigint,text,text,text,text,bigint,text,text
+)
   from public, anon, authenticated;
-grant execute on function public.post_draft_hash(uuid,text,text[],timestamptz,date,text,text,text,text,text,text,text,text,text,text)
+grant execute on function public.post_draft_hash(
+  uuid,text,text[],timestamptz,date,text,text,text,text,text,text,text,text,text,text,
+  text,text,bigint,text,text,text,text,bigint,text,text
+)
   to service_role;
 
 -- Browser writes cannot bypass the owner RPC to schedule or alter a scheduled
@@ -113,7 +256,11 @@ begin
     new.persona_id, new.facebook_ledger_id, new.targets, new.scheduled_for,
     new.week_start, new.approved_timezone, new.approved_facebook_page_id,
     new.approved_instagram_business_id, new.fb_caption, new.ig_caption, new.x_caption,
-    new.fb_image_url, new.ig_image_url, new.x_image_url, new.source_image_url
+    new.fb_image_url, new.ig_image_url, new.x_image_url, new.source_image_url,
+    new.approved_fb_media_sha256, new.approved_fb_media_mime,
+    new.approved_fb_media_bytes, new.approved_fb_media_path, new.approved_fb_media_url,
+    new.approved_ig_media_sha256, new.approved_ig_media_mime,
+    new.approved_ig_media_bytes, new.approved_ig_media_path, new.approved_ig_media_url
   );
 
   if new.status = 'scheduled' then
@@ -122,6 +269,18 @@ begin
       or new.approved_content_hash = ''
       or new.approved_content_hash is distinct from v_hash then
       raise exception 'Scheduled drafts require an exact owner approval';
+    end if;
+    if 'facebook' = any(new.targets) and new.approved_fb_media_sha256 = '' then
+      raise exception 'Scheduled Facebook drafts require immutable approved media';
+    end if;
+    if 'instagram' = any(new.targets) and new.approved_ig_media_sha256 = '' then
+      raise exception 'Scheduled Instagram drafts require immutable approved media';
+    end if;
+    if 'facebook' <> all(new.targets) and new.approved_fb_media_sha256 <> '' then
+      raise exception 'Unselected Facebook cannot retain approved publish media';
+    end if;
+    if 'instagram' <> all(new.targets) and new.approved_ig_media_sha256 <> '' then
+      raise exception 'Unselected Instagram cannot retain approved publish media';
     end if;
   end if;
 
@@ -187,6 +346,12 @@ begin
     approved_timezone = '',
     approved_facebook_page_id = '',
     approved_instagram_business_id = '',
+    approved_fb_media_sha256 = '', approved_fb_media_mime = '',
+    approved_fb_media_bytes = 0, approved_fb_media_path = '', approved_fb_media_url = '',
+    approved_ig_media_sha256 = '', approved_ig_media_mime = '',
+    approved_ig_media_bytes = 0, approved_ig_media_path = '', approved_ig_media_url = '',
+    publish_facebook_page_id = '',
+    publish_instagram_business_id = '',
     last_error = null,
     updated_at = now()
   where id = p_draft_id
@@ -206,14 +371,31 @@ revoke all on function public.save_post_draft(uuid,text,text,text,text[])
 grant execute on function public.save_post_draft(uuid,text,text,text,text[])
   to authenticated;
 
+drop function if exists public.approve_and_schedule_post_draft(
+  uuid,timestamptz,text,text,text,text,text[]
+);
+
 create or replace function public.approve_and_schedule_post_draft(
+  p_owner uuid,
   p_draft_id uuid,
   p_scheduled_for timestamptz,
   p_timezone text,
   p_fb_caption text,
   p_ig_caption text,
   p_x_caption text,
-  p_targets text[]
+  p_targets text[],
+  p_fb_source_url text,
+  p_ig_source_url text,
+  p_fb_media_sha256 text,
+  p_fb_media_mime text,
+  p_fb_media_bytes bigint,
+  p_fb_media_path text,
+  p_fb_media_url text,
+  p_ig_media_sha256 text,
+  p_ig_media_mime text,
+  p_ig_media_bytes bigint,
+  p_ig_media_path text,
+  p_ig_media_url text
 )
 returns public.post_drafts
 language plpgsql security definer set search_path = '' as $$
@@ -227,7 +409,10 @@ declare
   v_now timestamptz := now();
   v_policy_key text;
 begin
-  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if coalesce(auth.role(),'') <> 'service_role' then
+    raise exception 'Immutable scheduling is available only through the approval service';
+  end if;
+  if p_owner is null then raise exception 'An owner is required'; end if;
   if p_scheduled_for is null or p_scheduled_for <= v_now then
     raise exception 'Choose a future publish time';
   end if;
@@ -253,12 +438,72 @@ begin
     raise exception 'Choose Facebook or Instagram for this Meta-only schedule';
   end if;
 
+  if 'facebook' = any(v_targets) then
+    if trim(coalesce(p_fb_source_url,'')) = ''
+      or coalesce(p_fb_media_sha256,'') !~ '^[0-9a-f]{64}$'
+      or p_fb_media_mime not in ('image/jpeg','image/png','image/webp')
+      or coalesce(p_fb_media_bytes,0) not between 1 and 10485760
+      or p_fb_media_path is distinct from concat(
+        'owners/',lower(p_owner::text),'/sha256/',left(p_fb_media_sha256,2),'/',p_fb_media_sha256,'.',
+        case p_fb_media_mime when 'image/jpeg' then 'jpg'
+          when 'image/png' then 'png' else 'webp' end
+      )
+      or p_fb_media_url is distinct from concat(
+        'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/post-approved-media/',
+        p_fb_media_path
+      ) then
+      raise exception 'Facebook approved-media metadata is invalid';
+    end if;
+    if not exists (
+      select 1 from storage.objects
+      where bucket_id = 'post-approved-media' and name = p_fb_media_path
+        and coalesce(metadata->>'size','') = p_fb_media_bytes::text
+        and lower(coalesce(metadata->>'mimetype','')) = p_fb_media_mime
+    ) then
+      raise exception 'The exact approved Facebook object is missing from Storage';
+    end if;
+  elsif coalesce(p_fb_source_url,'') <> '' or coalesce(p_fb_media_sha256,'') <> ''
+    or coalesce(p_fb_media_mime,'') <> '' or coalesce(p_fb_media_bytes,0) <> 0
+    or coalesce(p_fb_media_path,'') <> '' or coalesce(p_fb_media_url,'') <> '' then
+    raise exception 'Unselected Facebook cannot receive approved-media metadata';
+  end if;
+
+  if 'instagram' = any(v_targets) then
+    if trim(coalesce(p_ig_source_url,'')) = ''
+      or coalesce(p_ig_media_sha256,'') !~ '^[0-9a-f]{64}$'
+      or p_ig_media_mime not in ('image/jpeg','image/png','image/webp')
+      or coalesce(p_ig_media_bytes,0) not between 1 and 10485760
+      or p_ig_media_path is distinct from concat(
+        'owners/',lower(p_owner::text),'/sha256/',left(p_ig_media_sha256,2),'/',p_ig_media_sha256,'.',
+        case p_ig_media_mime when 'image/jpeg' then 'jpg'
+          when 'image/png' then 'png' else 'webp' end
+      )
+      or p_ig_media_url is distinct from concat(
+        'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/post-approved-media/',
+        p_ig_media_path
+      ) then
+      raise exception 'Instagram approved-media metadata is invalid';
+    end if;
+    if not exists (
+      select 1 from storage.objects
+      where bucket_id = 'post-approved-media' and name = p_ig_media_path
+        and coalesce(metadata->>'size','') = p_ig_media_bytes::text
+        and lower(coalesce(metadata->>'mimetype','')) = p_ig_media_mime
+    ) then
+      raise exception 'The exact approved Instagram object is missing from Storage';
+    end if;
+  elsif coalesce(p_ig_source_url,'') <> '' or coalesce(p_ig_media_sha256,'') <> ''
+    or coalesce(p_ig_media_mime,'') <> '' or coalesce(p_ig_media_bytes,0) <> 0
+    or coalesce(p_ig_media_path,'') <> '' or coalesce(p_ig_media_url,'') <> '' then
+    raise exception 'Unselected Instagram cannot receive approved-media metadata';
+  end if;
+
   select * into v_draft from public.post_drafts
-    where id = p_draft_id and owner = auth.uid() for update;
+    where id = p_draft_id and owner = p_owner for update;
   if not found then raise exception 'Draft not found'; end if;
   if v_draft.persona_id is null or not exists (
     select 1 from public.personas
-    where id = v_draft.persona_id and owner = auth.uid()
+    where id = v_draft.persona_id and owner = p_owner
   ) then
     raise exception 'Choose an owned persona before scheduling';
   end if;
@@ -280,19 +525,17 @@ begin
 
   select * into v_ledger from public.account_ledger
     where id::text = v_draft.facebook_ledger_id
-      and owner = auth.uid() and provider = 'facebook'
+      and owner = p_owner and provider = 'facebook'
       and coalesce(suspended,false) = false;
   if not found then raise exception 'The selected Facebook page is unavailable'; end if;
   v_policy_key := regexp_replace(lower(concat_ws(' ',v_ledger.username,v_ledger.login_email,v_ledger.aliases)),'[^a-z0-9]+','','g');
   if v_policy_key like '%cannacandidz%' or v_policy_key like '%cannacandids%'
-    or v_policy_key like '%sherlockchomes%'
-    or v_policy_key like '%traditionalfamilyvalues%'
-    or v_policy_key like '%tradfamilyvalues%' then
+    or v_policy_key like '%sherlockchomes%' then
     raise exception 'This destination is blocked from Meta publishing by project policy';
   end if;
 
   select * into v_meta from public.meta_page_connections
-    where owner = auth.uid() and facebook_ledger_id = v_ledger.id;
+    where owner = p_owner and facebook_ledger_id = v_ledger.id;
   if not found then raise exception 'The selected Facebook page is not paired with Meta'; end if;
   if trim(coalesce(v_meta.facebook_page_id::text,'')) = '' then
     raise exception 'The selected Meta pairing has no Facebook Page ID';
@@ -300,23 +543,18 @@ begin
   if 'instagram' = any(v_targets) and v_meta.instagram_business_id is null then
     raise exception 'The selected page has no linked professional Instagram account';
   end if;
-  if 'facebook' = any(v_targets)
-    and coalesce(nullif(v_draft.fb_image_url,''),nullif(v_draft.source_image_url,'')) is null then
-    raise exception 'Facebook needs a public source image';
+  -- The service fetched these source URLs before entering the transaction. A
+  -- concurrent draft/image change must invalidate that work instead of pairing
+  -- freshly edited content with bytes approved from an older read.
+  if 'facebook' = any(v_targets) and coalesce(
+    nullif(v_draft.fb_image_url,''),nullif(v_draft.source_image_url,''),'')
+      is distinct from p_fb_source_url then
+    raise exception 'The Facebook image changed while its exact bytes were being approved';
   end if;
-  if 'instagram' = any(v_targets)
-    and coalesce(nullif(v_draft.ig_image_url,''),nullif(v_draft.source_image_url,'')) is null then
-    raise exception 'Instagram needs a public source image';
-  end if;
-  if 'facebook' = any(v_targets)
-    and coalesce(nullif(v_draft.fb_image_url,''),nullif(v_draft.source_image_url,''))
-      !~* '^https://[^[:space:]]+$' then
-    raise exception 'Facebook needs a public HTTPS image';
-  end if;
-  if 'instagram' = any(v_targets)
-    and coalesce(nullif(v_draft.ig_image_url,''),nullif(v_draft.source_image_url,''))
-      !~* '^https://[^[:space:]]+$' then
-    raise exception 'Instagram needs a public HTTPS image';
+  if 'instagram' = any(v_targets) and coalesce(
+    nullif(v_draft.ig_image_url,''),nullif(v_draft.source_image_url,''),'')
+      is distinct from p_ig_source_url then
+    raise exception 'The Instagram image changed while its exact bytes were being approved';
   end if;
 
   v_week_start := date_trunc('week',p_scheduled_for at time zone p_timezone)::date;
@@ -328,8 +566,19 @@ begin
       then coalesce(v_meta.instagram_business_id::text,'') else '' end,
     coalesce(p_fb_caption,''),
     coalesce(p_ig_caption,''), coalesce(p_x_caption,''),
-    v_draft.fb_image_url, v_draft.ig_image_url, v_draft.x_image_url,
-    v_draft.source_image_url
+    case when 'facebook' = any(v_targets) then p_fb_media_url else v_draft.fb_image_url end,
+    case when 'instagram' = any(v_targets) then p_ig_media_url else v_draft.ig_image_url end,
+    v_draft.x_image_url, v_draft.source_image_url,
+    case when 'facebook' = any(v_targets) then p_fb_media_sha256 else '' end,
+    case when 'facebook' = any(v_targets) then p_fb_media_mime else '' end,
+    case when 'facebook' = any(v_targets) then p_fb_media_bytes else 0 end,
+    case when 'facebook' = any(v_targets) then p_fb_media_path else '' end,
+    case when 'facebook' = any(v_targets) then p_fb_media_url else '' end,
+    case when 'instagram' = any(v_targets) then p_ig_media_sha256 else '' end,
+    case when 'instagram' = any(v_targets) then p_ig_media_mime else '' end,
+    case when 'instagram' = any(v_targets) then p_ig_media_bytes else 0 end,
+    case when 'instagram' = any(v_targets) then p_ig_media_path else '' end,
+    case when 'instagram' = any(v_targets) then p_ig_media_url else '' end
   );
 
   update public.post_drafts set
@@ -337,16 +586,32 @@ begin
     ig_caption = coalesce(p_ig_caption,''),
     x_caption = coalesce(p_x_caption,''),
     targets = v_targets,
+    fb_image_url = case when 'facebook' = any(v_targets)
+      then p_fb_media_url else fb_image_url end,
+    ig_image_url = case when 'instagram' = any(v_targets)
+      then p_ig_media_url else ig_image_url end,
     status = 'scheduled',
     scheduled_for = p_scheduled_for,
     week_start = v_week_start,
     approved_at = v_now,
-    approved_by = auth.uid(),
+    approved_by = p_owner,
     approved_content_hash = v_hash,
     approved_timezone = p_timezone,
     approved_facebook_page_id = v_meta.facebook_page_id::text,
     approved_instagram_business_id = case when 'instagram' = any(v_targets)
       then coalesce(v_meta.instagram_business_id::text,'') else '' end,
+    approved_fb_media_sha256 = case when 'facebook' = any(v_targets) then p_fb_media_sha256 else '' end,
+    approved_fb_media_mime = case when 'facebook' = any(v_targets) then p_fb_media_mime else '' end,
+    approved_fb_media_bytes = case when 'facebook' = any(v_targets) then p_fb_media_bytes else 0 end,
+    approved_fb_media_path = case when 'facebook' = any(v_targets) then p_fb_media_path else '' end,
+    approved_fb_media_url = case when 'facebook' = any(v_targets) then p_fb_media_url else '' end,
+    approved_ig_media_sha256 = case when 'instagram' = any(v_targets) then p_ig_media_sha256 else '' end,
+    approved_ig_media_mime = case when 'instagram' = any(v_targets) then p_ig_media_mime else '' end,
+    approved_ig_media_bytes = case when 'instagram' = any(v_targets) then p_ig_media_bytes else 0 end,
+    approved_ig_media_path = case when 'instagram' = any(v_targets) then p_ig_media_path else '' end,
+    approved_ig_media_url = case when 'instagram' = any(v_targets) then p_ig_media_url else '' end,
+    publish_facebook_page_id = '',
+    publish_instagram_business_id = '',
     last_error = null,
     publish_claimed_at = null,
     updated_at = v_now
@@ -356,20 +621,34 @@ begin
   insert into public.agent_actions (
     owner, persona_id, action_type, entity_type, entity_id, outcome, detail
   ) values (
-    auth.uid(), v_draft.persona_id, 'post_draft.scheduled', 'post_draft',
+    p_owner, v_draft.persona_id, 'post_draft.scheduled', 'post_draft',
     v_draft.id, 'approved', jsonb_build_object(
       'scheduled_for',p_scheduled_for,'timezone',p_timezone,
       'week_start',v_week_start,'targets',v_targets,
-      'facebook_ledger_id',v_draft.facebook_ledger_id,'content_hash',v_hash
+      'facebook_ledger_id',v_draft.facebook_ledger_id,'content_hash',v_hash,
+      'facebook_media',case when 'facebook' = any(v_targets) then jsonb_build_object(
+        'sha256',p_fb_media_sha256,'mime',p_fb_media_mime,
+        'bytes',p_fb_media_bytes,'path',p_fb_media_path
+      ) else null end,
+      'instagram_media',case when 'instagram' = any(v_targets) then jsonb_build_object(
+        'sha256',p_ig_media_sha256,'mime',p_ig_media_mime,
+        'bytes',p_ig_media_bytes,'path',p_ig_media_path
+      ) else null end
     )
   );
   return v_draft;
 end;
 $$;
-revoke all on function public.approve_and_schedule_post_draft(uuid,timestamptz,text,text,text,text,text[])
-  from public, anon;
-grant execute on function public.approve_and_schedule_post_draft(uuid,timestamptz,text,text,text,text,text[])
-  to authenticated;
+revoke all on function public.approve_and_schedule_post_draft(
+  uuid,uuid,timestamptz,text,text,text,text,text[],text,text,
+  text,text,bigint,text,text,text,text,bigint,text,text
+)
+  from public, anon, authenticated;
+grant execute on function public.approve_and_schedule_post_draft(
+  uuid,uuid,timestamptz,text,text,text,text,text[],text,text,
+  text,text,bigint,text,text,text,text,bigint,text,text
+)
+  to service_role;
 
 create or replace function public.unschedule_post_draft(p_draft_id uuid)
 returns public.post_drafts
@@ -387,6 +666,11 @@ begin
     approved_by = null, approved_content_hash = '', last_error = null,
     approved_timezone = '', approved_facebook_page_id = '',
     approved_instagram_business_id = '',
+    approved_fb_media_sha256 = '', approved_fb_media_mime = '',
+    approved_fb_media_bytes = 0, approved_fb_media_path = '', approved_fb_media_url = '',
+    approved_ig_media_sha256 = '', approved_ig_media_mime = '',
+    approved_ig_media_bytes = 0, approved_ig_media_path = '', approved_ig_media_url = '',
+    publish_facebook_page_id = '', publish_instagram_business_id = '',
     publish_claimed_at = null, updated_at = now()
   where id = p_draft_id returning * into v_draft;
   insert into public.agent_actions (
@@ -427,6 +711,95 @@ end;
 $$;
 revoke all on function public.delete_post_draft(uuid) from public, anon;
 grant execute on function public.delete_post_draft(uuid) to authenticated;
+
+-- Provider-facing functions finalize state and append its audit event in one
+-- database transaction. If either write fails, the row stays publishing and is
+-- not made retryable.
+create or replace function public.finalize_post_draft_publish(
+  p_draft_id uuid,
+  p_owner uuid,
+  p_status text,
+  p_last_error text,
+  p_action_type text,
+  p_detail jsonb
+)
+returns public.post_drafts
+language plpgsql security definer set search_path = '' as $$
+declare v_draft public.post_drafts%rowtype;
+begin
+  if p_status not in ('posted','failed') then raise exception 'Invalid final publish status'; end if;
+  if trim(coalesce(p_action_type,'')) = '' then raise exception 'An audit action type is required'; end if;
+  select * into v_draft from public.post_drafts
+  where id = p_draft_id and owner = p_owner and status = 'publishing'
+  for update;
+  if not found then raise exception 'The publishing claim is no longer current'; end if;
+  if p_status = 'posted' and (
+    ('facebook' = any(v_draft.targets) and (
+      v_draft.fb_post_id is null or v_draft.publish_facebook_page_id = ''
+    ))
+    or ('instagram' = any(v_draft.targets) and (
+      v_draft.ig_media_id is null or v_draft.publish_instagram_business_id = ''
+    ))
+    or ('twitter' = any(v_draft.targets) and v_draft.x_tweet_id is null)
+  ) then
+    raise exception 'Every selected target needs a durable provider result and destination before posted';
+  end if;
+
+  update public.post_drafts set
+    status = p_status,
+    last_error = nullif(p_last_error,''),
+    posted_at = case when p_status = 'posted' then now() else posted_at end,
+    publish_claimed_at = null,
+    updated_at = now()
+  where id = p_draft_id returning * into v_draft;
+
+  insert into public.agent_actions (
+    owner, persona_id, action_type, entity_type, entity_id, outcome, detail
+  ) values (
+    p_owner, v_draft.persona_id, p_action_type, 'post_draft', p_draft_id,
+    p_status, coalesce(p_detail,'{}'::jsonb)
+  );
+  return v_draft;
+end;
+$$;
+revoke all on function public.finalize_post_draft_publish(uuid,uuid,text,text,text,jsonb)
+  from public, anon, authenticated;
+grant execute on function public.finalize_post_draft_publish(uuid,uuid,text,text,text,jsonb)
+  to service_role;
+
+create or replace function public.note_post_draft_reconciliation(
+  p_draft_id uuid,
+  p_owner uuid,
+  p_note text,
+  p_action_type text,
+  p_detail jsonb
+)
+returns public.post_drafts
+language plpgsql security definer set search_path = '' as $$
+declare v_draft public.post_drafts%rowtype;
+begin
+  if trim(coalesce(p_note,'')) = '' then raise exception 'A reconciliation note is required'; end if;
+  if trim(coalesce(p_action_type,'')) = '' then raise exception 'An audit action type is required'; end if;
+  select * into v_draft from public.post_drafts
+  where id = p_draft_id and owner = p_owner and status = 'publishing'
+  for update;
+  if not found then raise exception 'The publishing claim is no longer current'; end if;
+
+  update public.post_drafts set last_error = p_note, updated_at = now()
+  where id = p_draft_id returning * into v_draft;
+  insert into public.agent_actions (
+    owner, persona_id, action_type, entity_type, entity_id, outcome, detail
+  ) values (
+    p_owner, v_draft.persona_id, p_action_type, 'post_draft', p_draft_id,
+    'reconciliation_required', coalesce(p_detail,'{}'::jsonb)
+  );
+  return v_draft;
+end;
+$$;
+revoke all on function public.note_post_draft_reconciliation(uuid,uuid,text,text,jsonb)
+  from public, anon, authenticated;
+grant execute on function public.note_post_draft_reconciliation(uuid,uuid,text,text,jsonb)
+  to service_role;
 
 -- Claim only due rows whose owner's global automation switch is available and
 -- on. Filtering before the small locked batch prevents a paused owner's backlog

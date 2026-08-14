@@ -1,8 +1,8 @@
 # AliaSpaces / MyPersonas — Roadmap
 
 **Vision:** the home for every persona a person carries. A MySpace-style network where
-each persona gets its own page (looks, music, Top 8, albums, feed, links), fully
-anonymous by design — never linked to the owner or to each other — with an AI layer
+each persona gets its own page (looks, music, Top 8, albums, feed, links), with the owner
+identity private and personas unlinked by default (cross-links require explicit opt-in), with an AI layer
 (models per persona and per task, an HQ assistant, character tooling) and an
 extension ecosystem (Concept character studio, Personas desktop companion) that
 carries personas beyond the site onto every platform they live on.
@@ -36,10 +36,10 @@ Shipped:
 
 ## v0.5 — Agent control center and live network
 
-An `[x]` here means the implementation exists in this repository. Migration 011, the five
-release Edge Functions, production secrets, and both five-minute cron jobs were deployed
-and smoke-tested on 2026-07-20. The Pages artifact is included in this release; signed-in
-browser scenarios retain their own verification evidence.
+An `[x]` here means the implementation exists in this repository, not necessarily that it
+is pushed, deployed, configured, migrated, or provider-verified. Production state is called
+out explicitly. `[~]` means a useful local slice exists but a release, live verification, or
+larger product phase remains.
 
 - [x] Private Account Ledger batch mode: add many external accounts, keep them
       unassigned or bind each to an existing/quick-created private persona. Deployed
@@ -65,7 +65,9 @@ browser scenarios retain their own verification evidence.
 - [x] Meta identity/pairing foundation: migration 018 and `meta-oauth` discover
       Facebook Pages and Page-linked professional Instagram accounts, bind only
       owner-selected ledger records, keep tokens in Vault, and revoke the shared grant.
-      Production connection remains configuration-gated and direct publishing is off.
+      Twenty-five pairs were recorded in the 2026-08-12 snapshot and the earlier owner-triggered
+      FB/IG path was proven on an owner asset. The exact hardened replacement is local/unreleased;
+      recurring publishing remains off.
 - [x] Public provider-review foundation: deployable Privacy, Terms, Data Deletion, and
       owner setup pages with explicit official-API, app-review, manual-handoff, and
       connector-status boundaries.
@@ -102,18 +104,21 @@ browser scenarios retain their own verification evidence.
 - [x] X API cost guard: per-draft cost badge, link-cost confirmation before approval,
       and month-to-date + projected spend on Targets. Automated drafts are barred from
       linking to the persona's own AliaSpaces page (run-tasks system rule)
-- [x] Reddit connector (Order 4 complete): official OAuth (identity/submit/read,
+- [~] Reddit connector (Order 4 code complete locally): official OAuth (identity/submit/read,
       server-completed callback, Vault-only tokens, username binding) plus reddit-post
-      publishing to a tags-named subreddit or the account profile, with Queue button
+      publishing to a tags-named subreddit or the account profile, with Queue button.
+      Owner still reviews migration 021/config, sets credentials, deploys both functions,
+      pushes Pages, and verifies OAuth, disconnect/erasure, and one low-stakes approved post.
 - [x] Shared account managers: migration 020 `account_persona_links` lets many personas
       co-manage one ledger account (primary stays on the ledger row); share-aware
       editor checkboxes, targets, staging, and Discord publishing. Follow-up: teach
       `run-tasks` the share-join so schedules can run as co-managers
-- [x] Discord channel-webhook posting connector: migration 019 stores an owner-pasted
-      channel webhook in Vault (never returned to a browser), the discord-post Edge
-      Function publishes one approved draft per owner press with an atomic publishing
-      lease, and the Queue gains a "Post to Discord now" button. Owner still runs the
-      SQL + deploys the function. Scheduled/L3 Discord posting deliberately excluded.
+- [~] Discord channel-webhook source exists, but the current frontend has no Connect/Post
+      controls and live migration/webhook state is unverified. `discord-post` is explicitly
+      fail-closed/dormant in this release. Re-enable only after exact approval + immutable
+      webhook/channel binding, pause/destination revalidation, provider-ID checkpointing,
+      uncertain-outcome reconciliation, transactional audit/finalization, Vault erasure,
+      and race/failure tests. Scheduled/L3 Discord posting remains excluded.
 - [x] Connector build orders: CONNECTOR-BUILD-ORDERS.md documents, for every ledger
       platform, whether authentication and automated posting are physically possible,
       and specs Orders 1–6 (X write, FB Page, IG professional, Reddit, YouTube,
@@ -123,14 +128,17 @@ browser scenarios retain their own verification evidence.
 - [x] Persona editor Managed accounts picker: assign or release saved Account Ledger
       accounts with checkboxes directly in the persona editor; accounts held by another
       persona show where they live before a move, and assignments apply on Save
-- [ ] Notifications: Supabase Realtime for friend requests/accepts (replace
-      load-time polling badge)
-- [ ] Comments and reactions on feed posts
-- [ ] Feed pagination + hashtag browse pages
+- [~] Friend notifications: bounded, owner-persona-scoped Supabase Realtime subscriptions
+      and focused badge refresh are complete locally. Apply migration 037, push Pages, and
+      verify request/accept events plus reconnect/focus fallback under RLS.
+- [x] Comments and reactions on feed posts
+- [x] Feed pagination + hashtag browse pages
 - [ ] Per-platform branded icons (extend the hologram icon bank beyond the orbit node)
-- [ ] Proper "act as persona" picker modal (replace prompt() dialogs)
-- [ ] Extensions page: full catalog view with release notes + version history;
-      Personas app switched to the same releases-driven model as Concept
+- [x] Proper "act as persona" picker modal for social actions
+- [~] Extensions page: full escaped/bounded catalog cards, GitHub release history, and
+      checked-in fallbacks for Concept + Personas are complete locally. Publish real GitHub
+      releases/manifests for the currently private or unavailable repositories, then verify
+      the public catalog; the local fallback remains truthful when no release exists.
 - [ ] Lightroom watched-folder import (free path): Lightroom auto-export/synced
       folder watched by the Personas/Concept desktop app, new exports uploaded to
       Supabase Storage tagged to a persona for page images and training sets
@@ -150,11 +158,11 @@ browser scenarios retain their own verification evidence.
       from the personas table)
 - [x] gemini-image Edge Function deployed (2026-08-08): server-side Gemini image
       generation/editing with the owner's Vault key; registered in supabase/config.toml
-- [ ] Migrate off legacy anon/service_role JWT keys to the new sb_publishable_/sb_secret_
-      API keys (dashboard marks legacy keys deprecated; they still work and are
-      auto-injected today — schedule before Supabase retires them)
-- [ ] Wire externally generated persona images into personas (image generation
-      delegated to ChatGPT/Gemini; wiring + storage on our side)
+- [~] Migrate off legacy anon/service_role JWT keys to the new sb_publishable_/sb_secret_
+      API keys. The browser already uses a publishable key; finish the function/secret
+      inventory and production rotation before Supabase retires legacy keys.
+- [x] Wire externally generated or uploaded persona images into `persona-media`; new image
+      upload/generation paths now use owner-namespaced public Storage while video remains in `media`.
 - [ ] Second Castleborn doc link from owner (pending input)
 - [x] Meta cleanup "Could not lock" root-caused and fixed (2026-08-08): migration 025
       (#variable_conflict use_column in the claim function); safe modal close + Escape
@@ -192,22 +200,24 @@ browser scenarios retain their own verification evidence.
       pg_cron job 'data-retention-weekly' scheduled (Sun 04:15 UTC); dry run
       returned 0 deletions across all categories (DB already clean). 029
       anon-EXECUTE reviewed → no action (see above).
-- [ ] P0: persona media/docs → Storage — upload art to persona-media bucket,
-      repoint app to Storage URLs, remove assets/personas/ from repo (needs
-      dashboard upload + verify; not safe to do unattended)
+- [~] P0: persona media/docs → Storage — new image paths use `persona-media`, and account/
+      content erasure now verifies exact owner prefixes across all four media buckets.
+      Inventory and migrate legacy `assets/personas/` art and old URLs with owner review;
+      do not remove repo files until every replacement is reloaded and verified.
 - [ ] Owner review: 97 of 156 account_ledger rows have no connection (inventory) —
       identify truly-abandoned ones for archive-then-delete in batches
 - [ ] SQL editor housekeeping: archive useful named snippets to repo, clear the
       untitled scratch tabs (dashboard-side; do when the dashboard is stable)
-- [ ] Push app changes to GitHub Pages (modal close/Escape/auto-dismiss) — owner push;
-      clear stale .git/index.lock first if a git tool is holding it
-- [ ] User-controlled persona media/data storage: move persona avatars/banners and any
+- [ ] Review and push the current coordinated app/function release; follow
+      `ROADMAP-EXECUTION-2026-08-13.md` and keep migration 036 dormant.
+- [~] User-controlled persona media/data storage: move persona avatars/banners and any
       persona documents out of the website repo into owner-controlled storage.
       Best practice: Supabase Storage per-owner bucket (RLS + signed URLs) with
       in-app upload/download/delete wired to the existing erase-content and
       delete-account flows, plus optional links to owner cloud (Drive/OneDrive).
-      Free version: same Supabase Storage (free tier, 1 GB) — no new cost; repo keeps
-      only site chrome (bg, favicon, hero). Added 2026-08-08 after owner privacy review.
+      The Supabase path and fail-closed four-prefix erasure are complete locally. Optional
+      Drive/OneDrive links, legacy migration, and live erasure tests remain. The repo should
+      ultimately keep only shared site chrome.
 - [x] Root .gitignore guard added (2026-08-08): /outputs/, roadmap-prompt docs,
       dossiers, backups can no longer be committed even by git add -A
 - [x] Security Advisor safe fixes (2026-08-08, migration 027): removed public
@@ -224,12 +234,15 @@ browser scenarios retain their own verification evidence.
 
 - [ ] REDEPLOY meta-oauth: account_type regression patched in repo (bare IG edge) —
       deploy to unblock Meta connect (dashboard editor was down; use CLI/CI)
-- [~] Context-box feature: migration 030 APPLIED + verified (personas.context_log,
-      20k cap, 2026-08-12). NEXT: wire `eContext` textarea + appendContextLog in
-      index.html, fold bounded slice into ai-proxy prompt (CONTEXT-BOX-SPEC.md) —
-      UI deferred (auto-deploys on push; needs logged-in verify)
-- [ ] Apply persona updates: Sherlock Chomes (cannabis podcast), Song/Rhythm
-      (warrior-gamer siblings) — copy ready in persona-briefs/
+- [~] Context-box feature: migration 030 APPLIED + verified. Manual editing, conflict-safe
+      append/replace, persona-field change summaries, owner-reviewed chat takeaways, and a
+      bounded 10-line/1,500-character AI prompt slice are complete locally. Deploy ai-proxy
+      before Pages and live-test concurrent edits; remaining event hooks are documented.
+- [ ] Apply persona update: Sherlock Chomes (cannabis podcast) — copy remains in
+      persona-briefs/ and requires its own owner approval.
+- [x] Correct the rejected Song/Rhythm warrior-sibling brief — Song now uses the
+      Lifegiving Compassion identity and permanent no-donations boundary; the file
+      makes no new Rhythm claim. No live persona write was authorized or performed.
 - [ ] Personas = personalized AI news feed (owner vision): AI researches assigned
       interests, fact-checks, cites sources, serves tailored blurbs (feed_items +
       ai/research) instead of mindless scroll; later, projects = multi-persona
@@ -238,9 +251,11 @@ browser scenarios retain their own verification evidence.
       (concepts/soulular.md); likely the persona follow/graph/discovery layer
 - [x] V2 rebuild blueprint written (V2-BLUEPRINT.md) — incremental migration path,
       not a big-bang rewrite
-- [~] Meta posting: meta-post scaffold in repo (gated) + APP-REVIEW-META.md. NEXT:
-      owner starts Meta App Review (long pole); then apply meta-oauth PUBLISH_SCOPES
-      opt-in, finish meta-post token/queue wiring, live tests
+- [~] Meta posting: owner-triggered FB/IG publishing was previously proven live for the
+      owner's assets. The new draft claim, immutable destination/media snapshots, partial
+      checkpoints, and exact scheduling path are code-complete locally but not deployed;
+      apply 035 in its coordinated maintenance window. App Review is needed only to serve
+      other users. Keep recurring migration 036 off until the activation checklist closes.
 - [~] Pull drifted prod functions into repo — CONFIRMED 8 live 2026-08-12
       (daily-discovery, gemini-models, gemini-probe, image-probe, meta-ig-attach,
       meta-ig-discover, split-post, twitter-post). Blocked from here (dashboard
@@ -251,11 +266,13 @@ browser scenarios retain their own verification evidence.
       `.cols` 280px/1fr). Additive, no-op on desktop, all rules parse valid in Blink,
       syntax check passes, backup in _to_delete/backups/. PENDING: sticky mobile CTA
       (needs logged-in visual verify) — MOBILE-BLUEPRINT.md
-- [ ] Native apps: PWA-first (manifest + SW + push) → Expo/React Native; surfaces =
-      persona chat, post approvals, AI news feed (MOBILE-BLUEPRINT.md)
-- [~] Chat workspaces: migration 031 APPLIED + verified (chat_workspaces + owner RLS +
-      agent_messages.workspace_id, 2026-08-12). NEXT: Save/Attach-context UI actions
-      that distill into context_log — MOBILE-BLUEPRINT.md §3
+- [~] Native apps: the PWA manifest/install/public-offline shell is complete locally.
+      Push notifications remain a separate permission/backend phase; Expo/React Native
+      comes later for chat, approvals, share/camera, and the sourced AI feed.
+- [~] Chat workspaces: migration 031 APPLIED + verified; owner-scoped list/create/rename/
+      pin/resume, workspace messages, inclusion in the full account export, owner-reviewed Save context, and max-three
+      distilled Attach context are complete locally. Deploy ai-proxy first, then Pages,
+      and live-test RLS, conflict handling, resume, distillation, and export.
 
 ## v1 — The platform (major milestone)
 
@@ -274,7 +291,8 @@ browser scenarios retain their own verification evidence.
       flag for Concept LoRA sets (verify Adobe ToS on ML use of API-pulled assets)
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
-- [ ] PWA: installable mobile experience, push notifications
+- [~] PWA: install/offline shell complete locally; real-device release verification and
+      a separate push-notification permission/subscription/delivery phase remain
 - [ ] Custom auth domain (auth.aliaspaces.com) for branded OAuth consent
 - [ ] Profile analytics for owners (views, clicks on links/albums)
 
@@ -306,19 +324,21 @@ browser scenarios retain their own verification evidence.
    screenshots are unpreventable — treated as attribution/deterrence.
 7. **Blocks/mutes/topic filters are partly client-side** — a blocked user can't
    friend you (RLS-enforced) but public content hiding is UX-level, not server-level.
-8. **Notifications poll at page load** only (no realtime).
-9. **prompt()/confirm() dialogs** for persona picking and destructive confirms.
-10. **External drafts still post manually** — native AliaSpaces publishing is implemented,
-    but every external destination remains hard-gated until its official write connector,
-    scopes, provider approval, assignment, caps, and reconciliation are implemented.
+8. **Friend Realtime is local-only until migration 037 + Pages ship**; focus refresh remains
+   the fallback for deletes/cancellations that cannot use the filtered event path.
+9. **prompt()/confirm() dialogs remain for several settings/destructive confirms**, although
+   social identity selection now uses the proper Act as persona modal.
+10. **External publishing is connector-specific** — owner-triggered Meta is proven, Reddit is
+    locally hardened but undeployed, and other destinations remain manual or gated until their
+    official write scopes, assignment, caps, audit, and reconciliation are verified.
 11. **GitHub Pages hosting** — free static host, ~10-minute cache, no server control.
 12. **error_logs is insert-open** (anyone can file) — spam-able; fine pre-launch.
 13. **Top 8 is a jsonb array** on the persona row (no referential integrity).
 14. **Extensions "Open" buttons target localhost ports** — tools must be installed
     and running locally; catalog reads GitHub API client-side (rate-limited) with a
     static releases.json fallback.
-15. **Personas app zip lives in the site repo** — small today; moves to GitHub
-    Releases like Concept in v0.5.
+15. **Personas app zip remains a checked-in fallback**; the catalog now understands GitHub
+    Releases for both desktop tools, but the owner still needs to publish public releases.
 16. **Page age gate is honor-system** (button + session flag); NSFW hiding is default-on
     but client-side. Public fan chat therefore stays server-disabled for NSFW personas
     until server-verifiable age assurance exists.

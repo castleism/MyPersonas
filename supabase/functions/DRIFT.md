@@ -2,8 +2,11 @@
 
 _Checked live against the Supabase dashboard on 2026-08-12 (project `nwsqyuucwzihruszocge`)._
 
-26 functions are deployed; 18 are in `supabase/functions/`. These **8 are deployed but
-not version-controlled** — pull them so the repo is the source of truth:
+The live snapshot contained 26 deployed functions. Eighteen of those had matching
+version-controlled directories at the time; these **8 were deployed but not
+version-controlled** — pull them so the repo is the source of truth. This checkout now
+also contains new/local-only functions, so its directory count must not be read as a
+deployment count:
 
 - `daily-discovery`
 - `gemini-models`
@@ -13,6 +16,10 @@ not version-controlled** — pull them so the repo is the source of truth:
 - `meta-ig-discover`
 - `split-post`
 - `twitter-post`
+
+`reddit-oauth` and `reddit-post` are present in this checkout and are not part of the
+drift list. Their presence is source-control evidence only; deployment, secrets, OAuth
+round trips, write scopes, and provider results require separate verification.
 
 ## Why this can't be pulled from here
 
@@ -53,6 +60,7 @@ done
 
 ## Also verify: `meta-post`
 
-`meta-post` exists in the repo (gated-off scaffold) **and** deployed. Diff the deployed
-version against the repo scaffold after download — if the deployed one differs, reconcile
-before the App Review publishing work goes live (see `APP-REVIEW-META.md`).
+An older `meta-post` is deployed, while this checkout contains the hardened exact-draft
+replacement. Compare the live source/behavior with the repository before the coordinated
+release; do not restore the old scaffold or overwrite the new claim/checkpoint/reconciliation
+contract. App Review remains a separate requirement only for serving other users.

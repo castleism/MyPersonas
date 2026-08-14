@@ -1,0 +1,66 @@
+{
+  "id": "./",
+  "name": "AliaSpaces — every persona, one home",
+  "short_name": "AliaSpaces",
+  "description": "Create and manage distinct persona spaces from one owner-controlled home.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7fafd",
+  "theme_color": "#1877f2",
+  "categories": [
+    "social",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./brand/app-icon/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./brand/app-icon/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./brand/app-icon/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Your studio",
+      "short_name": "Studio",
+      "description": "Open your AliaSpaces persona studio.",
+      "url": "./#/studio",
+      "icons": [
+        {
+          "src": "./brand/app-icon/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Discovery inbox",
+      "short_name": "Brain",
+      "description": "Open the AliaSpaces discovery inbox.",
+      "url": "./#/discovery",
+      "icons": [
+        {
+          "src": "./brand/app-icon/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

@@ -30,6 +30,11 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const DISCORD_CONTENT_LIMIT = 2000;
+// This endpoint is deliberately dormant in the coordinated 2026-08-13 release.
+// Do not replace this with an environment toggle: re-enabling requires a reviewed
+// claim/hash/destination-fingerprint migration, provider-ID checkpointing,
+// uncertain-outcome reconciliation, and transactional finalization/audit.
+const DISCORD_POST_RELEASE_ENABLED = false;
 const ALLOWED_ORIGINS = new Set([
   "https://mypersonas.online",
   "https://www.mypersonas.online",
@@ -81,6 +86,12 @@ serve(async (req: Request): Promise<Response> => {
   const origin = req.headers.get("Origin") || "";
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (req.method !== "POST") return json(origin, 405, { error: "POST only" });
+  if (!DISCORD_POST_RELEASE_ENABLED) {
+    return json(origin, 503, {
+      status: "disabled",
+      error: "Discord publishing is dormant while its exact approval, reconciliation, and erasure safeguards are rebuilt.",
+    });
+  }
 
   const authorization = req.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) {

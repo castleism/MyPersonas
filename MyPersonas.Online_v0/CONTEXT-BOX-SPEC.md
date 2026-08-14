@@ -42,13 +42,34 @@ and from content plans (structured strategy, not a timeline).
 ## Implementation checklist (coordinated — ship together)
 
 - [x] `030-persona-context-log.sql` (add column) — apply first.
-- [ ] index.html: add `eContext` textarea to `renderEdit`; include `context_log` in the
-      `savePersona` payload; add `appendContextLog(persona, summary)` and call it on save
-      with a diff summary. (Ships on the next Pages push — do AFTER 030 is applied, or the
-      save payload references a missing column.)
-- [ ] ai-proxy: select `context_log` in `loadPersonaContext` and add the bounded slice to
-      `personaSystemPrompt`. (Edge Function deploy.)
+- [x] index.html (code complete locally): `eContext` is in `renderEdit`; manual replacement
+      and `appendContextLog(persona, summary)` use authenticated `ai-proxy` actions with an
+      optimistic compare-and-set, so a concurrent edit is rejected instead of overwritten.
+      Persona saves prepend a concise dated list of changed fields; saved chat takeaways use
+      the same append path. Deploy `ai-proxy` before the matching Pages build.
+- [x] ai-proxy (code complete locally): selects `context_log`, folds only the newest 10
+      non-empty lines / 1,500 characters into `personaSystemPrompt`, and labels the block as
+      continuity reference that cannot override hard rules. (Edge Function deploy required.)
+- [~] Other event hooks: persona saves, distilled chat milestones, and successful content-plan
+      saves are wired. Content-plan entries list only the names of fields that actually changed,
+      never their values or raw source notes; a context conflict never rolls back the plan save.
+      Connector changes and verified publish milestones remain follow-on hooks; they must call
+      the same conflict-safe append action and must not claim unverified work.
 - [ ] (optional) fan-chat: same inclusion if fan replies should reflect the journey.
+
+## Chat-workspace safety now implemented locally
+
+- Owner-scoped list/create/rename/pin/resume UI uses migration 031 and stores workspace IDs
+  on new `agent_messages` rows.
+- **Save to context** sends at most 12 recent messages / 4,800 characters to the selected
+  owner model for distillation, lets the owner review/edit the takeaway, then persists only
+  that approved short summary in `context_log`.
+- **Attach context** accepts at most three owned workspaces, distills the same bounded recent
+  slice, and sends only their summaries (2,400 characters total server-side) to later calls.
+  Raw workspace history is never copied into `context_log` or replayed as attached context.
+- Attached summaries and the context log are reference material, never higher-priority
+  instructions. Existing hard rules, pause controls, binding checks, and L0 co-writer limits
+  still apply.
 
 ## Ties into the "personas = personalized AI news feed" vision (2026-08-10)
 

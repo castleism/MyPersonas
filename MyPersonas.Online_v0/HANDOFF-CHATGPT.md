@@ -18,46 +18,52 @@ constraints below)._
 ## 1. How the project ships
 
 - **Repo layout**
-  - Frontend (the whole app): `MyPersonas.Online_v0/index.html` — ONE ~4,900-line file,
+  - Frontend (the whole app): `MyPersonas.Online_v0/index.html` — ONE ~5,100-line file,
     hash-routed (`#/studio`, `#/p/<handle>`, …), inline CSS + JS. No build step.
   - Edge functions: `supabase/functions/<name>/index.ts` (Deno + `@supabase/supabase-js@2`).
     Shared code in `supabase/functions/_shared/`.
   - Migrations: `MyPersonas.Online_v0/sql-updates/NNN-name.sql`, numeric order.
   - Config: `supabase/config.toml` (`[functions.<name>] verify_jwt = true|false`).
-  - Docs: `MyPersonas.Online_v0/*.md` (read POSTING-3PART-SPEC, DRIFT, CONNECTORS-STATUS,
-    APP-REVIEW-META, CONTEXT-BOX-SPEC, MOBILE-BLUEPRINT, V2-BLUEPRINT).
+  - Docs: `MyPersonas.Online_v0/*.md` (start with ROADMAP-EXECUTION-2026-08-13,
+    POST-QUEUE-ACTIVATION, POSTING-3PART-SPEC, DRIFT, CONNECTORS-STATUS,
+    CONTEXT-BOX-SPEC, MOBILE-BLUEPRINT, then V2-BLUEPRINT/APP-REVIEW-META).
 - **Deploy model**
   - Functions: **push to `main`** → GitHub Action `.github/workflows/supabase-deploy.yml`
     runs `supabase functions deploy` (ALL functions). `verify_jwt` comes from `config.toml`.
   - Frontend: pushed → GitHub Pages (`.github/workflows/pages.yml`).
   - **Migrations do NOT auto-apply.** The human runs each `sql-updates/*.sql` by hand in the
-    Supabase SQL editor. Latest applied: **034**. `035` (exact approval hardening) and `036`
-    (opt-in cron) are intentionally NOT applied yet.
+    Supabase SQL editor. Latest posting migration applied: **034**. `035` (exact approval +
+    immutable media) and `036` (opt-in cron) are intentionally NOT applied. New migration
+    `037` independently enables friend-request Realtime and is also not applied.
 - **Project ref:** `nwsqyuucwzihruszocge`. Site: `https://mypersonas.online`.
 - **⚠ Drift:** several deployed functions are NOT in the repo (see `DRIFT.md`): `twitter-post`,
-  `reddit-oauth`, `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,
-  `meta-ig-attach`, `meta-ig-discover`. Editing them requires pulling them first
+  `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,
+  `meta-ig-attach`, `meta-ig-discover`, `split-post`. Editing them requires pulling them first
   (`supabase functions download <name>` — human, CLI). **Never overwrite a drifted function
   blind.**
 
-## 2. Current state (what's built + PROVEN LIVE)
+## 2. Current state (separate proven-live behavior from local replacements)
 
-The **3-part posting system** is complete and verified end-to-end:
+The **owner-triggered Meta slice** of the 3-part system was previously verified end-to-end:
 - A persona authors once; the post is staged as 3 platform-tailored variants: **Facebook**
   landscape 1.91:1 + detailed caption, **Instagram** square 1:1 + optimal caption, **X**
   portrait 4:5 + ≤280 caption. See `POSTING-3PART-SPEC.md`.
-- **Deployed + working:** `ai-proxy` (persona model), `compose-post` (stages a draft),
-  `meta-post` (publish + delete FB/IG), `run-post-queue` (scheduled cron, dormant),
-  `_shared/meta-publish.ts` (shared publish primitives). Migration `033`+`034` applied
-  (`post_drafts` table). Frontend **Composer UI** (Menu → "Compose posts (3-part)").
+- **Previously deployed/live-tested:** `ai-proxy` + `compose-post` staged a draft and `meta-post`
+  published/deleted the Meta test. Migration `033`+`034` created the `post_drafts` foundation.
+- **Current hardened replacements are local:** `meta-post`, `run-post-queue`, shared publishing,
+  immutable approval, and the revised Composer. They need the coordinated release + migration 035.
+  The scheduled cron remains dormant and X remains draft-only.
 - Verified live: `compose-post` drafted persona-voice FB/IG/X captions + crops; `meta-post`
-  published a real FB + IG pair (IG confirmed) and deleted the FB test. All own-account
-  posting works in **development mode with standard access — no Meta App Review needed** for
-  the owner's own pages/IG (App Review is only for posting on behalf of other people).
+  published a real FB + IG pair (IG confirmed) and deleted the FB test. That demonstrates the
+  tested owner-asset path; it is not evidence for every account, schedule, retry, or policy case.
+  Meta App Review is not needed for the owner's own development-mode assets, but is required before
+  posting for other users.
 
-Other recent: `personas.pet_project` field + UI (★ chip by name/handle); `personas.context_log`
-column (migration 030) — spec'd but UI not wired; responsive safe-area + tablet tier; app icon
-in `brand/app-icon/`.
+Other recent local work: `personas.pet_project` field + UI (★ chip by name/handle); conflict-safe
+persona context + bounded AI prompt; resumable chat workspaces; Reddit OAuth/publishing UI and
+server hardening; friend-request Realtime; release-history extension catalog; an installable PWA
+shell; and fail-closed owner-media/Reddit erasure. These local additions still require the release
+order and live checks in `ROADMAP-EXECUTION-2026-08-13.md`.
 
 ## 3. Reference contracts (use these exactly)
 
@@ -78,18 +84,27 @@ in `brand/app-icon/`.
 - **Image crops = Supabase image transforms** (Pro plan, no crop code): take a public Storage
   object URL `…/storage/v1/object/public/<bucket>/<path>`, replace `/object/public/` with
   `/render/image/public/`, append `?width=W&height=H&resize=cover&quality=82`. FB 1200×628,
-  IG 1080×1080, X 1080×1350. (Persona images live in the **`media`** bucket, public.)
+  IG 1080×1080, X 1080×1350. New persona images live in the public, owner-namespaced
+  **`persona-media`** bucket; videos retain the legacy `media` path.
+- **approve-post-draft** (owner JWT): accepts `{draftId,scheduledFor,timezone,fbCaption,
+  igCaption,xCaption,targets}`, stages exact image bytes into `post-approved-media`, verifies
+  SHA-256/MIME/size/path/URL, then invokes the internal service-role scheduling RPC. The browser
+  must never call `approve_and_schedule_post_draft` directly.
 - **run-post-queue** (cron, `--no-verify-jwt`, header `X-Cron-Secret: <CRON_SECRET>`): atomically
-  claims due `scheduled` drafts (`scheduled`→`publishing`, preventing overlapping claims), publishes each
-  platform's own `*_image_url`/`*_caption`, writes `fb_post_id`/`ig_media_id`/status. **X is a
-  TODO** (deferred). Schedule via `sql-updates/036-schedule-post-queue.sql` (pg_cron+pg_net +
-  Vault secret `mypersonas_cron_secret`) — apply only when ready.
+  claims one due `scheduled` draft, re-verifies approval, immutable media, pause/policy, and exact
+  attempt destinations, checkpoints provider IDs, and transactionally finalizes state + audit.
+  **X is deferred.** Schedule via `sql-updates/036-schedule-post-queue.sql`; keep it dormant until
+  every blocker and pilot in `POST-QUEUE-ACTIVATION.md` is closed.
 - **Key tables**
   - `post_drafts`: `id, owner, persona_id, facebook_ledger_id, week_start, status
     (draft|approved|scheduled|publishing|posted|failed|skipped), scheduled_for, brief,
     source_image_url, fb/ig/x_caption, fb/ig/x_image_url, targets[], fb_post_id, ig_media_id,
     x_tweet_id, last_error, approved_at, approved_by, approved_content_hash, approved_timezone,
     approved_facebook_page_id, approved_instagram_business_id, publish_claimed_at, posted_at`.
+    Immutable-media fields are `approved_fb_media_*` / `approved_ig_media_*` for SHA-256, MIME,
+    byte size, owner path, and canonical URL; every selected target must have a complete set.
+    Attempt/reconciliation fields also include `publish_facebook_page_id,
+    publish_instagram_business_id, fb_published_at, ig_published_at`.
     Owners retain RLS reads; mutations use guarded RPCs or owner-scoped server functions.
   - `personas`: `id, owner, ai_backend, pet_project, context_log, handle, name, feed_img_url,
     banner_url, …`. Owner-writable RLS. Bundle save via RPC `save_persona_bundle`; fields not
@@ -113,51 +128,33 @@ in `brand/app-icon/`.
   `verify_jwt = true`, cron/OAuth-callback functions use `false` + their own check.
 - No secrets in source. Read via `Deno.env.get`. Never return tokens to the browser.
 - Validate ids against `^[A-Za-z0-9_-]{1,64}$` before using them in a PostgREST `.or()` filter.
-- Cannabis personas (CannaCandidz, Sherlock Chomes, Trad Family Values) can't post/monetize via
-  Meta — content policy. Don't wire them to Meta publishing.
+- Meta's restricted-goods block is keyed to the durable production UUIDs for the three cannabis
+  personas: Chomes, Sherlock (the CannaCandidz brand), and Sherlock Chomes. Do not infer policy
+  from mutable names. Traditional Family Values / Kunuk is not cannabis and must not be blocked
+  merely because an older handoff grouped that destination with the two blocked Meta pairings.
 
 ## 5. Tasks you can pick up (prioritized)
 
 Each item says: **goal · files · approach · blocker (if any) · deliverable.**
 
-1. **Wire X into the 3-part publisher.**
-   Goal: post `x_image_url` + `x_caption` to X. Files: `supabase/functions/run-post-queue/
-   index.ts` (add an X branch), `MyPersonas.Online_v0/index.html` (`composerPublish` X call),
-   plus `twitter-post`. **Blocker:** `twitter-post` is drifted — the human must
-   `supabase functions download twitter-post` first so you can see its request contract.
-   Deliverable: the X branch + the pulled/normalized `twitter-post`, given its contract.
-
-2. **Weekly approval-day scheduling** — **code complete locally; deploy/migrations pending; cron
-   activation blocked.** The Composer groups by week and calls guarded save/schedule/unschedule/
-   delete RPCs instead of raw status writes; immediate Meta publishing is now a server-side atomic
-   draft claim. Deploy the matching source and apply migration `035` as one maintenance step. Keep
-   migration `036` unapplied until every blocker and pilot step in `POST-QUEUE-ACTIVATION.md` is
-   complete. X remains draft-only; Meta scheduling requires an owned paired destination and image.
-
-3. **Composer v2 polish.** Files: `index.html` composer functions (added after
-   `closeSiteMenu`). Add: image **upload** to the `media`/`persona-media` bucket (so any image
-   can be a source, not just the persona's), per-target checkboxes, live X char counter,
-   auto-select the FB page that matches the chosen persona. Keep it isolated.
-
-4. **Context-box feature** (`context_log`, migration 030 already applied). Files: `index.html`
-   (add an `eContext` textarea to the persona edit form near `eNotes`, save via owner-scoped
-   `personas.update({context_log})` on the resolved id — mirror the `pet_project` pattern at
-   `savePersona`), and `ai-proxy` (fold a bounded recent slice of `context_log` into the persona
-   system prompt). See `CONTEXT-BOX-SPEC.md`. Deliverable: the two diffs.
-
-5. **Reddit connect** (`#35`). Frontend has no `connectReddit`. **Blocker:** `reddit-oauth`
-   is drifted — pull it for the start/callback contract, then add `connectReddit(id)` + a
-   Connect button in `index.html` mirroring `connectGmail`/`connectTwitter`.
-
-6. **PWA** (fast app win, see `MOBILE-BLUEPRINT.md`): add `manifest.webmanifest` (icons from
-   `brand/app-icon/`), a service worker, install prompt, and push for post-approval. No backend
-   change. Deliverable: the manifest + SW + `<head>` wiring.
-
-7. **Meta App Review** (only needed to post for OTHER users / go public): draft materials from
-   `APP-REVIEW-META.md`; the human submits (business verification + screencasts).
-
-8. **Drift cleanup** (`DRIFT.md`): guide the human through `supabase functions download` for the
-   8 drifted functions, scrub any inline secrets into env, commit. Unblocks #1 and #5.
+1. **Release the coordinated safe slice.** Review the diff, deploy functions first where noted,
+   apply migration 035 in its maintenance window, deploy Pages, and live-verify context/workspaces,
+   PWA install/offline, Composer approval, Reddit OAuth/disconnect, erasure, extension fallbacks,
+   and friend Realtime. Follow `ROADMAP-EXECUTION-2026-08-13.md`; never treat a local test as live.
+2. **Keep scheduled external publishing dormant.** Do not apply 036. Close reconciliation,
+   atomic per-IG quota, production UUID mapping, legacy destination attribution, queue integration
+   tests, and the L2-vs-L3 contract; then run the manual dormant-worker pilot before cron.
+3. **Pull and normalize the eight drifted functions.** Start with `twitter-post`, scrub and rotate
+   inline secrets, then explicitly reauthorize X with write/media scopes. This is the prerequisite
+   for adding X to the exact-approved publisher; never infer write authority from read OAuth.
+4. **Finish the owner-storage migration.** Inventory legacy repo/persona URLs, copy to owned
+   Storage, reload every page, and remove repo art only after exact verification. The new paths and
+   fail-closed erasure are already local.
+5. **Choose the sourced-feed MVP contract.** Owner selects allowed sources/topics and citation/
+   freshness rules before implementation. Build read-first research cards with evidence and
+   feedback, not an unsourced infinite-scroll generator.
+6. **Meta App Review** is only needed to post for other users/go public. Use
+   `APP-REVIEW-META.md` when that becomes a launch goal.
 
 ## 6. How to test what you build (the human runs it)
 

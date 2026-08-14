@@ -27,6 +27,8 @@ const X_NO_PROVIDER_GRANT_ERROR_CODES = new Set([
 const META_MANUAL_REVOCATION_URL =
   "https://www.facebook.com/settings?tab=business_tools";
 const META_OWNER_ERASURE_TTL_SECONDS = 3600;
+const REDDIT_USER_AGENT =
+  "web:online.mypersonas:v0.5 (MyPersonas account erasure)";
 const META_GRAPH_API_VERSION = /^v[0-9]+\.[0-9]+$/.test(
     Deno.env.get("META_GRAPH_API_VERSION") || "",
   )
@@ -49,6 +51,11 @@ type StorageEntry = {
   id?: string | null;
   name: string;
   metadata?: unknown;
+};
+
+type OwnedStorageTarget = {
+  bucket: string;
+  prefix: string;
 };
 
 async function checked(
@@ -180,6 +187,35 @@ async function revokeXGrantPair(
   return await xAccessTokenConfirmedInvalid(accessToken);
 }
 
+async function revokeRedditRefreshToken(
+  refreshToken: string,
+  clientId: string,
+  clientSecret: string,
+) {
+  try {
+    const response = await fetch(
+      "https://www.reddit.com/api/v1/revoke_token",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": REDDIT_USER_AGENT,
+        },
+        body: new URLSearchParams({
+          token: refreshToken,
+          token_type_hint: "refresh_token",
+        }),
+        redirect: "error",
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function metaAppSecretProof(accessToken: string, appSecret: string) {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -242,8 +278,9 @@ async function revokeMetaPermissions(
   }
 }
 
-async function listMediaFiles(
+async function listStorageFiles(
   admin: SupabaseClient,
+  bucket: string,
   prefix: string,
   visited = new Set<string>(),
 ): Promise<string[]> {
@@ -252,18 +289,20 @@ async function listMediaFiles(
   const files: string[] = [];
   let offset = 0;
   for (;;) {
-    const { data, error } = await admin.storage.from("media").list(prefix, {
+    const { data, error } = await admin.storage.from(bucket).list(prefix, {
       limit: 1000,
       offset,
       sortBy: { column: "name", order: "asc" },
     });
-    if (error) throw new Error(`media listing: ${error.message}`);
+    if (error) throw new Error(`${bucket} storage listing: ${error.message}`);
     const entries = (data || []) as StorageEntry[];
     for (const entry of entries) {
       if (!entry.name) continue;
       const path = `${prefix}/${entry.name}`;
       if (entry.id || entry.metadata) files.push(path);
-      else files.push(...await listMediaFiles(admin, path, visited));
+      else files.push(
+        ...await listStorageFiles(admin, bucket, path, visited),
+      );
     }
     if (entries.length < 1000) break;
     offset += entries.length;
@@ -271,19 +310,49 @@ async function listMediaFiles(
   return files;
 }
 
-async function eraseMedia(admin: SupabaseClient, uid: string) {
+async function eraseStoragePrefix(
+  admin: SupabaseClient,
+  { bucket, prefix }: OwnedStorageTarget,
+) {
   for (let pass = 0; pass < 3; pass++) {
-    const files = await listMediaFiles(admin, uid);
+    const files = await listStorageFiles(admin, bucket, prefix);
     if (!files.length) return;
     for (let start = 0; start < files.length; start += 500) {
-      const { error } = await admin.storage.from("media").remove(
+      const { error } = await admin.storage.from(bucket).remove(
         files.slice(start, start + 500),
       );
-      if (error) throw new Error(`media removal: ${error.message}`);
+      if (error) {
+        throw new Error(`${bucket} storage removal: ${error.message}`);
+      }
     }
   }
-  if ((await listMediaFiles(admin, uid)).length) {
-    throw new Error("media removal could not be verified");
+  if ((await listStorageFiles(admin, bucket, prefix)).length) {
+    throw new Error(`${bucket} storage removal could not be verified`);
+  }
+}
+
+async function eraseOwnedStorage(admin: SupabaseClient, uid: string) {
+  const normalizedOwner = uid.toLowerCase();
+  const targets: OwnedStorageTarget[] = [
+    { bucket: "media", prefix: normalizedOwner },
+    { bucket: "persona-media", prefix: normalizedOwner },
+    { bucket: "persona-docs", prefix: normalizedOwner },
+    {
+      bucket: "post-approved-media",
+      prefix: `owners/${normalizedOwner}`,
+    },
+  ];
+  const { data: buckets, error } = await admin.storage.listBuckets();
+  if (error) {
+    throw new Error(`owned storage bucket inventory: ${error.message}`);
+  }
+  const existingBuckets = new Set(
+    (buckets || []).map((bucket) => bucket.id),
+  );
+  for (const target of targets) {
+    if (existingBuckets.has(target.bucket)) {
+      await eraseStoragePrefix(admin, target);
+    }
   }
 }
 
@@ -324,6 +393,23 @@ async function listTwitterLedgers(admin: SupabaseClient, uid: string) {
       .eq("owner", uid).eq("provider", "twitter").order("id")
       .range(from, from + 499);
     if (error) throw new Error(`X connection inventory: ${error.message}`);
+    const page = (data || []) as Array<{ id: string }>;
+    ledgers.push(...page);
+    if (page.length < 500) return ledgers;
+    from += page.length;
+  }
+}
+
+async function listRedditLedgers(admin: SupabaseClient, uid: string) {
+  const ledgers: Array<{ id: string }> = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("account_ledger").select("id")
+      .eq("owner", uid).eq("provider", "reddit").order("id")
+      .range(from, from + 499);
+    if (error) {
+      throw new Error(`Reddit connection inventory: ${error.message}`);
+    }
     const page = (data || []) as Array<{ id: string }>;
     ledgers.push(...page);
     if (page.length < 500) return ledgers;
@@ -847,6 +933,109 @@ async function revokeTwitter(
   }
 }
 
+type RedditRevocationPlan = {
+  ledgerId: string;
+  refreshToken: string;
+  hasStoredToken: boolean;
+};
+
+function redditStoredToken(value: unknown) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value !== "string") {
+    throw new Error("could not read a stored Reddit authorization safely");
+  }
+  const token = value.trim();
+  if (token.length > 16_384) {
+    throw new Error("could not read a stored Reddit authorization safely");
+  }
+  return token;
+}
+
+async function revokeReddit(admin: SupabaseClient, uid: string) {
+  const ledgers = await listRedditLedgers(admin, uid);
+  const plans: RedditRevocationPlan[] = [];
+
+  // Inventory every service-only token first. No provider call or local deletion
+  // starts until the complete owned Reddit ledger set has been inspected.
+  for (const ledger of ledgers) {
+    const { data, error } = await admin.rpc("reddit_get_tokens_service", {
+      p_ledger_id: ledger.id,
+    });
+    if (error) {
+      throw new Error("could not inspect a stored Reddit authorization");
+    }
+    if (Array.isArray(data) && data.length > 1) {
+      throw new Error("could not read a stored Reddit authorization safely");
+    }
+    const rawRow = Array.isArray(data) ? data[0] : data;
+    if (
+      rawRow !== null && rawRow !== undefined && typeof rawRow !== "object"
+    ) {
+      throw new Error("could not read a stored Reddit authorization safely");
+    }
+    const row = rawRow as
+      | { access_token?: unknown; refresh_token?: unknown }
+      | null;
+    const accessToken = redditStoredToken(row?.access_token);
+    const refreshToken = redditStoredToken(row?.refresh_token);
+    plans.push({
+      ledgerId: ledger.id,
+      refreshToken,
+      hasStoredToken: Boolean(accessToken || refreshToken),
+    });
+  }
+
+  const hasStoredRedditToken = plans.some((plan) => plan.hasStoredToken);
+  const clientId = Deno.env.get("REDDIT_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("REDDIT_CLIENT_SECRET") || "";
+  if (hasStoredRedditToken && (!clientId || !clientSecret)) {
+    throw new Error(
+      "Reddit revocation is not configured; restore the Reddit client configuration before deletion",
+    );
+  }
+
+  // Confirm every extant provider grant before clearing even the first local
+  // token. A missing refresh token has no provider secret to revoke and may
+  // proceed to local state cleanup, but a request failure or non-2xx response
+  // retains every local Reddit record for a safe retry.
+  for (const plan of plans) {
+    if (
+      plan.refreshToken &&
+      !await revokeRedditRefreshToken(
+        plan.refreshToken,
+        clientId,
+        clientSecret,
+      )
+    ) {
+      throw new Error(
+        "Reddit did not confirm revocation; no local Reddit token or ledger record was deleted",
+      );
+    }
+  }
+
+  for (const plan of plans) {
+    const { error: clearError } = await admin.rpc(
+      "reddit_clear_tokens_service",
+      { p_ledger_id: plan.ledgerId },
+    );
+    if (clearError) {
+      throw new Error(
+        "Reddit provider revocation completed, but local token cleanup failed",
+      );
+    }
+    await checked(
+      "pending Reddit sign-ins",
+      admin.from("reddit_oauth_states").delete().eq("owner", uid)
+        .eq("ledger_id", plan.ledgerId),
+    );
+    await checked(
+      "Reddit account ledger",
+      admin.from("account_ledger").delete().eq("owner", uid)
+        .eq("id", plan.ledgerId),
+    );
+  }
+}
+
 async function metaGrantRecordedState(
   admin: SupabaseClient,
   uid: string,
@@ -1277,6 +1466,10 @@ async function eraseOwnedRows(
     admin.from("twitter_oauth_transactions").delete().eq("owner", uid),
   );
   await checked(
+    "pending Reddit sign-ins",
+    admin.from("reddit_oauth_states").delete().eq("owner", uid),
+  );
+  await checked(
     "account ledger",
     admin.from("account_ledger").delete().eq("owner", uid),
   );
@@ -1497,6 +1690,13 @@ export function createErasureHandler(
           admin,
           uid,
           metaOwnerErasureLeaseId,
+          "Reddit revocation",
+        );
+        await revokeReddit(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
           "Meta revocation",
         );
         await revokeMeta(
@@ -1509,9 +1709,9 @@ export function createErasureHandler(
           admin,
           uid,
           metaOwnerErasureLeaseId,
-          "media erasure",
+          "owned storage erasure",
         );
-        await eraseMedia(admin, uid);
+        await eraseOwnedStorage(admin, uid);
         await renewMetaOwnerErasure(
           admin,
           uid,
