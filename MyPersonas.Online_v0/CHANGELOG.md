@@ -3,6 +3,29 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Weekly approval scheduling + queue hardening (code complete locally, activation blocked) (2026-08-13)
+
+- **Composer approval-day UI:** drafts are grouped by `week_start`, show the exact owner-time-zone
+  schedule, and expose guarded Save, Approve & schedule, Unschedule, immediate Meta publish,
+  partial retry, and Delete actions. Scheduled/publishing/posted rows are locked; X has a live
+  character counter and remains draft-only until its publisher is versioned and write-authorized.
+- **Migration 035 (not applied):** adds an exact approval hash and security-definer save/schedule/
+  unschedule/delete RPCs, invalidates legacy unhashed schedules, validates owned/paired Meta
+  destinations and images, snapshots the actual FB/IG asset IDs + approval time zone, removes direct
+  browser mutation of provider/approval state, blocks project-policy destinations, and writes audit events.
+- **Immediate Meta publish hardening (not deployed):** `meta-post` now accepts only an owner-scoped
+  `draftId`, atomically claims it, checkpoints each provider ID server-side, and leaves uncertain
+  provider outcomes locked for reconciliation. The browser no longer performs provider-result writes.
+- **Scheduled worker hardening (not deployed):** claims and publishes the current due row, verifies
+  exact approval + paired asset snapshots, filters paused owners before its two-row batch, fails
+  missing/unsupported targets, retains/skips completed provider IDs, detects missing Instagram
+  linkage, and applies an advisory local rolling safety guard.
+  The shared interactive Meta path now applies the same project-policy destination gate.
+- **Cron remains dormant:** the opt-in schedule moved to migration 036. Do not apply it yet. X source/
+  write authorization, provider timeout reconciliation, automation-level contract, and queue tests
+  remain activation blockers. See `POST-QUEUE-ACTIVATION.md` for the deploy, pilot, stop, and recovery
+  checklist. No push, SQL application, Supabase change, or live post was performed in this pass.
+
 ## 3-part pipeline proven live + composer UI (2026-08-13)
 
 - **End-to-end verified live:** `compose-post` staged a real draft (persona-voice FB/IG/X
@@ -29,8 +52,7 @@ trailing letters are hotfixes. Releases are git tags.
   IG's ~25/24h cap).
 - **`compose-post`** now stores the draft's target Facebook account (`facebook_ledger_id`).
 - **Migration 034** (applied): `post_drafts.facebook_ledger_id` + a `publishing` claim status +
-  due-work index. **Migration 035** (opt-in, NOT applied): the pg_cron schedule — apply only
-  once the approval UI exists so nothing auto-publishes prematurely.
+  due-work index. The pg_cron schedule is now migration 036 and remains opt-in/unapplied.
 - 20 functions compile; 18/18 tests pass. This completes the 3-part backend pipeline
   (compose → stage → approve → publish); only the approval/compose UI and X wiring remain.
 

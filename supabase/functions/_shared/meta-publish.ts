@@ -19,6 +19,27 @@ export const PUBLISH_SCOPES = [
   "business_management",
 ] as const;
 
+const RESTRICTED_META_PERSONAS = new Set([
+  "56ebe05e-78c0-4dad-8e61-bcb7d245ab7b", // Chomes / Classwoods
+  "288a472a-b286-43ae-b941-1731f406c23b", // Sherlock / CannaCandidz
+  "a997734c-9e47-4c05-bf55-0537a1c0ad97", // Sherlock Chomes
+]);
+const RESTRICTED_META_DESTINATIONS = [
+  "cannacandidz",
+  "cannacandids",
+  "sherlockchomes",
+  "traditionalfamilyvalues",
+  "tradfamilyvalues",
+];
+
+function policyKey(value: unknown) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function isRestrictedMetaPersona(personaId: unknown) {
+  return RESTRICTED_META_PERSONAS.has(String(personaId || ""));
+}
+
 export type Admin = SupabaseClient;
 
 export type PageAsset = {
@@ -131,7 +152,9 @@ export async function publishInstagram(
   const published = await graphPost(`/${igUserId}/media_publish`, pageToken, {
     creation_id: creationId,
   });
-  return { mediaId: String(published.id || "") };
+  const mediaId = String(published.id || "").trim();
+  if (!mediaId) throw new Error("Instagram accepted the container but did not return a media ID.");
+  return { mediaId };
 }
 
 export async function publishFacebook(
@@ -145,7 +168,9 @@ export async function publishFacebook(
     ...(caption ? { caption } : {}),
     published: "true",
   });
-  return { postId: String(res.post_id || res.id || "") };
+  const postId = String(res.post_id || res.id || "").trim();
+  if (!postId) throw new Error("Facebook accepted the request but did not return a post ID.");
+  return { postId };
 }
 
 // Resolve the owner's paired asset, verify publish scopes, derive a fresh Page
@@ -154,7 +179,40 @@ export async function resolvePageContext(
   admin: Admin,
   owner: string,
   facebookLedgerId: string,
+  enforcePublishPolicy = true,
 ): Promise<Resolved> {
+  // Fail closed for project-policy destinations before obtaining any provider
+  // token. The UUIDs are stable; destination labels provide a second guard for
+  // legacy/unassigned ledger rows.
+  let ledgerQuery = admin.from("account_ledger")
+    .select("persona_id,username,login_email,aliases")
+    .eq("owner", owner)
+    .eq("id", facebookLedgerId)
+    .eq("provider", "facebook");
+  if (enforcePublishPolicy) ledgerQuery = ledgerQuery.eq("suspended", false);
+  const { data: ledger, error: ledgerErr } = await ledgerQuery.maybeSingle();
+  if (ledgerErr) {
+    return { ok: false, status: 500, error: "Could not verify the Meta destination policy." };
+  }
+  if (!ledger) {
+    return { ok: false, status: 404, error: "That active Facebook destination was not found for your account." };
+  }
+  if (enforcePublishPolicy && ledger) {
+    const key = policyKey(
+      [ledger.username, ledger.login_email, ledger.aliases].filter(Boolean).join(" "),
+    );
+    if (
+      isRestrictedMetaPersona(ledger.persona_id) ||
+      RESTRICTED_META_DESTINATIONS.some((blocked) => key.includes(blocked))
+    ) {
+      return {
+        ok: false,
+        status: 409,
+        error: "This persona or destination is blocked from Meta publishing by project policy.",
+      };
+    }
+  }
+
   const { data: asset, error: assetErr } = await admin
     .from("meta_page_connections")
     .select("owner,grant_id,facebook_page_id,instagram_business_id")
@@ -168,11 +226,14 @@ export async function resolvePageContext(
     return { ok: false, status: 404, error: "That paired Meta page was not found for your account." };
   }
 
-  const { data: grant } = await admin.from("meta_grants")
+  const { data: grant, error: grantError } = await admin.from("meta_grants")
     .select("granted_scopes")
     .eq("id", asset.grant_id)
     .eq("owner", owner)
     .maybeSingle();
+  if (grantError) {
+    return { ok: false, status: 500, error: "Could not verify the Meta publish permissions." };
+  }
   const granted = new Set(
     Array.isArray(grant?.granted_scopes) ? grant!.granted_scopes : [],
   );
@@ -204,38 +265,4 @@ export async function resolvePageContext(
   } catch (e) {
     return { ok: false, status: 502, error: (e as Error).message };
   }
-}
-
-// High-level publish used by both the interactive and scheduled publishers.
-// Throws on hard failure; returns whatever published on partial failure via the
-// thrown error's `.partial`.
-export async function publishToMeta(
-  admin: Admin,
-  owner: string,
-  facebookLedgerId: string,
-  imageUrl: string,
-  caption: string,
-  target: string,
-): Promise<{ ctx: Resolved; out?: { facebook?: { postId: string }; instagram?: { mediaId: string } } }> {
-  const ctx = await resolvePageContext(admin, owner, facebookLedgerId);
-  if (!ctx.ok) return { ctx };
-  const { asset, pageToken } = ctx;
-  const out: { facebook?: { postId: string }; instagram?: { mediaId: string } } = {};
-  if (target !== "facebook" && asset.instagram_business_id) {
-    out.instagram = await publishInstagram(
-      String(asset.instagram_business_id),
-      pageToken,
-      imageUrl,
-      caption,
-    );
-  }
-  if (target !== "instagram") {
-    out.facebook = await publishFacebook(
-      String(asset.facebook_page_id),
-      pageToken,
-      imageUrl,
-      caption,
-    );
-  }
-  return { ctx, out };
 }

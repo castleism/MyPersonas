@@ -31,7 +31,8 @@ constraints below)._
     runs `supabase functions deploy` (ALL functions). `verify_jwt` comes from `config.toml`.
   - Frontend: pushed → GitHub Pages (`.github/workflows/pages.yml`).
   - **Migrations do NOT auto-apply.** The human runs each `sql-updates/*.sql` by hand in the
-    Supabase SQL editor. Latest applied: **034**. `035` is intentionally NOT applied yet.
+    Supabase SQL editor. Latest applied: **034**. `035` (exact approval hardening) and `036`
+    (opt-in cron) are intentionally NOT applied yet.
 - **Project ref:** `nwsqyuucwzihruszocge`. Site: `https://mypersonas.online`.
 - **⚠ Drift:** several deployed functions are NOT in the repo (see `DRIFT.md`): `twitter-post`,
   `reddit-oauth`, `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,
@@ -69,23 +70,27 @@ in `brand/app-icon/`.
   scheduledFor?, targets?, captions?}` → `{draft}`): generates the 3 captions via ai-proxy,
   builds 3 image-transform URLs, inserts a `post_drafts` row (`status:'draft'`). 422 if the
   persona has no `ai_backend` and no `captions` supplied.
-- **meta-post**: `{action:"publish", facebookLedgerId, imageUrl, caption?, target?}` →
-  `{facebook?:{postId}, instagram?:{mediaId}}`; `{action:"delete", facebookLedgerId, postId}`
-  → `{deleted:true}` (FB only — the IG API can't delete media). Owner Bearer JWT.
+- **meta-post**: `{action:"publish-draft", draftId}` atomically claims one owner-scoped editable
+  draft, publishes its selected Meta targets, checkpoints each provider ID, and returns
+  `{status, facebook?:{postId}, instagram?:{mediaId}, errors?}`. Direct client-supplied image/
+  caption publishing is retired. `{action:"delete", facebookLedgerId, postId}` →
+  `{deleted:true}` (FB only — the IG API can't delete media). Owner Bearer JWT.
 - **Image crops = Supabase image transforms** (Pro plan, no crop code): take a public Storage
   object URL `…/storage/v1/object/public/<bucket>/<path>`, replace `/object/public/` with
   `/render/image/public/`, append `?width=W&height=H&resize=cover&quality=82`. FB 1200×628,
   IG 1080×1080, X 1080×1350. (Persona images live in the **`media`** bucket, public.)
-- **run-post-queue** (cron, `--no-verify-jwt`, header `X-Cron-Secret: <CRON_SECRET>`): claims
-  due `scheduled` drafts (`scheduled`→`publishing`, prevents double-post), publishes each
+- **run-post-queue** (cron, `--no-verify-jwt`, header `X-Cron-Secret: <CRON_SECRET>`): atomically
+  claims due `scheduled` drafts (`scheduled`→`publishing`, preventing overlapping claims), publishes each
   platform's own `*_image_url`/`*_caption`, writes `fb_post_id`/`ig_media_id`/status. **X is a
-  TODO** (deferred). Schedule via `sql-updates/035-schedule-post-queue.sql` (pg_cron+pg_net +
+  TODO** (deferred). Schedule via `sql-updates/036-schedule-post-queue.sql` (pg_cron+pg_net +
   Vault secret `mypersonas_cron_secret`) — apply only when ready.
 - **Key tables**
   - `post_drafts`: `id, owner, persona_id, facebook_ledger_id, week_start, status
     (draft|approved|scheduled|publishing|posted|failed|skipped), scheduled_for, brief,
     source_image_url, fb/ig/x_caption, fb/ig/x_image_url, targets[], fb_post_id, ig_media_id,
-    x_tweet_id, last_error, approved_at, approved_by`. Owner-scoped RLS.
+    x_tweet_id, last_error, approved_at, approved_by, approved_content_hash, approved_timezone,
+    approved_facebook_page_id, approved_instagram_business_id, publish_claimed_at, posted_at`.
+    Owners retain RLS reads; mutations use guarded RPCs or owner-scoped server functions.
   - `personas`: `id, owner, ai_backend, pet_project, context_log, handle, name, feed_img_url,
     banner_url, …`. Owner-writable RLS. Bundle save via RPC `save_persona_bundle`; fields not
     in the bundle (title/focus/pet_project) are written by a follow-up owner-scoped update on
@@ -122,13 +127,12 @@ Each item says: **goal · files · approach · blocker (if any) · deliverable.*
    `supabase functions download twitter-post` first so you can see its request contract.
    Deliverable: the X branch + the pulled/normalized `twitter-post`, given its contract.
 
-2. **Weekly approval-day scheduling** (activates the already-built cron).
-   Goal: let the owner set `scheduled_for` + `status='scheduled'` on drafts, grouped by week,
-   then the cron auto-publishes. Files: `index.html` (extend the Composer overlay:
-   "Approve & schedule" with a datetime input → `post_drafts.update({status:'scheduled',
-   scheduled_for})`; a per-week list view). Then human applies `035` + sets `CRON_SECRET` secret
-   and Vault `mypersonas_cron_secret`. Deliverable: composer scheduling UI + a checklist for the
-   human to turn the cron on.
+2. **Weekly approval-day scheduling** — **code complete locally; deploy/migrations pending; cron
+   activation blocked.** The Composer groups by week and calls guarded save/schedule/unschedule/
+   delete RPCs instead of raw status writes; immediate Meta publishing is now a server-side atomic
+   draft claim. Deploy the matching source and apply migration `035` as one maintenance step. Keep
+   migration `036` unapplied until every blocker and pilot step in `POST-QUEUE-ACTIVATION.md` is
+   complete. X remains draft-only; Meta scheduling requires an owned paired destination and image.
 
 3. **Composer v2 polish.** Files: `index.html` composer functions (added after
    `closeSiteMenu`). Add: image **upload** to the `media`/`persona-media` bucket (so any image

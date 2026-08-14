@@ -1,8 +1,8 @@
 # nooyouniverse.com — Site Roadmap
 
-Updated: 2026-08-09 (overnight session) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
+Updated: 2026-08-13 (Package A drafting session; live and deploy state unchanged) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
 
-Stack (best practice = free here): static site → **Cloudflare Pages** (zone already on Cloudflare, matches awareofmyfood.com pattern) + Supabase free tier waitlist. GitHub Pages remains a fallback (CNAME file included). $0/month.
+Stack: static site → **Cloudflare Worker with static assets** + Supabase free-tier email waitlist. This is not Cloudflare Pages. GitHub Pages remains a fallback (CNAME file included). Recorded infrastructure cost: $0/month; billing was not re-audited in this session.
 
 ## Status — 🟢 LIVE at https://nooyouniverse.com (2026-08-09)
 
@@ -17,6 +17,7 @@ Stack (best practice = free here): static site → **Cloudflare Pages** (zone al
 | Cloudflare Worker + apex domain | ✅ HTTPS live, 18 assets served |
 | `www.nooyouniverse.com` | ✅ Added; resolves, canonical points to apex (no duplicate content) |
 | **Phase 3** — source badges, `/sources`, `/corrections` | ✅ Built — **awaiting deploy** |
+| **Package A** — Missions 11–14 | 📝 Four internal drafts — **zero approved; not in site source; not deployed** |
 
 ### Outstanding — one command plus one cleanup
 
@@ -34,6 +35,21 @@ Stack (best practice = free here): static site → **Cloudflare Pages** (zone al
 - **`/corrections`** — the charter promises corrections at equal visibility; this makes that operational before it is needed. Four change grades (Note / Clarification / Correction / Retraction), the five-step process, an append-only commitment, and how to report an error. Ships with an honest empty state.
 
 Both pages are linked from the nav, the homepage evidence + charter sections, and every footer.
+
+## Package A continuation (drafted 2026-08-13)
+
+Four approval-only Mission Log drafts now live at `outputs/cillian-noo-youniverse/mission-log/NOO-MISSION-LOG-PACKAGE-A-DRAFTS-2026-08-13.md`:
+
+- Mission 11 — The P-Value Is Not the Payload (`Methodology reference`)
+- Mission 12 — The Claim Is the Whole Constellation (`Regulatory guidance`)
+- Mission 13 — Read the Flight Plan Before the Landing (`Methodology reference`)
+- Mission 14 — Tracker Build Diary: A Field Is Not Yet a Measurement (`Methodology reference`)
+
+State: **four drafts prepared; zero owner approvals; zero human-review approvals; zero assets created; zero entries added to `log.html` or `sources.html`; zero deploys.** The first ten CIL-LW01 missions remain a closed launch sequence. The package proposes `CIL-ML02` as the new draft sequence key, but Christian must confirm it before use. If approved later, the new work should append as Missions 11–14.
+
+The sources were checked on their current primary or official pages on August 13, 2026 and recorded in `SOURCE-AND-POLICY-LEDGER.md`. Mission 14 uses FDA measurement guidance only as a bounded design influence; it does not imply that the unbuilt consumer tracker is FDA governed, validated, compliant, cleared, or approved. Track A remains a recommendation awaiting an owner decision.
+
+Publication gates remain unchanged: Christian must decide per entry; proposed public Transparency lines cannot be treated as human-reviewed until a human actually reviews them; Mission 14 additionally needs product, privacy, legal, health-safety, and technical review. Any later site integration must update the hard-coded ten-entry copy, table of contents, source table, and sitemap dates. Do not deploy Package A merely because Phase 3 is already awaiting deployment.
 
 ## Deploy architecture (as built)
 

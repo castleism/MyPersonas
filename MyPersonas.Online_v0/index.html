@@ -212,13 +212,14 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 .targettop,.scheduletop,.queuetop{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .targetactions,.scheduleactions,.queueactions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .autoformactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.composerweek{border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:12px;background:#f7f9fc}.composerweekhead{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.composertargets{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:7px 0}.composertargets label{display:flex;gap:5px;align-items:center;width:auto;margin:0;padding:5px 8px;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:12px}.composertargets input{width:auto;margin:0}.composerschedule{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr);gap:10px;align-items:end;margin-top:8px}.composerimgs{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.composerimgs img{height:64px;max-width:145px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
 .daypick{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.daypick button{width:42px;height:42px;border:1px solid var(--border);background:#fff;border-radius:50%;font-weight:700;cursor:pointer}.daypick button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .queuebody{white-space:pre-wrap;max-height:110px;overflow:hidden;margin-top:6px;color:#34373b}.queuebody.open{max-height:none}
 .audititem{font-size:13px}.audititem time{color:var(--dim);font-size:12px}.audititem b{display:block}
 .statusline{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.statusdot{width:8px;height:8px;border-radius:50%;background:#98a0aa}.statusdot.ok{background:var(--green)}.statusdot.wait{background:#e5a400}.statusdot.stop{background:var(--red)}
 .fanbox{position:fixed;right:16px;bottom:16px;width:410px;max-width:96vw;height:540px;max-height:85vh;background:#fff;border-radius:12px;z-index:181;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3)}
 .fanbox .fanh{padding:12px 14px;background:#0b2545;color:#fff;border-radius:12px 12px 0 0}.fanbox .fandisc{padding:8px 12px;background:#eef6ff;border-bottom:1px solid #cfe2ff;font-size:12px}.fanbox .fanmsgs{flex:1;overflow-y:auto;padding:12px}.fanbox .faninput{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
-@media(max-width:760px){.autostats{grid-template-columns:1fr 1fr}.autogrid{grid-template-columns:1fr}.autofull{grid-column:1}.levelgrid{grid-template-columns:1fr 1fr}.autohead select{max-width:none}.autonav button{min-height:44px}.scheduleactions .btn,.queueactions .btn,.targetactions .btn{min-height:42px}.weekgrid{display:flex;overflow-x:auto;padding-bottom:5px}.weekday{min-width:145px}}
+@media(max-width:760px){.autostats{grid-template-columns:1fr 1fr}.autogrid{grid-template-columns:1fr}.autofull{grid-column:1}.levelgrid{grid-template-columns:1fr 1fr}.autohead select{max-width:none}.autonav button{min-height:44px}.scheduleactions .btn,.queueactions .btn,.targetactions .btn{min-height:42px}.weekgrid{display:flex;overflow-x:auto;padding-bottom:5px}.weekday{min-width:145px}.composerschedule{grid-template-columns:1fr}}
 @media(max-width:440px){.autostats,.levelgrid{grid-template-columns:1fr}.fanbox{inset:8px;width:auto;height:auto;max-width:none;max-height:none}.autokill .btn{width:100%}}
 
 .pactions{margin-top:8px}
@@ -4712,10 +4713,34 @@ async function handleOAuthReturn(){
 function toggleSiteMenu(e){if(e)e.stopPropagation();const m=document.getElementById('siteMenu');if(m)m.classList.toggle('open');}
 function closeSiteMenu(){const m=document.getElementById('siteMenu');if(m)m.classList.remove('open');}
 /* ---- 3-part post composer (calls compose-post + meta-post) ---- */
+let composerRefreshEpoch=0;
+function composerPolicyKey(v){return String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"")}
+function composerMetaPageBlocked(a){const keys=["cannacandidz","cannacandids","sherlockchomes","traditionalfamilyvalues","tradfamilyvalues"];return [a?.username,a?.login_email,a?.aliases].some(v=>keys.some(k=>composerPolicyKey(v).includes(k)))}
 function composerPageOptions(sel){
   const fb=(myAccounts||[]).filter(a=>a.provider==="facebook");
   if(!fb.length)return `<option value="">No connected Facebook page</option>`;
-  return fb.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(a.username||a.login_email||a.id)}</option>`).join("");
+  const allowed=fb.filter(a=>!composerMetaPageBlocked(a)),blocked=fb.filter(composerMetaPageBlocked);
+  return (allowed.length?allowed.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(a.username||a.login_email||a.id)}</option>`).join(""):`<option value="">No policy-eligible Facebook page</option>`)+blocked.map(a=>`<option disabled>${esc(a.username||a.login_email||a.id)} · Meta policy blocked</option>`).join("");
+}
+function composerTargetPickerHtml(prefix,selected=["facebook","instagram"],disabled=false){
+  const chosen=new Set(Array.isArray(selected)?selected:[]),labels={facebook:"Facebook",instagram:"Instagram",twitter:"X · not automated"};
+  return `<div class="composertargets">${Object.keys(labels).map(t=>`<label title="${t==="twitter"?"The X publisher must be pulled, audited, and granted write access before scheduling.":"Include this destination."}"><input id="${prefix}_${t}" type="checkbox" ${chosen.has(t)?"checked":""} ${disabled?"disabled":""}>${labels[t]}</label>`).join("")}</div>`;
+}
+function composerSelectedTargets(prefix){return ["facebook","instagram","twitter"].filter(t=>document.getElementById(prefix+"_"+t)?.checked)}
+function composerWeekStartFromWall(value){
+  const m=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T/);if(!m)return "";
+  const d=new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]))),offset=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-offset);return d.toISOString().slice(0,10);
+}
+function composerWeekKey(d){
+  const approvedZone=String(d.approved_timezone||""),zone=approvedZone||autoTz(),instant=approvedZone&&d.scheduled_for?d.scheduled_for:d.created_at;
+  return composerWeekStartFromWall(autoZonedInput(instant,zone))||"unscheduled";
+}
+function composerWeekLabel(key){if(key==="unscheduled")return "Unscheduled";try{return "Week of "+new Date(key+"T12:00:00").toLocaleDateString([],{dateStyle:"medium"})}catch(e){return "Week of "+key}}
+function composerXCount(id){const input=document.getElementById("cmpX_"+id),out=document.getElementById("cmpXCount_"+id);if(out)out.textContent=String(input?.value?.length||0)+" / 280"}
+function composerEdits(id){
+  const targets=composerSelectedTargets("cmpTarget_"+id),fb=val("cmpFb_"+id)||"",ig=val("cmpIg_"+id)||"",x=val("cmpX_"+id)||"";
+  if(!targets.length){toast("Choose at least one destination");return null}if(x.length>280){toast("The X caption must be 280 characters or fewer");return null}
+  return{targets,fb,ig,x};
 }
 function composerPersonaChanged(){
   const p=(myPersonas||[]).find(x=>x.id===val("cmpPersona"));
@@ -4728,75 +4753,89 @@ async function openComposer(){
   const o=document.createElement("div");o.className="overlay";o.id="composerOv";
   o.innerHTML=`<div class="wizbox" style="max-width:840px;text-align:left">
     <h2>Compose 3-part post</h2>
-    <p class="muted">One brief → the persona drafts a Facebook (detailed), Instagram (optimal) and X (short) caption, with landscape / square / portrait image crops. Staged for review — nothing posts until you publish.</p>
+    <p class="muted">One brief → the persona drafts Facebook, Instagram, and X variants with landscape / square / portrait crops. Review by week, then explicitly publish now or approve a Meta-only time in <b>${esc(autoTz())}</b>. X remains draft-only until its publisher is pulled, audited, and granted write access.</p>
     <div class="row">
       <div><label>Persona</label><select id="cmpPersona" onchange="composerPersonaChanged()">${(myPersonas||[]).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.ai_backend?"":" (no model)"}</option>`).join("")}</select></div>
       <div><label>Facebook page</label><select id="cmpPage">${composerPageOptions()}</select></div>
     </div>
     <label>Brief — what is the post about?</label><textarea id="cmpBrief" style="min-height:64px" placeholder="e.g. Announce this week's podcast episode about terpenes"></textarea>
     <label>Source image URL (public)</label><input id="cmpImg" placeholder="https://…">
+    <label>Publish destinations</label>${composerTargetPickerHtml("cmpTarget")}
     <div class="autoformactions"><button class="btn" id="cmpStageBtn" onclick="composerStage()">Stage 3-part draft</button><button class="btn sec" onclick="document.getElementById('composerOv').remove()">Close</button></div>
-    <hr><h3>Recent drafts</h3><div id="cmpList" class="muted">Loading…</div>
+    <hr><h3>Weekly approval schedule</h3><div id="cmpList" class="muted">Loading…</div>
   </div>`;
   document.body.appendChild(o);composerPersonaChanged();composerRefresh();
 }
 async function composerStage(){
   const btn=document.getElementById("cmpStageBtn");if(!btn)return;
-  const personaId=val("cmpPersona"),facebookLedgerId=val("cmpPage"),brief=(val("cmpBrief")||"").trim(),sourceImageUrl=(val("cmpImg")||"").trim();
-  if(!brief){toast("Add a brief first");return}
+  const personaId=val("cmpPersona"),facebookLedgerId=val("cmpPage"),brief=(val("cmpBrief")||"").trim(),sourceImageUrl=(val("cmpImg")||"").trim(),targets=composerSelectedTargets("cmpTarget");
+  if(!brief){toast("Add a brief first");return}if(!targets.length){toast("Choose at least one destination");return}if(targets.some(t=>t==="facebook"||t==="instagram")&&!facebookLedgerId){toast("Choose a policy-eligible Facebook page for Meta publishing");return}if(targets.some(t=>t==="facebook"||t==="instagram")&&!/^https:\/\/\S+$/i.test(sourceImageUrl)){toast("Meta drafts need a public HTTPS source image");return}
   btn.disabled=true;btn.textContent="Drafting…";
   try{
     const s=await sb.auth.getSession(),tok=s.data.session&&s.data.session.access_token;
-    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/compose-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({action:"compose",personaId,facebookLedgerId,brief,sourceImageUrl})});
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/compose-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({action:"compose",personaId,facebookLedgerId,brief,sourceImageUrl,targets})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){toast(j.error||"Compose failed")}else{toast("Draft staged");const b=document.getElementById("cmpBrief");if(b)b.value="";composerRefresh()}
   }catch(e){toast("Could not reach the composer service.")}finally{btn.disabled=false;btn.textContent="Stage 3-part draft"}
 }
 async function composerRefresh(){
-  const list=document.getElementById("cmpList");if(!list)return;
-  const r=await sb.from("post_drafts").select("*").order("created_at",{ascending:false}).limit(25);
+  const list=document.getElementById("cmpList"),owner=session?.user?.id,epoch=++composerRefreshEpoch;if(!list||!owner)return;
+  const r=await sb.from("post_drafts").select("*").order("created_at",{ascending:false}).limit(200);
+  if(epoch!==composerRefreshEpoch||!document.contains(list)||session?.user?.id!==owner)return;
   if(r.error){list.innerHTML=`<span class="muted">${esc(r.error.message)}</span>`;return}
-  const rows=r.data||[];
-  list.innerHTML=rows.length?rows.map(composerDraftHtml).join(""):'<span class="muted">No drafts yet — stage one above.</span>';
+  const rows=r.data||[];if(!rows.length){list.innerHTML='<span class="muted">No drafts yet — stage one above.</span>';return}
+  const groups=new Map();rows.forEach(d=>{const key=composerWeekKey(d);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(d)});groups.forEach(drafts=>drafts.sort((a,b)=>{const at=a.scheduled_for?Date.parse(a.scheduled_for):Infinity,bt=b.scheduled_for?Date.parse(b.scheduled_for):Infinity;return at-bt||Date.parse(b.created_at)-Date.parse(a.created_at)}));
+  list.classList.remove("muted");list.innerHTML=(rows.length===200?'<p class="muted">Showing the newest 200 drafts. Resolve or remove older drafts to keep this review list complete.</p>':"")+[...groups.entries()].sort((a,b)=>String(b[0]).localeCompare(String(a[0]))).map(([key,drafts])=>`<section class="composerweek"><div class="composerweekhead"><h3 style="margin:0">${esc(composerWeekLabel(key))}</h3><span class="muted">${drafts.length} draft${drafts.length===1?"":"s"} · ${drafts.filter(d=>d.status==="scheduled").length} scheduled</span></div>${drafts.map(composerDraftHtml).join("")}</section>`).join("");
 }
 function composerDraftHtml(d){
   const pname=((myPersonas||[]).find(p=>p.id===d.persona_id)||{}).name||"—";
-  const pill=d.status==="posted"?"connected":d.status==="failed"?"attention":"verified";
-  const imgs=d.fb_image_url?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><img src="${esc(d.fb_image_url)}" style="height:64px;border-radius:6px" title="Facebook 1.91:1" loading="lazy"><img src="${esc(d.ig_image_url)}" style="height:64px;border-radius:6px" title="Instagram 1:1" loading="lazy"><img src="${esc(d.x_image_url)}" style="height:64px;border-radius:6px" title="X 4:5" loading="lazy"></div>`:"";
-  return `<div class="card" style="margin-top:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(pname)}</b><span class="pill ${pill}">${esc(d.status)}</span></div>
-    <label>Facebook (detailed)</label><textarea id="cmpFb_${d.id}" style="min-height:64px">${esc(d.fb_caption||"")}</textarea>
-    <label>Instagram</label><textarea id="cmpIg_${d.id}" style="min-height:46px">${esc(d.ig_caption||"")}</textarea>
-    <label>X (≤280)</label><input id="cmpX_${d.id}" maxlength="280" value="${esc(d.x_caption||"")}">
+  const targets=Array.isArray(d.targets)?d.targets:["facebook","instagram","twitter"],scheduled=d.status==="scheduled",terminal=["publishing","posted","skipped"].includes(d.status),hasResults=!!(d.fb_post_id||d.ig_media_id||d.x_tweet_id),editable=!scheduled&&!terminal&&!hasResults,pill=d.status==="posted"?"connected":d.status==="failed"?"attention":["scheduled","publishing"].includes(d.status)?"verified":"",zone=d.approved_timezone||autoTz(),page=(myAccounts||[]).find(a=>a.id===d.facebook_ledger_id),at=autoZonedInput(d.scheduled_for,zone)||autoZonedInput(new Date(Date.now()+24*60*60*1000).toISOString(),zone),disabled=editable?"":"disabled";
+  const imgs=d.fb_image_url||d.ig_image_url||d.x_image_url?`<div class="composerimgs">${d.fb_image_url?`<img src="${esc(d.fb_image_url)}" title="Facebook 1.91:1" loading="lazy">`:""}${d.ig_image_url?`<img src="${esc(d.ig_image_url)}" title="Instagram 1:1" loading="lazy">`:""}${d.x_image_url?`<img src="${esc(d.x_image_url)}" title="X 4:5" loading="lazy">`:""}</div>`:"";
+  const missingMetaImage=(targets.includes("facebook")&&!d.fb_image_url&&!d.source_image_url)||(targets.includes("instagram")&&!d.ig_image_url&&!d.source_image_url),canRetryMeta=!scheduled&&!terminal&&!targets.includes("twitter")&&((targets.includes("facebook")&&!d.fb_post_id)||(targets.includes("instagram")&&!d.ig_media_id));
+  return `<div class="card" id="cmpDraft_${d.id}" data-status="${esc(d.status)}" style="margin-top:10px">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><b>${esc(pname)}</b><div class="muted">${esc(d.brief||"")}${page?` · ${esc(page.username||page.login_email||page.id)}`:""}</div></div><span class="pill ${pill}">${esc(d.status)}</span></div>
+    <label>Facebook (detailed)</label><textarea id="cmpFb_${d.id}" style="min-height:64px" ${disabled}>${esc(d.fb_caption||"")}</textarea>
+    <label>Instagram</label><textarea id="cmpIg_${d.id}" style="min-height:46px" ${disabled}>${esc(d.ig_caption||"")}</textarea>
+    <label style="display:flex;justify-content:space-between;gap:8px">X (≤280)<span id="cmpXCount_${d.id}" class="muted">${String(d.x_caption||"").length} / 280</span></label><input id="cmpX_${d.id}" maxlength="280" value="${esc(d.x_caption||"")}" oninput="composerXCount('${d.id}')" ${disabled}>
+    <label>Destinations</label>${composerTargetPickerHtml("cmpTarget_"+d.id,targets,!editable)}
     ${imgs}
-    ${d.fb_post_id?`<p class="muted">Posted · FB ${esc(d.fb_post_id)}${d.ig_media_id?` · IG ${esc(d.ig_media_id)}`:""}</p>`:""}
+    <div class="composerschedule"><div><label>Publish time · ${esc(zone)}</label><input id="cmpAt_${d.id}" type="datetime-local" value="${esc(at)}" min="${esc(autoZonedInput(new Date(Date.now()+60*1000).toISOString(),zone))}" ${editable?"":"disabled"}></div><div class="muted">${scheduled?`Approved for ${esc(autoTaskDate(d.scheduled_for,zone))}. Unschedule before changing the exact draft.`:"Approval locks the current captions, crops, targets, page, and time."}</div></div>
+    ${d.fb_post_id||d.ig_media_id||d.x_tweet_id?`<p class="muted">Provider results${d.fb_post_id?` · FB ${esc(d.fb_post_id)}`:""}${d.ig_media_id?` · IG ${esc(d.ig_media_id)}`:""}${d.x_tweet_id?` · X ${esc(d.x_tweet_id)}`:""}</p>`:""}
+    ${targets.includes("twitter")&&!d.x_tweet_id?`<p class="muted" style="color:var(--red)">X is draft-only right now. Uncheck X before scheduling; no X post will be implied.</p>`:""}
+    ${missingMetaImage?`<p class="muted" style="color:var(--red)">This legacy draft has no public Meta image. Delete it and re-stage it with a public HTTPS source image.</p>`:""}
+    ${hasResults&&d.status!=="posted"?`<p class="muted">Partial result retained. Retry only attempts a missing Meta target; posted targets are skipped.</p>`:""}
     ${d.last_error?`<p class="muted" style="color:var(--red)">${esc(d.last_error)}</p>`:""}
-    <div class="autoformactions"><button class="btn sm sec" onclick="composerSave('${d.id}')">Save edits</button><button class="btn sm" onclick="composerPublish('${d.id}')">Publish now</button><button class="btn sm danger" onclick="composerDelete('${d.id}')">Delete</button></div>
+    <div class="autoformactions">${editable?`<button class="btn sm sec" onclick="composerSave('${d.id}')">Save edits</button><button class="btn sm" onclick="composerSchedule('${d.id}')">Approve &amp; schedule</button>`:""}${scheduled?`<button class="btn sm sec" onclick="composerUnschedule('${d.id}')">Unschedule to edit</button>`:""}${canRetryMeta?`<button class="btn sm" id="cmpPublish_${d.id}" onclick="composerPublish('${d.id}')">${hasResults?"Retry missing Meta target":"Publish now"}</button>`:""}${editable?`<button class="btn sm danger" onclick="composerDelete('${d.id}')">Delete</button>`:""}${terminal?`<span class="muted">${d.status==="publishing"?"Publishing is in progress or awaiting reconciliation; controls are locked.":"Publishing history is read-only."}</span>`:""}</div>
   </div>`;
 }
-async function composerSave(id){
-  const{error}=await sb.from("post_drafts").update({fb_caption:val("cmpFb_"+id)||"",ig_caption:val("cmpIg_"+id)||"",x_caption:val("cmpX_"+id)||"",updated_at:new Date().toISOString()}).eq("id",id);
-  toast(error?error.message:"Saved");
+async function composerSave(id,quiet=false,refresh=true){
+  const edits=composerEdits(id);if(!edits)return false;
+  const{data,error}=await sb.rpc("save_post_draft",{p_draft_id:id,p_fb_caption:edits.fb,p_ig_caption:edits.ig,p_x_caption:edits.x,p_targets:edits.targets});
+  if(error||!data){toast(error?.message||"The draft changed; reload and try again");if(refresh)composerRefresh();return false}if(!quiet)toast("Draft saved; approval is cleared");if(refresh)composerRefresh();return true;
+}
+async function composerSchedule(id){
+  const edits=composerEdits(id);if(!edits)return;if(edits.targets.includes("twitter")){toast("X scheduling is not wired yet. Uncheck X; its caption stays saved for later.");return}if(!edits.targets.some(t=>t==="facebook"||t==="instagram")){toast("Choose Facebook or Instagram for this Meta-only schedule");return}
+  const wall=val("cmpAt_"+id),zone=autoTz(),scheduledFor=zonedInputToIso(wall,zone);if(!scheduledFor){toast(`That wall-clock time does not exist in ${zone} because of a daylight-saving change`);return}if(Date.parse(scheduledFor)<=Date.now()){toast("Choose a future publish time");return}
+  if(!confirm(`Approve this exact draft for ${autoTaskDate(scheduledFor,zone)}? It will stay dormant until the scheduled publisher is explicitly activated.`))return;
+  const{data,error}=await sb.rpc("approve_and_schedule_post_draft",{p_draft_id:id,p_scheduled_for:scheduledFor,p_timezone:zone,p_fb_caption:edits.fb,p_ig_caption:edits.ig,p_x_caption:edits.x,p_targets:edits.targets});
+  if(error||!data){toast(error?.message||"The draft could not be scheduled");composerRefresh();return}toast("Approved and scheduled; the publisher is still dormant");composerRefresh();
+}
+async function composerUnschedule(id){
+  if(!confirm("Unschedule this draft and clear its approval?"))return;const{data,error}=await sb.rpc("unschedule_post_draft",{p_draft_id:id});toast(error?error.message:data?"Unscheduled; edit and approve it again":"The draft changed; reloading");composerRefresh();
 }
 async function composerPublish(id){
-  if(!confirm("Publish this now to Facebook and Instagram?"))return;
-  await composerSave(id);
-  const r=await sb.from("post_drafts").select("*").eq("id",id).maybeSingle();const d=r.data;
-  if(!d){toast("Draft not found");return}
-  if(!d.facebook_ledger_id){toast("This draft has no target Facebook page.");return}
-  const s=await sb.auth.getSession(),tok=s.data.session&&s.data.session.access_token,base=CONFIG.SUPABASE_URL.replace(/\/$/,"");
-  const pub=async(imageUrl,caption,target)=>{try{const rr=await fetch(base+"/functions/v1/meta-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({action:"publish",facebookLedgerId:d.facebook_ledger_id,imageUrl,caption,target})});return await rr.json().catch(()=>({}))}catch(e){return{error:"unreachable"}}};
-  const upd={},errs=[],targets=Array.isArray(d.targets)?d.targets:["facebook","instagram"];
-  if(targets.includes("facebook")){const fr=await pub(d.fb_image_url||d.source_image_url,d.fb_caption,"facebook");if(fr.facebook)upd.fb_post_id=fr.facebook.postId;else errs.push("FB: "+(fr.error||"failed"))}
-  if(targets.includes("instagram")){const ir=await pub(d.ig_image_url||d.source_image_url,d.ig_caption,"instagram");if(ir.instagram)upd.ig_media_id=ir.instagram.mediaId;else errs.push("IG: "+(ir.error||"failed"))}
-  await sb.from("post_drafts").update({...upd,status:errs.length?"failed":"posted",last_error:errs.join(" | ")||null,updated_at:new Date().toISOString()}).eq("id",id);
-  toast(errs.length?("Posted with issues: "+errs.join(" | ")):"Published to "+Object.keys(upd).length+" platform(s)!");
-  composerRefresh();
+  const targets=composerSelectedTargets("cmpTarget_"+id);if(targets.includes("twitter")){toast("X publishing is not wired yet. Uncheck X before publishing the Meta variants; its caption remains saved.");return}if(!targets.some(t=>t==="facebook"||t==="instagram")){toast("Choose Facebook or Instagram");return}if(!confirm("Publish this exact saved draft now to its selected Meta destinations?"))return;
+  const btn=document.getElementById("cmpPublish_"+id);if(btn)btn.disabled=true;
+  try{
+    const current=await sb.from("post_drafts").select("fb_post_id,ig_media_id,x_tweet_id").eq("id",id).maybeSingle();if(current.error||!current.data){toast("Draft not found; reload and try again");return}if(!current.data.fb_post_id&&!current.data.ig_media_id&&!current.data.x_tweet_id&&!await composerSave(id,true,false))return;
+    const owner=session?.user?.id,s=await sb.auth.getSession(),active=s.data.session;if(!owner||!active||active.user.id!==owner){toast("Your signed-in account changed; nothing was published");return}
+    const rr=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/meta-post",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+active.access_token},body:JSON.stringify({action:"publish-draft",draftId:id})}),j=await rr.json().catch(()=>({}));
+    if(!rr.ok){toast(j.status==="reconciliation_required"?"A provider result is uncertain. Reconcile this locked draft before retrying.":(j.error||(j.errors||[]).join(" | ")||"Publish failed"));return}
+    toast(j.status==="posted"?"Published and provider results saved":"Publish incomplete: "+(j.errors||[]).join(" | "));
+  }catch(e){toast("The publish service could not be reached. Reload before deciding whether to retry.")}finally{composerRefresh()}
 }
 async function composerDelete(id){
-  if(!confirm("Delete this draft? Already-published posts are not removed."))return;
-  const{error}=await sb.from("post_drafts").delete().eq("id",id);
-  toast(error?error.message:"Deleted");composerRefresh();
+  if(!confirm("Delete this unpublished draft?"))return;const{data,error}=await sb.rpc("delete_post_draft",{p_draft_id:id});toast(error?error.message:data?"Deleted":"The draft changed; reloading");composerRefresh();
 }
 function siteGo(h){closeSiteMenu();go(h);}
 function goAccount(){closeSiteMenu();go('studio');setTimeout(()=>{const el=document.getElementById('acctTabs');if(el){if(window.switchAcctTab)switchAcctTab('profile');el.scrollIntoView({behavior:'smooth',block:'start'});}},90);}
