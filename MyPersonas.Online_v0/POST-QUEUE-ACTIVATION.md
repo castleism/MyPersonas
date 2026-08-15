@@ -4,6 +4,10 @@
 exact-approval migration can be deployed and tested while the publisher stays dormant. Turning on
 the recurring job is a separate production decision.
 
+2026-08-14 release note: a safe public permission probe shows migration 035 functions exist in the
+live schema, but signed-in behavior and exact deployed function source are not fully reverified.
+Treat further changes as forward fixes; do not rewrite/reapply 035 merely to make the handoff match.
+
 ## What is ready locally
 
 - The Composer paginates every active draft, adds the newest 50 terminal history rows, groups them
@@ -59,13 +63,13 @@ Do not apply migration 036 until every item below is closed:
 7. Reconcile legacy terminal history that has a provider ID but no `publish_*` destination or
    `*_published_at` attribution. Do not guess those values. Until each recent Instagram post is
    attributed or older than the rolling window, the local quota counter is incomplete.
-8. Verify migrations 033 and 034 are present in production, then deploy the matching source and apply
-   035 in the coordinated order below.
+8. Verify migrations 033–035 in production, reconcile live state, then use the coordinated
+   backend → forward migration → frontend order below.
 
 ## Safe deployment order while the cron remains off
 
-1. Verify migrations 033 and 034 and the first-application migration-035 target preflight in production. Announce a
-   short Composer maintenance window; do not stage, edit, or publish a draft during steps 2–3.
+1. Verify migrations 033, 034, and 035 plus the current target/in-flight inventory in production. Announce a
+   short Composer maintenance window; do not stage, edit, or publish a draft during steps 2–4.
 
    ```sql
    select id, status, targets, fb_post_id, ig_media_id, x_tweet_id
@@ -82,13 +86,17 @@ Do not apply migration 036 until every item below is closed:
    targets just to make the migration pass. On later re-runs, migration 035's internal preflight
    accepts a legitimate partial result only when its immutable attempt destination is present and
    consistent with any approval snapshot.
-2. Review and push the source changes, including `approve-post-draft`, the shared approved-media
-   helper, the worker, and the frontend contract below. The GitHub workflows deploy the static frontend and all
-   versioned Edge Functions; wait for both workflows to succeed. Until 035 lands, new mutation RPCs
-   safely fail and the new draft publisher cannot claim a row; do not use Composer in this gap.
-3. In the Supabase SQL editor, run `sql-updates/035-post-draft-approval-hardening.sql` as one
-   transaction. Do **not** run 036. Reopen Composer only after the migration commits successfully.
-4. Reload the signed-in site. Stage two disposable drafts in different weeks and verify:
+   Separately inventory every `status='publishing'` row, including rows with no provider ID. A row
+   without a recorded result may still represent an ambiguous provider success and must be reconciled.
+2. Make CI green. Push a **backend-only** commit containing reviewed functions/shared code/config
+   and no frontend change. The current Supabase workflow must be repaired/protected first; wait for
+   exact function-version evidence. Pages may still run, but its artifact must remain unchanged.
+3. Apply only the additive forward migration required by that backend release, as one transaction.
+   If this is a first application of 035 in another environment, use the original 035 preflight;
+   production currently needs verified forward state, not a blind rerun. Do **not** run 036.
+4. Push the matching frontend/site commit only after the schema and backend are verified. Keep
+   Composer closed during any contract gap; reopen it after the frontend is live and hard-reloaded.
+5. Reload the signed-in site. Stage two disposable drafts in different weeks and verify:
    - each time is displayed in the owner time zone;
    - X cannot be scheduled;
    - missing Page/image/Instagram linkage is rejected;
@@ -98,7 +106,7 @@ Do not apply migration 036 until every item below is closed:
    - scheduled captions/targets are locked;
    - Unschedule clears approval and allows edits;
    - posted/publishing history cannot be approved or deleted.
-5. Inspect the rows in the SQL editor without changing them:
+6. Inspect the rows in the SQL editor without changing them:
 
 ```sql
 select id, owner, persona_id, facebook_ledger_id, week_start, status,
@@ -220,19 +228,21 @@ where jobname = 'mypersonas-run-post-queue';
 
 ## Immediate stop and recovery
 
-Use the application's owner-wide **Pause all** control first. Stop the database schedule with:
+First stop **every** matching database schedule by inventorying commands, not only a job name:
 
 ```sql
-select cron.unschedule('mypersonas-run-post-queue');
-```
-
-Then verify no job remains:
-
-```sql
-select jobid, jobname, active
+select cron.unschedule(jobid)
 from cron.job
-where jobname = 'mypersonas-run-post-queue';
+where command ilike '%run-post-queue%';
 ```
 
-Do not change a `publishing` row back to `scheduled` until its Page/Instagram account has been checked
+Then use the application's owner-wide **Pause all** control and verify no matching job remains:
+
+```sql
+select jobid, jobname, active, command
+from cron.job
+where command ilike '%run-post-queue%';
+```
+
+Reconcile every in-flight `publishing` row next. Do not change one back to `scheduled` until its Page/Instagram account has been checked
 for an unrecorded provider success. Reconcile first; otherwise a retry can duplicate a live post.

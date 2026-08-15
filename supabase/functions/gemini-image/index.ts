@@ -1,93 +1,330 @@
-// gemini-image — generate or edit a persona image with Gemini's image model
-// ("nano banana", gemini-2.5-flash-image) using the owner's own Gemini key from
-// the Vault. Text-to-image, or image editing when a base image is supplied.
-// The browser never sees the key: it POSTs { prompt, target?, baseImage?, backendId? }
-// with the owner's bearer token; this function reads the key server-side and calls
-// the native generateContent endpoint. Deploy like the other functions
-// (Supabase CLI: `supabase functions deploy gemini-image`, or the dashboard editor).
+// gemini-image — AAL2-gated generation/editing with an owner's Vault key.
+// Google requests always use the pinned native Gemini endpoint and model. A
+// stored owner base URL, request provider, or request model can never redirect
+// the credential or image bytes to another host.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAal2 } from "../_shared/aal2.ts";
+import {
+  GEMINI_IMAGE_MODEL,
+  geminiGenerateContentUrl,
+  isGoogleImageProvider,
+  MAX_GEMINI_IMAGE_REQUEST_BYTES,
+  parseGeminiBaseImage,
+  pinnedGeminiImageModel,
+} from "../_shared/gemini-image.ts";
 
-const U = Deno.env.get("SUPABASE_URL")!, S = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, A = Deno.env.get("SUPABASE_ANON_KEY")!;
-const H = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "https://mypersonas.online",
-  "Access-Control-Allow-Headers": "authorization,content-type",
-  "Access-Control-Allow-Methods": "POST,OPTIONS",
-};
-const J = (s: number, b: unknown) => new Response(JSON.stringify(b), { status: s, headers: H });
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const MAX_PROVIDER_RESPONSE_BYTES = 32 * 1024 * 1024;
+const MAX_PROMPT_CHARS = 5_000;
+const MAX_KEY_CHARS = 32_768;
+const GOOGLE_PROVIDERS = ["google", "google_legacy"];
+const ALLOWED_ORIGINS = new Set([
+  "https://aliaspaces.com",
+  "https://www.aliaspaces.com",
+  "https://app.aliaspaces.com",
+  "https://mypersonas.online",
+]);
+
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});
+
+class BodyTooLargeError extends Error {}
+
+function cors(origin: string) {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+function json(body: unknown, status = 200, origin = "") {
+  return new Response(body === null ? null : JSON.stringify(body), {
+    status,
+    headers: {
+      ...(origin && ALLOWED_ORIGINS.has(origin) ? cors(origin) : {}),
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+async function readBoundedText(
+  source: Request | Response,
+  maxBytes: number,
+  label: string,
+) {
+  const rawLength = source.headers.get("content-length");
+  if (rawLength) {
+    const declared = Number(rawLength);
+    if (
+      !Number.isSafeInteger(declared) || declared < 0 || declared > maxBytes
+    ) {
+      await source.body?.cancel().catch(() => undefined);
+      throw new BodyTooLargeError(`${label} exceeded the safe limit`);
+    }
+  }
+  if (!source.body) return "";
+  const reader = source.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new BodyTooLargeError(`${label} exceeded the safe limit`);
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function requestObject(raw: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function requestBackendId(value: unknown) {
+  if (value === undefined || value === null || value === "") return "";
+  if (
+    typeof value !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(value.trim())
+  ) {
+    throw new Error("A valid model connection id is required");
+  }
+  return value.trim();
+}
+
+async function ownerGoogleBackend(owner: string, backendId: string) {
+  if (backendId) {
+    const result = await admin.from("ai_backends").select("id,provider")
+      .eq("owner", owner).eq("id", backendId).maybeSingle();
+    if (result.error) throw new Error("Could not inspect the model connection");
+    return result.data as { id: string; provider?: unknown } | null;
+  }
+  const result = await admin.from("ai_backends").select("id,provider")
+    .eq("owner", owner).in("provider", GOOGLE_PROVIDERS)
+    .order("created_at", { ascending: true }).limit(1).maybeSingle();
+  if (result.error) throw new Error("Could not inspect Gemini connections");
+  return result.data as { id: string; provider?: unknown } | null;
+}
+
+async function ownerBackendKey(backendId: string, owner: string) {
+  const result = await admin.rpc("ai_backend_get_key", {
+    p_backend_id: backendId,
+    p_owner: owner,
+  });
+  if (
+    result.error || typeof result.data !== "string" ||
+    !result.data.trim() || result.data.length > MAX_KEY_CHARS
+  ) {
+    return "";
+  }
+  return result.data.trim();
+}
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: H });
-  if (req.method !== "POST") return J(405, { error: "POST only" });
+  const origin = req.headers.get("Origin") || "";
+  if (req.method === "OPTIONS") return json(null, 204, origin);
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    return json({ error: "Origin not allowed" }, 403);
+  }
+  if (req.method !== "POST") return json({ error: "POST only" }, 405, origin);
 
-  const auth = req.headers.get("Authorization") || "";
-  if (!auth.startsWith("Bearer ")) return J(401, { error: "Sign in first" });
-  const uc = createClient(U, A, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } });
-  const { data: ud } = await uc.auth.getUser();
-  const uid = ud?.user?.id || "";
-  if (!uid) return J(401, { error: "Sign in first" });
+  const guard = await requireAal2(req, admin);
+  if (!guard.ok) {
+    return json({ error: guard.error, code: guard.code }, guard.status, origin);
+  }
 
-  let body: any = {};
-  try { body = await req.json(); } catch { /**/ }
-  const prompt = String(body.prompt || "").slice(0, 5000).trim();
-  if (!prompt) return J(400, { error: "A prompt is required" });
+  let rawBody = "";
+  try {
+    rawBody = await readBoundedText(
+      req,
+      MAX_GEMINI_IMAGE_REQUEST_BYTES,
+      "Request body",
+    );
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? json({ error: "Request body is too large" }, 413, origin)
+      : json({ error: "Could not read the request body" }, 400, origin);
+  }
+  const body = requestObject(rawBody);
+  if (!body) {
+    return json({ error: "A JSON request body is required" }, 400, origin);
+  }
 
-  const svc = createClient(U, S, { auth: { persistSession: false } });
-  let backend: any = null;
-  if (body.backendId) {
-    const r = await svc.from("ai_backends").select("id,model,base_url,api_key,provider").eq("owner", uid).eq("id", body.backendId).maybeSingle();
-    backend = r.data;
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) return json({ error: "A prompt is required" }, 400, origin);
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    return json({ error: "The prompt is too long" }, 400, origin);
+  }
+
+  if (body.provider !== undefined && !isGoogleImageProvider(body.provider)) {
+    return json(
+      { error: "Only a Google Gemini backend is supported" },
+      400,
+      origin,
+    );
+  }
+  let model = "";
+  let backendId = "";
+  let baseImage: ReturnType<typeof parseGeminiBaseImage> = null;
+  try {
+    model = pinnedGeminiImageModel(body.model);
+    backendId = requestBackendId(body.backendId);
+    baseImage = parseGeminiBaseImage(body.baseImage);
+  } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : "Invalid request" },
+      400,
+      origin,
+    );
+  }
+
+  let backend: { id: string; provider?: unknown } | null = null;
+  try {
+    backend = await ownerGoogleBackend(guard.user.id, backendId);
+  } catch {
+    return json({ error: "Could not inspect Gemini connections" }, 500, origin);
   }
   if (!backend) {
-    const r = await svc.from("ai_backends").select("id,model,base_url,api_key,provider").eq("owner", uid).in("provider", ["google", "google_legacy"]).order("created_at").limit(1).maybeSingle();
-    backend = r.data;
+    return json(
+      {
+        error: backendId
+          ? "Owned model connection not found"
+          : "No Gemini model is linked. Add one in Matrix → AI Models.",
+      },
+      400,
+      origin,
+    );
   }
-  if (!backend) return J(400, { error: "No Gemini model is linked. Add one in Matrix -> AI Models." });
+  if (!isGoogleImageProvider(backend.provider)) {
+    return json(
+      { error: "That model connection is not a Google Gemini backend" },
+      400,
+      origin,
+    );
+  }
 
-  let key = String(backend.api_key || "");
+  const key = await ownerBackendKey(backend.id, guard.user.id);
   if (!key) {
-    const { data: k } = await svc.rpc("ai_backend_get_key", { p_backend_id: backend.id, p_owner: uid });
-    key = String(k || "");
+    return json({ error: "Could not read the Gemini API key" }, 400, origin);
   }
-  if (!key) return J(400, { error: "Could not read the Gemini API key" });
 
-  const nb = String(backend.base_url || "https://generativelanguage.googleapis.com/v1beta").replace(/\/openai\/?$/, "").replace(/\/+$/, "");
-  const model = String(body.model || "gemini-2.5-flash-image").trim();
+  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  if (baseImage) {
+    parts.push({
+      inline_data: { mime_type: baseImage.mimeType, data: baseImage.data },
+    });
+  }
 
-  const parts: any[] = [{ text: prompt }];
-  const bi = String(body.baseImage || "");
-  const m = bi.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (m) parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
-
-  const url = `${nb}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-  const call = async (modalities: string[]) => {
-    const r = await fetch(url, {
+  let providerResponse: Response;
+  try {
+    providerResponse = await fetch(geminiGenerateContentUrl(model), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: modalities } }),
-      signal: AbortSignal.timeout(90000),
-    }).catch(() => null);
-    if (!r) return { ok: false, status: 502, j: { error: { message: "Could not reach Gemini" } } as any };
-    const j = await r.json().catch(() => ({} as any));
-    return { ok: r.ok, status: r.status, j };
-  };
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": key,
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: { responseModalities: ["IMAGE"] },
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch {
+    return json(
+      { error: "Could not reach the pinned Gemini endpoint" },
+      502,
+      origin,
+    );
+  }
 
-  // gemini-2.5-flash-image accepts IMAGE-only; older preview models require TEXT+IMAGE.
-  let res = await call(["IMAGE"]);
-  if (!res.ok && /modal|responseModalities|only supports|must (be|include)/i.test(JSON.stringify(res.j))) {
-    res = await call(["TEXT", "IMAGE"]);
+  let providerBody: Record<string, unknown> = {};
+  try {
+    const raw = await readBoundedText(
+      providerResponse,
+      MAX_PROVIDER_RESPONSE_BYTES,
+      "Gemini response",
+    );
+    providerBody = requestObject(raw) || {};
+  } catch {
+    return json(
+      { error: "Gemini returned an invalid or oversized response" },
+      502,
+      origin,
+    );
   }
-  if (!res.ok) {
-    return J(res.status, { error: String(res.j?.error?.message || ("Gemini image error (HTTP " + res.status + ")")).slice(0, 400) });
+  if (!providerResponse.ok) {
+    const providerStatus =
+      providerResponse.status >= 400 && providerResponse.status <= 599
+        ? providerResponse.status
+        : 502;
+    return json(
+      {
+        error: `Gemini image request failed (HTTP ${providerResponse.status})`,
+      },
+      providerStatus,
+      origin,
+    );
   }
 
-  const outParts = res.j?.candidates?.[0]?.content?.parts || [];
-  const img = outParts.find((p: any) => p?.inlineData?.data || p?.inline_data?.data);
-  const data = img?.inlineData?.data || img?.inline_data?.data;
-  const mime = img?.inlineData?.mimeType || img?.inline_data?.mime_type || "image/png";
-  if (!data) {
-    return J(502, { error: "Gemini returned no image. This Gemini key may not have image generation enabled (it is a paid Google model)." });
+  const candidates = Array.isArray(providerBody.candidates)
+    ? providerBody.candidates as Array<Record<string, unknown>>
+    : [];
+  const content = candidates[0]?.content as Record<string, unknown> | undefined;
+  const outputParts = Array.isArray(content?.parts)
+    ? content.parts as Array<Record<string, unknown>>
+    : [];
+  const imagePart = outputParts.find((part) => {
+    const inline = (part.inlineData || part.inline_data) as
+      | Record<string, unknown>
+      | undefined;
+    return typeof inline?.data === "string" && !!inline.data;
+  });
+  const inline = (imagePart?.inlineData || imagePart?.inline_data) as
+    | Record<string, unknown>
+    | undefined;
+  const imageData = typeof inline?.data === "string" ? inline.data : "";
+  const mime = typeof inline?.mimeType === "string"
+    ? inline.mimeType
+    : typeof inline?.mime_type === "string"
+    ? inline.mime_type
+    : "";
+  if (!imageData || !["image/jpeg", "image/png", "image/webp"].includes(mime)) {
+    return json(
+      {
+        error:
+          `Gemini returned no supported image for ${GEMINI_IMAGE_MODEL}. Confirm that image generation is enabled for this key.`,
+      },
+      502,
+      origin,
+    );
   }
-  return J(200, { image: `data:${mime};base64,${data}`, mime });
+  return json({ image: `data:${mime};base64,${imageData}`, mime }, 200, origin);
 });

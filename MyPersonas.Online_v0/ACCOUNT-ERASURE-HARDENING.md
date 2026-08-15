@@ -1,11 +1,13 @@
 # Account erasure hardening — Reddit and owner storage
 
-Status: **local implementation; not deployed or live-verified** (2026-08-13).
+Status: **local implementation; not deployed or live-verified** (updated 2026-08-14).
 
-Known release blocker: migration 019 stored Discord webhook secrets by ledger-derived
-Vault name without an erasure RPC/credential FK. Until a new owner-scoped service cleanup
-and existing-orphan inventory are added and verified, do not claim complete account erasure
-for an owner who may have configured Discord. `discord-post` is dormant in the meantime.
+Migration 019 stored Discord webhook secrets by ledger-derived Vault name without an erasure
+RPC/credential FK. The local migration 042 and shared erasure-handler update now add a
+fail-closed owner-scoped cleanup, but neither is applied or deployed. Existing-orphan review
+also remains an operator step. Until the complete apply and disposable-owner verification in
+`DISCORD-DORMANCY-ERASURE.md` succeeds, do not claim live-complete account erasure for an
+owner who may have configured Discord. `discord-post` remains dormant.
 
 Both `delete-account` and `erase-content` use the handler in
 `supabase/functions/delete-account/index.ts`, so this package applies to complete account

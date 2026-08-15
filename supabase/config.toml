@@ -4,6 +4,9 @@ project_id = "nwsqyuucwzihruszocge"
 [functions.ai-proxy]
 verify_jwt = true
 
+[functions.openrouter-connect]
+verify_jwt = true
+
 [functions.post-bridge]
 verify_jwt = true
 

@@ -45,7 +45,7 @@ async function batchForOwner(svc: any, uid: string, per: number) {
   let key = String(backend.api_key || "");
   if (!key) { const { data: k } = await svc.rpc("ai_backend_get_key", { p_backend_id: backend.id, p_owner: uid }); key = String(k || ""); }
   if (!key) return { error: "gemini key unreadable" };
-  const nb = String(backend.base_url || "").replace(/\/openai$/, "").replace(/\/+$/, ""), model = String(backend.model || "gemini-flash-latest");
+  const nb = String(backend.base_url || "").replace(/\/openai$/, "").replace(/\/+$/, ""), model = String(backend.model || "gemini-3.6-flash");
 
   const { data: plans } = await svc.from("persona_content_plans").select("persona_id,content_pillars,source_notes,audience_focus,primary_goal").eq("owner", uid);
   const eligible = (plans || []).filter((p: any) => clip(p.content_pillars, 3).trim()).slice(0, 12);

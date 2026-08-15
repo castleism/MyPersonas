@@ -9,8 +9,8 @@ the new `sb_publishable_…` / `sb_secret_…` keys before that happens._
 
 | Old (deprecated) | New | Used by |
 |---|---|---|
-| `anon` JWT | `sb_publishable_…` | Browser client (`index.html` `CONFIG.SUPABASE_ANON_KEY`), any function using `SUPABASE_ANON_KEY` |
-| `service_role` JWT | `sb_secret_…` | Edge Functions' admin client (`SUPABASE_SERVICE_ROLE_KEY`) — meta-oauth, gmail-oauth, gemini-image, delete-account, etc. |
+| `anon` JWT | `sb_publishable_…` | Browser/API gateway `apikey`; the signed-in user's JWT remains the `Authorization` bearer |
+| `service_role` JWT | `sb_secret_…` | Server-only API gateway `apikey`; it is not a JWT bearer replacement |
 
 Grep to find every reference:
 
@@ -24,18 +24,25 @@ rg "SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_PUBLISHABLE|anon key" \
 1. **Read Supabase's current guidance first** (the exact key names/UI change over
    time): dashboard → Project Settings → API Keys. Both old and new keys are valid
    during the transition, so this can be done incrementally with no downtime.
-2. **Browser publishable key:** replace the hard-coded anon key in
-   `index.html` (`CONFIG.SUPABASE_ANON_KEY`) with the new `sb_publishable_…`.
-   The publishable key is safe to ship in the client (RLS still enforces access).
-   Deploy via the Pages workflow; verify sign-in + a public persona page.
-3. **Edge Functions secret key:** the functions read `SUPABASE_SERVICE_ROLE_KEY`
-   from the environment. When Supabase provides the `sb_secret_…` replacement,
-   set it as the functions' secret and update any code that names the old var.
-   Keep the old var set until every function is confirmed working, then remove it.
-4. **Cron / worker callers:** anything calling functions with the anon/service key
-   in an Authorization header (run-tasks, run-mailbox-jobs, run-publish-queue)
-   must use the new key. Verify a scheduled run after switching.
-5. **Rotate + revoke:** once everything runs on `sb_*` keys, disable the legacy
+2. **Inventory authentication semantics before replacement.** New `sb_*` keys are API keys, not
+   JWTs. They go in the `apikey` header. A signed-in user's access token remains the
+   `Authorization: Bearer <user JWT>` value. Never send `sb_publishable_*` or `sb_secret_*` as if it
+   were a bearer JWT.
+3. **Browser publishable key:** configure the SDK with `sb_publishable_…` so it sends the gateway
+   `apikey`; keep RLS and user-JWT authorization unchanged. Verify public reads, signup/sign-in,
+   AAL2, signed-in CRUD, logout, and erasure before proceeding.
+4. **Edge Function callers:** functions using Supabase's legacy JWT verification cannot accept an
+   `sb_*` API key as bearer identity. Migrate deliberately to `verify_jwt = false` only when the
+   function explicitly validates the user JWT or its narrow cron/callback secret itself. Test
+   missing, malformed, expired, wrong-owner, AAL1, and AAL2 cases.
+5. **Server/admin clients:** add a separate server-only environment dictionary for accepted
+   `sb_secret_*` API keys and update clients/callers to send it as `apikey`. Keep legacy
+   `SUPABASE_SERVICE_ROLE_KEY` consumers in place until each call path is migrated and verified;
+   do not assume renaming the environment variable is sufficient.
+6. **Cron / worker callers:** separate gateway authentication from the worker's own long random
+   secret. Verify pause, replay, due-time, and zero-item probes after switching. Never put an
+   `sb_secret_*` value into SQL text, logs, or browser code.
+7. **Rotate + revoke:** once everything runs on `sb_*` keys, disable the legacy
    JWT keys in the dashboard. Keep a note of the change date in CHANGELOG.md.
 
 ## Safety notes
@@ -44,6 +51,7 @@ rg "SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_PUBLISHABLE|anon key" \
   don't swap both at once.
 - The `sb_secret_…` key is as sensitive as `service_role`: it stays only in
   Edge Function secrets / Vault, never in the client or the repo.
-- No database migration is required; this is purely key/secret configuration.
+- Database migrations may be required for explicit JWT/AAL enforcement and accepted-key metadata;
+  this is not a blind dashboard-only rename.
 
 _Status: not started. Tracked in ROADMAP.md (P2)._

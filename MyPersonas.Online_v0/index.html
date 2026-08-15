@@ -415,6 +415,8 @@ const MAILBOX_SELECTION_LIMIT=50;
 const MAILBOX_MAX_LOOKBACK_DAYS=36500;
 const MAILBOX_MAX_SCAN_MESSAGES=15000;
 let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and account loads discard stale completions
+let loadedUid,privateSessionReady=false;
+let mfaLoginGate={active:false,checking:false,uid:"",factors:[],error:""};
 let friendRealtimeChannel=null,friendRealtimeUid="",friendRealtimeSignature="",friendRealtimeTimer=null,friendRealtimeAnnounceIncoming=false;
 let pageState={},editLinks=[],editInitialLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
 const app=document.getElementById("app");
@@ -500,38 +502,108 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   handleTwitterReturn();
   handleRedditReturn();
   handleMetaReturn();
-  handleOAuthReturn();
-  let loadedUid; // dedupe: SIGNED_IN + INITIAL_SESSION both fire at startup (order varies)
+  captureOpenRouterReturn();
   sb.auth.onAuthStateChange((ev,s)=>{
     const previousUid=session?.user?.id||null;session=s;const uid=s&&s.user?s.user.id:null;
     updateAuthBtn();
     if(ev==="TOKEN_REFRESHED")return; // don't re-render (would wipe forms in progress)
-    if(uid===loadedUid)return; // already loaded for this user (startup double-fire, tab refocus)
-    loadedUid=uid;
-    const generation=++authLoadGeneration;
-    if(previousUid!==uid){
-      renderEpoch++;mineLoadRequest++;app.innerHTML='<div class="empty">Loading this account…</div>';localStorage.removeItem("ps_filters");closeChat();closePublicFanChat();
-      document.querySelectorAll(".overlay").forEach(o=>o.remove());resetPrivateUiState();resetMineState();
-    }
-    (async()=>{
-      await finishPendingTwitter(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      const loaded=await loadMine(uid,generation);
-      if(!loaded||generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      if(myAccounts.some(account=>account.provider==="twitter"))await loadTwitterCapability(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      if(myAccounts.some(account=>account.provider==="reddit"))await loadRedditCapability(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      await loadMetaCapability(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      await finishPendingGmail(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      await finishPendingMeta(uid,generation);
-      if(generation!==authLoadGeneration||(session?.user?.id||null)!==uid)return;
-      route();
-    })();
+    startAuthBootstrap(uid,previousUid!==uid);
   });
   window.addEventListener("hashchange",route);
+}
+function authBootstrapCurrent(uid,generation){return generation===authLoadGeneration&&(session?.user?.id||null)===uid}
+function startAuthBootstrap(uid,accountChanged=false,force=false){
+  if(!force&&uid===loadedUid)return; // SIGNED_IN + INITIAL_SESSION can both fire at startup
+  loadedUid=uid;const generation=++authLoadGeneration;privateSessionReady=false;
+  mfaLoginGate={active:false,checking:!!uid,uid:uid||"",factors:[],error:""};
+  if(accountChanged){
+    renderEpoch++;mineLoadRequest++;localStorage.removeItem("ps_filters");closeChat();closePublicFanChat();
+    document.querySelectorAll(".overlay").forEach(o=>o.remove());resetPrivateUiState();resetMineState();
+  }
+  app.innerHTML=`<div class="empty">${uid?"Checking sign-in security…":"Loading…"}</div>`;
+  (async()=>{
+    if(!await requirePrivateSessionAssurance(uid,generation))return;
+    if(!authBootstrapCurrent(uid,generation))return;
+    privateSessionReady=true;
+    await finishPendingTwitter(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    const loaded=await loadMine(uid,generation);
+    if(!loaded||!authBootstrapCurrent(uid,generation))return;
+    if(myAccounts.some(account=>account.provider==="twitter"))await loadTwitterCapability(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    if(myAccounts.some(account=>account.provider==="reddit"))await loadRedditCapability(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    await loadMetaCapability(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    await finishPendingGmail(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    await finishPendingMeta(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    await handleOAuthReturn(uid,generation);
+    if(!authBootstrapCurrent(uid,generation))return;
+    route();
+  })().catch(error=>{
+    if(!authBootstrapCurrent(uid,generation))return;
+    logErr("auth-bootstrap",error?.message||error);privateSessionReady=false;
+    app.innerHTML=`<div class="card authbox center"><h3>Could not verify this sign-in</h3><p class="muted">${esc(error?.message||"Try signing in again.")}</p><button class="btn sec" onclick="authAction()">Sign out</button></div>`;
+  });
+}
+async function assuranceSnapshot(){
+  const[assurance,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);
+  if(assurance.error)throw assurance.error;if(factors.error)throw factors.error;
+  const totp=(factors.data&&factors.data.totp)||[];
+  return{currentLevel:assurance.data?.currentLevel||null,nextLevel:assurance.data?.nextLevel||null,
+    verified:totp.filter(f=>f.status==="verified"),unverified:totp.filter(f=>f.status!=="verified")};
+}
+async function requirePrivateSessionAssurance(uid,generation){
+  if(!uid){mfaLoginGate={active:false,checking:false,uid:"",factors:[],error:""};return true}
+  let snapshot;
+  try{snapshot=await assuranceSnapshot()}catch(error){
+    if(!authBootstrapCurrent(uid,generation))return false;
+    mfaLoginGate={active:true,checking:false,uid,factors:[],error:"Two-factor status could not be verified. Sign out and try again."};renderMfaLoginGate();return false;
+  }
+  if(!authBootstrapCurrent(uid,generation))return false;
+  if(snapshot.verified.length&&snapshot.currentLevel!=="aal2"){
+    mfaLoginGate={active:true,checking:false,uid,factors:snapshot.verified,error:""};renderMfaLoginGate();return false;
+  }
+  mfaLoginGate={active:false,checking:false,uid,factors:[],error:""};return true;
+}
+function renderMfaLoginGate(){
+  if(!session||!mfaLoginGate.active)return;
+  privateSessionReady=false;renderSidebar();
+  const options=mfaLoginGate.factors.map(f=>`<option value="${esc(f.id)}">${esc(f.friendly_name||"Authenticator "+f.id.slice(0,8))}</option>`).join("");
+  app.innerHTML=`<div class="card authbox center"><h2>Authenticator check required</h2>
+    <p>Enter a current six-digit code before private account data is loaded.</p>
+    ${options?`<label for="mfaLoginFactor">Authenticator</label><select id="mfaLoginFactor">${options}</select>
+      <label for="mfaLoginCode">Six-digit code</label><input id="mfaLoginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" onkeydown="if(event.key==='Enter')mfaLoginVerify()">
+      <p id="mfaLoginError" class="muted" role="alert">${esc(mfaLoginGate.error)}</p>
+      <button id="mfaLoginVerifyBtn" class="btn" onclick="mfaLoginVerify()">Verify and continue</button>`:
+      `<p class="muted" role="alert">${esc(mfaLoginGate.error||"No verified authenticator is available for this challenge.")}</p>`}
+    <button class="btn sec" style="margin-top:8px" onclick="authAction()">Sign out</button></div>`;
+  setTimeout(()=>document.getElementById("mfaLoginCode")?.focus(),0);
+}
+async function mfaLoginVerify(){
+  if(!session||!mfaLoginGate.active)return;
+  const uid=mfaLoginGate.uid,factorId=val("mfaLoginFactor"),code=val("mfaLoginCode").replace(/\s/g,"");
+  const errorBox=document.getElementById("mfaLoginError"),button=document.getElementById("mfaLoginVerifyBtn");
+  if(!mfaLoginGate.factors.some(f=>f.id===factorId)||!/^\d{6}$/.test(code)){if(errorBox)errorBox.textContent="Enter a valid six-digit code.";return}
+  if(button)button.disabled=true;if(errorBox)errorBox.textContent="Checking…";
+  try{
+    const result=await sb.auth.mfa.challengeAndVerify({factorId,code});if(result.error)throw result.error;
+    const fresh=result.data?.session||(await sb.auth.getSession()).data.session;
+    if(!fresh||fresh.user.id!==uid)throw new Error("The signed-in account changed. Sign in again.");
+    session=fresh;updateAuthBtn();mfaLoginGate={active:false,checking:false,uid,factors:[],error:""};
+    startAuthBootstrap(uid,false,true);
+  }catch(error){if(errorBox)errorBox.textContent=error?.message||"That code was not accepted.";if(button)button.disabled=false}
+}
+async function requireAal2ForSensitiveAction(purpose="continue"){
+  if(!session){toast("Sign in again");return false}
+  let snapshot;try{snapshot=await assuranceSnapshot()}catch(error){toast("Two-factor status could not be verified. Try again before "+purpose+".");return false}
+  if(snapshot.currentLevel==="aal2")return true;
+  if(snapshot.verified.length){
+    mfaLoginGate={active:true,checking:false,uid:session.user.id,factors:snapshot.verified,error:`Verify first, then retry to ${purpose}.`};renderMfaLoginGate();return false;
+  }
+  acctTab="security";if(location.hash.replace(/^#\//,"").split("/")[0]==="studio")renderStudio();else go("studio");setTimeout(()=>toast("Enable and verify an authenticator in Security before "+purpose+"."),40);return false;
 }
 function updateAuthBtn(){document.getElementById("authBtn").textContent=session?"Sign out":"Sign in"}
 async function loadOwnerPersonaRows(){
@@ -671,9 +743,9 @@ function setupFriendRealtime(uid,generation=authLoadGeneration){
 }
 window.addEventListener("focus",()=>{if(friendRealtimeUid)scheduleFriendRequestRefresh(friendRealtimeUid,authLoadGeneration)});
 function renderSidebar(){
-  const cb=document.getElementById("pageChatBtn");if(cb)cb.style.display=session?"flex":"none";
+  const cb=document.getElementById("pageChatBtn");if(cb)cb.style.display=session&&privateSessionReady?"flex":"none";
   const rail=document.getElementById("personaRail");if(!rail)return;
-  if(!session){rail.innerHTML="";rail.style.display="none";return}
+  if(!session||!privateSessionReady){rail.innerHTML="";rail.style.display="none";return}
   rail.style.display="";
   const h=location.hash.replace(/^#\//,""),view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
   const activePid=view==="edit"?arg:(view==="p"?(myPersonas.find(p=>p.handle===arg)||{}).id:"");
@@ -699,6 +771,7 @@ async function route(){
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
   renderSidebar();
+  if(session&&!privateSessionReady){if(mfaLoginGate.active)renderMfaLoginGate();else app.innerHTML='<div class="empty">Checking sign-in security…</div>';return}
   if(view==="p")return renderPersonaPage(arg,false,myEpoch);
   if(view==="studio"){
     const notice=metaOAuthNotice||twitterOAuthNotice||redditOAuthNotice||gmailOAuthNotice;
@@ -2642,6 +2715,7 @@ async function runTask(id){
 }
 // ----- backends CRUD -----
 async function addBackend(){
+  if(!await requireAal2ForSensitiveAction("save a model credential"))return;
   const sel=document.getElementById("nbProvider");const provider=sel?sel.value:"custom";
   const pdef=AI_PROVIDERS[provider]||{};const extra={};
   if(pdef.unsupported){toast("That provider cannot run hosted text automation. Choose a hosted text model provider.");return}
@@ -2656,11 +2730,44 @@ async function addBackend(){
   if(ins.error){toast(/schema cache|could not find the function|pgrst202/i.test(ins.error.message||"")?"Secure model storage is not ready yet. No key was saved; try again after setup finishes.":ins.error.message);return}
   await loadMine();renderStudio();toast("Model linked");
 }
+function closeEditBackend(){releaseOwnerModal("editBackendOv")}
 async function editBackend(id){
-  const b=myBackends.find(x=>x.id===id);if(!b)return;const name=prompt("Connection label",b.name||"");if(name===null)return;const model=prompt("Model id",b.model||"");if(model===null)return;if(!name.trim()||!model.trim()){toast("Both a label and model id are required");return}
-  let res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:name.trim(),p_model:model.trim(),p_extra:b.extra||{}});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").update({name:name.trim(),model:model.trim(),extra:b.extra||{}}).eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();toast("Model updated")
+  if(!await requireAal2ForSensitiveAction("change this model connection"))return;
+  const b=myBackends.find(x=>x.id===id);if(!b){toast("That model is no longer available");return}
+  closeEditBackend();
+  const o=document.createElement("div");o.className="overlay";o.id="editBackendOv";
+  o.innerHTML=`<div class="wizbox" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="editBackendTitle" tabindex="-1" onkeydown="ownerModalKeydown(event,'backend')">
+    <div class="modalsticky"><h2 id="editBackendTitle">Edit model connection</h2><button class="btn sec sm" onclick="closeEditBackend()" aria-label="Close without saving">Close</button></div>
+    <p class="muted">Change the label, base URL, and model id. Your saved API key stays encrypted in the Vault — it is never shown here and is not changed by this form.</p>
+    <label>Label (your name for it)</label><input id="ebName" value="${esc(b.name||"")}" placeholder="Your name for this model" autocomplete="off">
+    <label style="margin-top:8px">Base URL</label><input id="ebUrl" value="${esc(b.base_url||"")}" placeholder="https://…" autocomplete="off">
+    <label style="margin-top:8px">Model id</label><input id="ebModel" value="${esc(b.model||"")}" placeholder="model id" autocomplete="off">
+    <div class="autocallout" style="margin-top:10px"><b>API key stays as-is</b><br>Keys are write-only for security. To rotate the key, remove this model and add it again.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn sec sm" onclick="closeEditBackend()">Cancel</button>
+      <button class="btn sm" onclick="saveBackendEdits('${esc(b.id)}')">Save changes</button></div>
+  </div>`;
+  document.body.appendChild(o);activateOwnerModal(o);
+}
+async function saveBackendEdits(id){
+  const b=myBackends.find(x=>x.id===id);if(!b){toast("That model is no longer available");return}
+  const name=(document.getElementById("ebName")?.value||"").trim();
+  const base=(document.getElementById("ebUrl")?.value||"").trim();
+  const model=(document.getElementById("ebModel")?.value||"").trim();
+  if(!name){toast("A label is required");return}
+  if(!base||!/^https:\/\//i.test(base)){toast("A hosted HTTPS base URL is required");return}
+  if(!model){toast("Enter the model id you want this connection to use");return}
+  let res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:name,p_model:model,p_extra:b.extra||{},p_base_url:base});
+  if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){
+    // Migration 042 not applied yet — save label + model, keep the stored base URL.
+    res=await sb.rpc("update_ai_backend",{p_backend_id:id,p_name:name,p_model:model,p_extra:b.extra||{}});
+    if(!res.error){closeEditBackend();await loadMine();renderStudio();toast(base===(b.base_url||"")?"Model updated":"Saved label & model. Base-URL edits need migration 042 applied.");return}
+  }
+  if(res.error){toast(res.error.message);return}
+  closeEditBackend();await loadMine();renderStudio();toast("Model updated");
 }
 async function toggleBackendHostConfirmation(id,surface){
+  if(!await requireAal2ForSensitiveAction("change this model connection"))return;
   const b=myBackends.find(x=>x.id===id);if(!b||backendBuiltInAutomation(b))return;
   const spec=surface==="fan"
     ?{key:"fan_host_confirmed",secret:"FAN_CHAT_AI_HOSTS",label:"Fan-chat"}
@@ -2674,8 +2781,9 @@ async function toggleBackendHostConfirmation(id,surface){
   if(res.error){toast(res.error.message);return}
   await loadMine();renderStudio();toast(next?`${spec.label} host confirmation saved`:`${spec.label} host confirmation removed`);
 }
-async function deleteBackend(id){const b=myBackends.find(x=>x.id===id);if(!b)return;const oauth=b.provider==="openrouter"&&b.extra?.auth_method==="openrouter_oauth";if(!confirm(oauth?"Remove this model and its encrypted key from AliaSpaces? You must also revoke the key on OpenRouter.":"Remove this model and its encrypted key from AliaSpaces? This does not revoke a key at the provider."))return;let res=await sb.rpc("delete_ai_backend",{p_backend_id:id});if(res.error&&/schema cache|could not find the function|pgrst202/i.test(res.error.message||"")){res=await sb.from("ai_backends").delete().eq("id",id)}if(res.error){toast(res.error.message);return}await loadMine();renderStudio();if(oauth)showOpenRouterKeyWarning("The encrypted AliaSpaces copy was removed. OpenRouter still controls the issued key; revoke it there now.");else toast("Model connection removed from AliaSpaces")}
+async function deleteBackend(id){if(!await requireAal2ForSensitiveAction("remove this model credential"))return;const b=myBackends.find(x=>x.id===id);if(!b)return;const oauth=b.provider==="openrouter"&&b.extra?.auth_method==="openrouter_oauth";if(!confirm(oauth?"Remove this model and its encrypted key from AliaSpaces? You must also revoke the key on OpenRouter.":"Remove this model and its encrypted key from AliaSpaces? This does not revoke a key at the provider."))return;const res=await sb.rpc("delete_ai_backend",{p_backend_id:id});if(res.error){toast(res.error.message);return}await loadMine();renderStudio();if(oauth)showOpenRouterKeyWarning("The encrypted AliaSpaces copy was removed. OpenRouter still controls the issued key; revoke it there now.");else toast("Model connection removed from AliaSpaces")}
 async function setDefaultBackend(id){
+  if(!await requireAal2ForSensitiveAction("change the default model connection"))return;
   const target=myBackends.find(x=>x.id===id);if(!target)return;
   if(!backendAgentReady(target)){toast("Set up this model (host + model id) before making it the default");return}
   for(const b of myBackends){const want=b.id===id,has=!!(b.extra&&b.extra.is_default);if(want===has)continue;const extra=Object.assign({},b.extra||{});if(want)extra.is_default=true;else delete extra.is_default;const res=await sb.rpc("update_ai_backend",{p_backend_id:b.id,p_name:b.name,p_model:b.model,p_extra:extra});if(res.error){toast(res.error.message);return}}
@@ -3793,7 +3901,7 @@ function releaseOwnerModal(id){
   document.getElementById(id)?.remove();ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];const target=ownerModalReturnFocus;ownerModalReturnFocus=null;target?.focus?.();
 }
 function ownerModalKeydown(event,kind){
-  if(event.key==="Escape"){event.preventDefault();if(kind==="meta")closeMetaSelection();else if(kind==="erase")releaseOwnerModal("eraseProviderWarning");else closeManagedAccount();return}
+  if(event.key==="Escape"){event.preventDefault();if(kind==="meta")closeMetaSelection();else if(kind==="erase")releaseOwnerModal("eraseProviderWarning");else if(kind==="backend")closeEditBackend();else closeManagedAccount();return}
   if(event.key!=="Tab")return;
   const dialog=event.currentTarget,focusable=[...dialog.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
   if(!focusable.length){event.preventDefault();dialog.focus();return}
@@ -4505,40 +4613,57 @@ async function signOutEverywhere(){
   toast("Signed out on all devices");go("");
 }
 async function mfaStart(){
-  const box=document.getElementById("mfaBox");box.innerHTML='<p class="muted">Loading…</p>';
+  const box=document.getElementById("mfaBox");if(!box)return;box.innerHTML='<p class="muted">Loading…</p>';
   try{
     const{data,error}=await sb.auth.mfa.listFactors();
     if(error)throw error;
-    const totp=(data&&data.totp)||[];
-    if(totp.length){
-      box.innerHTML=totp.map(f=>`<div class="t8pick"><b>Authenticator</b>
-        <span class="muted">${esc(f.friendly_name||f.id.slice(0,8))} · ${esc(f.status)}</span>
-        <button class="btn sm danger" style="margin-left:auto" onclick="mfaRemove('${f.id}')">Remove</button></div>`).join("");
+    const totp=(data&&data.totp)||[],verified=totp.filter(f=>f.status==="verified"),unverified=totp.filter(f=>f.status!=="verified");
+    if(verified.length||unverified.length){
+      const ready=verified.map(f=>`<div class="t8pick"><b>Authenticator</b>
+        <span class="muted">${esc(f.friendly_name||f.id.slice(0,8))} · verified</span>
+        <button class="btn sm danger" style="margin-left:auto" onclick="mfaRemove('${f.id}','verified')">Remove</button></div>`).join("");
+      const incomplete=unverified.map(f=>`<div class="t8pick"><div><b>Setup incomplete</b><br><span class="muted">${esc(f.friendly_name||f.id.slice(0,8))} was not verified. Restarting creates a new QR code and secret.</span></div>
+        <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm sec" onclick="mfaRestart('${f.id}')">Restart setup</button><button class="btn sm danger" onclick="mfaDiscard('${f.id}')">Discard</button></div></div>`).join("");
+      box.innerHTML=ready+incomplete+(verified.length?"":'<p class="muted">Finish or restart setup before credential-management actions can be unlocked.</p>');
     }else{
-      const en=await sb.auth.mfa.enroll({factorType:"totp"});
-      if(en.error)throw en.error;
-      const t=en.data.totp;
-      box.innerHTML=`<p class="muted">Scan this in your authenticator app, then enter the 6-digit code to confirm.</p>
-        <div class="qrbox"><img src="${t.qr_code}" alt="TOTP QR">
-        <div><label>Secret (manual entry)</label><input value="${esc(t.secret)}" readonly>
-        <label>6-digit code</label><input id="mfaCode" inputmode="numeric" placeholder="000000">
-        <button class="btn sm" style="margin-top:8px" onclick="mfaVerify('${en.data.id}')">Confirm</button></div></div>`;
+      await mfaEnroll(box);
     }
   }catch(e){box.innerHTML=`<p class="muted">Two-factor is not available: ${esc(e.message||"enable TOTP in the Supabase project first")}.</p>
     <button class="btn sm sec" onclick="mfaStart()">Try again</button>`;}
 }
+async function mfaEnroll(box=document.getElementById("mfaBox")){
+  if(!box)return;const en=await sb.auth.mfa.enroll({factorType:"totp"});if(en.error)throw en.error;const t=en.data.totp;
+  box.innerHTML=`<p class="muted">Scan this in your authenticator app, then enter the six-digit code to confirm. Keep this screen private.</p>
+    <div class="qrbox"><img src="${t.qr_code}" alt="TOTP QR code">
+    <div><label>Secret (manual entry)</label><input value="${esc(t.secret)}" readonly autocomplete="off">
+    <label>Six-digit code</label><input id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+    <button class="btn sm" style="margin-top:8px" onclick="mfaVerify('${en.data.id}')">Confirm</button></div></div>`;
+}
 async function mfaVerify(factorId){
-  const code=val("mfaCode");
+  const code=val("mfaCode").replace(/\s/g,"");if(!/^\d{6}$/.test(code)){toast("Enter a valid six-digit code");return}
   try{
-    const ch=await sb.auth.mfa.challenge({factorId});if(ch.error)throw ch.error;
-    const v=await sb.auth.mfa.verify({factorId,challengeId:ch.data.id,code});if(v.error)throw v.error;
+    const v=await sb.auth.mfa.challengeAndVerify({factorId,code});if(v.error)throw v.error;
+    const fresh=(await sb.auth.getSession()).data.session;if(fresh){session=fresh;updateAuthBtn()}
     toast("Two-factor enabled");mfaStart();
   }catch(e){toast(e.message||"Wrong code")}
 }
-async function mfaRemove(factorId){
+async function mfaRestart(factorId){
+  const{error}=await sb.auth.mfa.unenroll({factorId});if(error){toast(error.message);return}
+  const box=document.getElementById("mfaBox");if(box)box.innerHTML='<p class="muted">Creating a fresh setup…</p>';
+  try{await mfaEnroll(box)}catch(error){toast(error.message||"Could not restart setup");mfaStart()}
+}
+async function mfaDiscard(factorId){
+  const{error}=await sb.auth.mfa.unenroll({factorId});if(error){toast(error.message);return}
+  const box=document.getElementById("mfaBox");if(box)box.innerHTML='<p class="muted">Incomplete setup discarded.</p><button class="btn sm sec" onclick="mfaStart()">Set up an authenticator</button>';
+  toast("Incomplete setup discarded");
+}
+async function mfaRemove(factorId,status="verified"){
+  if(status==="verified"&&!await requireAal2ForSensitiveAction("remove this authenticator"))return;
+  if(!confirm("Remove this authenticator from your account?"))return;
   const{error}=await sb.auth.mfa.unenroll({factorId});
   if(error){toast(error.message);return}
-  toast("Two-factor removed");mfaStart();
+  const box=document.getElementById("mfaBox");if(box)box.innerHTML='<p class="muted">This authenticator was removed.</p><button class="btn sm sec" onclick="mfaStart()">Set up an authenticator</button>';
+  toast("Two-factor removed");
 }
 async function exportMyData(){
   toast("Preparing your data…");
@@ -4922,6 +5047,7 @@ function onProviderPick(){
   set("nbOAuth",el=>el.innerHTML=v.oauth==="openrouter"?`<button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span>`:(v.unsupported?'<span class="muted">This provider is shown for planning, but cannot be saved as a hosted text agent.</span>':""));
 }
 async function connectOpenRouter(){
+  if(!await requireAal2ForSensitiveAction("connect OpenRouter"))return;
   const{data}=await sb.auth.getSession(),current=data&&data.session;if(!current){toast("Sign in before connecting OpenRouter");return}
   const verifier=[...crypto.getRandomValues(new Uint8Array(48))].map(b=>("0"+b.toString(16)).slice(-2)).join("");
   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier));
@@ -4939,29 +5065,37 @@ function showOpenRouterKeyWarning(message){
     <div class="autoformactions"><a class="btn" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Open OpenRouter Keys ↗</a><button class="btn sec" onclick="document.getElementById('openRouterKeyWarning').remove()">I understand</button></div></div>`;
   document.body.appendChild(o);
 }
-async function handleOAuthReturn(){
+function captureOpenRouterReturn(){
+  try{
+    const u=new URL(location.href),code=u.searchParams.get("code"),pending=sessionStorage.getItem("or_pkce");
+    if(!code||!pending)return;
+    if(code.length<=4096)sessionStorage.setItem("or_return_code",code);
+    u.searchParams.delete("code");history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||""));
+  }catch(error){logErr("openrouter-oauth",error?.message||error)}
+}
+async function handleOAuthReturn(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   let exchangeStarted=false,keyStored=false;
   try{
-    const u=new URL(location.href),code=u.searchParams.get("code"),raw=sessionStorage.getItem("or_pkce");
+    const u=new URL(location.href),raw=sessionStorage.getItem("or_pkce"),code=sessionStorage.getItem("or_return_code")||(raw?u.searchParams.get("code"):null);
     if(!code||!raw)return;
-    sessionStorage.removeItem("or_pkce");
+    sessionStorage.removeItem("or_pkce");sessionStorage.removeItem("or_return_code");
     let pending;try{pending=JSON.parse(raw)}catch(e){pending=null}
     const{data}=await sb.auth.getSession();const s=data&&data.session;
-    u.searchParams.delete("code");history.replaceState({},"",u.pathname+(u.hash||""));
+    u.searchParams.delete("code");history.replaceState({},"",u.pathname+(u.search||"")+(u.hash||""));
     if(!pending||typeof pending.verifier!=="string"||typeof pending.createdAt!=="number"||Date.now()-pending.createdAt>10*60*1000){toast("This OpenRouter connection expired. Start it again; no key was requested.");return}
-    if(!s||s.user.id!==pending.initiatingUserId||session?.user?.id!==pending.initiatingUserId){toast("The signed-in account changed. Start OpenRouter again from the correct account; no key was requested.");return}
-    const initiatingUid=s.user.id,initiatingGeneration=authLoadGeneration;
-    exchangeStarted=true;
-    const r=await fetch("https://openrouter.ai/api/v1/auth/keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,code_verifier:pending.verifier,code_challenge_method:"S256"})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.key){if(window.toast)toast("OpenRouter connect failed");return;}
+    if(!s||s.user.id!==pending.initiatingUserId||session?.user?.id!==pending.initiatingUserId||expectedUid!==pending.initiatingUserId||generation!==authLoadGeneration){toast("The signed-in account changed. Start OpenRouter again from the correct account; no key was requested.");return}
+    const initiatingUid=s.user.id,initiatingGeneration=generation;
+    const model=(prompt("OpenRouter is ready to connect. Enter the model id you want this agent to use (you can edit it later):","")||"").trim();
     const fresh=await sb.auth.getSession(),freshSession=fresh.data&&fresh.data.session;
-    if(!freshSession||freshSession.user.id!==initiatingUid||session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration){showOpenRouterKeyWarning("OpenRouter issued a key after the signed-in account changed, so AliaSpaces did not store it. Revoke that key before trying again.");return}
-    const model=(prompt("OpenRouter is connected. Enter the model id you want this agent to use (you can edit it later):","")||"").trim();
-    if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration){showOpenRouterKeyWarning("OpenRouter issued a key after the signed-in account changed, so AliaSpaces did not store it. Revoke that key before trying again.");return}
-    const d={provider:"openrouter",name:"OpenRouter",base_url:"https://openrouter.ai/api/v1",api_key:j.key,model,extra:{auth_method:"openrouter_oauth"}},isolated=fixedSessionClient(freshSession.access_token);
-    const ins=await isolated.rpc("create_ai_backend",{p_provider:d.provider,p_name:d.name,p_base_url:d.base_url,p_api_key:d.api_key,p_model:d.model,p_extra:d.extra});
-    if(ins.error){showOpenRouterKeyWarning("OpenRouter issued a key, but secure model storage did not accept it. Revoke that key before trying again.");return;}
+    if(!freshSession||freshSession.user.id!==initiatingUid||session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration){toast("The signed-in account changed. Start OpenRouter again; no key was requested.");return}
+    exchangeStarted=true;
+    const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/openrouter-connect",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+freshSession.access_token},body:JSON.stringify({code,codeVerifier:pending.verifier,model})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||j.connected!==true){
+      if(j.providerKeyIssued===true)showOpenRouterKeyWarning(j.error||"OpenRouter issued a key, but secure model storage did not accept it. Revoke that key before trying again.");
+      else toast(j.error||"OpenRouter connect failed. No key was stored.");
+      return;
+    }
     keyStored=true;
     if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration)return;
     await loadMine(initiatingUid,initiatingGeneration);if(session?.user?.id!==initiatingUid||authLoadGeneration!==initiatingGeneration)return;toast(model?"OpenRouter connected":"OpenRouter connected — use Edit to add a model id");go("studio");

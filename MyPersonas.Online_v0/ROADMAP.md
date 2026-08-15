@@ -7,16 +7,25 @@ identity private and personas unlinked by default (cross-links require explicit 
 extension ecosystem (Concept character studio, Personas desktop companion) that
 carries personas beyond the site onto every platform they live on.
 
+Current execution package: `SETUP-CONDUCTOR-HANDOFF.md`, `50-HOUR-COMMAND-BOARD.md`,
+`AI-TOOLING-AND-SPRINT-PLAN.md`, `SECURITY-AND-ACCESS-RUNBOOK.md`, and
+`REQUEST-REVIEW-SPEC.md`. These documents distinguish source, deployment, live proof, and
+owner-gated external actions.
+
 ---
 
 ## v0 — Foundation (current)
 
 Shipped:
 
-- Auth: Google OAuth + email magic link for AliaSpaces sign-in; profiles private, no
-  public linkage to personas (mailbox authorization is a separate connector)
+- Auth: Google social/federated OAuth plus email/password and magic link; TOTP enrollment exists,
+  but post-login AAL2 enforcement and enterprise SSO remain security work. Profiles are private,
+  with no public linkage to personas by default (mailbox authorization is a separate connector)
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
+- AI Models: add hosted OpenAI-compatible/Anthropic/Azure connections (key write-only in
+  Vault); edit an existing connection's label, base URL, and model id in-place without
+  re-entering the key (migration `042`; API key stays write-only — rotate by remove + re-add)
 - Pages: banner/background/avatar/feed images (file picker + preview + SD generate),
   profile song, live embed (Twitch/YouTube/Kick), Top 8, 37-platform link chips,
   gallery & sponsored/affiliate albums (deep-link out), blog feed + reels,
@@ -24,7 +33,8 @@ Shipped:
 - Social: friend requests (pending/accepted), block/mute, private/unlisted/public
   visibility enforced by row-level security, discover filters (18+ default-hidden,
   topic mutes), age gate on NSFW pages
-- AI: linked hosted text models on approved HTTPS provider hosts, HQ assistant with roster
+- AI: linked hosted text models through the server proxy; exact official provider host/path
+  enforcement is still required before mass credential onboarding. HQ assistant with roster
   context, per-persona chatbots, tasks with model-per-task and one-click Run,
   SD character panel (local A1111/Forge), content drafts pipeline
   (chat/task output → draft → copy → post on platform; idea → ready → posted)
@@ -156,11 +166,27 @@ larger product phase remains.
       (today: hash routes = one indexable URL; JS-set titles/descriptions only)
 - [ ] Auto-generated per-persona sitemap (Edge Function serving sitemap.xml
       from the personas table)
-- [x] gemini-image Edge Function deployed (2026-08-08): server-side Gemini image
-      generation/editing with the owner's Vault key; registered in supabase/config.toml
+- [~] `gemini-image` function exists live and uses the owner's server-side Vault key. The current
+      source still needs exact Google host/path enforcement, header-based key transport, bounded
+      input, a pinned current image model, deployment parity proof, and a controlled live retest.
 - [~] Migrate off legacy anon/service_role JWT keys to the new sb_publishable_/sb_secret_
       API keys. The browser already uses a publishable key; finish the function/secret
       inventory and production rotation before Supabase retires legacy keys.
+- [~] Enforce MFA, not only enrollment: migration/UI/Edge source for an AAL2 credential boundary
+      is under local development. Require AAL2 for provider credentials/OAuth, L2/L3/unpause,
+      approval/publish, export/erasure, identity/factor changes, and future money actions; test
+      AAL1 denial and AAL2 success before release.
+- [ ] Move executable inline JS/CSS/event handlers into versioned assets and host behind verified
+      CSP, frame denial, HSTS, nosniff, Referrer-Policy, and Permissions-Policy headers.
+- [ ] Move OpenRouter OAuth exchange/Vault storage fully server-side and enforce code-owned exact
+      host/path maps for every known provider. Custom endpoints require an owner-reviewed allowlist.
+- [ ] Add atomic per-backend daily/monthly budgets, concurrency/queue/hop limits, audit, expiry,
+      default-$0 policy, and a global AI-spend pause independent of publishing pause.
+- [ ] Configure/test production SMTP, exact redirects, CAPTCHA, confirmation, magic link, password
+      recovery, security notices, unsubscribe, bounce, and suppression before public email flows.
+- [~] Repair release gates: CI is red on the current public frontend commit and automatic Supabase
+      deployment lacks its credential. Require green validation, pinned tooling, a protected/manual
+      production environment, function allowlist, and backend → migration → frontend evidence.
 - [x] Wire externally generated or uploaded persona images into `persona-media`; new image
       upload/generation paths now use owner-namespaced public Storage while video remains in `media`.
 - [ ] Second Castleborn doc link from owner (pending input)

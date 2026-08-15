@@ -2,9 +2,11 @@
 
 This is the operational bridge between `ROADMAP.md` and a real release. It keeps four states
 separate: **implemented locally**, **deployed**, **verified live**, and **enabled for unattended
-use**. Nothing in this checkpoint was pushed, migrated, configured, or posted externally.
+use**. The original 2026-08-13 checkpoint was subsequently pushed. A 2026-08-14 audit found the
+frontend live, CI red, automatic Supabase deployment blocked, migrations 035/038 visible, 037
+unknown, and 039 absent from the live schema cache. Use the forward release order below.
 
-## Locally complete in this coordinated slice
+## Source work in this coordinated slice (individual live state varies)
 
 - Persona context: manual conflict-safe editing, dated persona/content-plan field summaries,
   bounded AI inclusion, owner-reviewed chat takeaways, and distilled prior-workspace attachment.
@@ -32,32 +34,28 @@ use**. Nothing in this checkpoint was pushed, migrated, configured, or posted ex
 
 ## Coordinated owner release order
 
-1. **Review the full diff and preserve the maintenance boundary.** Do not include the unrelated
-   Nooyou Universe working files. Confirm the eight deployed-only functions in `DRIFT.md` remain
-   untouched. Announce a short Composer maintenance window and turn on the owner-wide automation
-   pause before the function/035 transition.
-2. **Run the migration-035 preflight** in `POST-QUEUE-ACTIVATION.md`. Reconcile every returned row
-   without inventing provider history, destinations, or approvals. Confirm migrations 033/034 are
-   live and migration 036 is absent.
-3. **Confirm release configuration without exposing values:** GitHub's
-   `SUPABASE_ACCESS_TOKEN`; Reddit client ID/secret/callback; existing Meta/AI secrets; and the
-   intended `verify_jwt` entries in `supabase/config.toml`. Do not set a cron secret yet unless the
-   dormant-worker pilot is actually scheduled.
-4. **Create and push a backend-first commit.** Stage the matching `supabase/functions/**`,
-   `supabase/config.toml`, migrations 035/036/037, and their tests/docs, but do not stage
-   `index.html`, the PWA/catalog assets, or `.github/workflows/pages.yml` yet. The Pages workflow
-   runs on every main push, but this commit leaves its site artifact unchanged. Wait for the
-   all-functions workflow to succeed. If it fails, do not apply 035.
-5. **Apply migration 035 as one transaction** during the Composer maintenance window. Do **not**
-   apply 036. The old Composer cannot schedule after 035 revokes its raw RPC, so keep it closed
-   until the matching frontend commit is live.
-6. **Apply migration 037 separately** when ready to enable friend Realtime. Skipping dormant 036 is
-   intentional; record that fact in the SQL change log so a future migration runner does not assume
-   036 was applied.
-7. **Create and push the frontend/site commit.** Include `index.html`, the PWA/catalog files,
-   `.github/workflows/pages.yml`, and the reconciled public docs. Wait for Pages to succeed, then
-   hard reload before reopening Composer. This two-commit sequence enforces the required function →
-   schema → frontend order; one combined push would race the independent workflows.
+1. **Freeze unsafe automation and inventory live state.** Unschedule every cron row whose command
+   contains `run-post-queue`, then use owner-wide Pause all, then reconcile every `publishing` row.
+   Record live migration, Vault, function-version, binding, and provider-destination evidence.
+2. **Restore the validation/release path.** Fix the Deno typecheck, make every production workflow
+   run validation, pin tooling, deploy a reviewed function allowlist, and require an approved
+   production environment. Do not let Pages publish a failing commit.
+3. **Fix source blockers locally.** Wire every Reddit OAuth/post/erasure path to the owner-operation
+   lease; revoke access-only grants; reject unsupported body+media. Add last-moment pause checks to
+   every Meta provider POST. Add Discord Vault cleanup/orphan inventory while keeping Discord
+   dormant. Add AAL2 enforcement, official provider host maps, server-side OpenRouter exchange,
+   default-zero budget reservations, and an AI-spend kill switch.
+4. **Push a backend-only commit after green review.** It must not change the Pages artifact. Wait for
+   exact function-version evidence; a workflow badge alone is insufficient.
+5. **Apply only additive forward migrations** required by that backend release. Complete 039 before
+   applying it and revoke old unleased RPC access only after all callers move. Verify 037 separately
+   before enabling Realtime. Do **not** apply 036 or blindly rerun 035.
+6. **Verify backend contracts while paused:** AAL1 denial/AAL2 success, Reddit lease contention and
+   erasure, immutable media, Meta pause races, provider-host rejection, budget races, audit, and
+   reconciliation.
+7. **Push the matching frontend/site and security-header release** only after schema/backend proof.
+   Wait for Pages/host success, hard reload, and recheck CSP/security headers before reopening
+   sensitive controls.
 8. **Verify signed-in flows with one owner test account:**
    - persona context manual edit, conflict rejection, content-plan field summary, workspace create/
      rename/pin/resume, reviewed Save context, max-three Attach context, and export;
@@ -66,13 +64,15 @@ use**. Nothing in this checkpoint was pushed, migrated, configured, or posted ex
    - friend request + acceptance in two sessions, badge update, focus fallback, account switch, and
      RLS denial for an unrelated account;
    - extension fallback cards and safe external links; later repeat with a real public release;
-   - Reddit Connect, callback identity match, missing-scope failure, confirmed Disconnect, content-
-     only erasure, full account erasure, and one explicitly approved low-stakes post;
+   - Reddit Connect, callback identity match, missing-scope failure, lease contention, confirmed
+     Disconnect, content-only erasure, full account erasure, and one explicitly approved low-stakes
+     post only after the provider is configured;
    - the entire migration-035 Composer checklist, including immutable media path/hash, schedule,
      reload, unschedule, guarded immediate Meta post, provider IDs, cleanup, and no duplicate under
      a repeated click/request.
 9. **Reload and audit durable state.** Read back important fields from Supabase and inspect actual
-   provider posts; do not infer success from a toast, local queue state, or workflow badge.
+   provider posts; do not infer success from a toast, local queue state, or workflow badge. Resume
+   only for one controlled provider test, then restore the intended pause state.
 
 ## Keep these gates closed
 

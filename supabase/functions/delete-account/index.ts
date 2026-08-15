@@ -417,6 +417,21 @@ async function listRedditLedgers(admin: SupabaseClient, uid: string) {
   }
 }
 
+async function eraseDiscordWebhooks(admin: SupabaseClient, uid: string) {
+  const { data, error } = await admin.rpc(
+    "discord_erase_webhooks_for_owner_service",
+    { p_owner: uid },
+  );
+  if (
+    error || typeof data !== "number" || !Number.isSafeInteger(data) ||
+    data < 0
+  ) {
+    throw new Error(
+      "Discord webhook erasure could not be verified; generic account-ledger cleanup was not started",
+    );
+  }
+}
+
 type MetaGrantRow = {
   id: string;
   meta_user_id: string;
@@ -1705,6 +1720,13 @@ export function createErasureHandler(
           hasAmbiguousMeta &&
             acknowledgedExternalRevocations.has("meta"),
         );
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "Discord webhook erasure",
+        );
+        await eraseDiscordWebhooks(admin, uid);
         await renewMetaOwnerErasure(
           admin,
           uid,

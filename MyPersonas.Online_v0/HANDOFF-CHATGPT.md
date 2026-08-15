@@ -1,19 +1,23 @@
 # Handoff — MyPersonas / AliaSpaces (for ChatGPT)
 
-_Written 2026-08-13. This hands the project to ChatGPT to continue. It explains how the
+_Written 2026-08-13; release truth re-audited 2026-08-14. This hands the project to ChatGPT to continue. It explains how the
 project works, what's already built, the exact contracts you'll need, and a prioritized
-task list. **You (ChatGPT) produce code / SQL / plans; the human applies them** (see
-constraints below)._
+task list. Agents may prepare code, SQL, tests, plans, and dashboard steps. The owner must confirm
+production migrations/deployments, provider permissions, keys, MFA, publishing, and money actions
+at the exact action boundary._
 
 ---
 
-## 0. What you can and can't do here
+## 0. Collaboration and authority
 
-- **You CAN:** write edge-function TypeScript, SQL migrations, and single-file frontend
-  JS/HTML; design features; review; draft App-Review / launch materials.
-- **You CAN'T (the human does these):** `git push` (deploys), apply SQL migrations, run the
-  Supabase CLI (`supabase functions download`), drive the browser, or touch Supabase directly.
-  So: **deliver a diff/file + the exact apply steps.** Don't assume you can run anything.
+- Agents can inspect, implement, test, prepare release artifacts, and navigate approved dashboards.
+- The owner handles passwords, OTP/TOTP/recovery material, cookies, master/service credentials,
+  payment authentication, and any action-time confirmation the interface requires.
+- Do not push, deploy, apply production SQL, issue/revoke keys, grant OAuth/cloud permissions,
+  publish, send external messages, or change money/billing merely because a roadmap asks for it.
+  State the exact destination, scope, spend, and rollback, then obtain owner confirmation.
+- Keep one writer per file/branch/worktree. Separate `local`, `pushed`, `deployed`, and `verified
+  live` evidence in every handoff.
 
 ## 1. How the project ships
 
@@ -27,14 +31,15 @@ constraints below)._
   - Docs: `MyPersonas.Online_v0/*.md` (start with ROADMAP-EXECUTION-2026-08-13,
     POST-QUEUE-ACTIVATION, POSTING-3PART-SPEC, DRIFT, CONNECTORS-STATUS,
     CONTEXT-BOX-SPEC, MOBILE-BLUEPRINT, then V2-BLUEPRINT/APP-REVIEW-META).
-- **Deploy model**
-  - Functions: **push to `main`** → GitHub Action `.github/workflows/supabase-deploy.yml`
-    runs `supabase functions deploy` (ALL functions). `verify_jwt` comes from `config.toml`.
-  - Frontend: pushed → GitHub Pages (`.github/workflows/pages.yml`).
-  - **Migrations do NOT auto-apply.** The human runs each `sql-updates/*.sql` by hand in the
-    Supabase SQL editor. Latest posting migration applied: **034**. `035` (exact approval +
-    immutable media) and `036` (opt-in cron) are intentionally NOT applied. New migration
-    `037` independently enables friend-request Realtime and is also not applied.
+- **Deploy model and current failure**
+  - Both Supabase and Pages workflows react to `main` independently; that does not enforce the
+    required migrations → functions → frontend order. Pages deployed the current commit even while
+    CI was red. Split releases or add protected workflow gates before the next production release.
+  - The Supabase workflow currently stops because its required `SUPABASE_ACCESS_TOKEN` is missing;
+    manual function deployments exist, but exact source parity is not proven.
+  - Migrations do not auto-apply. Live-safe permission probes show **035** and **038** exist.
+    Migration **037** is unverified. The lease RPC from **039** is absent from the live schema cache
+    and current callers do not use it locally. Treat **036** as dormant and do not activate it.
 - **Project ref:** `nwsqyuucwzihruszocge`. Site: `https://mypersonas.online`.
 - **⚠ Drift:** several deployed functions are NOT in the repo (see `DRIFT.md`): `twitter-post`,
   `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,
@@ -50,20 +55,23 @@ The **owner-triggered Meta slice** of the 3-part system was previously verified 
   portrait 4:5 + ≤280 caption. See `POSTING-3PART-SPEC.md`.
 - **Previously deployed/live-tested:** `ai-proxy` + `compose-post` staged a draft and `meta-post`
   published/deleted the Meta test. Migration `033`+`034` created the `post_drafts` foundation.
-- **Current hardened replacements are local:** `meta-post`, `run-post-queue`, shared publishing,
-  immutable approval, and the revised Composer. They need the coordinated release + migration 035.
-  The scheduled cron remains dormant and X remains draft-only.
+- **Current hardened replacements are in pushed source, and the current frontend is live:**
+  `meta-post`, `run-post-queue`, shared publishing, immutable approval, and the revised Composer.
+  Some function names are visible in the live dashboard, but exact deployed-source parity and the
+  full signed-in contract remain unverified. The scheduled cron remains dormant and X remains
+  draft-only.
 - Verified live: `compose-post` drafted persona-voice FB/IG/X captions + crops; `meta-post`
   published a real FB + IG pair (IG confirmed) and deleted the FB test. That demonstrates the
   tested owner-asset path; it is not evidence for every account, schedule, retry, or policy case.
   Meta App Review is not needed for the owner's own development-mode assets, but is required before
   posting for other users.
 
-Other recent local work: `personas.pet_project` field + UI (★ chip by name/handle); conflict-safe
+Other recent source work: `personas.pet_project` field + UI (★ chip by name/handle); conflict-safe
 persona context + bounded AI prompt; resumable chat workspaces; Reddit OAuth/publishing UI and
 server hardening; friend-request Realtime; release-history extension catalog; an installable PWA
-shell; and fail-closed owner-media/Reddit erasure. These local additions still require the release
-order and live checks in `ROADMAP-EXECUTION-2026-08-13.md`.
+shell; and fail-closed owner-media/Reddit erasure. Their individual live state differs; require the
+release order and evidence checks in `ROADMAP-EXECUTION-2026-08-13.md` and
+`SETUP-CONDUCTOR-HANDOFF.md` before claiming them live.
 
 ## 3. Reference contracts (use these exactly)
 
