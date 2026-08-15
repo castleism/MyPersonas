@@ -23,6 +23,9 @@ const PNG = new Uint8Array([
   0x00, 0x00, 0x00, 0x00,
 ]);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Approved-media sources must be owner-scoped persona-media URLs on this project.
+const src = (name) =>
+  `${SUPABASE_URL}/storage/v1/object/public/persona-media/${OWNER}/${name}`;
 
 class MemoryStorage {
   objects = new Map();
@@ -58,23 +61,38 @@ test("image MIME is detected from bytes, not a filename or header", () => {
   assert.throws(() => detectImageMime(new TextEncoder().encode("<svg/>")));
 });
 
-test("remote source URL validation blocks local/private and ambiguous hosts", () => {
+test("remote source URL validation requires an owner-scoped persona-media URL", () => {
+  // A valid owner-scoped persona-media URL passes; the fragment is stripped.
   assert.equal(
-    validatedRemoteImageUrl("https://cdn.example.com/image.png#fragment").toString(),
-    "https://cdn.example.com/image.png",
+    validatedRemoteImageUrl(src("image.png") + "#fragment", SUPABASE_URL, OWNER).toString(),
+    src("image.png"),
   );
+  // The render-image transform variant is also allowed.
+  assert.doesNotThrow(() => validatedRemoteImageUrl(
+    `${SUPABASE_URL}/storage/v1/render/image/public/persona-media/${OWNER}/image.png`,
+    SUPABASE_URL,
+    OWNER,
+  ));
+  // Everything else is rejected: wrong scheme/host, local/private/metadata hosts,
+  // embedded creds, wrong bucket, another owner's prefix, and path traversal.
   for (const value of [
-    "http://cdn.example.com/image.png",
-    "https://localhost/image.png",
-    "https://127.0.0.1/image.png",
-    "https://10.1.2.3/image.png",
-    "https://169.254.169.254/latest/meta-data",
-    "https://[::1]/image.png",
-    "https://user:pass@cdn.example.com/image.png",
-    "https://internal/image.png",
+    src("image.png").replace("https://", "http://"),
+    "https://cdn.example.com/image.png",
+    src("image.png").replace(SUPABASE_URL, "https://localhost"),
+    src("image.png").replace(SUPABASE_URL, "https://127.0.0.1"),
+    src("image.png").replace(SUPABASE_URL, "https://169.254.169.254"),
+    src("image.png").replace("//nws", "//user:pass@nws"),
+    `${SUPABASE_URL}/storage/v1/object/public/media/${OWNER}/image.png`,
+    `${SUPABASE_URL}/storage/v1/object/public/persona-media/512dfc83-3ee3-4d67-ab2a-48d108e8f75a/image.png`,
+    `${SUPABASE_URL}/storage/v1/object/public/persona-media/${OWNER}/%2e%2e/secret.png`,
   ]) {
-    assert.throws(() => validatedRemoteImageUrl(value), value);
+    assert.throws(() => validatedRemoteImageUrl(value, SUPABASE_URL, OWNER), value);
   }
+  // An invalid owner is rejected explicitly.
+  assert.throws(
+    () => validatedRemoteImageUrl(src("image.png"), SUPABASE_URL, "not-a-uuid"),
+    /Invalid approved-media owner/,
+  );
 });
 
 test("content path and public URL are canonical and owner scoped", async () => {
@@ -108,14 +126,14 @@ test("staging verifies stored bytes and safely reuses identical content", async 
   const first = await stageApprovedMedia(
     storage,
     SUPABASE_URL,
-    "https://cdn.example.com/image.png",
+    src("image.png"),
     OWNER,
     fetcher,
   );
   const second = await stageApprovedMedia(
     storage,
     SUPABASE_URL,
-    "https://cdn.example.com/duplicate.png",
+    src("duplicate.png"),
     OWNER,
     fetcher,
   );
@@ -141,20 +159,20 @@ test("staging validates redirects and declared MIME before Storage writes", asyn
     stageApprovedMedia(
       storage,
       SUPABASE_URL,
-      "https://cdn.example.com/image.png",
+      src("image.png"),
       OWNER,
       async () => new Response(null, {
         status: 302,
         headers: { Location: "https://127.0.0.1/private.png" },
       }),
     ),
-    /public HTTPS URL/,
+    /must not redirect/,
   );
   await assert.rejects(
     stageApprovedMedia(
       storage,
       SUPABASE_URL,
-      "https://cdn.example.com/image.jpg",
+      src("image.jpg"),
       OWNER,
       async () => new Response(PNG, {
         status: 200,

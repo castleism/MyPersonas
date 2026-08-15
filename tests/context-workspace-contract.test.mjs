@@ -55,8 +55,12 @@ test("persona context is bounded and loaded only by the authenticated owner", ()
 
 test("context mutations use compare-and-set instead of blind replacement", () => {
   const update = functionBlock(proxy, "compareAndSetContextLog");
-  assert.match(update, /\.eq\("id", personaId\)\.eq\("owner", owner\)/);
-  assert.match(update, /\.eq\("context_log", expected\)/);
+  // The atomic compare-and-set now runs in PostgreSQL via a service_role RPC
+  // (migration 038) so the expected context never travels in a request URL.
+  assert.match(update, /admin\.rpc\("compare_and_set_persona_context"/);
+  assert.match(update, /p_owner: owner/);
+  assert.match(update, /p_persona_id: personaId/);
+  assert.match(update, /p_expected_context: expected/);
   const mutation = functionBlock(proxy, "handleContextMutation");
   assert.match(mutation, /context_conflict/);
   assert.match(mutation, /for \(let attempt = 0; attempt < 4; attempt\+\+\)/);
