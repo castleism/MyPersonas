@@ -102,7 +102,7 @@
       <ul>
         <li>Persona names, handles, bios, themes, visibility settings, links, posts, comments, reactions, albums, media, follows, blocks, and other page content.</li>
         <li>Private notes, drafts, schedules, content plans, persona instructions, affiliate disclosure text, approval records, automation history, and owner-assistant conversations.</li>
-        <li>Public fan-chat messages, the persona involved, a one-way hash of the visitor’s random browser token, safety flags, and escalation state. Fan chat is currently disabled for adult/NSFW personas.</li>
+        <li>Public fan-chat messages, whether the visitor selected a saved transcript or private session, the persona involved, a one-way hash of the visitor’s random browser token, safety flags, live-owner state, and escalation state. The persona owner can see saved chats and private-session chats while they remain open. Fan chat is currently disabled for adult/NSFW personas.</li>
       </ul>
 
       <h3>Saved external-account inventory</h3>
@@ -187,7 +187,7 @@
 
     <section>
       <h2>10. Retention and deletion</h2>
-      <p>Owner content and operational records generally remain until you remove them, clear the relevant history, remove the connected account, or use the content-erasure control. Short-lived authorization, scan, lease, and action-preview records expire according to their task. Gmail scan checkpoints are bounded to seven days, action previews to 24 hours, and the current Gmail undo window to no more than 28 days.</p>
+      <p>Owner content and operational records generally remain until you remove them, clear the relevant history, remove the connected account, or use the content-erasure control. A saved fan-chat transcript remains in the private owner inbox until deletion. A fan who turns off conversation saving uses a private session: message content is temporarily stored so the AI and an optionally live owner can respond, deleted when the chat closes successfully, and automatically expires after 30 minutes without activity. Content-free safety, quota, and delivery audit receipts may remain without the message text. Short-lived authorization, scan, lease, and action-preview records expire according to their task. Gmail scan checkpoints are bounded to seven days, action previews to 24 hours, and the current Gmail undo window to no more than 28 days.</p>
       <p>Deleting all content removes owned personas, pages, posts, albums, media, account inventory and connections, drafts, schedules, linked models and encrypted credentials, automation/chat history, display name, preferences, and owner problem reports. The in-app content-erasure control intentionally retains your Supabase sign-in record.</p>
       <p>For complete steps, provider revocation links, and sign-in deletion instructions, see the <a href="data-deletion.html">Data Deletion Guide</a>.</p>
     </section>
@@ -198,6 +198,7 @@
         <li>Choose public, unlisted, or private persona visibility.</li>
         <li>Download an owner-readable JSON export from <strong>Account &amp; settings → Security</strong>.</li>
         <li>Clear an owner-assistant conversation from its chat controls.</li>
+        <li>Before using public fan chat, choose a saved transcript or turn saving off for a private session. The human persona owner can see either mode while the chat is open, and human replies are labeled <strong>Owner</strong>.</li>
         <li>Pause all automation, pause one persona, require approval, limit daily activity, and set quiet hours in Matrix.</li>
         <li>Disconnect a supported provider and revoke the grant at the provider.</li>
         <li>Delete content while keeping sign-in, or request removal of the remaining sign-in record.</li>

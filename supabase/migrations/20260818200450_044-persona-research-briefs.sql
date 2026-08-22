@@ -1,27 +1,9 @@
 -- ======================================================================
 -- Migration 044: Persona Research Briefs
 -- Daily Gemini research → topic approval → weekly content pipeline
---
--- Tables:
---   persona_research_settings (28 rows seeded, all inactive)
---   persona_research_briefs (daily research output)
---   persona_research_topics (individual findings from briefs)
---   persona_topic_post_plans (approved topics → scheduled posts)
---
--- RPCs:
---   owner_research_brief_queue()
---   approve_research_topic(...)
---   reject_research_topic(...)
---   create_draft_from_topic(...)
---   get_research_digest(...)
---
--- All inactive by default. Owner opts in per persona.
--- No auto-scheduling. No auto-posting.
 -- ======================================================================
 
--- ======================================================================
 -- 1. persona_research_settings
--- ======================================================================
 create table if not exists public.persona_research_settings (
   persona_id              uuid not null references public.personas(id) on delete cascade,
   owner                   uuid not null,
@@ -30,24 +12,23 @@ create table if not exists public.persona_research_settings (
   research_depth          text not null default 'standard' check (research_depth in ('quick','standard','deep')),
   preferred_backend_id    uuid,
   source_types            text[] not null default '{}'::text[],
-  novelty_threshold       int not null default 5,  -- minimum novelty score to include (1-10)
+  novelty_threshold       int not null default 5,
   max_findings_per_brief  int not null default 5,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   primary key (persona_id)
 );
 
-insert into public.persona_research_settings (persona_id, owner)
-select p.id, p.owner
+insert into public.persona_research_settings (persona_id, owner, preferred_backend_id)
+select p.id, p.owner, 'ab285482-91cc-48ea-b67f-956179dea432'
 from public.personas p
 on conflict (persona_id) do nothing;
 
--- Auto-create for future personas
 create or replace function public.auto_create_research_settings()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  insert into public.persona_research_settings (persona_id, owner)
-  values (new.id, new.owner)
+  insert into public.persona_research_settings (persona_id, owner, preferred_backend_id)
+  values (new.id, new.owner, 'ab285482-91cc-48ea-b67f-956179dea432')
   on conflict (persona_id) do nothing;
   return new;
 end;
@@ -58,9 +39,7 @@ create trigger trg_auto_research_settings
   after insert on public.personas
   for each row execute function public.auto_create_research_settings();
 
--- ======================================================================
 -- 2. persona_research_briefs
--- ======================================================================
 create table if not exists public.persona_research_briefs (
   id                  uuid not null default gen_random_uuid() primary key,
   owner               uuid not null,
@@ -78,9 +57,7 @@ create table if not exists public.persona_research_briefs (
   updated_at          timestamptz not null default now()
 );
 
--- ======================================================================
 -- 3. persona_research_topics
--- ======================================================================
 create table if not exists public.persona_research_topics (
   id                      uuid not null default gen_random_uuid() primary key,
   owner                   uuid not null,
@@ -108,9 +85,7 @@ create table if not exists public.persona_research_topics (
   updated_at              timestamptz not null default now()
 );
 
--- ======================================================================
 -- 4. persona_topic_post_plans
--- ======================================================================
 create table if not exists public.persona_topic_post_plans (
   id                  uuid not null default gen_random_uuid() primary key,
   owner               uuid not null,
@@ -127,9 +102,7 @@ create table if not exists public.persona_topic_post_plans (
   updated_at          timestamptz not null default now()
 );
 
--- ======================================================================
 -- Indexes
--- ======================================================================
 create index if not exists idx_research_briefs_persona on public.persona_research_briefs(persona_id);
 create index if not exists idx_research_briefs_date on public.persona_research_briefs(brief_date);
 create index if not exists idx_research_briefs_status on public.persona_research_briefs(status);
@@ -143,9 +116,7 @@ create index if not exists idx_topic_plans_status on public.persona_topic_post_p
 create index if not exists idx_topic_plans_scheduled on public.persona_topic_post_plans(scheduled_for);
 create index if not exists idx_research_settings_persona on public.persona_research_settings(persona_id);
 
--- ======================================================================
 -- updated_at triggers
--- ======================================================================
 do $$
 declare t text;
 begin
@@ -156,9 +127,7 @@ begin
   end loop;
 end $$;
 
--- ======================================================================
--- RLS — all owner-only, no public access
--- ======================================================================
+-- RLS
 alter table public.persona_research_settings  enable row level security;
 alter table public.persona_research_briefs    enable row level security;
 alter table public.persona_research_topics    enable row level security;
@@ -166,21 +135,15 @@ alter table public.persona_topic_post_plans   enable row level security;
 
 create policy "owner read research settings"  on public.persona_research_settings  for select using (owner = auth.uid());
 create policy "owner write research settings" on public.persona_research_settings  for all    using (owner = auth.uid()) with check (owner = auth.uid());
-
 create policy "owner read briefs"   on public.persona_research_briefs   for select using (owner = auth.uid());
 create policy "owner write briefs"  on public.persona_research_briefs   for all    using (owner = auth.uid()) with check (owner = auth.uid());
-
 create policy "owner read topics"   on public.persona_research_topics   for select using (owner = auth.uid());
 create policy "owner write topics"  on public.persona_research_topics   for all    using (owner = auth.uid()) with check (owner = auth.uid());
-
 create policy "owner read plans"    on public.persona_topic_post_plans  for select using (owner = auth.uid());
 create policy "owner write plans"   on public.persona_topic_post_plans  for all    using (owner = auth.uid()) with check (owner = auth.uid());
 
--- ======================================================================
 -- RPCs
--- ======================================================================
 
--- 1. save_research_brief — called by research-brief-run edge function (service_role)
 create or replace function public.save_research_brief(
   p_persona_id uuid,
   p_brief_date date,
@@ -212,7 +175,6 @@ begin
   )
   returning id into v_brief_id;
 
-  -- Extract findings into individual topics
   for v_finding in select * from jsonb_array_elements(p_key_findings)
   loop
     insert into public.persona_research_topics (
@@ -242,7 +204,6 @@ begin
 end;
 $$;
 
--- 2. owner_research_brief_queue — view all briefs across personas
 create or replace function public.owner_research_brief_queue(
   p_date_filter date default null,
   p_status_filter text default null
@@ -270,7 +231,6 @@ language sql security definer stable set search_path = '' as $$
   order by b.brief_date desc, p.handle;
 $$;
 
--- 3. approve_research_topic — owner approves a topic for content creation
 create or replace function public.approve_research_topic(
   p_topic_id uuid,
   p_post_type text default 'new',
@@ -298,7 +258,6 @@ begin
     raise exception 'Invalid post type';
   end if;
 
-  -- Update topic status
   update public.persona_research_topics
   set status = 'approved',
       approved_post_type = p_post_type,
@@ -310,7 +269,6 @@ begin
       updated_at = now()
   where id = p_topic_id;
 
-  -- Create post plan
   insert into public.persona_topic_post_plans (
     owner, topic_id, persona_id,
     post_type, platform, scheduled_for, scheduled_time, status, notes
@@ -325,7 +283,6 @@ begin
 end;
 $$;
 
--- 4. reject_research_topic — owner rejects a topic
 create or replace function public.reject_research_topic(
   p_topic_id uuid,
   p_reason text default ''
@@ -336,12 +293,10 @@ begin
   update public.persona_research_topics
   set status = 'rejected', rejection_reason = p_reason, updated_at = now()
   where id = p_topic_id and owner = auth.uid();
-
   if not found then raise exception 'Topic not found'; end if;
 end;
 $$;
 
--- 5. get_research_digest — aggregated summary for a persona over N days
 create or replace function public.get_research_digest(
   p_persona_id uuid,
   p_days int default 7
@@ -398,14 +353,8 @@ language sql security definer stable set search_path = '' as $$
   where p.id = p_persona_id;
 $$;
 
--- ======================================================================
--- Grant permissions
--- ======================================================================
--- Owner RPCs
 grant execute on function public.owner_research_brief_queue(date,text) to authenticated;
 grant execute on function public.approve_research_topic(uuid,text,text,date,text) to authenticated;
 grant execute on function public.reject_research_topic(uuid,text) to authenticated;
 grant execute on function public.get_research_digest(uuid,int) to authenticated;
-
--- Service-role RPC (edge function only)
-grant execute on function public.save_research_brief(uuid,date,uuid,text,text,jsonb,jsonb,text) to service_role;
+grant execute on function public.save_research_brief(uuid,date,uuid,text,text,jsonb,jsonb,text) to service_role;;

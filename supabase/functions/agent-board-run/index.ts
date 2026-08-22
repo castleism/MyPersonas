@@ -228,7 +228,9 @@ Deno.serve(async (req: Request) => {
     }
   } catch (e) {
     runStatus = "failed";
-    errorMsg = e.message ?? "Unknown error calling AI provider";
+    errorMsg = e instanceof Error
+      ? e.message
+      : "Unknown error calling AI provider";
   }
 
   // Step 7: Get the run ID we created during claim

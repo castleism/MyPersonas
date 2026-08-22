@@ -35,6 +35,21 @@ const MAX_CONTEXT_SUMMARY_CHARS = 600;
 const MAX_ATTACHED_SUMMARIES = 3;
 const MAX_ATTACHED_SUMMARY_CHARS = 800;
 const MAX_ATTACHED_SUMMARIES_CHARS = 2_400;
+const ROUTE_KEYS = new Set([
+  "persona_chat",
+  "persona_voice_draft",
+  "bulk_caption_draft",
+  "long_context_synthesis",
+  "research",
+  "code_review",
+  "security_review",
+  "image_prompt",
+  "image_generation",
+  "embedding",
+  "rerank",
+  "tts",
+]);
+const ROUTE_ROLES = new Set(["primary", "reviewer", "fallback"]);
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -1201,7 +1216,7 @@ async function handleRequest(req: Request) {
     // owner-scoped backend query below is the authorization boundary.
   }
 
-  const backendId = typeof payload.backendId === "string"
+  let backendId = typeof payload.backendId === "string"
     ? payload.backendId.trim()
     : "";
   if (backendId && !isUuid(backendId)) {
@@ -1211,6 +1226,38 @@ async function handleRequest(req: Request) {
       400,
       origin,
     );
+  }
+
+  const routeKey = typeof payload.routeKey === "string"
+    ? payload.routeKey.trim()
+    : "";
+  const routeRole = typeof payload.routeRole === "string"
+    ? payload.routeRole.trim()
+    : "primary";
+  if (routeKey && (!ROUTE_KEYS.has(routeKey) || !ROUTE_ROLES.has(routeRole))) {
+    if (context) await auditDenied(owner, context, mode, "model_route_invalid");
+    return responseJson({ error: "The requested model route is not supported" }, 400, origin);
+  }
+  if (!backendId && routeKey) {
+    if (!requestedPersonaId) {
+      return responseJson({ error: "A persona is required for model routing" }, 400, origin);
+    }
+    const resolved = await admin.rpc("resolve_persona_ai_backend", {
+      p_owner: owner,
+      p_persona_id: requestedPersonaId,
+      p_route_key: routeKey,
+      p_route_role: routeRole,
+    });
+    if (resolved.error) {
+      console.error("AI model route lookup failed", resolved.error.message);
+      if (context) await auditDenied(owner, context, mode, "model_route_unavailable");
+      return responseJson({ error: "Persona model routing is unavailable" }, 409, origin);
+    }
+    backendId = typeof resolved.data === "string" ? resolved.data : "";
+    if (!isUuid(backendId)) {
+      if (context) await auditDenied(owner, context, mode, "model_route_missing", { route_key: routeKey });
+      return responseJson({ error: `No ${routeKey} model is assigned to this persona` }, 409, origin);
+    }
   }
 
   let backendQuery = admin.from("ai_backends")

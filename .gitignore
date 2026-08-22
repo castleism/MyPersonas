@@ -10,5 +10,7 @@
 
 # Dev tooling / OS junk — never commit
 /node_modules/
+/supabase/.branches/
+/supabase/.temp/
 .DS_Store
 Thumbs.db

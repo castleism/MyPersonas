@@ -62,7 +62,11 @@ export function detectImageMime(bytes: Uint8Array): ApprovedMedia["mime"] {
 }
 
 export async function sha256Hex(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  // Copy into an ArrayBuffer-backed view. Deno's WebCrypto types correctly
+  // reject a Uint8Array that could be backed by SharedArrayBuffer.
+  const ownedBytes = new Uint8Array(bytes.byteLength);
+  ownedBytes.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", ownedBytes.buffer);
   return Array.from(new Uint8Array(digest))
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("");

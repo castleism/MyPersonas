@@ -26,6 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
+<link rel="stylesheet" href="./owner-app.css">
 <script src="./pwa.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
@@ -310,14 +311,19 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   <input id="gsearch" placeholder="find personas..." onkeydown="if(event.key==='Enter')go('search/'+encodeURIComponent(this.value))">
   <nav>
     <button onclick="go('')">Entangle</button>
+    <button onclick="go('owner')">Home</button>
     <button onclick="go('studio')">Matrix<span id="reqBadge" class="badge" style="display:none"></span></button>
-    <button onclick="go('discovery')">Brain<span id="discBadge" class="badge" style="display:none"></span></button>
+    <button onclick="go('briefs')">Briefings<span id="discBadge" class="badge" style="display:none"></span></button>
     <span class="menuwrap">
       <button onclick="toggleSiteMenu(event)">Menu ▾</button>
       <div id="siteMenu">
         <button onclick="siteGo('')">Discover (Entangle)</button>
+        <button onclick="siteGo('owner')">Owner home</button>
         <button onclick="siteGo('studio')">Your studio (Matrix)</button>
-        <button onclick="siteGo('discovery')">Brain — discovery inbox</button>
+        <button onclick="siteGo('briefs')">Briefings &amp; research</button>
+        <button onclick="siteGo('schedule')">Four-channel post schedule</button>
+        <button onclick="siteGo('activity')">Persona activity</button>
+        <button onclick="siteGo('discovery')">Legacy Brain inbox</button>
         <button onclick="closeSiteMenu();go('edit/new')">+ New persona</button>
         <button onclick="closeSiteMenu();openHQ()">HQ Assistant</button>
         <button onclick="closeSiteMenu();openComposer()">Compose posts (3-part)</button>
@@ -333,11 +339,19 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   </nav>
 </header>
 <div class="appbody"><aside id="personaRail" aria-label="Your personas"></aside><main id="app"><div class="empty">Loading…</div></main></div>
+<nav id="ownerMobileNav" class="oa-mobile-nav" aria-label="Owner app" hidden>
+  <button data-view="owner" onclick="go('owner')"><span>⌂</span><span>Home</span></button>
+  <button data-view="briefs" onclick="go('briefs')"><span>⌁</span><span>Briefs</span></button>
+  <button data-view="schedule" onclick="go('schedule')"><span>▤</span><span>Schedule</span></button>
+  <button data-view="fan-inbox" onclick="go('fan-inbox')"><span>✦</span><span>Fans</span><span id="ownerMobileFanBadge" class="oa-nav-count" hidden></span></button>
+  <button data-view="activity" onclick="go('activity')"><span>◷</span><span>Activity</span></button>
+</nav>
 <footer class="sitefooter"><a href="provider-setup.html">Provider setup</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="data-deletion.html">Data deletion</a><span>MyPersonas / AliaSpaces</span></footer>
 <div id="toast"></div>
 <button id="bugBtn" onclick="reportError()" title="Report a problem"
   style="position:fixed;left:14px;bottom:14px;z-index:170;background:#fff;border:1px solid #ccd0d5;border-radius:50px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#65676b;box-shadow:0 1px 4px rgba(0,0,0,.15)"><svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg>Report a problem</button>
 <button id="pageChatBtn" onclick="openPageChat()" title="Chat with this page's AI" aria-label="Chat with this page's AI" style="position:fixed;right:16px;bottom:16px;z-index:170;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:0;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25);display:none;font-size:24px;line-height:1">💬</button>
+<script src="./owner-app.js"></script>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -418,7 +432,7 @@ let renderEpoch=0,authLoadGeneration=0,mineLoadRequest=0; // async renders and a
 let loadedUid,privateSessionReady=false;
 let mfaLoginGate={active:false,checking:false,uid:"",factors:[],error:""};
 let friendRealtimeChannel=null,friendRealtimeUid="",friendRealtimeSignature="",friendRealtimeTimer=null,friendRealtimeAnnounceIncoming=false;
-let pageState={},editLinks=[],editInitialLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null;
+let pageState={},editLinks=[],editInitialLinks=[],editT8=[],editId=null,editAlbums=[],t8ResultRows=[],chatCtx=null,publicFanCtx=null,publicFanPollTimer=null;
 const app=document.getElementById("app");
 const errBuf=[];
 function logErr(kind,msg){errBuf.push({t:new Date().toISOString(),kind,msg:String(msg).slice(0,500)});if(errBuf.length>25)errBuf.shift()}
@@ -633,6 +647,7 @@ function resetMineState(){
   myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myChatWorkspaces=[];myAgentSettings=null;myDiscovery=[];myKnowledge=[];discoveryReady=true;discoveryBusy.clear();
   accountLedgerReady=true;accountConnectionsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;chatWorkspacesReady=true;
   updateBadge();
+  if(typeof ownerAppReset==="function")ownerAppReset();
 }
 function resetPrivateUiState(){teardownFriendRealtime();pageState={};editId=null;editLinks=[];editInitialLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};redditOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
@@ -683,6 +698,7 @@ async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadG
   if(!autoPersonaId||!myPersonas.some(p=>p.id===autoPersonaId))autoPersonaId=myPersonas[0]?.id||"";
   pendingIn=reqs;
   updateBadge();renderSidebar();
+  if(typeof ownerAppAfterMineLoaded==="function")ownerAppAfterMineLoaded(expectedUid);
   setupFriendRealtime(expectedUid,generation);
   return true;
 }
@@ -690,7 +706,7 @@ function updateBadge(){
   const b=document.getElementById("reqBadge");
   if(pendingIn.length){b.style.display="flex";b.textContent=pendingIn.length}else b.style.display="none";
   const d=document.getElementById("discBadge");
-  if(d){const n=myDiscovery.filter(q=>q.status==="pending").length;if(n){d.style.display="flex";d.textContent=n}else d.style.display="none"}
+  if(d){const briefCount=typeof ownerAppState!=="undefined"&&ownerAppState.capabilities.researchBriefs?ownerAppState.briefs.filter(q=>q.status==="new").length:0,n=briefCount||myDiscovery.filter(q=>q.status==="pending").length;if(n){d.style.display="flex";d.textContent=n>99?"99+":n}else d.style.display="none"}
 }
 function teardownFriendRealtime(){
   if(friendRealtimeTimer){clearTimeout(friendRealtimeTimer);friendRealtimeTimer=null}friendRealtimeAnnounceIncoming=false;
@@ -744,6 +760,7 @@ function setupFriendRealtime(uid,generation=authLoadGeneration){
 window.addEventListener("focus",()=>{if(friendRealtimeUid)scheduleFriendRequestRefresh(friendRealtimeUid,authLoadGeneration)});
 function renderSidebar(){
   const cb=document.getElementById("pageChatBtn");if(cb)cb.style.display=session&&privateSessionReady?"flex":"none";
+  const mobileNav=document.getElementById("ownerMobileNav");if(mobileNav)mobileNav.hidden=!(session&&privateSessionReady);
   const rail=document.getElementById("personaRail");if(!rail)return;
   if(!session||!privateSessionReady){rail.innerHTML="";rail.style.display="none";return}
   rail.style.display="";
@@ -752,8 +769,12 @@ function renderSidebar(){
   const nav=(on,dest,icon,label)=>`<button class="railitem ${on?"on":""}" onclick="go('${dest}')">${ico(icon)}<span>${label}</span></button>`;
   rail.innerHTML=`
     <div class="railsec">
+      ${nav(view==="owner","owner","crown","Owner home")}
+      ${nav(view==="briefs","briefs","feed","Briefings")}
+      ${nav(view==="schedule","schedule","clock","Post schedule")}
+      ${nav(view==="fan-inbox","fan-inbox","mail","Fan inbox")}
       ${nav(view==="studio","studio","node","All personas")}
-      ${nav(view==="discovery","discovery","chip","Brain inbox")}
+      ${nav(view==="discovery","discovery","chip","Legacy Brain")}
       ${nav(view===""||view==="search","","compass","Discover")}
     </div>
     <div class="raillabel">Your personas</div>
@@ -770,9 +791,17 @@ async function route(){
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
+  document.body.classList.toggle("owner-authenticated",!!session&&privateSessionReady);
   renderSidebar();
+  if(typeof ownerAppMobileNav==="function")ownerAppMobileNav();
   if(session&&!privateSessionReady){if(mfaLoginGate.active)renderMfaLoginGate();else app.innerHTML='<div class="empty">Checking sign-in security…</div>';return}
   if(view==="p")return renderPersonaPage(arg,false,myEpoch);
+  if(view==="owner")return renderOwnerCommandCenter();
+  if(view==="briefs")return renderOwnerBriefs(arg);
+  if(view==="schedule")return renderOwnerSchedule(arg);
+  if(view==="fan-inbox")return renderOwnerFanInbox(arg);
+  if(view==="activity")return renderOwnerActivity();
+  if(view==="notifications")return renderOwnerNotifications();
   if(view==="studio"){
     const notice=metaOAuthNotice||twitterOAuthNotice||redditOAuthNotice||gmailOAuthNotice;
     if(notice){acctTab=notice.returnTab==="inbox"?"inbox":"accounts";metaOAuthNotice=null;twitterOAuthNotice=null;redditOAuthNotice=null;gmailOAuthNotice=null}
@@ -792,7 +821,7 @@ async function route(){
 
 // ---------- sign in ----------
 function renderSignin(){
-  if(session){go("studio");return}
+  if(session){go("owner");return}
   app.innerHTML=`<div class="card authbox">
     <h3 class="center">Welcome to AliaSpaces</h3>
     <p class="muted center">One account, many personas. Your identity stays private — pages never show who owns them.</p>
@@ -1138,7 +1167,7 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
       ${M("music")&&p.music_url?`<div class="card music"><h3>${ico("music")}Profile song</h3>${musicHtml(p.music_url)}</div>`:""}
       ${M("about")?`<div class="card"><h3>${ico("spark")}About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
         ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" data-page-search="${esc(t.trim())}" onclick="pageSearch(this.dataset.pageSearch)">${esc(t.trim())}</span>`).join("")}</div>`:""}</div>`:""}
-      ${fanAvailable?`<div class="card"><h3>${ico("spark")}Chat with ${esc(p.name)}'s AI</h3><p class="muted">This is an AI assistant speaking in ${esc(p.name)}'s configured voice—not the human owner. The owner can review escalated conversations in their private inbox.</p><button class="btn sm" onclick="openPublicFanChat('${p.id}')">Start AI chat</button></div>`:""}
+      ${fanAvailable?`<div class="card"><h3>${ico("spark")}Chat with ${esc(p.name)}'s AI</h3><p class="muted">This is a disclosed AI assistant, not the human owner. The owner can see saved chats and open private-session chats. If the owner joins live, every human reply is labeled Owner.</p><button class="btn sm" onclick="openPublicFanChat('${p.id}')">Start fan chat</button></div>`:""}
       ${M("links")&&(links||[]).length?`<div class="card"><h3>${ico("link")}Find me on</h3>${links.map(l=>{
         const pl=PLATS[l.platform]||PLATS.other;
         const url=safeHttpUrl(l.url);return url?`<a class="chip" href="${esc(url)}" target="_blank" rel="noopener">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div>`:""}
@@ -1218,17 +1247,23 @@ function fanVisitorToken(pid){
 }
 function openPublicFanChat(personaId){
   const name=pageState?.p?.id===personaId?pageState.p.name:"Persona";
-  closePublicFanChat();publicFanCtx={personaId,name,sessionId:crypto.randomUUID(),visitorToken:fanVisitorToken(personaId),busy:false,messages:[]};
-  const d=document.createElement("div");d.className="fanbox";d.id="publicFanChat";d.innerHTML=`<div class="fanh"><b>${esc(name)} · AI chat</b><button class="btn sm" style="float:right;background:rgba(255,255,255,.2)" onclick="closePublicFanChat()">✕</button></div><div class="fandisc"><b>AI disclosure:</b> This assistant uses ${esc(name)}'s configured persona voice. It is not the human owner. The owner may review escalated transcripts in their private inbox; this chat does not promise a live human reply.</div><div class="fanmsgs" id="publicFanMsgs"><div class="cmsg a">Hi! I’m ${esc(name)}’s AI assistant. What would you like to talk about?</div></div><div class="faninput"><textarea id="publicFanIn" maxlength="2000" placeholder="Message the AI assistant…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();publicFanSend()}"></textarea><button class="btn" onclick="publicFanSend()">Send</button></div>`;document.body.appendChild(d);document.getElementById("publicFanIn")?.focus();
+  closePublicFanChat();publicFanCtx={personaId,name,sessionId:crypto.randomUUID(),visitorToken:fanVisitorToken(personaId),busy:false,messages:[],retentionMode:"saved",started:false,ownerLive:false,cleared:false};
+  const d=document.createElement("div");d.className="fanbox";d.id="publicFanChat";d.innerHTML=`<div class="fanh"><b>${esc(name)} · fan chat</b><button class="btn sm" style="float:right;background:rgba(255,255,255,.2)" aria-label="Close fan chat" onclick="closePublicFanChat()">✕</button></div><div class="fanconsent"><div class="fannotice"><b>The human owner can see this chat.</b><span>AI replies are labeled AI. If the owner joins for live chat, their messages are labeled Owner. Do not share passwords, payment details, health records, or other sensitive information.</span></div><label class="fanprivacy"><input id="publicFanSave" type="checkbox" checked onchange="publicFanConsentChanged()"><span><b>Save this conversation</b><small>On: the transcript stays in the owner's private inbox until deleted.<br>Off: messages are temporarily stored only while this window is open, deleted when you close it, and automatically expire after 30 minutes idle. They are not added to persona memory. Content-free safety and delivery receipts may remain.</small></span></label><label class="fanack"><input id="publicFanOwnerAck" type="checkbox" onchange="publicFanConsentChanged()"><span>I understand the persona owner can see my messages while this chat is open.</span></label><button id="publicFanStart" class="btn" disabled onclick="startPublicFanChat()">Continue to chat</button></div>`;document.body.appendChild(d);
 }
-function closePublicFanChat(){document.getElementById("publicFanChat")?.remove();publicFanCtx=null}
+function publicFanConsentChanged(){const start=document.getElementById("publicFanStart"),save=document.getElementById("publicFanSave");if(publicFanCtx&&save)publicFanCtx.retentionMode=save.checked?"saved":"ephemeral";if(start)start.disabled=!document.getElementById("publicFanOwnerAck")?.checked}
+function startPublicFanChat(){if(!publicFanCtx||!document.getElementById("publicFanOwnerAck")?.checked)return;const ctx=publicFanCtx;ctx.started=true;ctx.retentionMode=document.getElementById("publicFanSave")?.checked?"saved":"ephemeral";const box=document.getElementById("publicFanChat");if(!box)return;box.innerHTML=`<div class="fanh"><b>${esc(ctx.name)} · fan chat</b><button class="btn sm" style="float:right;background:rgba(255,255,255,.2)" aria-label="Close fan chat" onclick="closePublicFanChat()">✕</button></div><div class="fandisc"><b>Visible to owner:</b> The human owner can read this chat. AI and Owner messages are labeled. ${ctx.retentionMode==="ephemeral"?"Private session: closing clears the transcript; idle sessions expire after 30 minutes.":"Saved session: this transcript remains in the owner's private inbox until deleted."}</div><div class="fanlive" id="publicFanLive">AI assistant active</div><div class="fanmsgs" id="publicFanMsgs"></div><div class="faninput"><textarea id="publicFanIn" maxlength="2000" placeholder="Message the AI assistant…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();publicFanSend()}"></textarea><button class="btn" onclick="publicFanSend()">Send</button></div>`;renderPublicFanMsgs();document.getElementById("publicFanIn")?.focus()}
+function publicFanCloseRequest(ctx){if(!ctx?.started||ctx.retentionMode!=="ephemeral")return;try{fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"close",personaId:ctx.personaId,sessionId:ctx.sessionId,visitorToken:ctx.visitorToken}),keepalive:true}).catch(()=>{})}catch(_){}}
+function closePublicFanChat(){const ctx=publicFanCtx;if(publicFanPollTimer){clearInterval(publicFanPollTimer);publicFanPollTimer=null}publicFanCloseRequest(ctx);document.getElementById("publicFanChat")?.remove();publicFanCtx=null}
+window.addEventListener("pagehide",()=>publicFanCloseRequest(publicFanCtx));
+function publicFanBeginPoll(){if(publicFanPollTimer)clearInterval(publicFanPollTimer);publicFanPollTimer=setInterval(publicFanPoll,3000);publicFanPoll()}
+async function publicFanPoll(){const ctx=publicFanCtx;if(!ctx?.started||ctx.cleared)return;try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"poll",personaId:ctx.personaId,sessionId:ctx.sessionId,visitorToken:ctx.visitorToken})}),j=await r.json().catch(()=>({}));if(publicFanCtx!==ctx)return;if(r.status===410||j.cleared){ctx.messages=[];ctx.cleared=true;ctx.ownerLive=false;const input=document.querySelector("#publicFanChat .faninput");if(input)input.innerHTML='<p class="muted">This private session was cleared. Close this window to start another chat.</p>';renderPublicFanMsgs();return}if(r.ok&&Array.isArray(j.messages)){ctx.messages=j.messages;ctx.ownerLive=j.ownerLive===true;ctx.ownerLiveUntil=j.ownerLiveUntil||"";renderPublicFanMsgs()}}catch(_){}}
 function renderPublicFanMsgs(){
-  const el=document.getElementById("publicFanMsgs");if(!el||!publicFanCtx)return;el.innerHTML=publicFanCtx.messages.map(m=>`<div class="cmsg ${m.role==="fan"?"u":"a"}">${esc(m.content)}</div>`).join("")+(publicFanCtx.busy?'<div class="cmsg a">…thinking</div>':"");el.scrollTop=el.scrollHeight;
+  const el=document.getElementById("publicFanMsgs"),ctx=publicFanCtx;if(!el||!ctx)return;const roleClass={fan:"u",assistant:"a",owner:"h",system:"s"},roleLabel={assistant:"AI",owner:"Owner",system:"Notice"};el.innerHTML=`<div class="cmsg a"><b>AI</b> Hi! I’m ${esc(ctx.name)}’s AI assistant. What would you like to talk about?</div>`+ctx.messages.map(m=>`<div class="cmsg ${roleClass[m.role]||"a"}">${roleLabel[m.role]?`<b>${roleLabel[m.role]}</b> `:""}${esc(m.content)}</div>`).join("")+(ctx.busy?`<div class="cmsg ${ctx.ownerLive?"h":"a"}">${ctx.ownerLive?"Waiting for Owner…":"AI is thinking…"}</div>`:"");const live=document.getElementById("publicFanLive");if(live){live.classList.toggle("on",ctx.ownerLive);live.textContent=ctx.ownerLive?`Human owner live${ctx.ownerLiveUntil?" until "+new Date(ctx.ownerLiveUntil).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""} · messages go to Owner`:"AI assistant active · the owner may still review this chat"}el.scrollTop=el.scrollHeight;
 }
 async function publicFanSend(){
   if(!publicFanCtx||publicFanCtx.busy)return;const ctx=publicFanCtx,inp=document.getElementById("publicFanIn"),message=inp?.value.trim();if(!message)return;inp.value="";ctx.messages.push({role:"fan",content:message});ctx.busy=true;renderPublicFanMsgs();
-  try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({personaId:ctx.personaId,sessionId:ctx.sessionId,visitorToken:ctx.visitorToken,message})}),j=await r.json().catch(()=>({}));if(publicFanCtx!==ctx)return;if(!r.ok&&!j.reply)throw new Error(j.error||"Fan chat is unavailable right now");ctx.messages.push({role:"assistant",content:j.reply||j.content||"The assistant could not answer."});if(j.escalated)ctx.messages.push({role:"assistant",content:"This conversation was flagged for the human owner to review."});}
-  catch(e){if(publicFanCtx===ctx)ctx.messages.push({role:"assistant",content:"Error: "+e.message})}if(publicFanCtx===ctx){ctx.busy=false;renderPublicFanMsgs()}
+  try{const r=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/fan-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"message",personaId:ctx.personaId,sessionId:ctx.sessionId,visitorToken:ctx.visitorToken,retentionMode:ctx.retentionMode,ownerVisibilityAccepted:true,message})}),j=await r.json().catch(()=>({}));if(publicFanCtx!==ctx)return;if(!r.ok&&!j.reply)throw new Error(j.error||"Fan chat is unavailable right now");if(j.ownerLive)ctx.ownerLive=true;else if(j.reply)ctx.messages.push({role:"assistant",content:j.reply});if(j.escalated)ctx.messages.push({role:"system",content:"This conversation was flagged for the human owner to review."});}
+  catch(e){if(publicFanCtx===ctx)ctx.messages.push({role:"system",content:"Error: "+e.message})}if(publicFanCtx===ctx){ctx.busy=false;renderPublicFanMsgs();if(publicFanPollTimer)publicFanPoll();else publicFanBeginPoll()}
 }
 
 // ---------- friends / blocks ----------
@@ -1481,7 +1516,7 @@ function automationQueueHtml(p,binding){
 function automationChatsHtml(p,binding){
   if(!fanInboxReady)return '<div class="autocallout warn">Fan inbox setup is not available yet.</div>';
   const sessions=myFanSessions.filter(s=>s.persona_id===p.id);
-  return `<div class="autocallout"><b>AI disclosure cannot be removed.</b> Fan chat starts off, uses session-scoped memory, keeps an owner-visible transcript, and escalates commercial asks, disputes, self-harm signals, or never-do topics.</div><div class="faninbox">${sessions.map(s=>{const ms=myFanMessages.filter(m=>m.session_id===s.id),last=ms.slice(-1)[0];return `<div class="fanthread"><div class="targettop"><b>${s.escalated?"⚠ Escalated conversation":"Fan conversation"}</b><span class="pill ${s.inbox_state==="unread"?"attention":"recorded"}">${esc(s.inbox_state)}</span></div><p class="muted">${autoDate(s.last_seen_at)}${s.escalation_reason?" · "+esc(s.escalation_reason):""}</p><p style="margin-top:5px">${esc(last?.content||"Open transcript to load messages")}</p><div class="targetactions"><button class="btn sm sec" onclick="openFanTranscript('${s.id}')">View transcript</button><button class="btn sm" onclick="setFanThreadState('${s.id}','read')">Mark read</button><button class="btn sm sec" onclick="setFanThreadState('${s.id}','resolved')">Resolve</button></div></div>`}).join("")||'<p class="muted">No fan conversations yet.</p>'}</div>${binding?.fan_chat_enabled?'<div class="statusline"><span class="statusdot ok"></span><span>Fan chat is enabled for this persona.</span></div>':'<div class="statusline"><span class="statusdot stop"></span><span>Fan chat is off. Enable it in Direction when the model and caps are ready.</span></div>'}`;
+  return `<div class="autocallout"><b>Owner visibility and AI disclosure cannot be removed.</b> Fans choose a saved transcript or a private session that clears on close. Human replies require a finite live window and are labeled Owner.</div><p><button class="btn sm" onclick="go('fan-inbox')">Open mobile fan inbox &amp; live chat</button></p><div class="faninbox">${sessions.map(s=>{const ms=myFanMessages.filter(m=>m.session_id===s.id),last=ms.slice(-1)[0];return `<div class="fanthread"><div class="targettop"><b>${s.escalated?"⚠ Escalated conversation":"Fan conversation"}</b><span class="pill ${s.inbox_state==="unread"?"attention":"recorded"}">${esc(s.inbox_state)}</span></div><p class="muted">${autoDate(s.last_seen_at)}${s.escalation_reason?" · "+esc(s.escalation_reason):""}</p><p style="margin-top:5px">${esc(last?.content||"Open transcript to load messages")}</p><div class="targetactions"><button class="btn sm sec" onclick="openFanTranscript('${s.id}')">View transcript</button><button class="btn sm" onclick="setFanThreadState('${s.id}','read')">Mark read</button><button class="btn sm sec" onclick="setFanThreadState('${s.id}','resolved')">Resolve</button></div></div>`}).join("")||'<p class="muted">No fan conversations yet.</p>'}</div>${binding?.fan_chat_enabled?'<div class="statusline"><span class="statusdot ok"></span><span>Fan chat is enabled for this persona.</span></div>':'<div class="statusline"><span class="statusdot stop"></span><span>Fan chat is off. Enable it in Direction when the model and caps are ready.</span></div>'}`;
 }
 
 function automationAuditHtml(p){
@@ -1586,7 +1621,7 @@ async function publishRedditDraft(id,button){
 }
 async function markManualDraftPosted(id){if(!confirm("Confirm that you posted this yourself on the external platform?"))return;const{error}=await sb.rpc("mark_manual_draft_posted",{p_draft_id:id});if(error){toast(error.message);return}await loadMine();autoTab="queue";renderStudio();toast("Marked as manually posted")}
 async function openFanTranscript(id){
-  const s=myFanSessions.find(x=>x.id===id);if(!s)return;toast("Loading the full conversation…");const result=await fetchAllPages((from,to)=>sb.from("fan_chat_messages").select("*",{count:"exact"}).eq("owner",session.user.id).eq("session_id",id).order("created_at",{ascending:true}).range(from,to));if(result.error){toast("Could not load this conversation: "+result.error.message);return}const ms=result.data||[],o=document.createElement("div");o.className="overlay";o.id="fanTranscriptOv";o.innerHTML=`<div class="wizbox"><h2>${s.escalated?"Escalated fan conversation":"Fan conversation"}</h2><p class="muted">${esc(s.escalation_reason||"AI disclosure was shown before the conversation.")}</p>${ms.map(m=>`<div class="cmsg ${m.role==="fan"?"u":"a"}">${esc(m.content)}</div>`).join("")||'<p class="muted">No messages.</p>'}<div class="autoformactions"><button class="btn danger" onclick="deleteFanConversation('${s.id}')">Delete conversation</button><button class="btn sec" onclick="document.getElementById('fanTranscriptOv').remove()">Close</button></div></div>`;document.body.appendChild(o);
+  const s=myFanSessions.find(x=>x.id===id);if(!s)return;toast("Loading the full conversation…");const result=await fetchAllPages((from,to)=>sb.from("fan_chat_messages").select("*",{count:"exact"}).eq("owner",session.user.id).eq("session_id",id).order("created_at",{ascending:true}).range(from,to));if(result.error){toast("Could not load this conversation: "+result.error.message);return}const ms=result.data||[],o=document.createElement("div");o.className="overlay";o.id="fanTranscriptOv";o.innerHTML=`<div class="wizbox"><h2>${s.escalated?"Escalated fan conversation":"Fan conversation"}</h2><p class="muted">${esc(s.escalation_reason||"The fan accepted the owner-visibility and AI-labeling warning before messaging.")}</p>${ms.map(m=>`<div class="cmsg ${m.role==="fan"?"u":m.role==="owner"?"h":m.role==="system"?"s":"a"}"><b>${m.role==="fan"?"Fan":m.role==="owner"?"Owner":m.role==="system"?"Notice":"AI"}</b> ${esc(m.content)}</div>`).join("")||'<p class="muted">No messages.</p>'}<div class="autoformactions"><button class="btn danger" onclick="deleteFanConversation('${s.id}')">Delete conversation</button><button class="btn sec" onclick="document.getElementById('fanTranscriptOv').remove()">Close</button></div></div>`;document.body.appendChild(o);
 }
 async function setFanThreadState(id,state){const{error}=await sb.from("fan_chat_sessions").update({inbox_state:state}).eq("id",id);if(error){toast(error.message);return}await loadMine();autoTab="chats";renderStudio()}
 async function deleteFanConversation(id){if(!confirm("Delete this full fan conversation and transcript? This cannot be undone."))return;const{data,error}=await sb.rpc("delete_my_fan_chat_session",{p_session_id:id});if(error||data!==true){toast(error?.message||"Conversation could not be deleted");return}document.getElementById("fanTranscriptOv")?.remove();await loadMine();autoTab="chats";renderStudio();toast("Conversation deleted")}
@@ -4670,7 +4705,7 @@ async function exportMyData(){
   const uid=session.user.id,generation=authLoadGeneration;
   const[profileRes,personaRes]=await Promise.all([sb.from("profiles").select("*").eq("id",uid).maybeSingle(),loadOwnerPersonaRows()]);if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}
   const datasets=await Promise.all([
-    loadOwnedPages("ai_backends","id,owner,name,base_url,model,provider,extra,created_at","created_at",true,uid),loadOwnedPages("ai_tasks","*","created_at",true,uid),loadOwnedPages("drafts","*","created_at",true,uid),loadOwnedPages("account_ledger","*","created_at",true,uid),loadOwnedPages("account_connections","*","created_at",true,uid),loadOwnedPages("agent_owner_settings","*","created_at",true,uid),loadOwnedPages("agent_bindings","*","created_at",true,uid),loadOwnedPages("agent_destinations","*","created_at",true,uid),loadOwnedPages("persona_content_plans","*","created_at",true,uid),loadOwnedPages("agent_actions","*","created_at",true,uid),loadOwnedPages("fan_chat_sessions","id,owner,persona_id,escalated,escalation_reason,inbox_state,created_at,last_seen_at","created_at",true,uid),loadOwnedPages("fan_chat_messages","*","created_at",true,uid),loadOwnedPages("agent_messages","*","created_at",true,uid),loadOwnedPages("chat_workspaces","*","updated_at",true,uid),fetchAllPages((from,to)=>sb.rpc("my_error_logs",{},{count:"exact"}).order("created_at",{ascending:true}).range(from,to))
+    loadOwnedPages("ai_backends","id,owner,name,base_url,model,provider,extra,created_at","created_at",true,uid),loadOwnedPages("ai_tasks","*","created_at",true,uid),loadOwnedPages("drafts","*","created_at",true,uid),loadOwnedPages("account_ledger","*","created_at",true,uid),loadOwnedPages("account_connections","*","created_at",true,uid),loadOwnedPages("agent_owner_settings","*","created_at",true,uid),loadOwnedPages("agent_bindings","*","created_at",true,uid),loadOwnedPages("agent_destinations","*","created_at",true,uid),loadOwnedPages("persona_content_plans","*","created_at",true,uid),loadOwnedPages("agent_actions","*","created_at",true,uid),loadOwnedPages("fan_chat_sessions","id,owner,persona_id,escalated,escalation_reason,inbox_state,retention_mode,privacy_notice_version,privacy_acknowledged_at,ephemeral_expires_at,owner_live_until,owner_live_started_at,created_at,last_seen_at","created_at",true,uid),loadOwnedPages("fan_chat_messages","*","created_at",true,uid),loadOwnedPages("agent_messages","*","created_at",true,uid),loadOwnedPages("chat_workspaces","*","updated_at",true,uid),fetchAllPages((from,to)=>sb.rpc("my_error_logs",{},{count:"exact"}).order("created_at",{ascending:true}).range(from,to))
   ]);
   if(session?.user?.id!==uid||authLoadGeneration!==generation){toast("The signed-in account changed. No download was created.");return}
   const firstError=profileRes.error||personaRes.error||datasets.find(result=>result.error)?.error;if(firstError){toast("Your download was stopped because every section could not be loaded. Nothing incomplete was saved.");return}

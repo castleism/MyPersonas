@@ -310,6 +310,16 @@ export function resolveAiProviderEndpoint(input: {
     return { url, host, kind: "azure", provider: "azure" };
   }
 
+  // The unknown-provider guard above and the Azure branch make this
+  // unreachable at runtime, but keep a fail-closed guard here so the type
+  // checker does not have to infer that relationship across two lookups.
+  if (!policy) {
+    return endpointError(
+      "This provider has no reviewed hosted endpoint policy.",
+      "backend_provider_unknown",
+    );
+  }
+
   if (!policy.hosts.includes(host)) {
     return endpointError(
       "The provider label does not match this hostname.",

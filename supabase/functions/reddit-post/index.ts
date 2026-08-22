@@ -158,6 +158,9 @@ serve(async (req: Request): Promise<Response> => {
     .maybeSingle();
   if (leaseError) return json(origin, 503, { error: "The approved Reddit draft could not be claimed. Nothing was published." });
   if (!claimed) return json(origin, 409, { error: "This draft changed, lost approval, or is already being published" });
+  // Preserve the successful narrowing inside the nested audit/reconciliation
+  // helpers below; they execute only after the atomic claim succeeded.
+  const claimedDraft = claimed;
 
   const title = (claimed.title || "").trim() || (claimed.body || "").trim().slice(0, 250) || "Untitled post";
   const media = (claimed.media_url || "").trim();
@@ -168,15 +171,15 @@ serve(async (req: Request): Promise<Response> => {
   async function writeAttemptAudit(outcome: "ok" | "error", detail: Record<string, unknown>) {
     const { error } = await service.from("agent_actions").insert({
       owner: uid,
-      persona_id: claimed.persona_id || null,
+      persona_id: claimedDraft.persona_id || null,
       action_type: "publish_external_reddit",
       entity_type: "draft",
-      entity_id: claimed.id,
+      entity_id: claimedDraft.id,
       outcome,
       detail: {
-        account_id: claimed.account_id,
+        account_id: claimedDraft.account_id,
         subreddit,
-        approved_content_hash: claimed.approved_content_hash,
+        approved_content_hash: claimedDraft.approved_content_hash,
         ...detail,
       },
     });
@@ -186,7 +189,7 @@ serve(async (req: Request): Promise<Response> => {
   async function recordDefinitiveFailure(message: string, status = 502): Promise<Response> {
     const { data, error } = await service.from("drafts")
       .update({ publish_state: "failed", publish_error: message.slice(0, 500) })
-      .eq("id", claimed.id).eq("owner", uid).eq("publish_state", "publishing")
+      .eq("id", claimedDraft.id).eq("owner", uid).eq("publish_state", "publishing")
       .eq("provider_post_id", "")
       .select("id").maybeSingle();
     if (error || !data) {
@@ -218,7 +221,7 @@ serve(async (req: Request): Promise<Response> => {
     const note = `${message} Do not retry until the Reddit account is reconciled.`.slice(0, 500);
     const { data, error } = await service.from("drafts")
       .update({ publish_error: note })
-      .eq("id", claimed.id).eq("owner", uid).eq("publish_state", "publishing")
+      .eq("id", claimedDraft.id).eq("owner", uid).eq("publish_state", "publishing")
       .select("id").maybeSingle();
     const auditWritten = await writeAttemptAudit("error", {
       error: note,
@@ -239,7 +242,7 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
     const current = await service.from("drafts")
-      .select("provider_post_id,publish_state").eq("id", claimed.id)
+      .select("provider_post_id,publish_state").eq("id", claimedDraft.id)
       .eq("owner", uid).maybeSingle();
     if (!current.error && providerPostId &&
       current.data?.publish_state === "published" &&

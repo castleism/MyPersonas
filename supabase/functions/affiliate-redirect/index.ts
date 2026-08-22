@@ -13,6 +13,15 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+type AffiliateProduct = {
+  id: string;
+  title: string;
+  affiliate_url: string;
+  status: string;
+  disclosure: string;
+  merchant: string;
+};
+
 async function sha256(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -74,7 +83,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const product = offer.affiliate_products;
+  // PostgREST relationship inference can type an inner join as an array even
+  // when this relationship is singular. Normalize both response shapes.
+  const productRelation = offer.affiliate_products as unknown;
+  const product = (Array.isArray(productRelation)
+    ? productRelation[0]
+    : productRelation) as AffiliateProduct | null | undefined;
   if (!product || product.status !== "active" || !product.affiliate_url) {
     return new Response(JSON.stringify({ error: "Product unavailable" }), {
       status: 404,
@@ -112,7 +126,10 @@ Deno.serve(async (req: Request) => {
       p_user_agent_hash: uaHash,
     });
   } catch (e) {
-    console.error("Click logging failed (non-blocking):", e.message);
+    console.error(
+      "Click logging failed (non-blocking):",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 
   // 302 redirect to the affiliate URL

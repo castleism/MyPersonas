@@ -213,7 +213,7 @@ async function ensureImmutableAttemptMedia(
   if (saved.error || !saved.data) {
     throw new Error("The immutable publish-attempt media snapshot could not be saved.");
   }
-  const persisted = saved.data as Draft;
+  const persisted = saved.data as unknown as Draft;
   for (const target of targets) {
     if (target !== "facebook" && target !== "instagram") continue;
     const media = approvedMediaFor(persisted, target);
@@ -288,7 +288,7 @@ async function handlePublishDraft(
   if (!claim.data) {
     return json({ error: "This draft is scheduled, already publishing, or read-only. Reload it first." }, 409, origin);
   }
-  let draft = claim.data as Draft;
+  let draft = claim.data as unknown as Draft;
   const pauseAfterClaim = await ownerPauseState(userId);
   if (!pauseAfterClaim.available || pauseAfterClaim.paused) {
     const message = pauseMessage(pauseAfterClaim);

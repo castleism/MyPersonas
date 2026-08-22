@@ -13,7 +13,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const FAN_CHAT_SALT = Deno.env.get("FAN_CHAT_SALT") || "";
 
 const FIXED_AI_DISCLOSURE =
-  "You are chatting with an AI assistant for this persona, not the human owner. The owner can review this conversation.";
+  "You are chatting with a disclosed AI assistant for this persona. The human owner can see this chat. Human replies appear only when clearly labeled Owner.";
 const MAX_REQUEST_CHARS = 16_000;
 const MAX_REQUEST_BYTES = 64_000;
 const MAX_INPUT_CHARS = 2_000;
@@ -173,7 +173,7 @@ type Eligibility = {
   persona: Persona;
   binding: Binding;
   settings: OwnerSettings;
-  backend: Backend;
+  backend: Backend | null;
 };
 
 type EligibilityFailure = {
@@ -186,7 +186,19 @@ type FanReservation = {
   code?: string;
   escalated?: boolean;
   awaitingHuman?: boolean;
+  ownerLive?: boolean;
+  retentionMode?: "saved" | "ephemeral";
   categories?: unknown;
+};
+
+type FanSession = {
+  id: string;
+  owner: string;
+  persona_id: string;
+  visitor_key_hash: string;
+  retention_mode: "saved" | "ephemeral";
+  ephemeral_expires_at: string | null;
+  owner_live_until: string | null;
 };
 
 function allowedOrigin(req: Request) {
@@ -764,7 +776,6 @@ async function loadEligibility(
   }
 
   const backend = await chooseBackend(persona.owner, persona.ai_backend);
-  if (!backend) return { status: 503, reason: "model_unavailable" };
   return {
     persona,
     binding,
@@ -777,6 +788,112 @@ function isEligibilityFailure(
   value: Eligibility | EligibilityFailure,
 ): value is EligibilityFailure {
   return "reason" in value;
+}
+
+function retentionMode(value: unknown): "saved" | "ephemeral" {
+  return value === "ephemeral" ? "ephemeral" : "saved";
+}
+
+async function ensureFanChatSession(
+  context: Eligibility,
+  sessionId: string,
+  visitorKeyHash: string,
+  mode: "saved" | "ephemeral",
+) {
+  const { data, error } = await admin.rpc("ensure_fan_chat_session", {
+    p_session_id: sessionId,
+    p_persona_id: context.persona.id,
+    p_owner: context.persona.owner,
+    p_visitor_key_hash: visitorKeyHash,
+    p_retention_mode: mode,
+  });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    return null;
+  }
+  const result = data as { accepted?: unknown; code?: unknown; created?: unknown };
+  if (typeof result.accepted !== "boolean") return null;
+  return {
+    accepted: result.accepted,
+    code: typeof result.code === "string" ? result.code : "",
+    created: result.created === true,
+  };
+}
+
+async function discardEmptyFanChatSession(
+  personaId: string,
+  sessionId: string,
+  visitorKeyHash: string,
+) {
+  await admin.rpc("discard_empty_fan_chat_session", {
+    p_session_id: sessionId,
+    p_persona_id: personaId,
+    p_visitor_key_hash: visitorKeyHash,
+  });
+}
+
+async function visitorSession(
+  personaId: string,
+  sessionId: string,
+  visitorKeyHash: string,
+) {
+  const { data, error } = await admin.from("fan_chat_sessions")
+    .select(
+      "id,owner,persona_id,visitor_key_hash,retention_mode,ephemeral_expires_at,owner_live_until",
+    )
+    .eq("id", sessionId).eq("persona_id", personaId)
+    .eq("visitor_key_hash", visitorKeyHash).maybeSingle();
+  if (error) return { session: null, error: true };
+  return { session: (data as FanSession | null) || null, error: false };
+}
+
+async function closeVisitorSession(
+  personaId: string,
+  sessionId: string,
+  visitorKeyHash: string,
+) {
+  const { data, error } = await admin.rpc("close_ephemeral_fan_chat", {
+    p_session_id: sessionId,
+    p_persona_id: personaId,
+    p_visitor_key_hash: visitorKeyHash,
+  });
+  return !error && data === true;
+}
+
+async function pollVisitorSession(
+  personaId: string,
+  sessionId: string,
+  visitorKeyHash: string,
+) {
+  const loaded = await visitorSession(personaId, sessionId, visitorKeyHash);
+  if (loaded.error) return { error: true } as const;
+  const session = loaded.session;
+  if (!session) return { missing: true } as const;
+  if (
+    session.retention_mode === "ephemeral" &&
+    (!session.ephemeral_expires_at ||
+      Date.parse(session.ephemeral_expires_at) <= Date.now())
+  ) {
+    await closeVisitorSession(personaId, sessionId, visitorKeyHash);
+    return { expired: true } as const;
+  }
+  const { data, error } = await admin.from("fan_chat_messages")
+    .select("id,role,content,created_at")
+    .eq("session_id", sessionId).eq("owner", session.owner)
+    .eq("persona_id", personaId)
+    .order("created_at", { ascending: true }).limit(100);
+  if (error) return { error: true } as const;
+  const liveUntil = session.owner_live_until || "";
+  return {
+    session,
+    messages: (data || []).map((row) => ({
+      id: row.id,
+      role: row.role,
+      content: clampText(row.content, MAX_OUTPUT_CHARS),
+      createdAt: row.created_at,
+    })),
+    ownerLive: !!liveUntil && Date.parse(liveUntil) > Date.now(),
+    ownerLiveUntil: liveUntil,
+  } as const;
 }
 
 async function reserveFanChatMessage(
@@ -806,6 +923,7 @@ async function reserveFanChatMessage(
     reservation.accepted &&
     (typeof reservation.escalated !== "boolean" ||
       typeof reservation.awaitingHuman !== "boolean" ||
+      typeof reservation.ownerLive !== "boolean" ||
       !Array.isArray(reservation.categories))
   ) return null;
   return reservation;
@@ -844,6 +962,22 @@ function reservationFailure(origin: string, code: string) {
         ...shared,
         error: "Invalid chat session",
       }, 409);
+    case "privacy_mode_mismatch":
+      return json(origin, {
+        ...shared,
+        error: "Chat privacy mode cannot be changed after the conversation starts",
+      }, 409);
+    case "legacy_session":
+      return json(origin, {
+        ...shared,
+        error: "Start a new chat to accept the current owner-visibility notice",
+      }, 409);
+    case "session_expired":
+      return json(origin, {
+        ...shared,
+        error: "This private session expired and its messages were cleared",
+        cleared: true,
+      }, 410);
     case "session_busy":
       return json(
         origin,
@@ -937,7 +1071,7 @@ async function sessionHistory(sessionId: string, context: Eligibility) {
   const selected: { role: "user" | "assistant"; content: string }[] = [];
   let used = 0;
   for (const row of data || []) {
-    if (row.role !== "fan" && row.role !== "assistant") continue;
+    if (row.role !== "fan" && row.role !== "assistant" && row.role !== "owner") continue;
     const content = clampText(
       row.content,
       row.role === "fan" ? MAX_INPUT_CHARS : MAX_OUTPUT_CHARS,
@@ -1083,41 +1217,37 @@ serve(async (req) => {
       }, 400);
     }
 
-    const eligibility = await loadEligibility(personaId);
-    if (isEligibilityFailure(eligibility)) {
-      const statusBody = {
-        available: false,
-        reason: eligibility.reason,
+    const action = typeof body.action === "string" ? body.action : "message";
+    if (!["status", "message", "poll", "close"].includes(action)) {
+      return json(origin, {
+        error: "Unknown action",
         disclosure: FIXED_AI_DISCLOSURE,
-      };
-      return json(
-        origin,
-        body.action === "status"
-          ? statusBody
-          : { ...statusBody, error: "Fan chat is unavailable" },
-        body.action === "status" ? 200 : eligibility.status,
-      );
+      }, 400);
     }
-    if (body.action === "status") {
+
+    if (action === "status") {
+      const eligibility = await loadEligibility(personaId);
+      if (isEligibilityFailure(eligibility) || !eligibility.backend) {
+        return json(origin, {
+          available: false,
+          reason: isEligibilityFailure(eligibility)
+            ? eligibility.reason
+            : "model_unavailable",
+          disclosure: FIXED_AI_DISCLOSURE,
+        });
+      }
       return json(origin, {
         available: true,
         disclosure: FIXED_AI_DISCLOSURE,
-        sessionMemory: "session_only",
+        ownerVisibility: "all_saved_chats_and_open_ephemeral_chats",
+        retentionChoices: ["saved", "ephemeral"],
+        ephemeralIdleMinutes: 30,
         limits: {
           maxMessageCharacters: MAX_INPUT_CHARS,
           hourlyPerVisitor: HOURLY_VISITOR_LIMIT,
           dailyForPersona: eligibility.binding.fan_daily_message_limit,
         },
       });
-    }
-    if (
-      body.action !== undefined && body.action !== null &&
-      body.action !== "message"
-    ) {
-      return json(origin, {
-        error: "Unknown action",
-        disclosure: FIXED_AI_DISCLOSURE,
-      }, 400);
     }
 
     const sessionId = isUuid(body.sessionId)
@@ -1130,6 +1260,66 @@ serve(async (req) => {
         disclosure: FIXED_AI_DISCLOSURE,
       }, 400);
     }
+    const visitorKeyHash = await visitorHash(personaId, visitorToken);
+
+    if (action === "close") {
+      const cleared = await closeVisitorSession(
+        personaId,
+        sessionId,
+        visitorKeyHash,
+      );
+      return json(origin, {
+        closed: true,
+        cleared,
+        disclosure: FIXED_AI_DISCLOSURE,
+      });
+    }
+
+    if (action === "poll") {
+      const result = await pollVisitorSession(
+        personaId,
+        sessionId,
+        visitorKeyHash,
+      );
+      if ("error" in result) {
+        return json(origin, {
+          error: "Chat refresh is temporarily unavailable",
+          disclosure: FIXED_AI_DISCLOSURE,
+        }, 503);
+      }
+      if ("expired" in result) {
+        return json(origin, {
+          error: "This private session expired and its messages were cleared",
+          cleared: true,
+          disclosure: FIXED_AI_DISCLOSURE,
+        }, 410);
+      }
+      if ("missing" in result) {
+        return json(origin, {
+          messages: [],
+          ownerLive: false,
+          sessionMissing: true,
+          disclosure: FIXED_AI_DISCLOSURE,
+        });
+      }
+      return json(origin, {
+        messages: result.messages,
+        ownerLive: result.ownerLive,
+        ownerLiveUntil: result.ownerLiveUntil,
+        retentionMode: result.session.retention_mode,
+        disclosure: FIXED_AI_DISCLOSURE,
+      });
+    }
+
+    const eligibility = await loadEligibility(personaId);
+    if (isEligibilityFailure(eligibility)) {
+      return json(origin, {
+        available: false,
+        reason: eligibility.reason,
+        error: "Fan chat is unavailable",
+        disclosure: FIXED_AI_DISCLOSURE,
+      }, eligibility.status);
+    }
     const rawMessage = typeof body.message === "string"
       ? body.message.trim()
       : "";
@@ -1139,8 +1329,29 @@ serve(async (req) => {
         disclosure: FIXED_AI_DISCLOSURE,
       }, 400);
     }
+    if (body.ownerVisibilityAccepted !== true) {
+      return json(origin, {
+        error: "Confirm that the human persona owner can see this chat before messaging",
+        disclosure: FIXED_AI_DISCLOSURE,
+      }, 400);
+    }
 
-    const visitorKeyHash = await visitorHash(personaId, visitorToken);
+    const mode = retentionMode(body.retentionMode);
+    const ensured = await ensureFanChatSession(
+      eligibility,
+      sessionId,
+      visitorKeyHash,
+      mode,
+    );
+    if (!ensured) {
+      return json(origin, {
+        error: "Chat privacy setup is temporarily unavailable",
+        disclosure: FIXED_AI_DISCLOSURE,
+      }, 503);
+    }
+    if (!ensured.accepted) {
+      return reservationFailure(origin, ensured.code || "unknown");
+    }
     const reasons = escalationReasons(
       rawMessage,
       eligibility.persona.dont || "",
@@ -1155,18 +1366,34 @@ serve(async (req) => {
       responseToken,
     );
     if (!reservation) {
+      if (ensured.created) {
+        await discardEmptyFanChatSession(personaId, sessionId, visitorKeyHash);
+      }
       return json(origin, {
         error: "Chat is temporarily unavailable",
         disclosure: FIXED_AI_DISCLOSURE,
       }, 503);
     }
     if (!reservation.accepted) {
+      if (ensured.created) {
+        await discardEmptyFanChatSession(personaId, sessionId, visitorKeyHash);
+      }
       return reservationFailure(origin, reservation.code || "unknown");
     }
 
     const categories = reservationCategories(reservation.categories);
     const awaitingHuman = reservation.awaitingHuman === true;
     const escalated = reservation.escalated === true;
+    const ownerLive = reservation.ownerLive === true;
+
+    if (ownerLive) {
+      return json(origin, {
+        deliveredToOwner: true,
+        ownerLive: true,
+        disclosure: FIXED_AI_DISCLOSURE,
+        retentionMode: reservation.retentionMode || mode,
+      });
+    }
 
     if (escalated || awaitingHuman) {
       const reply = categories.length
@@ -1227,6 +1454,7 @@ serve(async (req) => {
 
     let reply: string;
     try {
+      if (!eligibility.backend) throw new Error("model unavailable");
       reply = await callBackend(
         eligibility.backend,
         systemPrompt(eligibility),

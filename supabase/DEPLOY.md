@@ -16,6 +16,20 @@ the mailbox cron. The 2026-07-29 rollout applied migrations 017 and 018 and depl
 A signed-in Gmail re-consent, real mailbox action, and credentialed Meta owner flow remain
 explicit owner-run smoke tests.
 
+## 2026-08-22 owner command center and fan inbox release
+
+The CLI migration history is now mirrored in `supabase/migrations/`. Apply the two pending
+migrations in order before pushing the matching function and Pages changes:
+
+1. `20260822111946_owner_mobile_command_center.sql`
+2. `20260822111947_fan_inbox_live_chat_privacy.sql`
+
+Migration 046 deliberately fails closed unless `pg_cron` is installed, because the
+five-minute abandoned-ephemeral-chat cleanup is part of the privacy promise. Validate with
+`supabase db push --linked --dry-run`, apply with `supabase db push --linked`, and confirm
+both versions appear in `supabase migration list --linked`. The push to `main` may follow
+only after that database step; it automatically deploys Edge Functions and the Pages site.
+
 ## 1. Link the Supabase project
 
 ```powershell

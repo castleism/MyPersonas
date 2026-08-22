@@ -32,6 +32,8 @@ jobs:
           rsync -a --delete \
             --prune-empty-dirs \
             --include '/index.html' \
+            --include '/owner-app.css' \
+            --include '/owner-app.js' \
             --include '/assets/***' \
             --include '/brand/app-icon/***' \
             --include '/manifest.webmanifest' \
