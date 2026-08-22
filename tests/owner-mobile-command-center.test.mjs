@@ -16,14 +16,22 @@ test("owner command center is packaged and its external script parses", async ()
     read("MyPersonas.Online_v0/owner-app.css"),
     read(".github/workflows/pages.yml"),
   ]);
-  assert.match(html, /href="\.\/owner-app\.css"/);
-  assert.match(html, /src="\.\/owner-app\.js"/);
+  assert.match(html, /href="\.\/owner-app\.css\?v=\d{8}-\d+"/);
+  assert.match(html, /src="\.\/owner-app\.js\?v=\d{8}-\d+"/);
   for (const route of ["owner", "briefs", "schedule", "fan-inbox", "activity", "notifications"]) {
     assert.match(html, new RegExp(`view===\\"${route}\\"`));
   }
   assert.match(html, /id="ownerMobileNav"/);
+  assert.match(html, /id="ownerMobileMore"/);
+  assert.match(html, /id="ownerPersonaCompanion"/);
+  assert.doesNotMatch(html, /id="(?:bugBtnMobile|pageChatBtnMobile)"/);
   assert.match(css, /safe-area-inset-bottom/);
+  assert.match(css, /\.oa-mobile-nav\[hidden\]\{display:none!important\}/);
+  assert.match(css, /\.oa-companion-dialogue/);
   assert.match(css, /@media\(max-width:520px\)/);
+  assert.match(source, /function ownerAppSyncChrome\(\)/);
+  assert.match(source, /function ownerAppToggleMore\(/);
+  assert.match(source, /function ownerAppOpenCompanionNotice\(\)/);
   assert.ok(workflow.includes("--include '/owner-app.css'"));
   assert.ok(workflow.includes("--include '/owner-app.js'"));
   new vm.Script(source, { filename: "owner-app.js" });

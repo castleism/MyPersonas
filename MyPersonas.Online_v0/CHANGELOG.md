@@ -3,6 +3,19 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Mobile navigation hotfix + desktop persona companion (2026-08-22)
+
+- **No mobile overlap:** the five-item owner bar now honors its `hidden` state and keeps
+  secondary controls in a safe-area-aware More sheet. Report a problem and HQ/persona chat
+  no longer float over Home, Briefs, Schedule, Fans, or More.
+- **Persona character card:** authenticated desktop views now keep the selected persona in a
+  bottom-left portrait card with a game-style dialogue bubble. Unread brief, draft, fan-chat,
+  and owner-notification signals are prioritized through the card; its portrait opens persona
+  chat, while compact HQ and problem-report controls remain available.
+- **Cache and QA:** the owner CSS/JS URLs are revisioned so a fresh HTML response cannot reuse
+  the previous interface assets. Frontend syntax, owner-command-center tests, and a 440x956
+  local browser viewport verify that the signed-out bottom bar stays hidden with no overlap.
+
 ## Roadmap completion and release-safety pass (local only) (2026-08-13)
 
 - **Persona continuity:** conflict-safe manual context editing, bounded server-side context,

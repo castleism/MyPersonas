@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
-<link rel="stylesheet" href="./owner-app.css">
+<link rel="stylesheet" href="./owner-app.css?v=20260822-2">
 <script src="./pwa.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
@@ -344,14 +344,40 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   <button data-view="briefs" onclick="go('briefs')"><span>⌁</span><span>Briefs</span></button>
   <button data-view="schedule" onclick="go('schedule')"><span>▤</span><span>Schedule</span></button>
   <button data-view="fan-inbox" onclick="go('fan-inbox')"><span>✦</span><span>Fans</span><span id="ownerMobileFanBadge" class="oa-nav-count" hidden></span></button>
-  <button data-view="activity" onclick="go('activity')"><span>◷</span><span>Activity</span></button>
+  <button id="ownerMobileMoreBtn" type="button" aria-haspopup="dialog" aria-controls="ownerMobileMore" aria-expanded="false" onclick="ownerAppToggleMore()"><span>•••</span><span>More</span><span id="ownerMobileMoreBadge" class="oa-nav-count" hidden></span></button>
 </nav>
+<div id="ownerMobileMore" class="oa-mobile-more" role="dialog" aria-modal="true" aria-labelledby="ownerMobileMoreTitle" hidden onclick="if(event.target===this)ownerAppToggleMore(false)">
+  <section class="oa-mobile-more-panel">
+    <div class="oa-mobile-more-head"><div><span class="oa-eyebrow">Owner tools</span><h2 id="ownerMobileMoreTitle">More</h2></div><button type="button" class="oa-close" aria-label="Close owner tools" onclick="ownerAppToggleMore(false)">×</button></div>
+    <div class="oa-mobile-more-grid">
+      <button type="button" onclick="ownerAppMobileGo('activity')"><span>◷</span><b>Activity</b><small>Persona operations trail</small></button>
+      <button type="button" onclick="ownerAppMobileGo('notifications')"><span>◉</span><b>Notifications</b><small id="ownerMobileNoticeSummary">All caught up</small></button>
+      <button type="button" onclick="ownerAppMobileChat()"><span>💬</span><b>Persona chat</b><small>Talk with the selected persona</small></button>
+      <button type="button" onclick="ownerAppMobileHQ()"><span>✦</span><b>HQ Assistant</b><small>Coordinate the full roster</small></button>
+      <button type="button" onclick="ownerAppMobileAccount()"><span>⚙</span><b>Account</b><small>Models, portals, and settings</small></button>
+      <button type="button" onclick="ownerAppMobileReport()"><span>🐞</span><b>Report a problem</b><small>Send the current page context</small></button>
+    </div>
+  </section>
+</div>
 <footer class="sitefooter"><a href="provider-setup.html">Provider setup</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="data-deletion.html">Data deletion</a><span>MyPersonas / AliaSpaces</span></footer>
 <div id="toast"></div>
-<button id="bugBtn" onclick="reportError()" title="Report a problem"
-  style="position:fixed;left:14px;bottom:14px;z-index:170;background:#fff;border:1px solid #ccd0d5;border-radius:50px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#65676b;box-shadow:0 1px 4px rgba(0,0,0,.15)"><svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg>Report a problem</button>
-<button id="pageChatBtn" onclick="openPageChat()" title="Chat with this page's AI" aria-label="Chat with this page's AI" style="position:fixed;right:16px;bottom:16px;z-index:170;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:0;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25);display:none;font-size:24px;line-height:1">💬</button>
-<script src="./owner-app.js"></script>
+<div class="owner-quick-actions" id="ownerQuickActions">
+  <button id="bugBtn" onclick="reportError()" title="Report a problem">
+    <svg class="ico" aria-hidden="true"><use href="#i-bug"/></svg>Report a problem
+  </button>
+  <aside id="ownerPersonaCompanion" class="oa-companion" aria-label="Selected persona companion" hidden>
+    <button id="ownerCompanionDialogue" class="oa-companion-dialogue" type="button" onclick="ownerAppOpenCompanionNotice()" aria-live="polite">
+      <span id="ownerCompanionKicker">Ready</span><b id="ownerCompanionMessage">Choose what we work on next.</b>
+    </button>
+    <div class="oa-companion-card">
+      <button id="ownerCompanionPortrait" class="oa-companion-portrait" type="button" onclick="ownerAppTalkToCompanion()" aria-label="Chat with selected persona"><span id="ownerCompanionBadge" hidden></span></button>
+      <div class="oa-companion-copy"><b id="ownerCompanionName">Persona</b><small id="ownerCompanionHandle">Owner companion</small>
+        <div class="oa-companion-actions"><button id="pageChatBtn" type="button" onclick="openHQ()" title="Open HQ Assistant">HQ</button><button type="button" onclick="reportError()" title="Report a problem" aria-label="Report a problem">🐞</button></div>
+      </div>
+    </div>
+  </aside>
+</div>
+<script src="./owner-app.js?v=20260822-2"></script>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -460,7 +486,7 @@ function fixedSessionClient(accessToken){return supabase.createClient(CONFIG.SUP
 function isOpenRouterBackend(b){const provider=String(b?.provider||"").trim().toLowerCase();if(provider.includes("openrouter"))return true;const u=parsedHttpUrl(b?.base_url),host=u?.hostname.toLowerCase().replace(/\.$/,"")||"";return !!u&&(host==="openrouter.ai"||host.endsWith(".openrouter.ai"))}
 function safeBgStyle(raw){const u=safeHttpUrl(raw);return u?esc(`background-image:url("${u}")`):""}
 function safeTheme(raw){const c=String(raw||"").trim();return /^#[0-9a-f]{6}$/i.test(c)?c:"#ff4fa3"}
-function go(h){location.hash="#/"+h}
+function go(h){if(typeof ownerAppToggleMore==="function")ownerAppToggleMore(false,false);location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
 function ico(n){return `<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`}
@@ -758,8 +784,9 @@ function setupFriendRealtime(uid,generation=authLoadGeneration){
   });
 }
 window.addEventListener("focus",()=>{if(friendRealtimeUid)scheduleFriendRequestRefresh(friendRealtimeUid,authLoadGeneration)});
+window.addEventListener("resize",()=>{if(typeof ownerAppSyncChrome==="function")ownerAppSyncChrome()},{passive:true});
 function renderSidebar(){
-  const cb=document.getElementById("pageChatBtn");if(cb)cb.style.display=session&&privateSessionReady?"flex":"none";
+  if(typeof ownerAppSyncChrome==="function")ownerAppSyncChrome();
   const mobileNav=document.getElementById("ownerMobileNav");if(mobileNav)mobileNav.hidden=!(session&&privateSessionReady);
   const rail=document.getElementById("personaRail");if(!rail)return;
   if(!session||!privateSessionReady){rail.innerHTML="";rail.style.display="none";return}
@@ -787,6 +814,7 @@ function isHidden(personaId){return myBlocks.some(b=>b.blocked_persona===persona
 // ---------- router ----------
 async function route(){
   const myEpoch=++renderEpoch;
+  if(typeof ownerAppToggleMore==="function")ownerAppToggleMore(false,false);
   const h=location.hash.replace(/^#\//,"");
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);

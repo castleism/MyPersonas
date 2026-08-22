@@ -62,6 +62,7 @@ const ownerAppState = {
   fanMessages: [],
   unreadCount: 0,
   handoff: null,
+  companionAction: null,
 };
 
 function ownerAppReset() {
@@ -76,6 +77,7 @@ function ownerAppReset() {
   ownerAppState.unreadCount = 0;
   ownerAppState.busy.clear();
   ownerAppState.handoff = null;
+  ownerAppState.companionAction = null;
   ownerAppUpdateUnread();
 }
 
@@ -203,6 +205,16 @@ function ownerAppUpdateUnread() {
     fanBadge.textContent = fanUnread > 99 ? "99+" : String(fanUnread);
     fanBadge.hidden = fanUnread < 1;
   }
+  const moreBadge = document.getElementById("ownerMobileMoreBadge");
+  if (moreBadge) {
+    moreBadge.textContent = text;
+    moreBadge.hidden = ownerAppState.unreadCount < 1;
+  }
+  const noticeSummary = document.getElementById("ownerMobileNoticeSummary");
+  if (noticeSummary) noticeSummary.textContent = ownerAppState.unreadCount
+    ? `${text} waiting for review`
+    : "All caught up";
+  ownerAppSyncCompanion();
   if (typeof updateBadge === "function") updateBadge();
 }
 
@@ -231,7 +243,112 @@ function ownerAppMobileNav() {
   nav.querySelectorAll("button[data-view]").forEach((button) => {
     button.classList.toggle("on", button.dataset.view === view || (view === "studio" && button.dataset.view === "owner"));
   });
+  document.getElementById("ownerMobileMoreBtn")?.classList.toggle("on", ["activity", "notifications"].includes(view));
   ownerAppUpdateUnread();
+  ownerAppSyncChrome();
+}
+
+function ownerAppIsMobile() {
+  return window.matchMedia("(max-width: 820px)").matches;
+}
+
+function ownerAppCompanionNotice(persona) {
+  const unread = ownerAppState.notifications.filter((row) => row.status === "unread");
+  const row = unread.find((item) => item.persona_id === persona?.id) || unread[0];
+  if (row) return {
+    kind: "notification",
+    id: row.id,
+    kicker: row.persona_id ? `Notice · ${ownerAppPersonaName(row.persona_id)}` : "Account notice",
+    message: row.title || row.body || "A new item needs review.",
+  };
+  const fan = ownerAppState.fanSessions.find((item) => item.inbox_state === "unread" && item.persona_id === persona?.id)
+    || ownerAppState.fanSessions.find((item) => item.inbox_state === "unread");
+  if (fan) return { kind: "route", route: `fan-inbox/${fan.id}`, kicker: `Fan inbox · ${ownerAppPersonaName(fan.persona_id)}`, message: "A fan conversation is waiting for you." };
+  const pack = ownerAppState.packages.find((item) => item.status === "owner_review" && item.persona_id === persona?.id)
+    || ownerAppState.packages.find((item) => item.status === "owner_review");
+  if (pack) return { kind: "route", route: `schedule/${pack.id}`, kicker: `Draft review · ${ownerAppPersonaName(pack.persona_id)}`, message: pack.title || "A four-channel post kit is ready for review." };
+  const brief = ownerAppState.briefs.find((item) => item.status === "new" && item.persona_id === persona?.id)
+    || ownerAppState.briefs.find((item) => item.status === "new");
+  if (brief) return { kind: "route", route: `briefs/${brief.id}`, kicker: `New briefing · ${ownerAppPersonaName(brief.persona_id)}`, message: brief.title || brief.summary || "New research is ready to read." };
+  if (ownerAppState.unreadCount) return { kind: "route", route: "notifications", kicker: "Owner review", message: `${ownerAppState.unreadCount} item${ownerAppState.unreadCount === 1 ? " is" : "s are"} waiting for review.` };
+  return { kind: "chat", kicker: persona ? `${persona.name} is ready` : "Owner companion", message: persona?.tagline || "Choose what we work on next." };
+}
+
+function ownerAppSyncCompanion() {
+  const companion = document.getElementById("ownerPersonaCompanion");
+  if (!companion || companion.hidden) return;
+  const persona = ownerAppPersona();
+  const portrait = document.getElementById("ownerCompanionPortrait");
+  const name = document.getElementById("ownerCompanionName");
+  const handle = document.getElementById("ownerCompanionHandle");
+  const badge = document.getElementById("ownerCompanionBadge");
+  const kicker = document.getElementById("ownerCompanionKicker");
+  const message = document.getElementById("ownerCompanionMessage");
+  if (portrait) {
+    const avatar = safeHttpUrl(persona?.avatar_url || "");
+    portrait.style.backgroundImage = avatar ? `url("${avatar.replace(/["\\]/g, "")}")` : "";
+    portrait.setAttribute("aria-label", persona ? `Chat with ${persona.name}` : "Open HQ Assistant");
+  }
+  if (name) name.textContent = persona?.name || "HQ Assistant";
+  if (handle) handle.textContent = persona?.handle ? `@${persona.handle}` : "Owner companion";
+  if (badge) {
+    badge.textContent = ownerAppState.unreadCount > 99 ? "99+" : String(ownerAppState.unreadCount);
+    badge.hidden = ownerAppState.unreadCount < 1;
+  }
+  ownerAppState.companionAction = ownerAppCompanionNotice(persona);
+  if (kicker) kicker.textContent = ownerAppState.companionAction.kicker;
+  if (message) message.textContent = ownerAppState.companionAction.message;
+}
+
+function ownerAppSyncChrome() {
+  const authenticated = typeof session !== "undefined" && !!session && typeof privateSessionReady !== "undefined" && privateSessionReady;
+  const mobile = ownerAppIsMobile();
+  const nav = document.getElementById("ownerMobileNav");
+  const quickActions = document.getElementById("ownerQuickActions");
+  const bug = document.getElementById("bugBtn");
+  const companion = document.getElementById("ownerPersonaCompanion");
+  if (nav) nav.hidden = !authenticated;
+  if (quickActions) quickActions.hidden = authenticated && mobile;
+  if (bug) bug.hidden = authenticated;
+  if (companion) companion.hidden = !authenticated || mobile;
+  if (!authenticated || !mobile) ownerAppToggleMore(false, false);
+  ownerAppSyncCompanion();
+}
+
+function ownerAppToggleMore(force, restoreFocus = true) {
+  const modal = document.getElementById("ownerMobileMore");
+  const button = document.getElementById("ownerMobileMoreBtn");
+  if (!modal || !button) return;
+  const allowed = typeof session !== "undefined" && !!session && typeof privateSessionReady !== "undefined" && privateSessionReady && ownerAppIsMobile();
+  const open = allowed && (typeof force === "boolean" ? force : modal.hidden);
+  modal.hidden = !open;
+  button.setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("owner-mobile-more-open", open);
+  if (open) setTimeout(() => modal.querySelector(".oa-close")?.focus(), 0);
+  else if (restoreFocus && document.activeElement && modal.contains(document.activeElement)) button.focus();
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("ownerMobileMore")?.hidden) ownerAppToggleMore(false);
+});
+
+function ownerAppMobileGo(route) { ownerAppToggleMore(false, false); go(route); }
+function ownerAppMobileChat() { ownerAppToggleMore(false, false); ownerAppTalkToCompanion(); }
+function ownerAppMobileHQ() { ownerAppToggleMore(false, false); openHQ(); }
+function ownerAppMobileAccount() { ownerAppToggleMore(false, false); goAccount(); }
+function ownerAppMobileReport() { ownerAppToggleMore(false, false); reportError(); }
+
+function ownerAppTalkToCompanion() {
+  const persona = ownerAppPersona();
+  if (persona) openPersonaChat(persona.id);
+  else openHQ();
+}
+
+function ownerAppOpenCompanionNotice() {
+  const action = ownerAppState.companionAction || ownerAppCompanionNotice(ownerAppPersona());
+  if (action.kind === "notification") ownerAppOpenNotification(action.id);
+  else if (action.kind === "route") go(action.route);
+  else ownerAppTalkToCompanion();
 }
 
 function ownerAppPickerHtml(destination, allowAll = false) {
