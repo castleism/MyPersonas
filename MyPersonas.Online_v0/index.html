@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
-<link rel="stylesheet" href="./owner-app.css?v=20260822-2">
+<link rel="stylesheet" href="./owner-app.css?v=20260822-3">
 <script src="./pwa.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
@@ -72,6 +72,12 @@ body.stale main{opacity:.55;pointer-events:none;filter:grayscale(.4)}
 .feat3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:20px}
 @media(max-width:900px){.hero{justify-content:center;background-position:center}.hero .ht{background:rgba(255,255,255,.82);border-radius:12px;margin:24px;padding:28px}}
 label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px;font-weight:600}
+.field-help{position:relative;display:inline-grid;place-items:center;width:18px;height:18px;margin-left:4px;border:1px solid #9aabc0;border-radius:50%;background:#f7faff;color:#35628f;font-size:12px;font-weight:850;line-height:1;vertical-align:-3px;cursor:help;outline:none}
+.field-help:hover,.field-help:focus{border-color:var(--accent);background:#eaf3ff;color:#125fb9;box-shadow:0 0 0 2px rgba(24,119,242,.14)}
+.field-help-popover{position:absolute;left:50%;top:calc(100% + 9px);z-index:420;width:min(350px,calc(100vw - 40px));padding:12px 13px;border:1px solid #cdd9e8;border-radius:10px;background:#102a49;color:#fff;font-size:12px;font-weight:450;line-height:1.45;letter-spacing:0;white-space:normal;text-align:left;box-shadow:0 10px 28px rgba(15,39,73,.25);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,4px);transition:opacity .12s ease,transform .12s ease,visibility .12s ease}
+.field-help-popover strong{display:block;margin-bottom:4px;color:#fff;font-size:13px}.field-help-popover em{display:block;margin-top:8px;color:#a9d1ff;font-style:normal;font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:10px}.field-help-example{display:block;margin-top:3px;color:#eef6ff;white-space:pre-wrap;font-family:inherit}
+.field-help:hover .field-help-popover,.field-help:focus .field-help-popover{opacity:1;visibility:visible;transform:translate(-50%,0)}
+@media(max-width:600px){.field-help-popover{position:fixed;left:16px;right:16px;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 82px);width:auto;transform:translateY(4px)}.field-help:hover .field-help-popover,.field-help:focus .field-help-popover{transform:translateY(0)}}
 input,select,textarea{width:100%;background:#fff;border:1px solid #ccd0d5;border-radius:8px;color:var(--text);padding:10px 12px;font-size:15px;font-family:inherit}
 textarea{resize:vertical;min-height:64px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(24,119,242,.15)}
@@ -377,7 +383,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./owner-app.js?v=20260822-2"></script>
+<script src="./owner-app.js?v=20260822-3"></script>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -478,6 +484,38 @@ async function reportError(){
   }catch(e){toast("Couldn't send report: "+e.message)}
 }
 function esc(s){return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+const PERSONA_FIELD_GUIDES=Object.freeze({
+  name:{help:"The public display name. Keep it memorable, pronounceable, and stable so fans and the AI refer to the persona consistently.",template:"Maya Hart"},
+  handle:{help:"The unique public URL name. Use a short, durable identifier rather than a campaign or temporary project name.",template:"maya.hart"},
+  tagline:{help:"A one-sentence promise shown publicly and supplied to the AI. Say who the persona helps or what perspective people can expect.",template:"Clear science for curious minds."},
+  petProject:{help:"The product, publication, community, or project currently featured beside the persona name. This is public page context, not a secret instruction.",template:"The Field Notes newsletter"},
+  title:{help:"The public role shown with the name. Use a truthful role or fictional-character label; do not imply credentials the persona does not have.",template:"Science communicator · Illustrator"},
+  focus:{help:"A compact niche used in the owner roster and discovery. Be specific enough to distinguish this persona from your others.",template:"Everyday climate science and visual explainers"},
+  bio:{help:"The public About copy and a grounding summary for the AI. Include the persona's perspective, subject area, and audience without cramming in detailed writing rules.",template:"Maya turns climate and ecology research into calm, visual explanations for curious non-specialists. She separates evidence from inference and always links the source."},
+  purpose:{help:"The persona's durable reason for existing. Define the audience, useful outcome, and approach; put short-lived campaigns in Current direction instead.",template:"Help curious non-specialists understand climate research through accurate, visual explanations so they can discuss it with confidence."},
+  voice:{help:"Describe personality and collaboration behavior separately. Specify observable tone, warmth, directness, formality, humor, empathy, cadence, question-asking, assumptions, uncertainty, and correction style instead of relying on vague adjectives.",template:"Personality: warm, curious, lightly playful, never smug.\nCadence: concise conversational sentences, followed by one vivid example.\nHumor: dry and gentle; never cruel or dismissive.\nCollaboration: ask one focused question only when essential; otherwise state a reasonable assumption.\nUncertainty: separate known facts, inference, and opinion; correct mistakes plainly."},
+  topics:{help:"The durable subjects this persona may speak about. Use a focused list of related themes; campaign-specific angles belong in Content pillars or Current campaign.",template:"climate science, urban ecology, evidence literacy, data visualization"},
+  audience:{help:"Describe who the persona is speaking to, what they already know, what they care about, and any accessibility needs. This controls vocabulary, examples, and depth.",template:"Curious adults without formal science training who want accurate explanations without jargon or doom-driven framing."},
+  hashtags:{help:"Reusable tags the drafting tools may consider. Keep only genuinely relevant defaults; channel-specific tools can omit or adapt them.",template:"#ClimateScience #ScienceCommunication #EvidenceLiteracy"},
+  dont:{help:"Hard boundaries that override style and campaign instructions. Make each rule concrete, testable, and explicit about what to do when information is missing or conflicts.",template:"Never invent lived experience, credentials, quotes, sources, releases, or outcomes. Never reveal private owner notes or private canon. Do not turn uncertainty into certainty. When evidence is missing, label the gap and ask the owner before publishing."},
+  aiModel:{help:"The API key only authenticates a provider; it does not create a better personality. Assign a model that passes this persona's voice and boundary evaluation, then use task routes to balance quality and cost.",template:"Balanced model for owner chat; economy model for fan volume only after voice testing"},
+  roadmap:{help:"Durable private working context the AI can use for follow-ups: canon decisions, milestones, corrections, unresolved questions, and next steps. Date entries and avoid raw transcripts or secrets.",template:"[2026-08-22] Canon: Maya uses evidence labels in every research post.\n[2026-08-22] Next: draft a visual explainer about urban heat islands.\n[2026-08-22] Open question: owner approval needed for the fall campaign name."},
+  privateNotes:{help:"Owner-only reminders that are not part of the public persona card. Keep operational context here, but never passwords, API keys, recovery codes, or unnecessary fan data.",template:"Owner reminder: review the source list before approving medical or legal-adjacent claims."},
+  primaryGoal:{help:"The outcome current research and drafts should serve. Make it specific enough to guide choices while remaining subordinate to the persona's hard boundaries.",template:"Build an informed weekly audience around visual climate explainers."},
+  successMetric:{help:"The observable signal used to judge progress. Prefer a small number of meaningful measures over vanity totals.",template:"Qualified replies and newsletter signups from explainer posts each week."},
+  audienceFocus:{help:"The audience segment for this cycle. Add current needs or knowledge level without replacing the persona's durable Audience field.",template:"First-time homeowners comparing practical heat and shade improvements."},
+  contentPillars:{help:"Three to five repeatable themes that guide research and scheduled drafting for the current plan.",template:"urban heat basics; shade and tree evidence; renter-friendly cooling; local data explainers"},
+  campaign:{help:"The time-bounded story, launch, event, or editorial focus that should influence upcoming research and posts.",template:"August urban heat island explainer series; educational first, newsletter invitation second."},
+  cta:{help:"The truthful next action a reader may take. State when to use it and avoid pressure, fabricated urgency, or promises the destination cannot support.",template:"When relevant, invite readers to save the visual and read the sourced newsletter for the full explanation."},
+  offers:{help:"List approved products or links and what each is for. Include eligibility or disclosure notes, but never credentials or private tracking data.",template:"https://example.com/newsletter — free weekly source notes; use only on research explainers."},
+  disclosure:{help:"Exact sponsorship, affiliate, AI, or other disclosure language that must accompany relevant content. The drafting agent treats this as required copy.",template:"This post contains an affiliate link; the persona may earn a commission at no extra cost to you."},
+  sources:{help:"Trusted research starting points, recurring publications, owner notes, and exclusions. These guide discovery but do not replace source verification.",template:"Prefer peer-reviewed papers, government datasets, and named primary sources. Avoid unattributed aggregators. Watch: NOAA urban heat updates; local planning reports."},
+  platform:{help:"Explain what should change by destination: length, structure, link placement, visual count, hashtag use, and tone. Keep the persona's underlying voice constant.",template:"X: one finding and source link. Instagram: strong visual plus accessible caption. Facebook: added context and discussion question. Website: full sourced explanation with headings."},
+  slotInstructions:{help:"Instructions unique to one scheduled content slot: angle, length, asset, source, offer, or recurring format. These supplement the persona card and current direction; they cannot override hard rules.",template:"Use one chart from the approved briefing, explain it in under 180 words, and end with the source link rather than a sales CTA."},
+  knowledge:{help:"Facts or preferences this persona may remember across future work. Use one clear fact per line, distinguish canon from uncertain claims, and keep source links with research records rather than inventing provenance.",template:"Canon: Maya explains technical terms before using abbreviations.\nAudience pattern: readers prefer one chart at a time.\nKnown preference: no more than three hashtags per post."}
+});
+function fieldHelp(key,label){const g=PERSONA_FIELD_GUIDES[key];if(!g)return"";return `<span class="field-help" tabindex="0" role="note" aria-label="Help for ${esc(label)}">?<span class="field-help-popover" role="tooltip"><strong>${esc(label)}</strong>${esc(g.help)}${g.template?`<em>Example — shown only when empty</em><span class="field-help-example">${esc(g.template)}</span>`:""}</span></span>`}
+function fieldTemplate(key){return esc(PERSONA_FIELD_GUIDES[key]?.template||"").replace(/\n/g,"&#10;")}
 function parsedHttpUrl(raw){
   try{const u=new URL(String(raw||"").trim());if(!["http:","https:"].includes(u.protocol)||u.username||u.password)return null;return u}catch(e){return null}
 }
@@ -1481,16 +1519,17 @@ function automationDirectionHtml(p,binding,plan){
   plan=plan||{};const level=binding?.autonomy_level||0,status=binding?.status||"active";
   return `<div class="autogrid">
     <div class="autofull autocallout"><b>Voice card + operating brief</b><br>The persona's purpose, voice, audience, topics, hashtags, and “never do” rules stay canonical in its profile. This brief tells the agent what matters now without weakening those rules. <button class="btn sec sm" onclick="go('edit/${p.id}')">Edit voice card</button></div>
-    <div><label>Primary outcome</label><input id="apGoal" maxlength="768" value="${esc(plan.primary_goal||p.purpose||"")}" placeholder="What should this persona accomplish?"></div>
-    <div><label>How you will measure progress</label><input id="apMetric" maxlength="512" value="${esc(plan.success_metric||"")}" placeholder="e.g. qualified clicks, replies, weekly subscribers"></div>
-    <div><label>Audience focus right now</label><textarea id="apAudience" maxlength="768" placeholder="Who is this cycle for?">${esc(plan.audience_focus||p.audience||"")}</textarea></div>
-    <div><label>Content pillars</label><textarea id="apPillars" maxlength="1024" placeholder="3–5 repeatable themes">${esc(plan.content_pillars||p.topics||"")}</textarea></div>
-    <div><label>Current campaign / this week's focus</label><textarea id="apCampaign" maxlength="768" placeholder="Launch, theme, story, offer, or event">${esc(plan.current_campaign||"")}</textarea></div>
-    <div><label>Calls to action</label><textarea id="apCta" maxlength="768" placeholder="What should followers do next?">${esc(plan.calls_to_action||"")}</textarea></div>
-    <div><label>Offers, products & affiliate links</label><textarea id="apOffers" maxlength="1536" placeholder="URLs and what each one is for — never passwords or secrets">${esc(plan.offers_and_links||"")}</textarea></div>
-    <div><label>Affiliate / sponsor disclosure</label><textarea id="apDisclosure" maxlength="512" placeholder="Disclosure text the agent must include when relevant">${esc(plan.affiliate_disclosure||"")}</textarea></div>
-    <div><label>Sources and idea inbox</label><textarea id="apSources" maxlength="1536" placeholder="Trusted sites, recurring inputs, notes, news sources">${esc(plan.source_notes||"")}</textarea></div>
-    <div><label>Platform guidance</label><textarea id="apPlatform" maxlength="1024" placeholder="What changes between TikTok, LinkedIn, the native feed, etc.?">${esc(plan.platform_guidance||"")}</textarea></div>
+    <div class="autofull muted">Empty fields show a working example. Examples are not saved unless you type or paste them into the field.</div>
+    <div><label>Primary outcome ${fieldHelp("primaryGoal","Primary outcome")}</label><input id="apGoal" maxlength="768" value="${esc(plan.primary_goal||p.purpose||"")}" placeholder="${fieldTemplate("primaryGoal")}"></div>
+    <div><label>How you will measure progress ${fieldHelp("successMetric","How you will measure progress")}</label><input id="apMetric" maxlength="512" value="${esc(plan.success_metric||"")}" placeholder="${fieldTemplate("successMetric")}"></div>
+    <div><label>Audience focus right now ${fieldHelp("audienceFocus","Audience focus right now")}</label><textarea id="apAudience" maxlength="768" placeholder="${fieldTemplate("audienceFocus")}">${esc(plan.audience_focus||p.audience||"")}</textarea></div>
+    <div><label>Content pillars ${fieldHelp("contentPillars","Content pillars")}</label><textarea id="apPillars" maxlength="1024" placeholder="${fieldTemplate("contentPillars")}">${esc(plan.content_pillars||p.topics||"")}</textarea></div>
+    <div><label>Current campaign / this week's focus ${fieldHelp("campaign","Current campaign")}</label><textarea id="apCampaign" maxlength="768" placeholder="${fieldTemplate("campaign")}">${esc(plan.current_campaign||"")}</textarea></div>
+    <div><label>Calls to action ${fieldHelp("cta","Calls to action")}</label><textarea id="apCta" maxlength="768" placeholder="${fieldTemplate("cta")}">${esc(plan.calls_to_action||"")}</textarea></div>
+    <div><label>Offers, products & affiliate links ${fieldHelp("offers","Offers, products and affiliate links")}</label><textarea id="apOffers" maxlength="1536" placeholder="${fieldTemplate("offers")}">${esc(plan.offers_and_links||"")}</textarea></div>
+    <div><label>Affiliate / sponsor disclosure ${fieldHelp("disclosure","Affiliate or sponsor disclosure")}</label><textarea id="apDisclosure" maxlength="512" placeholder="${fieldTemplate("disclosure")}">${esc(plan.affiliate_disclosure||"")}</textarea></div>
+    <div><label>Sources and idea inbox ${fieldHelp("sources","Sources and idea inbox")}</label><textarea id="apSources" maxlength="1536" placeholder="${fieldTemplate("sources")}">${esc(plan.source_notes||"")}</textarea></div>
+    <div><label>Platform guidance ${fieldHelp("platform","Platform guidance")}</label><textarea id="apPlatform" maxlength="1024" placeholder="${fieldTemplate("platform")}">${esc(plan.platform_guidance||"")}</textarea></div>
     <div class="autofull autoformactions"><button class="btn" onclick="saveAutomationDirection()">Save direction</button><button class="btn sec" onclick="openPersonaChat('${p.id}')">Plan with this persona</button></div>
     <div class="autofull"><hr><h3>Autonomy & safety</h3><div class="levelgrid">${AUTO_LEVELS.map(x=>`<div class="levelcard ${level===x.n?"on":""}" onclick="setAgentAutonomy(${x.n})"><b>${x.name}</b><span>${x.desc}</span></div>`).join("")}</div>
       <div class="autocallout ${status==="active"?"":"stop"}"><b>Binding: ${esc(status)} · ${esc(binding?.claim_state==="verified"?"verified claim":"self-attested owner")}</b><br>${binding?.claim_state==="verified"?"This alias has an authoritative verified claim.":"Native co-writing, drafting, and approved native posts are available. External L3 stays locked until the AliaSpaces claim layer verifies the alias."}</div>
@@ -1525,7 +1564,7 @@ function automationScheduleHtml(p,binding){
       <div><label>Repeat</label><select id="asCad" onchange="updateScheduleCadenceUi(this)"><option value="manual" ${cad==="manual"?"selected":""}>Manual / on demand</option><option value="daily" ${cad==="daily"?"selected":""}>Every day</option><option value="weekly" ${cad==="weekly"?"selected":""}>Every week</option></select></div><div id="asDayWrap" style="display:${cad==="weekly"?"":"none"}"><label>Post day</label><select id="asDay">${AUTO_DAYS.map((d,i)=>`<option value="${i}" ${day===i?"selected":""}>${d}</option>`).join("")}</select></div>
       <div id="asTimeWrap" style="display:${cad==="manual"?"none":""}"><label>Post at</label><input id="asTime" type="time" value="${esc((editing?.schedule_time||"09:00").slice(0,5))}"></div><div><label>Time zone</label><input id="asTz" value="${esc(tz)}" placeholder="America/Anchorage"></div>
       <div id="asLeadWrap" style="display:${cad==="manual"?"none":""}"><label>Prepare ahead</label><select id="asLead">${[[0,"At post time"],[120,"2 hours"],[1440,"1 day"],[2880,"2 days"],[10080,"1 week"]].map(([v,l])=>`<option value="${v}" ${lead===v?"selected":""}>${l}</option>`).join("")}</select></div><div><label>AI model</label><select id="asBackend"><option value="">Persona default, then first ready</option>${backendOptions(editing?.backend_id||"",cad!=="manual")}</select></div>
-      <div class="autofull"><label>Extra instructions for this slot</label><textarea id="asInstr" maxlength="4000" placeholder="Specific angle, length, asset, offer, or source">${esc(editing?.instructions||"")}</textarea></div>
+      <div class="autofull"><label>Extra instructions for this slot ${fieldHelp("slotInstructions","Extra instructions for this slot")}</label><textarea id="asInstr" maxlength="4000" placeholder="${fieldTemplate("slotInstructions")}">${esc(editing?.instructions||"")}</textarea></div>
       <div class="autofull"><div class="autocallout"><b>Owner approval is always required.</b> L3 can publish an exact approved native draft when its time arrives; generation never approves itself.</div><label style="display:flex;align-items:center;gap:8px;color:var(--text);font-weight:500"><input type="checkbox" id="asActive" ${editing?.active===false?"":"checked"}> Slot active</label></div></div>
     <div class="autoformactions"><button class="btn" onclick="saveAutomationTask()">${editing?"Save changes":"Add schedule"}</button>${editing?'<button class="btn sec" onclick="autoTaskEditId=\'\';renderStudio()">Cancel</button>':""}</div>
     ${binding?.autonomy_level<1?'<div class="autocallout warn">Set this persona to L1 or higher in Direction before scheduled generation can run.</div>':""}`;
@@ -1670,6 +1709,7 @@ function renderStudio(){
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
   const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
+    <div class="autocallout" style="margin-top:10px"><b>An API key is a credential, not a personality setting.</b><br>Voice quality comes from the persona card, the chosen model, and repeatable evaluation. Current OpenAI starting points: <b>GPT-5.6 Terra</b> for balanced owner/persona chat, <b>GPT-5.6 Luna</b> for high-volume fan chat after it passes voice and boundary tests, and <b>GPT-5.6 Sol</b> for premium canon or profile synthesis. Model catalogs change, so recheck provider availability before switching.</div>
     ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,status=readyCount===3?"all automations ready":readyCount?`${readyCount}/3 automations ready`:backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${esc(status)}</span>${(b.extra&&b.extra.is_default)?'<span class="pill connected">★ default</span>':''}${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
       <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${!builtIn&&backendAgentReady(b)?`<button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','schedule')">${scheduleReady?"Unconfirm schedule host":"Confirm schedule host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','fan')">${fanReady?"Unconfirm fan host":"Confirm fan host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','mailbox')">${mailReady?"Unconfirm inbox host":"Confirm inbox host"}</button>`:""}${backendAgentReady(b)?`<button class="btn sec sm" onclick="testBackend('${b.id}')">Test</button>`:""}${backendAgentReady(b)?`<button class="btn sm" onclick="setDefaultBackend('${b.id}')">${(b.extra&&b.extra.is_default)?"★ Default":"Make default"}</button>`:""}<button class="btn sec sm" onclick="editBackend('${b.id}')">Edit</button><button class="btn danger sm" onclick="deleteBackend('${b.id}')">✕</button></span></div>`}).join("")||""}
     <label style="margin-top:10px">Provider</label>
@@ -1679,8 +1719,8 @@ function renderStudio(){
       <div><label>Base URL</label><input id="nbUrl" value="${esc(AI_PROVIDERS.openrouter.base)}"></div>
     </div>
     <div class="row" style="margin-top:6px">
-      <div><label>API key <span id="nbKeyLink"><a href="${AI_PROVIDERS.openrouter.keyUrl}" target="_blank" rel="noopener">get your key ↗</a></span></label><input id="nbKey" type="password" placeholder="paste your key" autocomplete="off"></div>
-      <div><label>Model id <span id="nbModelHint" class="muted">${esc(AI_PROVIDERS.openrouter.modelHint||"")}</span></label><input id="nbModel" placeholder="${esc(AI_PROVIDERS.openrouter.modelHint||"model id")}"></div>
+      <div><label>API key <span id="nbKeyLink"><a href="${AI_PROVIDERS.openrouter.keyUrl}" target="_blank" rel="noopener">get your key ↗</a></span> ${fieldHelp("aiModel","API key and personality")}</label><input id="nbKey" type="password" placeholder="paste your key" autocomplete="off"></div>
+      <div><label>Model id <span id="nbModelHint" class="muted">${esc(AI_PROVIDERS.openrouter.modelHint||"")}</span> ${fieldHelp("aiModel","AI model selection")}</label><input id="nbModel" placeholder="${esc(AI_PROVIDERS.openrouter.modelHint||"model id")}"></div>
     </div>
     <div id="nbExtra"></div>
     <div id="nbOAuth" style="margin-top:6px"><button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span></div>
@@ -1880,34 +1920,36 @@ function onboardGo(n){onboardCollect();onboardStep=Math.max(0,Math.min(ONBOARD_S
 const OB_VIS=[["public","Public"],["unlisted","Unlisted (link only)"],["private","Private (friends only)"]];
 const ONBOARD_STEPS=[
  {t:"Identity",h:()=>`<h3>${ico("mask")}Who is this persona?</h3>
-   <label>Name</label><input data-ob="name" value="${esc(onboardData.name||"")}" placeholder="e.g. Sophia" oninput="if(!onboardData.handleEdited){var hi=document.querySelector('[data-ob=handle]');if(hi)hi.value=this.value.toLowerCase().replace(/[^a-z0-9._]/g,'').slice(0,30)}">
-   <label style="margin-top:8px">Public handle (3–30 chars: letters, numbers, . _)</label><input data-ob="handle" value="${esc(onboardData.handle||"")}" placeholder="sophia" oninput="onboardData.handleEdited=true">
-   <label style="margin-top:8px">Tagline</label><input data-ob="tagline" value="${esc(onboardData.tagline||"")}" placeholder="One line that captures them">
-   <div class="row" style="margin-top:8px"><div><label>Title <span class="muted">(shown with the name)</span></label><input data-ob="title" value="${esc(onboardData.title||"")}" placeholder="Founder · Chef · Coach"></div>
-   <div><label>Focus <span class="muted">(the niche — used in your roster)</span></label><input data-ob="focus" value="${esc(onboardData.focus||"")}" placeholder="e.g. Cannabis research"></div></div>
-   <label style="margin-top:8px">Short bio</label><textarea data-ob="bio" rows="3">${esc(onboardData.bio||"")}</textarea>
+   <p class="muted">Question marks explain how each field affects the public page or AI prompt. Empty fields show examples that are not saved unless you enter them.</p>
+   <label>Name ${fieldHelp("name","Name")}</label><input data-ob="name" value="${esc(onboardData.name||"")}" placeholder="${fieldTemplate("name")}" oninput="if(!onboardData.handleEdited){var hi=document.querySelector('[data-ob=handle]');if(hi)hi.value=this.value.toLowerCase().replace(/[^a-z0-9._]/g,'').slice(0,30)}">
+   <label style="margin-top:8px">Public handle (3–30 chars: letters, numbers, . _) ${fieldHelp("handle","Public handle")}</label><input data-ob="handle" value="${esc(onboardData.handle||"")}" placeholder="${fieldTemplate("handle")}" oninput="onboardData.handleEdited=true">
+   <label style="margin-top:8px">Tagline ${fieldHelp("tagline","Tagline")}</label><input data-ob="tagline" value="${esc(onboardData.tagline||"")}" placeholder="${fieldTemplate("tagline")}">
+   <div class="row" style="margin-top:8px"><div><label>Title <span class="muted">(shown with the name)</span> ${fieldHelp("title","Title")}</label><input data-ob="title" value="${esc(onboardData.title||"")}" placeholder="${fieldTemplate("title")}"></div>
+   <div><label>Focus <span class="muted">(the niche — used in your roster)</span> ${fieldHelp("focus","Focus")}</label><input data-ob="focus" value="${esc(onboardData.focus||"")}" placeholder="${fieldTemplate("focus")}"></div></div>
+   <label style="margin-top:8px">Short bio ${fieldHelp("bio","Short bio")}</label><textarea data-ob="bio" rows="3" placeholder="${fieldTemplate("bio")}">${esc(onboardData.bio||"")}</textarea>
    <div class="row" style="margin-top:8px"><div><label>Visibility</label><select data-ob="visibility">${OB_VIS.map(([v,l])=>`<option value="${v}" ${(onboardData.visibility||"public")===v?"selected":""}>${l}</option>`).join("")}</select></div>
    <div><label>Content rating</label><select data-ob="nsfw"><option value="0" ${onboardData.nsfw!=="1"?"selected":""}>SFW</option><option value="1" ${onboardData.nsfw==="1"?"selected":""}>NSFW / 18+</option></select></div></div>
-   <label style="margin-top:8px">AI model — its brain</label><select data-ob="backend">${(myBackends||[]).map(b=>`<option value="${esc(b.id)}" ${onboardData.backend===b.id?"selected":""}>${esc(b.name)} · ${esc(b.model||"")}</option>`).join("")||'<option value="">(add a model in Matrix → AI Models)</option>'}</select>`},
+   <label style="margin-top:8px">AI model — its brain ${fieldHelp("aiModel","AI model")}</label><select data-ob="backend">${(myBackends||[]).map(b=>`<option value="${esc(b.id)}" ${onboardData.backend===b.id?"selected":""}>${esc(b.name)} · ${esc(b.model||"")}</option>`).join("")||'<option value="">(add a model in Matrix → AI Models)</option>'}</select>`},
  {t:"Personality",h:()=>`<h3>${ico("spark")}Personality & voice</h3>
-   <label>Personality / voice — how do they talk?</label><textarea data-ob="voice" rows="3" placeholder="Warm, witty, speaks in short punchy lines…">${esc(onboardData.voice||"")}</textarea>
-   <label style="margin-top:8px">Purpose — why do they exist?</label><textarea data-ob="purpose" rows="2">${esc(onboardData.purpose||"")}</textarea>
-   <label style="margin-top:8px">Core topics</label><input data-ob="topics" value="${esc(onboardData.topics||"")}" placeholder="what they mainly talk about">
-   <label style="margin-top:8px">Audience</label><input data-ob="audience" value="${esc(onboardData.audience||"")}" placeholder="who they're for">
-   <label style="margin-top:8px">Hard rules — never do</label><textarea data-ob="dont" rows="2" placeholder="topics/behaviours to always avoid">${esc(onboardData.dont||"")}</textarea>
-   <label style="margin-top:8px">Default hashtags</label><input data-ob="hashtags" value="${esc(onboardData.hashtags||"")}">`},
+   <p class="muted">Write durable instructions here. Personality says how the persona sounds; collaboration says how it asks, assumes, handles uncertainty, and corrects mistakes.</p>
+   <label>Personality / voice — how do they talk? ${fieldHelp("voice","Personality and voice")}</label><textarea data-ob="voice" rows="6" placeholder="${fieldTemplate("voice")}">${esc(onboardData.voice||"")}</textarea>
+   <label style="margin-top:8px">Purpose — why do they exist? ${fieldHelp("purpose","Purpose")}</label><textarea data-ob="purpose" rows="3" placeholder="${fieldTemplate("purpose")}">${esc(onboardData.purpose||"")}</textarea>
+   <label style="margin-top:8px">Core topics ${fieldHelp("topics","Core topics")}</label><input data-ob="topics" value="${esc(onboardData.topics||"")}" placeholder="${fieldTemplate("topics")}">
+   <label style="margin-top:8px">Audience ${fieldHelp("audience","Audience")}</label><input data-ob="audience" value="${esc(onboardData.audience||"")}" placeholder="${fieldTemplate("audience")}">
+   <label style="margin-top:8px">Hard rules — never do ${fieldHelp("dont","Hard rules — never do")}</label><textarea data-ob="dont" rows="4" placeholder="${fieldTemplate("dont")}">${esc(onboardData.dont||"")}</textarea>
+   <label style="margin-top:8px">Default hashtags ${fieldHelp("hashtags","Default hashtags")}</label><input data-ob="hashtags" value="${esc(onboardData.hashtags||"")}" placeholder="${fieldTemplate("hashtags")}">`},
  {t:"Research & posts",h:()=>`<h3>${ico("compass")}How it researches & posts</h3>
    <p class="muted">The brief the persona's agent uses to research topics daily and draft posts for your approval.</p>
-   <label>Primary goal</label><input data-ob="goal" value="${esc(onboardData.goal||"")}" placeholder="Grow an engaged audience around…">
-   <label style="margin-top:8px">Content pillars — the focus areas it researches</label><textarea data-ob="pillars" rows="2" placeholder="comma-separated themes it should track & post about">${esc(onboardData.pillars||"")}</textarea>
-   <label style="margin-top:8px">Audience focus</label><input data-ob="audienceFocus" value="${esc(onboardData.audienceFocus||"")}">
-   <label style="margin-top:8px">Calls to action</label><input data-ob="cta" value="${esc(onboardData.cta||"")}">
-   <label style="margin-top:8px">Platform guidance (tone per platform)</label><textarea data-ob="platform" rows="2">${esc(onboardData.platform||"")}</textarea>
-   <label style="margin-top:8px">Preferred sources / idea notes</label><textarea data-ob="sources" rows="2">${esc(onboardData.sources||"")}</textarea>`},
+   <label>Primary goal ${fieldHelp("primaryGoal","Primary goal")}</label><input data-ob="goal" value="${esc(onboardData.goal||"")}" placeholder="${fieldTemplate("primaryGoal")}">
+   <label style="margin-top:8px">Content pillars — the focus areas it researches ${fieldHelp("contentPillars","Content pillars")}</label><textarea data-ob="pillars" rows="3" placeholder="${fieldTemplate("contentPillars")}">${esc(onboardData.pillars||"")}</textarea>
+   <label style="margin-top:8px">Audience focus ${fieldHelp("audienceFocus","Audience focus")}</label><input data-ob="audienceFocus" value="${esc(onboardData.audienceFocus||"")}" placeholder="${fieldTemplate("audienceFocus")}">
+   <label style="margin-top:8px">Calls to action ${fieldHelp("cta","Calls to action")}</label><input data-ob="cta" value="${esc(onboardData.cta||"")}" placeholder="${fieldTemplate("cta")}">
+   <label style="margin-top:8px">Platform guidance (tone per platform) ${fieldHelp("platform","Platform guidance")}</label><textarea data-ob="platform" rows="4" placeholder="${fieldTemplate("platform")}">${esc(onboardData.platform||"")}</textarea>
+   <label style="margin-top:8px">Preferred sources / idea notes ${fieldHelp("sources","Preferred sources and idea notes")}</label><textarea data-ob="sources" rows="3" placeholder="${fieldTemplate("sources")}">${esc(onboardData.sources||"")}</textarea>`},
  {t:"Memory bank",h:()=>`<h3>${ico("chip")}Memory bank</h3>
    <p class="muted">Seed what this persona already knows — one fact per line. It won't re-surface these as "did you know?" and can draw on them for fan chats and drafts.</p>
-   <textarea data-ob="knowledge" rows="6" placeholder="Complementary colors boost thumbnail CTR&#10;My audience is mostly US-based, active evenings&#10;I never use more than 3 hashtags">${esc(onboardData.knowledge||"")}</textarea>
-   <label style="margin-top:8px">Private owner notes (only you ever see these)</label><textarea data-ob="notes" rows="3">${esc(onboardData.notes||"")}</textarea>`},
+   <label>Memory facts ${fieldHelp("knowledge","Memory facts")}</label><textarea data-ob="knowledge" rows="6" placeholder="${fieldTemplate("knowledge")}">${esc(onboardData.knowledge||"")}</textarea>
+   <label style="margin-top:8px">Private owner notes (only you ever see these) ${fieldHelp("privateNotes","Private owner notes")}</label><textarea data-ob="notes" rows="3" placeholder="${fieldTemplate("privateNotes")}">${esc(onboardData.notes||"")}</textarea>`},
  {t:"Fans & autonomy",h:()=>{const a=onboardData.autonomy||"1";return `<h3>${ico("user")}Fan interaction & autonomy</h3>
    <label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" data-ob="fanEnabled" ${onboardData.fanEnabled?"checked":""}> Let fans chat with this persona</label>
    <label style="margin-top:10px">Daily fan-message cap</label><input type="number" data-ob="fanLimit" value="${esc(onboardData.fanLimit||"20")}" min="0" style="max-width:120px">
@@ -2141,9 +2183,10 @@ async function renderEdit(id,epoch=++renderEpoch){
   if(epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
   editId=targetId;editLinks=links;editInitialLinks=links.map((l,i)=>({platform:l.platform||"",handle:l.handle||"",url:l.url||"",sort:i}));editT8=top8;t8ResultRows=[];
   app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
+    <p class="muted">Use the <b>?</b> beside a writing field to see how the public page and AI use it. Empty fields show an example only; placeholders are never saved as persona data.</p>
     <div class="row">
-      <div><label>Name</label><input id="eName" maxlength="256" value="${esc(p.name||"")}"></div>
-      <div><label>Handle (page URL, lowercase)</label><input id="eHandle" value="${esc(p.handle||"")}"></div>
+      <div><label>Name ${fieldHelp("name","Name")}</label><input id="eName" maxlength="256" value="${esc(p.name||"")}" placeholder="${fieldTemplate("name")}"></div>
+      <div><label>Handle (page URL, lowercase) ${fieldHelp("handle","Handle")}</label><input id="eHandle" value="${esc(p.handle||"")}" placeholder="${fieldTemplate("handle")}"></div>
     </div>
     <div class="row">
       <div><label>Rating</label><select id="eNsfw"><option value="0">SFW</option><option value="1" ${p.nsfw?"selected":""}>NSFW / 18+</option></select></div>
@@ -2154,13 +2197,13 @@ async function renderEdit(id,epoch=++renderEpoch){
       </select></div>
       <div><label>Theme color</label><input id="eTheme" type="color" value="${safeTheme(p.theme)}" style="height:38px;padding:2px"></div>
     </div>
-    <label>Tagline</label><input id="eTagline" maxlength="512" value="${esc(p.tagline||"")}">
-    <label>Pet project (product shown next to the name)</label><input id="ePet" maxlength="120" value="${esc(p.pet_project||"")}" placeholder="e.g. Classwoods Case Files">
+    <label>Tagline ${fieldHelp("tagline","Tagline")}</label><input id="eTagline" maxlength="512" value="${esc(p.tagline||"")}" placeholder="${fieldTemplate("tagline")}">
+    <label>Pet project (product shown next to the name) ${fieldHelp("petProject","Pet project")}</label><input id="ePet" maxlength="120" value="${esc(p.pet_project||"")}" placeholder="${fieldTemplate("petProject")}">
     <div class="row">
-      <div><label>Title (shown with the name)</label><input id="eTitle" maxlength="200" value="${esc(p.title||"")}" placeholder="Founder · Chef · Dr."></div>
-      <div><label>Focus (niche — used in your roster)</label><input id="eFocus" maxlength="2000" value="${esc(p.focus||"")}" placeholder="what this persona is about"></div>
+      <div><label>Title (shown with the name) ${fieldHelp("title","Title")}</label><input id="eTitle" maxlength="200" value="${esc(p.title||"")}" placeholder="${fieldTemplate("title")}"></div>
+      <div><label>Focus (niche — used in your roster) ${fieldHelp("focus","Focus")}</label><input id="eFocus" maxlength="2000" value="${esc(p.focus||"")}" placeholder="${fieldTemplate("focus")}"></div>
     </div>
-    <label>Bio / About (shown on page)</label><textarea id="eBio" maxlength="2048">${esc(p.bio||"")}</textarea>
+    <label>Bio / About (shown on page) ${fieldHelp("bio","Bio or About")}</label><textarea id="eBio" maxlength="2048" placeholder="${fieldTemplate("bio")}">${esc(p.bio||"")}</textarea>
     <div id="advGate" class="card" style="margin-top:14px;${(p.purpose||p.voice||p.topics)?"display:none":""}">
       <h3>Flesh out this persona</h3>
       <p class="muted">Two quick questions — we'll suggest topics, a voice, and which accounts this kind of persona usually needs. You can adjust everything after.</p>
@@ -2198,15 +2241,16 @@ async function renderEdit(id,epoch=++renderEpoch){
     </div>
     <hr>
     <h3>Personality (drives AI content and your page's vibe)</h3>
-    <label>Purpose</label><textarea id="ePurpose" maxlength="1024">${esc(p.purpose||"")}</textarea>
-    <label>Personality / voice</label><textarea id="eVoice" maxlength="2048">${esc(p.voice||"")}</textarea>
+    <p class="muted">For the strongest consistency, keep the durable personality and collaboration rules here, current goals in Direction, and hard prohibitions in Never do.</p>
+    <label>Purpose ${fieldHelp("purpose","Purpose")}</label><textarea id="ePurpose" maxlength="1024" placeholder="${fieldTemplate("purpose")}">${esc(p.purpose||"")}</textarea>
+    <label>Personality / voice ${fieldHelp("voice","Personality and voice")}</label><textarea id="eVoice" maxlength="2048" style="min-height:150px" placeholder="${fieldTemplate("voice")}">${esc(p.voice||"")}</textarea>
     <div class="row">
-      <div><label>Core topics (comma-separated)</label><input id="eTopics" maxlength="1024" value="${esc(p.topics||"")}"></div>
-      <div><label>Audience</label><input id="eAudience" maxlength="1024" value="${esc(p.audience||"")}"></div>
+      <div><label>Core topics (comma-separated) ${fieldHelp("topics","Core topics")}</label><input id="eTopics" maxlength="1024" value="${esc(p.topics||"")}" placeholder="${fieldTemplate("topics")}"></div>
+      <div><label>Audience ${fieldHelp("audience","Audience")}</label><input id="eAudience" maxlength="1024" value="${esc(p.audience||"")}" placeholder="${fieldTemplate("audience")}"></div>
     </div>
-    <label>Default hashtags</label><input id="eHashtags" maxlength="1024" value="${esc(p.hashtags||"")}">
-    <label>Never do (hard rules)</label><textarea id="eDont" maxlength="3072">${esc(p.dont||"")}</textarea>
-    <label>Dedicated AI model for this persona's chatbot &amp; tasks</label>
+    <label>Default hashtags ${fieldHelp("hashtags","Default hashtags")}</label><input id="eHashtags" maxlength="1024" value="${esc(p.hashtags||"")}" placeholder="${fieldTemplate("hashtags")}">
+    <label>Never do (hard rules) ${fieldHelp("dont","Never do — hard rules")}</label><textarea id="eDont" maxlength="3072" style="min-height:120px" placeholder="${fieldTemplate("dont")}">${esc(p.dont||"")}</textarea>
+    <label>Dedicated AI model for this persona's chatbot &amp; tasks ${fieldHelp("aiModel","Dedicated AI model")}</label>
     <select id="eBackend"><option value="">(first ready hosted model)</option>${backendOptions(p.ai_backend||"")}</select>
     ${editId?`<div style="margin-top:8px"><button class="btn sec sm" type="button" onclick="openChatWorkspaces('${editId}')">Manage chat workspaces</button></div>`:""}
     <hr>
@@ -2242,12 +2286,12 @@ async function renderEdit(id,epoch=++renderEpoch){
     <p class="muted">Gallery items link out to wherever the full content lives (OnlyFans post, IG, Snap…). Sponsored items link to your affiliate/product URLs and get a "sponsored" label.</p>`
     :'<p class="muted">Save the persona first, then come back to add albums.</p>'}
     <hr>
-    <h3>Roadmap context (the AI reads this to build follow-ups)</h3>
+    <h3>Roadmap context (the AI reads this to build follow-ups) ${fieldHelp("roadmap","Roadmap context")}</h3>
     <p class="muted">Keep durable canon, decisions, milestones, and next steps here. Newest dated updates are added at the top. Do not store passwords or raw chat transcripts.</p>
-    <textarea id="eContext" maxlength="20000" style="min-height:180px" placeholder="[2026-08-13] Defined the next campaign beat…">${esc(p.context_log||"")}</textarea>
+    <textarea id="eContext" maxlength="20000" style="min-height:180px" placeholder="${fieldTemplate("roadmap")}">${esc(p.context_log||"")}</textarea>
     <hr>
-    <h3>Private notes (only you can ever see these — account emails, reminders. Never store passwords.)</h3>
-    <textarea id="eNotes">${esc(notes.content||"")}</textarea>
+    <h3>Private notes (only you can ever see these — account emails, reminders. Never store passwords.) ${fieldHelp("privateNotes","Private notes")}</h3>
+    <textarea id="eNotes" placeholder="${fieldTemplate("privateNotes")}">${esc(notes.content||"")}</textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:space-between">
       ${editId?`<button class="btn danger" onclick="deletePersona()">Delete persona</button>`:"<span></span>"}
