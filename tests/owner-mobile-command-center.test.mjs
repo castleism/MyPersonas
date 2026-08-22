@@ -30,11 +30,47 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(css, /\.oa-companion-dialogue/);
   assert.match(css, /@media\(max-width:520px\)/);
   assert.match(source, /function ownerAppSyncChrome\(\)/);
+  assert.match(source, /function ownerAppRememberPersona\(/);
+  assert.match(source, /function ownerAppSelectRoutePersona\(/);
   assert.match(source, /function ownerAppToggleMore\(/);
   assert.match(source, /function ownerAppOpenCompanionNotice\(\)/);
   assert.ok(workflow.includes("--include '/owner-app.css'"));
   assert.ok(workflow.includes("--include '/owner-app.js'"));
   new vm.Script(source, { filename: "owner-app.js" });
+});
+
+test("route and dropdown persona changes update the companion selection", async () => {
+  const [html, source] = await Promise.all([
+    read("MyPersonas.Online_v0/index.html"),
+    read("MyPersonas.Online_v0/owner-app.js"),
+  ]);
+  const start = source.indexOf("function ownerAppSelectionKey");
+  const end = source.indexOf("function ownerAppSelectPersona", start);
+  assert.ok(start >= 0 && end > start, "selection helpers must remain extractable");
+  const writes = [];
+  let syncs = 0;
+  const context = vm.createContext({
+    myPersonas: [
+      { id: "persona-a", handle: "alpha" },
+      { id: "persona-b", handle: "bravo" },
+    ],
+    ownerAppState: { selectedPersonaId: "persona-a" },
+    session: { user: { id: "owner-1" } },
+    localStorage: { getItem: () => "", setItem: (key, value) => writes.push([key, value]) },
+    ownerAppSyncCompanion() { syncs += 1; },
+  });
+  vm.runInContext(source.slice(start, end), context);
+
+  assert.equal(vm.runInContext('ownerAppSelectRoutePersona("edit", "persona-b")', context), "persona-b");
+  assert.equal(context.ownerAppState.selectedPersonaId, "persona-b");
+  assert.deepEqual(writes.at(-1), ["aliaspaces_owner_persona_owner-1", "persona-b"]);
+  assert.equal(syncs, 1);
+  assert.equal(vm.runInContext('ownerAppSelectRoutePersona("p", "alpha")', context), "persona-a");
+  assert.equal(context.ownerAppState.selectedPersonaId, "persona-a");
+  assert.equal(syncs, 2);
+  assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
+  assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
+  assert.match(html, /owner-app\.js\?v=20260822-4/);
 });
 
 test("briefing workflow keeps four channels and truthful manual boundaries", async () => {

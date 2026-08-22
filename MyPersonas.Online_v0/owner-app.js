@@ -125,11 +125,28 @@ function ownerAppRestorePersona(uid) {
   ownerAppState.selectedPersonaId = saved;
 }
 
-function ownerAppSelectPersona(personaId, destination = "owner") {
-  if (personaId && myPersonas.some((persona) => persona.id === personaId)) {
-    ownerAppState.selectedPersonaId = personaId;
-    try { localStorage.setItem(ownerAppSelectionKey(session.user.id), personaId); } catch (_) {}
+function ownerAppRememberPersona(personaId, syncCompanion = true) {
+  if (!personaId || !myPersonas.some((persona) => persona.id === personaId)) return false;
+  const changed = ownerAppState.selectedPersonaId !== personaId;
+  ownerAppState.selectedPersonaId = personaId;
+  const uid = typeof session !== "undefined" ? session?.user?.id : "";
+  if (uid) {
+    try { localStorage.setItem(ownerAppSelectionKey(uid), personaId); } catch (_) {}
   }
+  if (syncCompanion && typeof ownerAppSyncCompanion === "function") ownerAppSyncCompanion();
+  return changed;
+}
+
+function ownerAppSelectRoutePersona(view, arg) {
+  const personaId = view === "edit" ? arg
+    : view === "p" ? (myPersonas.find((persona) => persona.handle === arg)?.id || "")
+      : "";
+  if (personaId) ownerAppRememberPersona(personaId);
+  return personaId;
+}
+
+function ownerAppSelectPersona(personaId, destination = "owner") {
+  if (personaId) ownerAppRememberPersona(personaId);
   if (destination === "briefs") ownerAppState.briefPersonaFilter = personaId;
   if (destination === "schedule") ownerAppState.schedulePersonaFilter = personaId;
   if (destination === "fan-inbox") ownerAppState.fanPersonaFilter = personaId;

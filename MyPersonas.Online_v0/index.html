@@ -383,7 +383,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./owner-app.js?v=20260822-3"></script>
+<script src="./owner-app.js?v=20260822-4"></script>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -857,6 +857,7 @@ async function route(){
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
+  if(typeof ownerAppSelectRoutePersona==="function")ownerAppSelectRoutePersona(view,arg);
   document.body.classList.toggle("owner-authenticated",!!session&&privateSessionReady);
   renderSidebar();
   if(typeof ownerAppMobileNav==="function")ownerAppMobileNav();
