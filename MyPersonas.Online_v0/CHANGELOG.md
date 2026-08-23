@@ -3,15 +3,15 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
-## Required AI-use declaration and forward-only provenance hardening (database applied; app deployment pending) (2026-08-23)
+## Required AI-use declaration and forward-only provenance hardening (production release) (2026-08-23)
 
-Status: **Migration 060 was applied and read back in the linked production database;
-matching functions/frontend are tested locally but are not yet claimed deployed or
-verified live at this source freeze.** The original migration 059 is restored and frozen
-as historical source. The missing complete hardening shipped as new, forward-only
-migration 060; an existing 059 ledger row must never be repaired by replacing or
-re-running 059. The 284-test Node suite, frontend syntax check, migration 058 runtime, and
-frozen-059 → 060 → 060-reapply runtime all passed.
+Status: **Migration 060, the four reviewed provenance functions, and the matching Pages
+artifact are live from commit `968e1ea`.** CI run `32634420591`, function run
+`32634636972`, and Pages run `32634681995` succeeded. Cache-busted public HTML and all
+coordinated JS/CSS hashes match the release checkout. The original migration 059 remains
+frozen historical source; an existing 059 ledger row must never be repaired by replacing
+or re-running it. Live private-route QA reached the required TOTP challenge, so post-MFA
+owner smoke, unrelated-account privacy, and real-phone testing remain open.
 
 - Added the exact owner-supplied MyPersonas AI watermark master with a pinned SHA-256,
   subtle bottom-right raster treatment, full-image editor previews, visible public labels,
@@ -48,12 +48,16 @@ frozen-059 → 060 → 060-reapply runtime all passed.
   Edit, and a no-token deterministic intention plan. Its optional linked-model explanation
   is server-prompted, context-free, token-explicit, stale-response guarded, and cannot
   publish, save, or submit a feature ticket.
+- Added a pinned Deno npm-resolution policy/lock for ImageMagick WASM and corrected the
+  generated-image `File` handoff to use an owned `ArrayBuffer`; every Edge entrypoint now
+  passes Deno 2 locally and in CI.
 
-## Exact-actor Persona view and full Page looks previews (database applied; frontend deployment pending) (2026-08-22)
+## Exact-actor Persona view and full Page looks previews (frontend released 2026-08-23) (2026-08-22)
 
-Status: **Migration 058 is recorded in the linked production ledger and its local
-role-switched runtime harness passed; the matching frontend is not yet claimed deployed
-or verified live at this source freeze.** Migration 058 is a follow-on to, and not part
+Status: **Migration 058 is recorded in the linked production ledger and its matching
+frontend shipped in commit `968e1ea` through Pages run `32634681995`; public asset hashes
+match.** The role-switched runtime harness passed. Post-TOTP live owner interaction and
+two-account testing remain separate gates. Migration 058 is a follow-on to, and not part
 of, the frozen 047–057 evidence.
 
 - Added the persistent Overview / Persona switch, a visible acting-identity selector,

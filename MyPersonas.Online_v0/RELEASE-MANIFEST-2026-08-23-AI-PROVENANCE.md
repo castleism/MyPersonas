@@ -1,12 +1,12 @@
 # MyPersonas AI provenance release manifest — 2026-08-23
 
-Status: **migration 060 applied and read back in the linked production database; matching
-function and frontend deployment still pending at this source freeze.** Migration 059 is
-frozen historical source; migration 060 is the forward-only hardening release. The 060
-ledger row records normalized-LF SHA-256
+Status: **released to the linked production database, Supabase Edge Functions, and
+GitHub Pages from source commit `968e1ea29c9414e82d8b74c967b3f7834e064bc8`.**
+Migration 059 is frozen historical source; migration 060 is the forward-only hardening
+release. The 060 ledger row records normalized-LF SHA-256
 `333afa05b7292b1f0b7a780d6cf82cd497c55b0f6a6c7a444b466e46ec678d2e`.
-This manifest does not claim matching Edge Function or frontend parity until a later
-deployment record supplies the workflow runs, commit, public hashes, and smoke evidence.
+CI, function deployment, Pages deployment, public byte parity, and remaining smoke gates
+are recorded below. This does not convert unpublished persona pages into published pages.
 
 ## Release boundary
 
@@ -47,9 +47,11 @@ SHA-256 values.
 | Frozen migration 059, both identical copies (normalized LF) | `208259258c163f44e17e76a1b82cc8ad38949fe6c01e976a3b30b0492f54b3a6` |
 | Forward migration 060, both identical copies (normalized LF) | `333afa05b7292b1f0b7a780d6cf82cd497c55b0f6a6c7a444b466e46ec678d2e` |
 | `media-ingest/index.ts` | `ff5f8ac460aa621c1ec0b90408203aacc8cf801d7fb1a47586f7134f66c2f5b0` |
-| `gemini-image/index.ts` | `4c7c0bf7688241b3210d0b6366aaa6d1084828c7f364d0d9423d76420fa4eb4b` |
+| `gemini-image/index.ts` | `62c845aaf5dbc85813043f71b8bf901cc50942c2cf8f68b8cd5625de8191c1e5` |
 | `compose-post/index.ts` | `23bb32d33d7a4c352cc87164cbe4f732ca7061ca74c7c9d6aed9b9c7d738d009` |
 | `ai-proxy/index.ts` | `551f9f6ffc38649b81fe571c6c6e4bcda956ef15ee9b5b7704bb1a0ab9f18988` |
+| `deno.json` | `5335690600914ad53e9b4873a8287e0baba01902ef94eec02d01b35ca6d7b3be` |
+| `deno.lock` | `8b4fb28aa8c36a94eb1e4cffac51f92db34651549916ba2c736ff17a9a00ffd7` |
 | `ai-content-provenance.js` | `7914b0003e3c664eb0b87f5f47a102909c2ba340adb71982ee3054d2ad4ee731` |
 | `ai-content-provenance.css` | `eaed62cb0981c24973430fbff3a2f0062de797e7ef59ed9bee4f01eab674be09` |
 | `persona-view.js` | `b353f032bfd36b462e2620654fa0991b4dfcf8a4a46dab73f76715524ab499d0` |
@@ -59,6 +61,23 @@ SHA-256 values.
 The source-file values are an inventory, not proof of a deployed artifact. Recalculate
 every non-pinned hash after the final working-tree freeze and record the release commit. A
 mismatch voids the coordinated release.
+
+## Production release record
+
+| Gate | Evidence |
+| --- | --- |
+| Release commit | `968e1ea29c9414e82d8b74c967b3f7834e064bc8` |
+| CI | GitHub Actions run `32634420591`: 284 tests, every Edge entrypoint under Deno 2, and frontend syntax all passed |
+| Database | Migration 060 ledger/hash and postflight readback recorded below; database backup was visible before apply |
+| Functions | GitHub Actions run `32634636972` succeeded for `media-ingest`, `gemini-image`, `compose-post`, and `ai-proxy`; the dashboard showed all four updated together |
+| Pages | GitHub Actions run `32634681995` succeeded for `https://mypersonas.online/` |
+| Public artifact | Cache-busted HTTP 200 responses for `index.html` plus owner, persona, governance, and AI-provenance JS/CSS; every remote SHA-256 matched the release checkout byte-for-byte |
+| Signed-in boundary | Google sign-in reached the enrolled TOTP challenge; no private data loaded before AAL2 |
+| Authenticated source smoke | The already-authenticated localhost origin, using the linked production backend, rendered Overview/Persona, handles, family CRUD, designer/console/snippets, previews/download, roles, friend policy, and deterministic intention planning |
+
+The live private owner routes still require an owner-entered current TOTP code. A second
+unrelated account and a real phone are also required before signed-in mobile and
+cross-account privacy can be called release-proven.
 
 ## Implemented contract
 
@@ -105,8 +124,10 @@ mismatch voids the coordinated release.
   render/reference functions, zero false `media_provenance_required` flags, no
   authenticated asset insert/update/delete grants, a one-time 118-reference external
   snapshot, and the requested active global-administrator and technician role rows.
-- Hosted function/source parity, signed-in integration, two-account isolation, and public
-  deployment verification remain unclaimed at this source freeze.
+- CI, the four-function deployment, Pages deployment, and exact public artifact parity are
+  recorded in the production release table. Full live owner integration remains stopped at
+  the expected TOTP challenge; two-account isolation, real-phone QA, hosted load limits,
+  and final generated-media byte verification remain unclaimed.
 
 ## Required owner-approved release sequence
 
@@ -134,9 +155,9 @@ mismatch voids the coordinated release.
 
 ## Known gates and follow-up work
 
-- The 060 linked-project apply is recorded above. Coordinated Deno/Supabase deployed-source
-  parity, signed-in integration, Storage/RLS adversarial proof, and hosted concurrency
-  proof are not yet recorded in this manifest.
+- The coordinated database, four-function, and Pages release is recorded above. Signed-in
+  live integration after TOTP, Storage/RLS adversarial proof with a second owner, and
+  hosted concurrency proof are not yet recorded in this manifest.
 - The pinned ImageMagick WASM is about 14.7 MB by itself. It needs local CLI bundling and
   hosted validation against the current Edge memory, CPU, and bundle limits.
 - Storage upload still precedes database finalization. Ordinary failures remove newly
@@ -154,7 +175,11 @@ mismatch voids the coordinated release.
   disabled even after 060.
 - New external media remains blocked until a safe declared-import, license, scan, and
   rehosting workflow exists.
-- No provider key, SSO/MFA provider, WAF, payment processor, notification sender, DNS,
-  social publisher, or external account was configured by this work.
+- A 30-day, account-wide Supabase access token was transferred directly into the encrypted
+  GitHub Actions `SUPABASE_ACCESS_TOKEN` secret to establish the reviewed deployment path;
+  rotate or revoke it by 2026-09-22 and replace it with a narrower deployment credential
+  when Supabase supports one. No AI-provider key, enterprise SSO/recovery policy, WAF,
+  payment processor, notification sender, social publisher, or persona publication was
+  activated by this release.
 
 The complete behavioral and policy contract is in `AI-CONTENT-PROVENANCE.md`.
