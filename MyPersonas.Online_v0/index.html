@@ -330,6 +330,16 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   body.persona-view-mode header>nav>button[data-persona-nav]:not([hidden]),body.persona-view-mode header>nav>#primaryHomeBtn{display:inline-block!important}
   body.persona-view-mode header>nav::-webkit-scrollbar{display:none}
   body.persona-view-mode header>nav>#authBtn{margin-left:auto}
+  main{width:100%;min-width:0;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .matrix-head{align-items:flex-start!important}
+  .matrix-actions{width:100%;min-width:0;flex-wrap:wrap}
+  .matrix-actions>.btn{flex:1 1 140px;min-width:0}
+  .pgrid{width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}
+  .pcard{min-width:0}
+  .matrix-models .t8pick{min-width:0;flex-wrap:wrap}
+  .matrix-models .t8pick>div{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .matrix-models .t8pick>span[style*="margin-left:auto"]{width:100%;min-width:0;margin-left:0!important;flex-wrap:wrap}
+  .matrix-models .muted{overflow-wrap:anywhere}
 }
 </style>
 </head>
@@ -2022,7 +2032,7 @@ function renderStudio(){
     ${myBlocks.map(b=>`<span class="chip">${b.kind==="block"?"blocked":"muted"} · ${esc(b.blocked_persona.slice(0,8))}…
     <button class="btn danger sm" onclick="removeBlock('${b.id}')">✕</button></span>`).join("")}
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
-  const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
+  const beHtml=`<div class="card matrix-models"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
     <div class="autocallout" style="margin-top:10px"><b>An API key is a credential, not a personality setting.</b><br>Voice quality comes from the persona card, the chosen model, and repeatable evaluation. Current OpenAI starting points: <b>GPT-5.6 Terra</b> for balanced owner/persona chat, <b>GPT-5.6 Luna</b> for high-volume fan chat after it passes voice and boundary tests, and <b>GPT-5.6 Sol</b> for premium canon or profile synthesis. Model catalogs change, so recheck provider availability before switching.</div>
     ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,status=readyCount===3?"all automations ready":readyCount?`${readyCount}/3 automations ready`:backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${esc(status)}</span>${(b.extra&&b.extra.is_default)?'<span class="pill connected">★ default</span>':''}${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
@@ -2040,9 +2050,9 @@ function renderStudio(){
     <div id="nbExtra"></div>
     <div id="nbOAuth" style="margin-top:6px"><button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span></div>
     <button class="btn sm" style="margin-top:10px" onclick="addBackend()">+ Save model</button></div>`;
-  app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  app.innerHTML=`<div class="matrix-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h3 class="secthead" style="margin:0">Matrix</h3>
-    <div style="display:flex;gap:8px">
+    <div class="matrix-actions" style="display:flex;gap:8px">
       <button class="btn sec" onclick="openHQ()">HQ Assistant</button>
       <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
   ${reqHtml}
