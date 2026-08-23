@@ -2,19 +2,23 @@
 
 The browser app is hosted by GitHub Pages. Supabase provides authentication, the
 database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
-> **Current release rule (2026-08-22):** pushes validate but do not deploy.
-> `.github/workflows/supabase-deploy.yml` and `.github/workflows/pages.yml` are manual
-> `workflow_dispatch` workflows and each requires the exact typed confirmation
-> `MIGRATIONS-VERIFIED`. Apply and read back the database first, deploy functions second,
-> and publish Pages last. See [`CI-CD-SETUP.md`](../CI-CD-SETUP.md).
+> **Current release rule (verified 2026-08-23):** a push to `main` containing a new file in
+> `supabase/migrations` is a production database action. The installed Supabase GitHub App
+> reports a check named **Supabase Preview**, but it applied migration 061 to the linked
+> production database and wrote migration history before GitHub unit tests finished.
+> `.github/workflows/supabase-deploy.yml` and `.github/workflows/pages.yml` remain manual
+> for Edge Functions and Pages; that does not stop database auto-apply. Freeze and test a
+> migration before it reaches main, use a non-production branch/PR, or disable production
+> auto-apply. Then read back database state, deploy functions, and publish Pages. See
+> [`CI-CD-SETUP.md`](../CI-CD-SETUP.md).
 
-Release-package status: **Implemented and tested locally; not pushed, applied to the
-linked database, deployed, configured, activated, or verified live unless separately
-evidenced.** The exact 047–057 order, frozen local hashes, prerequisite warning, test
+Release-package status: **feature-specific; use the newest exact release manifest and
+production readback rather than this historical default.** The exact 047–057 order,
+frozen local hashes, prerequisite warning, test
 evidence, and owner gates are in
 [`RELEASE-MANIFEST-2026-08-22.md`](../MyPersonas.Online_v0/RELEASE-MANIFEST-2026-08-22.md).
 The timestamped directory is not a complete fresh-install chain; prove all required
-predecessors in the target before using a linked push.
+predecessors before any main push that can invoke the GitHub App.
 
 Follow-on migration `20260823000000_persona_view_mode.sql` (canonical 058) is separate
 from the frozen 047–057 package. It must be applied and security-tested after 057 and

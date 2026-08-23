@@ -6,8 +6,9 @@ Updated 2026-08-23. This is the minimum takeover contract for programmers, agent
 
 - MyPersonas currently supports email/password, magic-link, and Google social/federated sign-in.
 - Google sign-in is not enterprise SSO and does not create one session across OpenAI, Anthropic, cloud consoles, payment systems, or social providers.
-- TOTP enrollment, the post-login challenge, private-data hold at AAL1, and the current
-  owner's AAL2 completion are verified in production. Recovery policy, factor-loss
+- Enrollment alone is not MFA enforcement. The app's TOTP post-login challenge,
+  private-data hold at AAL1, and the current owner's AAL2 completion are now verified in
+  production. Recovery policy, factor-loss
   exercise, unrelated-account coverage, and real-phone proof remain open.
 - Supabase SAML SSO and several providers' organization SSO features may require paid plans. Trial status must never be documented as full SSO.
 
@@ -35,6 +36,11 @@ configuration. Re-read it before relying on it because provider settings can dri
 - Security Advisor reported zero errors and 216 warnings. Migration 061 is the narrow
   reviewed fix for proven ACL/search-path/waitlist findings. It intentionally does not
   move provider-owned `pg_net`, weaken public-profile projections, or claim CAPTCHA/WAF.
+- The installed Supabase GitHub App's check is labeled **Supabase Preview**, but a main
+  push containing migration 061 applied it to production and wrote migration history
+  before GitHub unit tests finished. Treat every main push with a new timestamped
+  migration as a production database action. Stage database work on a non-production
+  branch or disable production auto-apply; never rely on the check name or CI ordering.
 
 ## Required AAL2 contract
 

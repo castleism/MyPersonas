@@ -1,7 +1,12 @@
 # MyPersonas Security Advisor hardening manifest — migration 061
 
-Status: **reviewed release candidate; not yet applied to production at this source
-freeze.** This is a forward-only, transactional hardening release. It does not configure
+Status: **automatically applied to the linked production database by the installed
+Supabase GitHub App after main commit
+`098937d4cd19748793cf6569cf6088c886856db2`.** The Supabase check run
+`97193164188` completed successfully in 19 seconds and production migration history now
+contains version `20260823030000`, name `security_advisor_safe_hardening`, with 30 parsed
+statements. No agent manually ran production DDL. This is a forward-only, transactional
+hardening release. It does not configure
 CAPTCHA, SMTP, WAF, log drains, payment systems, SSO, or external providers.
 
 ## Exact release artifacts
@@ -55,18 +60,31 @@ same-origin Edge/Worker boundary with CAPTCHA and request-rate enforcement.
 - Impacted/parity suite: 38/38 passed.
 - Disposable PostgreSQL 16: apply, reapply, role-switched ACL/runtime assertions, and a
   bounded anonymous waitlist insert passed.
+- Production postflight found every expected function, both trigger paths pinned to
+  `pg_catalog`, no unintended browser or database-PUBLIC execution, authenticated-only
+  research RPCs, the intentional RLS grants intact, zero waitlist rows/invalid rows, the
+  bounded waitlist policy, and no future postgres-owned browser function default.
 - The complete repository suite must pass again after migration 062 finishes before a
   combined source freeze.
 
-## Approved apply and readback sequence
+## Automatic-deployment finding
+
+The GitHub check named **Supabase Preview** is attached to main pushes and applied the new
+production migration before the GitHub unit-test job finished. Its name did not make that
+production mutation obvious. A main push containing a new timestamped migration is
+therefore a production database action. Do not commit or push a migration merely to stage
+it. Freeze and test the exact migration first, and use a pull request/branch or disable
+production auto-apply before the next high-risk database release.
+
+## Applied sequence and future readback contract
 
 1. Confirm the two artifact hashes and inspect live function signatures, ACLs, extension
    location, default ACLs, waitlist columns/policies, and invalid-row count.
 2. Preserve a pre-apply catalog result and current waitlist contract. Stop if any assumed
    function is absent or overloaded differently, if invalid waitlist rows exist, or if
    `pg_net` facts changed.
-3. Apply the exact committed 061 SQL as one transaction. Do not insert Supabase migration
-   history rows by hand.
+3. The installed GitHub App applied the exact committed 061 timestamped migration as one
+   transaction and wrote migration history. No history row was inserted by hand.
 4. Read back both search paths; trigger/RPC/PUBLIC/anon/authenticated grants; postgres
    default function ACLs; waitlist policy, constraint, and column privileges.
 5. Re-run Security Advisor. Expected focused reduction is eleven warnings. The ten

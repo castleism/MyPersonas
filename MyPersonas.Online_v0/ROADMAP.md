@@ -381,6 +381,14 @@ larger product phase remains.
       RLS helper that already returns false for anon (revoking risks RLS breakage);
       can_request is an unreferenced core-schema helper needing a usage trace before
       any grant change; the other three power public pages. Documented in 029.
+- [x] Security Advisor forward hardening 061 (2026-08-23): the installed Supabase GitHub
+      App automatically applied the committed migration to production. Postflight verifies
+      pinned trigger paths, removed accidental browser/PUBLIC function execution,
+      authenticated-only owner research RPCs, preserved public RLS/projection contracts,
+      fail-closed future postgres function defaults, and a two-column bounded waitlist.
+      `pg_net` remains in `public` because provider version 0.20.3 is non-relocatable.
+      CAPTCHA/WAF and same-origin waitlist intake remain open. Main-push auto-apply is now
+      a documented release gate because it ran before GitHub unit tests completed.
 
 ## Persona / product direction (2026-08-10)
 
