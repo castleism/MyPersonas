@@ -1,13 +1,40 @@
 # Security and access runbook
 
-Updated 2026-08-14. This is the minimum takeover contract for programmers, agents, and account operators.
+Updated 2026-08-23. This is the minimum takeover contract for programmers, agents, and account operators.
 
 ## Identity and authentication truth
 
 - MyPersonas currently supports email/password, magic-link, and Google social/federated sign-in.
 - Google sign-in is not enterprise SSO and does not create one session across OpenAI, Anthropic, cloud consoles, payment systems, or social providers.
-- TOTP can be enrolled, but enrollment alone is not MFA enforcement. The current app does not challenge an enrolled factor after login or require AAL2 for sensitive operations.
+- TOTP enrollment, the post-login challenge, private-data hold at AAL1, and the current
+  owner's AAL2 completion are verified in production. Recovery policy, factor-loss
+  exercise, unrelated-account coverage, and real-phone proof remain open.
 - Supabase SAML SSO and several providers' organization SSO features may require paid plans. Trial status must never be documented as full SSO.
+
+## Production Auth and abuse-control checkpoint — 2026-08-23
+
+Read-only dashboard and catalog review plus the current-owner sign-in established this
+configuration. Re-read it before relying on it because provider settings can drift.
+
+- TOTP is enabled with at most ten factors. Enhanced MFA limits AAL1 sessions to 15
+  minutes. Email and Google are enabled; SAML and the other reviewed providers are off.
+- New signups and email confirmation are on. Anonymous sign-in and manual identity
+  linking are off. Leaked-password protection is on; CAPTCHA is off.
+- Custom SMTP is off. The built-in email rate is two per hour and is not a production
+  sender. SMTP delivery, bounce handling, and security-email delivery remain unproved.
+- Access tokens last 3,600 seconds. Refresh-token replay detection is on with a ten-second
+  reuse interval. Single-session enforcement, maximum session lifetime, and inactivity
+  timeout are off pending an owner recovery/session policy.
+- Sign-up/sign-in and token-verification limits are 30 per five minutes per IP; refresh is
+  150 per five minutes per IP. SMS is 30 per hour. IP forwarding is off.
+- Database-backed Auth audit retention was enabled during this review. It has no backfill;
+  zero rows immediately after enablement is not evidence that future events are missing.
+- Site URL is `https://mypersonas.online`. The redirect list still includes development
+  localhost entries and a literal, nonfunctional `192.168.x.x` placeholder. Remove a
+  development redirect only after the desktop/local callback inventory is complete.
+- Security Advisor reported zero errors and 216 warnings. Migration 061 is the narrow
+  reviewed fix for proven ACL/search-path/waitlist findings. It intentionally does not
+  move provider-owned `pg_net`, weaken public-profile projections, or claim CAPTCHA/WAF.
 
 ## Required AAL2 contract
 
