@@ -440,7 +440,9 @@ serve(async (req: Request) => {
   const authorization = req.headers.get("Authorization") || "";
   const extension = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
   const intakeForm = new FormData();
-  intakeForm.append("file", new File([outputBytes], `generated-${target}.${extension}`, { type: mime }));
+  const outputArrayBuffer = new ArrayBuffer(outputBytes.byteLength);
+  new Uint8Array(outputArrayBuffer).set(outputBytes);
+  intakeForm.append("file", new File([outputArrayBuffer], `generated-${target}.${extension}`, { type: mime }));
   intakeForm.append("personaId", personaId);
   intakeForm.append("aiUse", "generated");
   intakeForm.append("origin", "site_generated");
