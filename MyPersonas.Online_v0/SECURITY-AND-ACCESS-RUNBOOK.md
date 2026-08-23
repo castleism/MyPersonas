@@ -33,9 +33,10 @@ configuration. Re-read it before relying on it because provider settings can dri
 - Site URL is `https://mypersonas.online`. The redirect list still includes development
   localhost entries and a literal, nonfunctional `192.168.x.x` placeholder. Remove a
   development redirect only after the desktop/local callback inventory is complete.
-- Security Advisor reported zero errors and 216 warnings. Migration 061 is the narrow
-  reviewed fix for proven ACL/search-path/waitlist findings. It intentionally does not
-  move provider-owned `pg_net`, weaken public-profile projections, or claim CAPTCHA/WAF.
+- Security Advisor baseline was zero errors and 216 warnings. After migration 061 and
+  refresh it reports zero errors and 199 warnings. The migration is the narrow reviewed
+  fix for proven ACL/search-path/waitlist findings. It intentionally does not move
+  provider-owned `pg_net`, weaken public-profile projections, or claim CAPTCHA/WAF.
 - The installed Supabase GitHub App's check is labeled **Supabase Preview**, but a main
   push containing migration 061 applied it to production and wrote migration history
   before GitHub unit tests finished. Treat every main push with a new timestamped

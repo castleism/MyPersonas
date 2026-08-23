@@ -385,6 +385,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
         <button onclick="siteGo('review')">Publication review</button>
         <button onclick="siteGo('persona-settings')">Persona settings</button>
         <button onclick="siteGo('business-settings')">Business profiles</button>
+        <button onclick="siteGo('legacy-media')">Legacy media cleanup</button>
         <button onclick="siteGo('agent-board')">Agent board</button>
         <button onclick="siteGo('platform-queue')">Admin / technician queue</button>
         <button onclick="closeSiteMenu();go('edit/new')">+ New persona</button>
@@ -419,6 +420,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
       <button type="button" onclick="ownerAppMobileChat()"><span>💬</span><b>Persona chat</b><small>Talk with the selected persona</small></button>
       <button type="button" onclick="ownerAppMobileHQ()"><span>✦</span><b>HQ Assistant</b><small>Coordinate the full roster</small></button>
       <button type="button" onclick="ownerAppMobileAccount()"><span>⚙</span><b>Account</b><small>Models, portals, and settings</small></button>
+      <button type="button" onclick="ownerAppMobileGo('legacy-media')"><span>▣</span><b>Media cleanup</b><small>Review legacy files without exposing storage paths</small></button>
       <button type="button" onclick="ownerAppMobileReport()"><span>🐞</span><b>Report a problem</b><small>Send the current page context</small></button>
     </div>
   </section>
@@ -503,7 +505,8 @@ const PROVIDER_HOME={
 };
 const MANUAL_STAGE_PROVIDERS=new Set(["onlyfans","signal","rumble","steam","psn","xbox","nintendo","epic","legalzoom","wix","fiverr","amazon","etsy","yelp","trustpilot","website","email","other"]);
 let sb=null,session=null,myPersonas=[],myBlocks=[],pendingIn=[],myBackends=[],myTasks=[],myProfile=null,myDrafts=[],myAccounts=[],myAccountConnections=[],myAccountPersonaLinks=[],myPersonaBackups=[];
-let myBackendCredentialIds=new Set();
+let myBackendCredentialIds=new Set(),backendVerifiedThisSession=new Set();
+let legacyMediaCleanup={owner:"",summary:null,items:[],nextCursor:null,loading:false,error:""},legacyMediaPreviewUrl="";
 let myAgentSettings=null,myAgentBindings=[],myAgentDestinations=[],myContentPlans=[],myAgentActions=[],myAgentActionTotal=0,agentActionLoading=false,myFanSessions=[],myFanMessages=[],myChatWorkspaces=[];
 let accountLedgerReady=true,accountConnectionsReady=true,accountPersonaLinksReady=true,personaBackupsReady=true,ledgerRowSeq=0,ledgerBatchSaving=false;
 let ledgerOpenProvider="",ledgerSelectedAccounts=new Map();
@@ -587,15 +590,34 @@ function parsedHttpUrl(raw){
   try{const u=new URL(String(raw||"").trim());if(!["http:","https:"].includes(u.protocol)||u.username||u.password)return null;return u}catch(e){return null}
 }
 function safeHttpUrl(raw){const u=parsedHttpUrl(raw);return u?u.href:""}
+const PUBLIC_MEDIA_V1=/^https:\/\/media[.]mypersonas[.]online\/persona\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+function decodedMediaReference(raw){const supplied=String(raw||"").trim();let u;try{u=new URL(supplied)}catch(e){return null}let text=(supplied+" "+u.pathname+" "+u.search).toLowerCase();for(let i=0;i<2;i++){try{text=decodeURIComponent(text)}catch(e){break}}return{url:u,text:text.replace(/\\/g,"/")}}
+function isFirstPartyPersonaMediaReference(raw){const parsed=decodedMediaReference(raw);return !!parsed&&parsed.url.hostname.toLowerCase()==="nwsqyuucwzihruszocge.supabase.co"&&parsed.text.includes("/storage/v1/")}
+function isPrivateMediaDeliveryReference(raw){const parsed=decodedMediaReference(raw);if(!parsed)return false;const host=parsed.url.hostname.toLowerCase();return host==="media.mypersonas.online"||host==="nwsqyuucwzihruszocge.supabase.co"&&(parsed.text.includes("/functions/v1/public-media/")||parsed.text.includes("/functions/v1/approved-media/"))}
+function safePublicMediaUrl(raw){
+  const supplied=String(raw||"").trim(),url=safeHttpUrl(supplied);if(!url)return"";
+  if(PUBLIC_MEDIA_V1.test(supplied)&&url===supplied)return supplied;
+  // Grandfathered external HTTPS/site assets remain displayable. Any raw
+  // first-party Storage path can contain a stable owner id and fails closed on
+  // public surfaces until service backfill and owner re-review replace it.
+  return isFirstPartyPersonaMediaReference(supplied)||isPrivateMediaDeliveryReference(supplied)?"":url;
+}
+function safeExternalNavigationUrl(raw){const supplied=String(raw||"").trim(),parsed=parsedHttpUrl(supplied);if(!parsed||parsed.protocol!=="https:"||isFirstPartyPersonaMediaReference(supplied)||isPrivateMediaDeliveryReference(supplied))return"";return parsed.href}
+function safeExternalMediaEmbedUrl(raw){return safeExternalNavigationUrl(raw)}
+function sanitizePublicPersonaMedia(persona){if(!persona||typeof persona!=="object")return persona;return{...persona,avatar_url:safePublicMediaUrl(persona.avatar_url),banner_url:safePublicMediaUrl(persona.banner_url),bg_url:safePublicMediaUrl(persona.bg_url),feed_img_url:safePublicMediaUrl(persona.feed_img_url),music_url:safeExternalMediaEmbedUrl(persona.music_url),live_url:safeExternalMediaEmbedUrl(persona.live_url)}}
+function sanitizePublicPostMedia(post){if(!post||typeof post!=="object")return post;return{...post,media_url:safePublicMediaUrl(post.media_url),personas:sanitizePublicPersonaMedia(post.personas)}}
 function fixedSessionClient(accessToken){return supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY,{global:{headers:{Authorization:"Bearer "+accessToken}},auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})}
 function isOpenRouterBackend(b){const provider=String(b?.provider||"").trim().toLowerCase();if(provider.includes("openrouter"))return true;const u=parsedHttpUrl(b?.base_url),host=u?.hostname.toLowerCase().replace(/\.$/,"")||"";return !!u&&(host==="openrouter.ai"||host.endsWith(".openrouter.ai"))}
-function safeBgStyle(raw){const u=safeHttpUrl(raw);return u?esc(`background-image:url("${u}")`):""}
+function safeBgStyle(raw){const u=safePublicMediaUrl(raw);return u?esc(`background-image:url("${u}")`):""}
 function safeTheme(raw){const c=String(raw||"").trim();return /^#[0-9a-f]{6}$/i.test(c)?c:"#ff4fa3"}
-function personaLookPreviewHtml(url,label,personaId=""){
-  const safe=safeHttpUrl(url);if(!safe)return'<span class="muted">no image</span>';
+function personaProfileMediaAssetId(persona,key){const field={avatar_url:"avatar_media_asset_id",banner_url:"banner_media_asset_id",bg_url:"bg_media_asset_id",feed_img_url:"feed_media_asset_id"}[key];return field?String(persona?.[field]||""):""}
+function personaLookPreviewHtml(url,label,personaId="",assetId=""){
+  const safe=safePublicMediaUrl(url),source=safeHttpUrl(url);if(!source&&!PUBLIC_PERSONA_UUID.test(String(assetId||"")))return'<span class="muted">no image</span>';
   const ownerId=myPersonas.some(persona=>persona.id===personaId)?personaId:"";
   const editorAsset=!!session;
-  return `<img src="${esc(safe)}" alt="${esc(label)} — full uncropped preview" loading="lazy" onerror="personaLookPreviewFailed(this)"${ownerId?` data-owner-persona-id="${esc(ownerId)}"`:""}${editorAsset?' data-persona-editor-asset="true"':""}${ownerId||editorAsset?personaAssetAttributes(safe,label,true,"image"):""}>`;
+  const attributes=ownerId||editorAsset?personaAssetAttributes(source,label,true,"image",assetId):"";
+  const ownerLegacy=!!(ownerId||editorAsset)&&!assetId&&isFirstPartyPersonaMediaReference(source)?source:"",display=safe||ownerLegacy;
+  return `<img${display?` src="${esc(display)}"`:""} alt="${esc(label)} — full uncropped preview" loading="lazy" onerror="hydrateOwnerMediaElement(this).catch(()=>personaLookPreviewFailed(this))"${ownerId?` data-owner-persona-id="${esc(ownerId)}"`:""}${editorAsset?' data-persona-editor-asset="true"':""}${attributes}>`;
 }
 function personaLookPreviewFailed(image){
   if(!image?.closest?.(".lookprev"))return;const status=document.createElement("span");status.className="muted lookprev-error";status.setAttribute("role","status");status.textContent="Preview unavailable — choose another file or clear this field.";image.replaceWith(status);
@@ -614,14 +636,15 @@ function normalizePersonaPageLayout(raw){
 function personaLayoutCard(layout,id){return normalizePageCard(normalizePersonaPageLayout(layout).cards[id])}
 function personaLayoutItemClass(layout,id,extra=""){const card=personaLayoutCard(layout,id);return `persona-layout-item span-${card.span} shape-${card.shape} tone-${card.tone}${extra?" "+extra:""}`}
 function personaLayoutItemStyle(layout,id){const rank=normalizePersonaPageLayout(layout).order.indexOf(id);return `order:${rank<0?PAGE_LAYOUT_MODULES.length:rank};--pc:${safeTheme(pageState?.p?.theme)}`}
-function personaLayoutWidgetHtml(widget,index){const card=normalizePageCard(widget),url=widget.kind==="link"?safeHttpUrl(widget.url):"";return `<section class="persona-layout-item persona-layout-widget span-${card.span} shape-${card.shape} tone-${card.tone}" style="order:${PAGE_LAYOUT_MODULES.length+index};--pc:${safeTheme(pageState?.p?.theme)}"><div class="card"><h3>${ico(widget.kind==="link"?"link":"spark")}${esc(widget.title||"Custom box")}</h3>${widget.body?`<div class="widgetbody">${esc(widget.body)}</div>`:""}${url?`<a class="btn sec sm widgetlink" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(widget.label||"Open link")} ↗</a>`:""}</div></section>`}
+function personaLayoutWidgetHtml(widget,index){const card=normalizePageCard(widget),url=widget.kind==="link"?safeExternalNavigationUrl(widget.url):"";return `<section class="persona-layout-item persona-layout-widget span-${card.span} shape-${card.shape} tone-${card.tone}" style="order:${PAGE_LAYOUT_MODULES.length+index};--pc:${safeTheme(pageState?.p?.theme)}"><div class="card"><h3>${ico(widget.kind==="link"?"link":"spark")}${esc(widget.title||"Custom box")}</h3>${widget.body?`<div class="widgetbody">${esc(widget.body)}</div>`:""}${url?`<a class="btn sec sm widgetlink" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(widget.label||"Open link")} ↗</a>`:""}</div></section>`}
 function pageLayoutLearningCode(layout,language="html"){
   const normalized=normalizePersonaPageLayout(layout),html=normalized.order.map(id=>`<section class="profile-card ${normalizePageCard(normalized.cards[id]).span}">\n  <!-- ${PAGE_LAYOUT_LABELS[id]} component -->\n</section>`).concat(normalized.widgets.map(widget=>`<section class="profile-card ${widget.span}">\n  <h2>${String(widget.title||"Custom box").replace(/[<>]/g,"")}</h2>\n  <p>${String(widget.body||"").replace(/[<>]/g,"")}</p>${widget.kind==="link"?`\n  <a href="${widget.url}">${String(widget.label||"Open link").replace(/[<>]/g,"")}</a>`:""}\n</section>`)).join("\n\n"),css=`.profile-grid {\n  display: grid;\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 1rem;\n}\n\n.profile-card.full { grid-column: 1 / -1; }\n.profile-card { border-radius: 1rem; }\n\n@media (max-width: 760px) {\n  .profile-grid { grid-template-columns: 1fr; }\n}`;
   return language==="css"?css:language==="json"?JSON.stringify(normalized,null,2):html;
 }
 function explainPageCodeSelection(text){const value=String(text||"").trim();if(!value)return"Highlight an HTML element, CSS property, or JSON field to get a local explanation without using an AI model.";if(/grid-template-columns/i.test(value))return"grid-template-columns defines the number and width of grid columns. The mobile media query changes this to one column.";if(/grid-column/i.test(value))return"grid-column: 1 / -1 makes a card stretch from the first grid line to the last.";if(/border-radius/i.test(value))return"border-radius rounds a box's corners. Larger values make the card feel softer.";if(/@media/i.test(value))return"A media query applies styles only when its condition is true; here it keeps the page readable on narrow screens.";if(/<section|section>/i.test(value))return"A section is semantic HTML for a distinct part of a page. It helps browsers, assistive technology, and search engines understand the structure.";if(/<h[1-6]|h[1-6]>/i.test(value))return"Heading elements create the page outline. Keep their levels in a logical order rather than choosing one only for size.";if(/<a\b|href/i.test(value))return"An anchor creates a link. MyPersonas requires HTTPS for custom link widgets and opens external links without giving them control of this page.";if(/"order"|"cards"|"widgets"|"span"|"shape"|"tone"/.test(value))return"This is part of MyPersonas' declarative layout recipe. The server accepts only documented fields and values; it never executes the JSON as code.";return"This is display code generated from the visual layout. It is shown for learning and copying, but public pages render the validated layout recipe instead of executing pasted code."}
 function personaAssetType(url,hint=""){const value=String(hint||"").toLowerCase(),path=parsedHttpUrl(url)?.pathname.toLowerCase()||"";if(value==="video"||/\.(mp4|webm|mov)$/.test(path))return"video";if(value==="audio"||/\.(mp3|ogg|wav|m4a)$/.test(path))return"audio";if(value==="image"||/\.(png|jpe?g|webp|gif|svg|avif)$/.test(path))return"image";return"file"}
-function personaAssetAttributes(url,label,isOwner,kind="image"){const safe=safeHttpUrl(url);return isOwner&&safe?` role="button" tabindex="0" data-persona-asset-url="${esc(safe)}" data-persona-asset-label="${esc(label||"Persona asset")}" data-persona-asset-kind="${esc(kind)}" onclick="openPersonaAssetPreview(this,event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPersonaAssetPreview(this,event)}"`:""}
+function personaAssetAttributes(url,label,isOwner,kind="image",assetId=""){const safe=safeHttpUrl(url),id=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(String(assetId||"").toLowerCase())?String(assetId).toLowerCase():"";return isOwner&&(safe||id)?` role="button" tabindex="0"${safe?` data-persona-asset-url="${esc(safe)}"`:""}${id?` data-persona-asset-id="${esc(id)}"`:""} data-persona-asset-label="${esc(label||"Persona asset")}" data-persona-asset-kind="${esc(kind)}" onclick="openPersonaAssetPreview(this,event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPersonaAssetPreview(this,event)}"`:""}
+function personaViewerMediaAttributes(url,isOwner=false){const opaque=safePublicMediaUrl(url);return !isOwner&&session&&PUBLIC_MEDIA_V1.test(opaque)?` data-persona-asset-url="${esc(opaque)}" data-persona-viewer-media="true"`:""}
 const PERSONA_ASSET_MIME_SPECS=Object.freeze({
   "image/png":Object.freeze({ext:"png",magic:"png"}),
   "image/jpeg":Object.freeze({ext:"jpg",magic:"jpeg"}),
@@ -655,12 +678,27 @@ function personaAssetMagicMatches(bytes,mime){
   return false;
 }
 function safePersonaAssetFilename(_url,label,mime=""){const base=String(label||"persona-asset").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60)||"persona-asset",spec=personaAssetMimeSpec(mime);return `${base}${spec?"."+spec.ext:""}`}
+const ownerMediaPreviewCache=new Map(),ownerMediaBlobUrls=new Set(),ownerMediaPreviewRequests=new Set();let ownerMediaAuthGeneration=0;
+function ownerMediaAuthStillCurrent(uid,generation){return generation===ownerMediaAuthGeneration&&(session?.user?.id||null)===uid}
+function clearOwnerMediaPreviewCache(){
+  ownerMediaAuthGeneration++;for(const request of ownerMediaPreviewRequests)request.abort();ownerMediaPreviewRequests.clear();
+  const blobUrls=[...ownerMediaBlobUrls];for(const element of document.querySelectorAll("img,video,audio,[data-owner-media-hydrated='true']")){const source=element.getAttribute?.("src")||"",background=element.style?.backgroundImage||"";if(blobUrls.some(url=>source===url||background.includes(url))){element.removeAttribute?.("src");if(element.style)element.style.backgroundImage="";element.removeAttribute?.("data-owner-media-hydrated");if((element.tagName==="VIDEO"||element.tagName==="AUDIO")&&typeof element.load==="function")element.load()}}
+  document.getElementById("personaAssetPreview")?.remove();for(const entry of ownerMediaPreviewCache.values())URL.revokeObjectURL(entry.url);ownerMediaPreviewCache.clear();ownerMediaBlobUrls.clear();
+}
+function cacheOwnerMediaBlob(key,blob){const existing=ownerMediaPreviewCache.get(key);if(existing){URL.revokeObjectURL(existing.url);ownerMediaBlobUrls.delete(existing.url)}const url=URL.createObjectURL(blob);ownerMediaPreviewCache.set(key,{url,blob});ownerMediaBlobUrls.add(url);while(ownerMediaPreviewCache.size>32){const oldest=ownerMediaPreviewCache.keys().next().value,entry=ownerMediaPreviewCache.get(oldest);if(entry){URL.revokeObjectURL(entry.url);ownerMediaBlobUrls.delete(entry.url)}ownerMediaPreviewCache.delete(oldest)}return{url,blob}}
+async function renewOwnerMediaPreview(sourceUrl="",assetId=""){
+  const id=PUBLIC_PERSONA_UUID.test(String(assetId||""))?String(assetId).toLowerCase():"",publicUrl=safePublicMediaUrl(sourceUrl),opaque=PUBLIC_MEDIA_V1.test(publicUrl)?publicUrl:"",selector=id?`asset:${id}`:opaque?`public:${opaque}`:"";if(!selector)throw new Error("This first-party asset must be re-ingested before private preview is available");
+  const generation=ownerMediaAuthGeneration,current=await sb.auth.getSession(),sess=current.data?.session;if(!sess||!ownerMediaAuthStillCurrent(sess.user.id,generation))throw new Error("Sign in again to preview this asset");const uid=sess.user.id,key=`${uid}:${selector}`,cached=ownerMediaPreviewCache.get(key);if(cached)return cached;const controller=new AbortController();ownerMediaPreviewRequests.add(controller);try{const response=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/owner-media-preview",{method:"POST",headers:{"Authorization":"Bearer "+sess.access_token,"Content-Type":"application/json"},body:JSON.stringify(id?{assetId:id}:{publicUrl:opaque}),credentials:"omit",referrerPolicy:"no-referrer",cache:"no-store",signal:controller.signal});if(!ownerMediaAuthStillCurrent(uid,generation))throw new DOMException("Account changed","AbortError");if(!response.ok)throw new Error(response.status===404?"This asset is not available to the selected persona":"The private preview could not be renewed");const blob=await boundedAssetBlob(response,15*1024*1024);if(!ownerMediaAuthStillCurrent(uid,generation))throw new DOMException("Account changed","AbortError");return cacheOwnerMediaBlob(key,blob)}finally{ownerMediaPreviewRequests.delete(controller)}
+}
+async function hydrateOwnerMediaElement(element){if(!element||element.dataset.ownerMediaHydrated==="true")return;const uid=session?.user?.id||null,generation=ownerMediaAuthGeneration,source=element.dataset.personaAssetUrl||"",assetId=element.dataset.personaAssetId||"";if(!uid||(!assetId&&!PUBLIC_MEDIA_V1.test(safePublicMediaUrl(source))))return;const preview=await renewOwnerMediaPreview(source,assetId);if(!element.isConnected||!ownerMediaAuthStillCurrent(uid,generation)||!ownerMediaBlobUrls.has(preview.url))return;if(element.tagName==="IMG"||element.tagName==="VIDEO"||element.tagName==="AUDIO")element.src=preview.url;else element.style.backgroundImage=`url(${JSON.stringify(preview.url)})`;element.dataset.ownerMediaHydrated="true"}
+async function hydrateOwnerMediaPreviews(root=document){const elements=[...root.querySelectorAll("[data-persona-asset-id],[data-persona-asset-url]")].filter(element=>element.dataset.personaAssetId||PUBLIC_MEDIA_V1.test(safePublicMediaUrl(element.dataset.personaAssetUrl||"")));await Promise.allSettled(elements.map(hydrateOwnerMediaElement))}
 function closePersonaAssetPreview(){if(document.getElementById("personaAssetPreview"))releaseOwnerModal("personaAssetPreview")}
 function personaAssetPreviewMediaFailed(media){if(!media)return;const status=document.createElement("p");status.setAttribute("role","status");status.textContent="Full preview unavailable. You can still open the original URL or try saving a validated copy.";media.replaceWith(status)}
-function openPersonaAssetPreview(source,event){
-  if(event){event.preventDefault();event.stopPropagation()}const reviewPersonaId=source?.dataset?.ownerPersonaId||"",ownsReviewPersona=!!session&&!!reviewPersonaId&&myPersonas.some(persona=>persona.id===reviewPersonaId),ownsEditorAsset=!!session&&source?.dataset?.personaEditorAsset==="true"&&!!source?.closest?.(".lookprev"),ownsActingPage=!!session&&typeof ownerAppPersonaModeActor==="function"&&ownerAppPersonaModeActor()?.id===pageState?.p?.id;if(!pageState?.isOwner&&!ownsReviewPersona&&!ownsEditorAsset&&!ownsActingPage)return;const url=safeHttpUrl(source?.dataset?.personaAssetUrl||""),label=String(source?.dataset?.personaAssetLabel||"Persona asset").slice(0,120),kind=personaAssetType(url,source?.dataset?.personaAssetKind);if(!url)return;
-  closePersonaAssetPreview();const overlay=document.createElement("div");overlay.className="asset-preview-overlay";overlay.id="personaAssetPreview";overlay.dataset.assetUrl=url;overlay.dataset.assetLabel=label;const mark=MyPersonasAiProvenance.publicMarkerHtml(url,kind),media=kind==="video"?`<video src="${esc(url)}" controls playsinline preload="metadata" onerror="personaAssetPreviewMediaFailed(this)"></video>`:kind==="audio"?`<audio src="${esc(url)}" controls preload="metadata" onerror="personaAssetPreviewMediaFailed(this)"></audio>`:kind==="image"?`<img src="${esc(url)}" alt="${esc(label)}" onerror="personaAssetPreviewMediaFailed(this)">`:'<p>This file type is available to save or open, but is not embedded in the page.</p>';
-  overlay.innerHTML=`<div class="asset-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="personaAssetTitle" tabindex="-1" onkeydown="ownerModalKeydown(event,'asset')"><div class="asset-preview-head"><b id="personaAssetTitle">${esc(label)}</b><button class="btn sec sm" type="button" onclick="closePersonaAssetPreview()" aria-label="Close full preview">Close</button></div><div class="asset-preview-stage${mark?" has-ai-provenance":""}">${media}${mark}</div><div class="asset-preview-actions"><span class="muted" style="margin-right:auto;color:#b9c6d8">Saving downloads the canonical public derivative. AI provenance markings stay in static image bytes.</span><a class="btn sec sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open public file</a><button class="btn sm" type="button" onclick="downloadPersonaAssetCopy(this)">Save a copy</button></div></div>`;overlay.addEventListener("click",e=>{if(e.target===overlay)closePersonaAssetPreview()});document.body.appendChild(overlay);activateOwnerModal(overlay);
+async function openPersonaAssetPreview(source,event){
+  if(event){event.preventDefault();event.stopPropagation()}const reviewPersonaId=source?.dataset?.ownerPersonaId||"",ownsReviewPersona=!!session&&!!reviewPersonaId&&myPersonas.some(persona=>persona.id===reviewPersonaId),ownsEditorAsset=!!session&&source?.dataset?.personaEditorAsset==="true"&&!!source?.closest?.(".lookprev"),ownsActingPage=!!session&&typeof ownerAppPersonaModeActor==="function"&&ownerAppPersonaModeActor()?.id===pageState?.p?.id;if(!pageState?.isOwner&&!ownsReviewPersona&&!ownsEditorAsset&&!ownsActingPage)return;const sourceUrl=safeHttpUrl(source?.dataset?.personaAssetUrl||""),assetId=String(source?.dataset?.personaAssetId||""),label=String(source?.dataset?.personaAssetLabel||"Persona asset").slice(0,120),kind=personaAssetType(sourceUrl,source?.dataset?.personaAssetKind);if(!sourceUrl&&!assetId)return;
+  let url=sourceUrl,protectedReference=!!assetId||PUBLIC_MEDIA_V1.test(safePublicMediaUrl(sourceUrl))||isFirstPartyPersonaMediaReference(sourceUrl);try{if(protectedReference&&(assetId||PUBLIC_MEDIA_V1.test(safePublicMediaUrl(sourceUrl))))url=(await renewOwnerMediaPreview(sourceUrl,assetId)).url;else if(protectedReference&&!source?.closest?.(".lookprev"))throw new Error("This legacy asset is available only in the authenticated Page Look editor until it is re-ingested")}catch(error){toast(error.message||"This private preview is unavailable");return}
+  closePersonaAssetPreview();const overlay=document.createElement("div");overlay.className="asset-preview-overlay";overlay.id="personaAssetPreview";overlay.dataset.assetUrl=url;overlay.dataset.assetLabel=label;overlay.dataset.assetId=assetId;overlay.dataset.sourceUrl=sourceUrl;const mark=MyPersonasAiProvenance.publicMarkerHtml(sourceUrl,kind),media=kind==="video"?`<video src="${esc(url)}" controls playsinline preload="metadata" onerror="personaAssetPreviewMediaFailed(this)"></video>`:kind==="audio"?`<audio src="${esc(url)}" controls preload="metadata" onerror="personaAssetPreviewMediaFailed(this)"></audio>`:kind==="image"?`<img src="${esc(url)}" alt="${esc(label)}" onerror="personaAssetPreviewMediaFailed(this)">`:'<p>This file type is available to save, but is not embedded in the page.</p>';
+  overlay.innerHTML=`<div class="asset-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="personaAssetTitle" tabindex="-1" onkeydown="ownerModalKeydown(event,'asset')"><div class="asset-preview-head"><b id="personaAssetTitle">${esc(label)}</b><button class="btn sec sm" type="button" onclick="closePersonaAssetPreview()" aria-label="Close full preview">Close</button></div><div class="asset-preview-stage${mark?" has-ai-provenance":""}">${media}${mark}</div><div class="asset-preview-actions"><span class="muted" style="margin-right:auto;color:#b9c6d8">Saving downloads the exact verified derivative. AI provenance markings stay in static image bytes.</span>${!protectedReference?`<a class="btn sec sm" href="${esc(sourceUrl)}" target="_blank" rel="noopener noreferrer">Open public file</a>`:""}<button class="btn sm" type="button" onclick="downloadPersonaAssetCopy(this)">Save a copy</button></div></div>`;overlay.addEventListener("click",e=>{if(e.target===overlay)closePersonaAssetPreview()});document.body.appendChild(overlay);activateOwnerModal(overlay);
 }
 async function boundedAssetBlob(response,maxBytes=50*1024*1024){
   const stated=Number(response.headers.get("content-length")||0),type=String(response.headers.get("content-type")||"").split(";")[0].trim().toLowerCase();
@@ -673,7 +711,7 @@ async function boundedAssetBlob(response,maxBytes=50*1024*1024){
   if(!personaAssetMagicMatches(probe,type))throw new Error("This URL's bytes do not match its declared media type");
   return blob;
 }
-async function downloadPersonaAssetCopy(button){const overlay=document.getElementById("personaAssetPreview"),url=safeHttpUrl(overlay?.dataset?.assetUrl||""),label=overlay?.dataset?.assetLabel||"Persona asset";if(!url||!button)return;button.disabled=true;button.textContent="Preparing…";try{const response=await fetch(url,{credentials:"omit",referrerPolicy:"no-referrer",cache:"no-store"});if(!response.ok)throw new Error(`Asset server returned ${response.status}`);const blob=await boundedAssetBlob(response),name=safePersonaAssetFilename(url,label,blob.type);dlBlob(name,blob);toast("Asset copy downloaded")}catch(error){toast("Direct copy was blocked. Open the original and use your browser's Save as command.")}finally{button.disabled=false;button.textContent="Save a copy"}}
+async function downloadPersonaAssetCopy(button){const overlay=document.getElementById("personaAssetPreview"),url=String(overlay?.dataset?.assetUrl||""),label=overlay?.dataset?.assetLabel||"Persona asset";if((!ownerMediaBlobUrls.has(url)&&!safeHttpUrl(url))||!button)return;button.disabled=true;button.textContent="Preparing…";try{const response=await fetch(url,{credentials:"omit",referrerPolicy:"no-referrer",cache:"no-store"});if(!response.ok)throw new Error(`Asset server returned ${response.status}`);const blob=await boundedAssetBlob(response),name=safePersonaAssetFilename(overlay?.dataset?.sourceUrl||url,label,blob.type);dlBlob(name,blob);toast("Asset copy downloaded")}catch(error){toast("The verified asset copy could not be prepared. Try reopening the preview.")}finally{button.disabled=false;button.textContent="Save a copy"}}
 function go(h){if(typeof ownerAppToggleMore==="function")ownerAppToggleMore(false,false);location.hash="#/"+h}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied ✓"))}
 function pageUrl(handle){return location.host+location.pathname.replace(/index\.html$/,"")+"#/p/"+handle}
@@ -689,18 +727,18 @@ function setMeta(title,desc){
 
 // ---------- embeds ----------
 function ytId(u){const m=u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/);return m?m[1]:null}
-function mediaHtml(u,handle,kind,owner=false){
+function mediaHtml(u,handle,kind,owner=false,assetId=""){
   const safe=safeHttpUrl(u);if(!safe)return "";
   const y=ytId(safe),parsed=parsedHttpUrl(safe),assetKind=/\.(mp4|webm|mov)$/i.test(parsed.pathname)?"video":/\.(mp3|ogg|wav)$/i.test(parsed.pathname)?"audio":"image",mark=MyPersonasAiProvenance.publicMarkerHtml(safe,assetKind),cls="media"+(kind==="reel"?" reel":"")+(mark?" has-ai-provenance":"");
   const guard=`oncontextmenu="return false"`;
   if(y)return `<div class="${cls}" ${guard}><iframe src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe></div>`;
   if(parsed.hostname==="open.spotify.com")return `<div class="${cls}" ${guard}><iframe src="${esc("https://open.spotify.com/embed"+parsed.pathname+parsed.search)}" style="height:152px"></iframe></div>`;
-  if(assetKind==="video")return `<div class="${cls}" ${guard}><video src="${esc(safe)}" controls controlslist="nodownload" draggable="false"></video>${mark}${owner?`<button class="asset-preview-button" type="button" data-persona-asset-url="${esc(safe)}" data-persona-asset-label="Post video" data-persona-asset-kind="video" onclick="openPersonaAssetPreview(this,event)">Full preview</button>`:""}</div>`;
-  if(assetKind==="audio")return `<div class="${cls}" ${guard}><audio src="${esc(safe)}" controls></audio>${mark}${owner?`<button class="asset-preview-button" type="button" data-persona-asset-url="${esc(safe)}" data-persona-asset-label="Post audio" data-persona-asset-kind="audio" onclick="openPersonaAssetPreview(this,event)">Full preview</button>`:""}</div>`;
-  return `<div class="${cls}" ${guard}><img class="${owner?"persona-asset ":""}${MyPersonasAiProvenance.imagePresentationClass(safe)}" src="${esc(safe)}" loading="lazy" draggable="false" alt="" ${personaAssetAttributes(safe,"Post image",owner,"image")}>${mark}</div>`;
+  if(assetKind==="video")return `<div class="${cls}" ${guard}><video src="${esc(safe)}" controls controlslist="nodownload" draggable="false" ${personaAssetAttributes(safe,"Post video",owner,"video",assetId)}${personaViewerMediaAttributes(safe,owner)}></video>${mark}</div>`;
+  if(assetKind==="audio")return `<div class="${cls}" ${guard}><audio src="${esc(safe)}" controls ${personaAssetAttributes(safe,"Post audio",owner,"audio",assetId)}${personaViewerMediaAttributes(safe,owner)}></audio>${mark}</div>`;
+  return `<div class="${cls}" ${guard}><img class="${owner?"persona-asset ":""}${MyPersonasAiProvenance.imagePresentationClass(safe)}" src="${esc(safe)}" loading="lazy" draggable="false" alt="" ${personaAssetAttributes(safe,"Post image",owner,"image",assetId)}${personaViewerMediaAttributes(safe,owner)}>${mark}</div>`;
 }
 function musicHtml(u){
-  const safe=safeHttpUrl(u),parsed=parsedHttpUrl(u);if(!safe||!parsed)return "";
+  const safe=safeExternalMediaEmbedUrl(u),parsed=parsedHttpUrl(safe);if(!safe||!parsed)return "";
   const y=ytId(safe);
   if(y)return `<iframe style="aspect-ratio:16/9" src="https://www.youtube.com/embed/${y}" allowfullscreen></iframe>`;
   if(parsed.hostname==="open.spotify.com")return `<iframe src="${esc("https://open.spotify.com/embed"+parsed.pathname+parsed.search)}" style="height:152px"></iframe>`;
@@ -709,7 +747,7 @@ function musicHtml(u){
   return `<a href="${esc(safe)}" target="_blank" rel="noopener">${esc(safe)}</a>`;
 }
 function liveHtml(u){
-  const safe=safeHttpUrl(u),parsed=parsedHttpUrl(u);if(!safe||!parsed)return "";
+  const safe=safeExternalMediaEmbedUrl(u),parsed=parsedHttpUrl(safe);if(!safe||!parsed)return "";
   let tw=(parsed.hostname==="twitch.tv"||parsed.hostname.endsWith(".twitch.tv"))&&parsed.pathname.match(/^\/([\w_]+)/);
   if(tw)return `<iframe src="https://player.twitch.tv/?channel=${tw[1]}&parent=${location.hostname}" allowfullscreen></iframe>`;
   const y=ytId(safe);
@@ -731,7 +769,7 @@ if(CONFIG.SUPABASE_URL.startsWith("PASTE")){
   handleMetaReturn();
   captureOpenRouterReturn();
   sb.auth.onAuthStateChange((ev,s)=>{
-    const previousUid=session?.user?.id||null;session=s;const uid=s&&s.user?s.user.id:null,accountChanged=previousUid!==uid;
+    const previousUid=session?.user?.id||null;session=s;const uid=s&&s.user?s.user.id:null,accountChanged=previousUid!==uid;if(accountChanged)clearOwnerMediaPreviewCache();
     if(accountChanged&&typeof agentBoardResetOwnerState==="function")agentBoardResetOwnerState(previousUid||"");
     updateAuthBtn();
     if(ev==="TOKEN_REFRESHED")return; // don't re-render (would wipe forms in progress)
@@ -921,7 +959,7 @@ async function loadFanSessionRows(owner=session?.user?.id){
 }
 let myDiscovery=[],myKnowledge=[],discoveryReady=true;const discoveryBusy=new Set();
 function resetMineState(){
-  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAccountPersonaLinks=[];myPersonaBackups=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myChatWorkspaces=[];myAgentSettings=null;myDiscovery=[];myKnowledge=[];discoveryReady=true;discoveryBusy.clear();
+  myPersonas=[];myBlocks=[];pendingIn=[];myBackends=[];myBackendCredentialIds=new Set();backendVerifiedThisSession.clear();legacyMediaCleanupReset();myTasks=[];myProfile=null;myDrafts=[];myAccounts=[];myAccountConnections=[];myAccountPersonaLinks=[];myPersonaBackups=[];myAgentBindings=[];myAgentDestinations=[];myContentPlans=[];myAgentActions=[];myAgentActionTotal=0;agentActionLoading=false;myFanSessions=[];myFanMessages=[];myChatWorkspaces=[];myAgentSettings=null;myDiscovery=[];myKnowledge=[];discoveryReady=true;discoveryBusy.clear();
   accountLedgerReady=true;accountConnectionsReady=true;accountPersonaLinksReady=true;personaBackupsReady=true;automationReady=true;agentMessagesReady=true;fanInboxReady=true;chatWorkspacesReady=true;
   updateBadge();
   if(typeof ownerAppReset==="function")ownerAppReset();
@@ -1106,6 +1144,7 @@ function renderSidebar(){
       ${governancePid?nav(view==="review",`review/${governancePid}`,"shield","Publication review"):""}
       ${governancePid?nav(view==="persona-settings",`persona-settings/${governancePid}`,"mask","Persona settings"):""}
       ${nav(view==="business-settings","business-settings","crown","Business profiles")}
+      ${nav(view==="legacy-media","legacy-media","image","Media cleanup")}
       ${nav(view==="agent-board","agent-board","chip","Agent board")}
       ${nav(view==="platform-queue","platform-queue","shield","Staff queue")}
       ${nav(view==="discovery","discovery","chip","Legacy Brain")}
@@ -1122,6 +1161,7 @@ function isHidden(personaId){return hasPersonaVisibilityRule(personaId)}
 // ---------- router ----------
 async function route(){
   if(document.getElementById("personaAssetPreview"))closePersonaAssetPreview();
+  if(document.getElementById("legacyMediaPreview"))closeLegacyMediaPreview();
   if(document.getElementById("pageBuilderOv"))closePageBuilder(false);
   setMeta("AliaSpaces — every persona, one home","A home page for every side of you. Create anonymous persona pages with feeds, albums, music, Top 8 friends and every account you live on — never linked to your identity.");
   const myEpoch=++renderEpoch;
@@ -1141,6 +1181,7 @@ async function route(){
   if(view==="review")return renderPublicationReview(arg);
   if(view==="persona-settings")return renderPersonaSettings(arg);
   if(view==="business-settings")return renderBusinessSettings(arg);
+  if(view==="legacy-media")return renderLegacyMediaCleanup();
   if(view==="agent-board")return renderAgentBoard();
   if(view==="platform-queue")return renderPlatformQueue();
   if(view==="friend-invite")return renderFriendInvite(arg);
@@ -1337,6 +1378,57 @@ async function saveSettings(){
   // on the welcome/onboarding page, collapse the card after a successful save
   if(btn){const card=btn.closest(".card");if(card&&location.hash.replace(/^#\/?/,"")==="")card.style.display="none"}
 }
+
+// ---------- owner-only legacy media inventory and exact-byte preview ----------
+function legacyMediaCleanupReset(){
+  if(legacyMediaPreviewUrl){URL.revokeObjectURL(legacyMediaPreviewUrl);legacyMediaPreviewUrl=""}
+  document.getElementById("legacyMediaPreview")?.remove();
+  legacyMediaCleanup={owner:"",summary:null,items:[],nextCursor:null,loading:false,error:""};
+}
+function legacyMediaSummaryHtml(summary){
+  if(!summary)return'<div class="autocallout warn"><b>Inventory has not been run for this account.</b><br>The scan records only opaque cleanup items. It never sends raw Storage URLs, paths, hashes, or another owner\'s existence details to the browser.</div>';
+  const value=key=>Number(summary?.[key])||0;
+  return `<div class="row"><div class="card"><b>${value("references")}</b><div class="muted">legacy references</div></div><div class="card"><b>${value("previewable")}</b><div class="muted">safe to preview</div></div><div class="card"><b>${value("blocked")}</b><div class="muted">replace or clear</div></div><div class="card"><b>${value("missing")+value("stale")}</b><div class="muted">missing or changed</div></div></div>`;
+}
+function legacyMediaItemHtml(item){
+  const canPreview=item?.canPreview===true,state=String(item?.state||"pending"),label=String(item?.personaLabel||item?.personaHandle||"Owned persona"),slot=String(item?.slot||"media").replace(/_/g," "),consumer=String(item?.consumer||"reference").replace(/_/g," "),shared=Math.max(1,Number(item?.sharedReferenceCount)||1),mime=String(item?.detectedMime||"");
+  return `<div class="t8pick"><div><b>${esc(label)}</b><span class="muted">${esc(consumer)} · ${esc(slot)}${shared>1?` · ${shared} affected references`:""}</span><span class="pill ${state==="pending"?"attention":canPreview?"connected":"attention"}">${esc(state.replace(/_/g," "))}</span>${item?.previewed?'<span class="pill connected">exact bytes previewed</span>':""}${mime?`<span class="muted">${esc(mime)}${Number(item.byteSize)>0?` · ${Math.ceil(Number(item.byteSize)/1024).toLocaleString()} KB`:""}</span>`:""}</div><span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${canPreview?`<button class="btn sm sec" data-legacy-item-id="${esc(item.itemId)}" onclick="openLegacyMediaPreview(this.dataset.legacyItemId)">Exact preview</button>`:'<span class="muted">Replace or clear in the next cleanup phase</span>'}</span></div>`;
+}
+function renderLegacyMediaCleanup(){
+  if(!session){renderSignin();return}
+  const uid=session.user.id;if(legacyMediaCleanup.owner&&legacyMediaCleanup.owner!==uid)legacyMediaCleanupReset();legacyMediaCleanup.owner=uid;
+  app.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:start;flex-wrap:wrap"><div><span class="oa-eyebrow">Owner security</span><h2 style="margin:4px 0">Legacy media cleanup</h2><p class="muted" style="max-width:780px">Privately inventory and preview old MyPersonas files before replacing owner-correlating public Storage links. Every source will require an explicit <b>none / assisted / generated / unknown</b> AI declaration before import; filenames and old <code>-sd</code> markers are never treated as proof.</p></div><button class="btn" ${legacyMediaCleanup.loading?"disabled":""} onclick="inventoryLegacyMedia()">${legacyMediaCleanup.loading?"Checking…":"Scan owned references"}</button></div>${legacyMediaCleanup.error?`<div class="autocallout stop"><b>Cleanup stopped safely</b><br>${esc(legacyMediaCleanup.error)}</div>`:""}${legacyMediaSummaryHtml(legacyMediaCleanup.summary)}<div class="autocallout" style="margin-top:12px"><b>Preview-only first release slice.</b><br>AI declaration, immutable import, transactional replacement, and clear-reference controls remain locked until their server contracts and erasure/finalizer tests pass. Previewing or downloading a copy never changes a persona or publishes anything.</div><div class="card" style="margin-top:12px"><h3>${ico("image")}Cleanup items</h3><div id="legacyMediaItems">${legacyMediaCleanup.items.map(legacyMediaItemHtml).join("")||'<p class="muted">Run the owned-reference scan to build this private queue.</p>'}</div>${legacyMediaCleanup.nextCursor?`<button class="btn sec" style="margin-top:10px" ${legacyMediaCleanup.loading?"disabled":""} onclick="loadLegacyMediaItems(true)">Load more</button>`:""}</div>`;
+}
+async function legacyMediaRequest(payload,{blob=false,stepUp=true}={}){
+  if(stepUp&&!await requireAal2ForSensitiveAction("review legacy media"))throw new Error("MFA verification is required for legacy media cleanup.");
+  const uid=session?.user?.id,generation=authLoadGeneration;if(!uid)throw new Error("Sign in again to continue.");
+  const current=await sb.auth.getSession(),token=current.data?.session?.access_token;if(!token||session?.user?.id!==uid||authLoadGeneration!==generation)throw new Error("The signed-in account changed. Nothing was loaded.");
+  const response=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/legacy-media-remediation",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit",referrerPolicy:"no-referrer",cache:"no-store"});
+  if(session?.user?.id!==uid||authLoadGeneration!==generation)throw new Error("The signed-in account changed. Nothing was loaded.");
+  if(blob){if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data?.error?.message||"This exact preview is not available.")}return boundedAssetBlob(response,15*1024*1024)}
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data?.error?.message||"Legacy media cleanup is not available.");return data;
+}
+async function inventoryLegacyMedia(){
+  if(legacyMediaCleanup.loading)return;legacyMediaCleanup.loading=true;legacyMediaCleanup.error="";renderLegacyMediaCleanup();
+  const uid=session?.user?.id;
+  try{const result=await legacyMediaRequest({action:"inventory",limit:250});if(session?.user?.id!==uid)return;legacyMediaCleanup.summary=result.summary||{};legacyMediaCleanup.items=[];legacyMediaCleanup.nextCursor=null;await loadLegacyMediaItems(false,false);toast("Private legacy-media inventory refreshed")}
+  catch(error){if(session?.user?.id===uid)legacyMediaCleanup.error=error.message||"Inventory failed safely."}
+  finally{if(session?.user?.id===uid){legacyMediaCleanup.loading=false;renderLegacyMediaCleanup()}}
+}
+async function loadLegacyMediaItems(append=true,stepUp=true){
+  if(legacyMediaCleanup.loading&&stepUp)return;const uid=session?.user?.id;if(stepUp){legacyMediaCleanup.loading=true;legacyMediaCleanup.error="";renderLegacyMediaCleanup()}
+  try{const result=await legacyMediaRequest({action:"list",after:append?legacyMediaCleanup.nextCursor:null,limit:50},{stepUp});if(session?.user?.id!==uid)return;const incoming=Array.isArray(result.items)?result.items:[];legacyMediaCleanup.items=append?legacyMediaCleanup.items.concat(incoming):incoming;legacyMediaCleanup.nextCursor=result.nextCursor||null}
+  catch(error){if(session?.user?.id===uid)legacyMediaCleanup.error=error.message||"Cleanup items could not be loaded."}
+  finally{if(stepUp&&session?.user?.id===uid){legacyMediaCleanup.loading=false;renderLegacyMediaCleanup()}}
+}
+function closeLegacyMediaPreview(){if(legacyMediaPreviewUrl){URL.revokeObjectURL(legacyMediaPreviewUrl);legacyMediaPreviewUrl=""}document.getElementById("legacyMediaPreview")?.remove()}
+function legacyMediaCopyName(item,mime){const ext={"image/png":"png","image/jpeg":"jpg","image/webp":"webp","image/gif":"gif","video/mp4":"mp4","video/webm":"webm","audio/mpeg":"mp3","audio/ogg":"ogg","audio/wav":"wav"}[mime]||"bin";return `legacy-media-${String(item?.itemId||"copy").slice(0,8)}.${ext}`}
+function saveLegacyMediaCopy(itemId){const item=legacyMediaCleanup.items.find(row=>row.itemId===itemId),entry=document.getElementById("legacyMediaPreview");if(!item||!legacyMediaPreviewUrl||!entry||!entry._legacyBlob)return;dlBlob(legacyMediaCopyName(item,entry._legacyBlob.type),entry._legacyBlob);toast("Verified legacy-media copy downloaded")}
+async function openLegacyMediaPreview(itemId){
+  const item=legacyMediaCleanup.items.find(row=>row.itemId===itemId);if(!item?.canPreview)return;const uid=session?.user?.id;closeLegacyMediaPreview();
+  try{const blob=await legacyMediaRequest({action:"preview",itemId},{blob:true});if(session?.user?.id!==uid)return;legacyMediaPreviewUrl=URL.createObjectURL(blob);const media=blob.type.startsWith("image/")?`<img src="${esc(legacyMediaPreviewUrl)}" alt="Exact legacy media preview" style="max-width:100%;max-height:68vh;object-fit:contain">`:blob.type.startsWith("video/")?`<video src="${esc(legacyMediaPreviewUrl)}" controls style="max-width:100%;max-height:68vh"></video>`:blob.type.startsWith("audio/")?`<audio src="${esc(legacyMediaPreviewUrl)}" controls></audio>`:'<p class="muted">The verified bytes are available to save, but this browser has no inline preview for their detected type.</p>',overlay=document.createElement("div");overlay.className="overlay";overlay.id="legacyMediaPreview";overlay._legacyBlob=blob;overlay.innerHTML=`<div class="wizbox" style="max-width:960px"><h2>Exact private preview</h2><p class="muted">${esc(item.personaLabel||"Owned persona")} · ${esc(String(item.consumer||"reference").replace(/_/g," "))} · ${esc(String(item.slot||"media").replace(/_/g," "))}. This preview is not public and does not decide AI provenance.</p>${media}<div class="autoformactions"><button class="btn" onclick="saveLegacyMediaCopy('${esc(item.itemId)}')">Save a copy</button><button class="btn sec" onclick="closeLegacyMediaPreview()">Close</button></div></div>`;document.body.appendChild(overlay);item.previewed=true}
+  catch(error){toast(error.message||"The exact preview could not be opened.")}
+}
 // ---------- network feed pagination ----------
 const FEED_PAGE=12;
 function logicAndFilter(query,groups){const active=groups.filter(Boolean);if(!active.length)return query;if(active.length===1)return query.or(active[0]);return query.or(`and(${active.map(g=>`or(${g})`).join(",")})`)}
@@ -1426,14 +1518,15 @@ async function renderDiscover(q,epoch=++renderEpoch){
     ${netFeed.done?"":'<div style="text-align:center;margin-top:16px"><button class="btn sec" id="feedMoreBtn" onclick="loadMoreNetFeed()">Load more posts</button></div>'}`:""}`;
 }
 function pCard(p){
-  const bannerMark=MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.banner_url),"image"),avatarMark=MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.avatar_url),"image");
+  p=sanitizePublicPersonaMedia(p);
+  const bannerMark=MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.banner_url),"image"),avatarMark=MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.avatar_url),"image");
   return `<div class="pcard" style="--pc:${safeTheme(p.theme)}" data-handle="${esc(p.handle)}" onclick="go('p/'+this.dataset.handle)">
     <div class="ph ai-asset-shell${bannerMark?" has-ai-provenance":""}" style="${safeBgStyle(p.banner_url)}">${bannerMark}</div>
     <div class="pb"><div class="av ai-asset-shell${avatarMark?" has-ai-provenance":""}" style="${safeBgStyle(p.avatar_url)}">${avatarMark}</div>
-    <b>${esc(p.name)}</b>${p.title?` <span class="muted">${esc(p.title)}</span>`:""} <span class="muted">@${esc(p.handle)}</span> ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.live_url?'<span class="pill live">LIVE</span>':""}
+    <b>${esc(p.name)}</b>${p.title?` <span class="muted">${esc(p.title)}</span>`:""} <span class="muted">@${esc(p.handle)}</span> ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${safeExternalMediaEmbedUrl(p.live_url)?'<span class="pill live">LIVE</span>':""}
     <div class="muted" style="margin-top:4px">${esc(p.tagline)}</div></div></div>`;
 }
-function personaRelationAvatarHtml(value){const url=safeHttpUrl(value),mark=MyPersonasAiProvenance.publicMarkerHtml(url,"image");return `<span class="relation-avatar-shell${mark?" has-ai-provenance":""}"><img src="${esc(url)}" alt="" onerror="this.style.visibility='hidden'">${mark}</span>`}
+function personaRelationAvatarHtml(value){const url=safePublicMediaUrl(value),mark=MyPersonasAiProvenance.publicMarkerHtml(url,"image");return `<span class="relation-avatar-shell${mark?" has-ai-provenance":""}"><img src="${esc(url)}" alt="" onerror="this.style.visibility='hidden'">${mark}</span>`}
 
 // ---------- persona page ----------
 const PERSONA_FEED_PAGE_SIZE=30;
@@ -1446,11 +1539,11 @@ function affiliateRedirectUrl(offerId,source="persona_page"){
   url.searchParams.set("offer",offerId);url.searchParams.set("source",source);return url.href;
 }
 function personaRevenueHtml(revenue,p,isOwner,pageLayout){
-  if(!revenue)return"";const offers=revenue.affiliate_enabled&&Array.isArray(revenue.offers)?revenue.offers:[],reviewEnabled=revenue.review_requests_enabled===true;
+  if(!revenue)return"";const offers=revenue.affiliate_enabled&&Array.isArray(revenue.offers)?revenue.offers.filter(offer=>offer?.destination_safe===true):[],reviewEnabled=revenue.review_requests_enabled===true;
   if(!offers.length&&!reviewEnabled)return"";
   const disclosure=String(revenue.default_disclosure||"As an affiliate, this persona may earn a commission from qualifying purchases at no extra cost to you.");
   return `<section class="${personaLayoutItemClass(pageLayout,"revenue")}" style="${personaLayoutItemStyle(pageLayout,"revenue")}"><div class="card"><h3>${ico("cart")}Offers &amp; review requests</h3>
-    ${offers.length?`<div style="padding:10px;border:1px solid #d8b866;border-radius:10px;background:#fff9e8;margin-bottom:10px"><b>Affiliate disclosure</b><div class="muted" style="margin-top:3px">${esc(disclosure)}</div></div><div class="albgrid">${offers.map(offer=>{const destination=affiliateRedirectUrl(offer.offer_id),image=safeHttpUrl(offer.image_url),label=String(offer.cta_label||revenue.cta_label||"View offer");return `<div class="albitem" style="cursor:default">${image?`<img class="${isOwner?"persona-asset":""}" src="${esc(image)}" loading="lazy" draggable="false" alt="${esc(offer.title||"Product image")}" ${personaAssetAttributes(image,offer.title||"Product image",isOwner,"image")}>`:""}<span class="cap"><b>${esc(offer.title||"Offer")}</b>${offer.merchant?`<br><span class="muted">${esc(offer.merchant)}</span>`:""}</span>${destination?`<a class="btn sec sm" href="${esc(destination)}" target="_blank" rel="noopener noreferrer sponsored">${esc(label)} ↗</a>`:""}</div>`}).join("")}</div>`:""}
+    ${offers.length?`<div style="padding:10px;border:1px solid #d8b866;border-radius:10px;background:#fff9e8;margin-bottom:10px"><b>Affiliate disclosure</b><div class="muted" style="margin-top:3px">${esc(disclosure)}</div></div><div class="albgrid">${offers.map(offer=>{const destination=affiliateRedirectUrl(offer.offer_id),image=safePublicMediaUrl(offer.image_url),label=String(offer.cta_label||revenue.cta_label||"View offer");return `<div class="albitem" style="cursor:default">${image?`<img class="${isOwner?"persona-asset":""}" src="${esc(image)}" loading="lazy" draggable="false" alt="${esc(offer.title||"Product image")}" ${personaAssetAttributes(image,offer.title||"Product image",isOwner,"image")}>`:""}<span class="cap"><b>${esc(offer.title||"Offer")}</b>${offer.merchant?`<br><span class="muted">${esc(offer.merchant)}</span>`:""}</span>${destination?`<a class="btn sec sm" href="${esc(destination)}" target="_blank" rel="noopener noreferrer sponsored">${esc(label)} ↗</a>`:""}</div>`}).join("")}</div>`:""}
     ${reviewEnabled?`<div style="margin-top:12px"><p class="muted">Suggest a product for possible owner review. Submission does not guarantee purchase, response, endorsement, or publication.</p><button class="btn sm" data-review-persona-id="${esc(p.id)}" data-review-handle="${esc(p.handle)}" data-review-name="${esc(p.name)}" onclick="openPublicReviewRequest(this.dataset.reviewPersonaId,this.dataset.reviewHandle,this.dataset.reviewName)">${esc(revenue.review_cta_label||"Request a review")}</button></div>`:""}
   </div></section>`;
 }
@@ -1472,7 +1565,7 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   app.innerHTML='<div class="empty">Loading…</div>';
   let pageResult=await sb.rpc("persona_by_handle",{h:handle}),p=pageResult.data&&pageResult.data[0];
   if(pageResult.error){const fallback=await sb.from("personas").select(PUBLIC_PERSONA_FIELDS).eq("handle",handle).eq("publication_state","published").maybeSingle();p=fallback.data}
-  const owned=myPersonas.find(x=>x.handle===handle);if(owned)p=owned;
+  const owned=myPersonas.find(x=>x.handle===handle);if(owned)p=owned;else p=sanitizePublicPersonaMedia(p);
   if(epoch!==renderEpoch)return;
   if(!p){app.innerHTML=`<div class="empty">This page doesn't exist, is private, or you don't have access.<br><br>${session?"":'<button class="btn" onclick="go(\'signin\')">Sign in</button>'}</div>`;return}
   if(p.nsfw&&!skipGate&&!sessionStorage.getItem("age_ok")){
@@ -1498,7 +1591,7 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   const fanAvailable=fanRes===true;
   if(albums&&albums.length){
     const{data:aitems}=await sb.from("album_items").select("*").in("album_id",albums.map(a=>a.id)).order("sort");
-    albums.forEach(a=>a.items=(aitems||[]).filter(i=>i.album_id===a.id));
+    albums.forEach(a=>a.items=(aitems||[]).filter(i=>i.album_id===a.id).map(item=>isOwner?item:{...item,thumb_url:safePublicMediaUrl(item.thumb_url)}));
   }
   const M=k=>((p.modules||{})[k]!==false);
   const friends=(fr||[]).filter(x=>x.status==="accepted"&&(x.target===p.id||x.follower===p.id));
@@ -1509,17 +1602,18 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
         (fr||[]).find(x=>myPersonas.some(m=>m.id===x.target)&&x.follower===p.id)||null;
   }
   const relationCards=relationRes?.data||[];
-  const toRelationPersona=row=>({id:row.relative_persona_id,handle:row.relative_handle,name:row.relative_name,avatar_url:row.relative_avatar_url,tagline:row.relative_tagline,relationship_label:row.relationship_label});
+  const toRelationPersona=row=>({id:row.relative_persona_id,handle:row.relative_handle,name:row.relative_name,avatar_url:safePublicMediaUrl(row.relative_avatar_url),tagline:row.relative_tagline,relationship_label:row.relationship_label});
   const top8=relationCards.filter(row=>row.dependency_kind==="top8").sort((a,b)=>a.sort_order-b.sort_order).map(toRelationPersona);
   const linkedP=relationCards.filter(row=>row.dependency_kind==="linked").sort((a,b)=>a.sort_order-b.sort_order).map(toRelationPersona);
   const familyP=relationCards.filter(row=>row.dependency_kind==="family").sort((a,b)=>a.sort_order-b.sort_order).map(toRelationPersona);
   const revenue=Array.isArray(revenueRes?.data)?revenueRes.data[0]:revenueRes?.data;
   if(epoch!==renderEpoch)return;
   const pageLayout=normalizePersonaPageLayout(layoutRes?.data?.[0]?.layout);
-  pageState={p,posts:posts||[],isOwner,layout:pageLayout,feedKind:"all",feedQuery:"",cursorCreatedAt:null,cursorId:null,feedDone:(posts||[]).length<PERSONA_FEED_PAGE_SIZE,feedLoading:false,feedRequestId:0,feedError:postsError?.message||""};
+  const displayPosts=isOwner?(posts||[]):(posts||[]).map(sanitizePublicPostMedia);
+  pageState={p,posts:displayPosts,isOwner,layout:pageLayout,feedKind:"all",feedQuery:"",cursorCreatedAt:null,cursorId:null,feedDone:(posts||[]).length<PERSONA_FEED_PAGE_SIZE,feedLoading:false,feedRequestId:0,feedError:postsError?.message||""};
   advanceDescendingCursor(pageState,posts||[]);
   setMeta(`${p.name} (@${p.handle}) — AliaSpaces`,(p.tagline||p.bio||"A persona on AliaSpaces").slice(0,160));
-  const safeBackground=safeHttpUrl(p.bg_url),backgroundMark=MyPersonasAiProvenance.publicMarkerHtml(safeBackground,"image"),bannerMark=MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.banner_url),"image"),avatarMark=MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.avatar_url),"image");if(safeBackground){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url(${JSON.stringify(safeBackground)})`}
+  const safeBackground=safePublicMediaUrl(p.bg_url),backgroundMark=MyPersonasAiProvenance.publicMarkerHtml(safeBackground,"image"),bannerMark=MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.banner_url),"image"),avatarMark=MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.avatar_url),"image");if(safeBackground){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url(${JSON.stringify(safeBackground)})`}
   const blocked=hasPersonaVisibilityRule(p.id,"block"),muted=hasPersonaVisibilityRule(p.id,"mute");
   let relBtn="";
   let followBtn="";
@@ -1534,46 +1628,48 @@ async function renderPersonaPage(handle,skipGate,epoch=++renderEpoch){
   if(!isOwner&&session&&myPersonas.length)followBtn=`<button class="btn sec" onclick="requestPersonaFollow('${p.id}')">Follow</button>`;
   app.innerHTML=`
   ${backgroundMark?`<div class="page-background-provenance">${backgroundMark}</div>`:""}
-  <div class="banner ai-asset-shell${bannerMark?" has-ai-provenance":""}${isOwner&&safeHttpUrl(p.banner_url)?" persona-asset":""}" style="--pc:${safeTheme(p.theme)};${safeBgStyle(p.banner_url)}" ${personaAssetAttributes(p.banner_url,"Banner image",isOwner,"image")}>${bannerMark}</div>
+  <div class="banner ai-asset-shell${bannerMark?" has-ai-provenance":""}${isOwner&&safeHttpUrl(p.banner_url)?" persona-asset":""}" style="--pc:${safeTheme(p.theme)};${safeBgStyle(p.banner_url)}" ${personaAssetAttributes(p.banner_url,"Banner image",isOwner,"image",p.banner_media_asset_id)}${personaViewerMediaAttributes(p.banner_url,isOwner)}>${bannerMark}</div>
   <div class="pp-head">
-    <div class="pp-av ai-asset-shell${avatarMark?" has-ai-provenance":""}${isOwner&&safeHttpUrl(p.avatar_url)?" persona-asset":""}" style="${safeBgStyle(p.avatar_url)}" ${personaAssetAttributes(p.avatar_url,"Profile image",isOwner,"image")}>${avatarMark}</div>
+    <div class="pp-av ai-asset-shell${avatarMark?" has-ai-provenance":""}${isOwner&&safeHttpUrl(p.avatar_url)?" persona-asset":""}" style="${safeBgStyle(p.avatar_url)}" ${personaAssetAttributes(p.avatar_url,"Profile image",isOwner,"image",p.avatar_media_asset_id)}${personaViewerMediaAttributes(p.avatar_url,isOwner)}>${avatarMark}</div>
     <div style="flex:1;padding-bottom:6px">
-      <div class="pp-name">${esc(p.name)} ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${p.live_url?'<span class="pill live">LIVE</span>':""}</div>
+      <div class="pp-name">${esc(p.name)} ${p.pet_project?`<span class="pill" style="background:#eafff1;color:#0a7d33" title="Current project">★ ${esc(p.pet_project)}</span>`:""} ${p.nsfw?'<span class="pill nsfw">18+</span>':""} ${p.visibility!=="public"?`<span class="pill priv">${p.visibility}</span>`:""} ${safeExternalMediaEmbedUrl(p.live_url)?'<span class="pill live">LIVE</span>':""}</div>
       <div class="muted" style="background:rgba(255,255,255,.8);display:inline-block;padding:2px 8px;border-radius:8px">@${esc(p.handle)} · ${friendSummary} — ${esc(p.tagline)}</div>
     </div>
     <div style="padding-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${followBtn}${relBtn}
       <button class="btn sec sm" title="Copy a link to this page" onclick="sharePage('${esc(p.handle)}')">Share</button>
       ${isOwner?`<button class="btn sm" onclick="openPromo('${p.id}')">Promote</button>`:""}
-      ${isOwner&&safeHttpUrl(p.bg_url)?`<button class="btn sec sm" data-persona-asset-url="${esc(safeHttpUrl(p.bg_url))}" data-persona-asset-label="Page background" data-persona-asset-kind="image" onclick="openPersonaAssetPreview(this,event)">Preview background</button>`:""}
+      ${isOwner&&(safeHttpUrl(p.bg_url)||p.bg_media_asset_id)?`<button class="btn sec sm" ${personaAssetAttributes(p.bg_url,"Page background",true,"image",p.bg_media_asset_id)}>Preview background</button>`:""}
       ${!isOwner&&session?`<button class="btn danger sm" title="Account-wide: removes this persona's relationships with every persona you own" onclick="blockPersona('${p.id}','block')">${blocked?"Blocked for all my personas":"Block for all my personas"}</button>
       <button class="btn sec sm" title="Account-wide: hides this persona from every persona you own" onclick="blockPersona('${p.id}','mute')">${muted?"Muted for all my personas":"Mute for all my personas"}</button>`:""}
     </div>
   </div>
   ${isOwner?composerHtml(p):""}
   <div class="persona-layout-grid" style="--pc:${safeTheme(p.theme)}">
-    ${M("live")&&p.live_url?`<section class="${personaLayoutItemClass(pageLayout,"live")}" style="${personaLayoutItemStyle(pageLayout,"live")}"><div class="card livebox"><h3>${ico("live")}Live now</h3>${liveHtml(p.live_url)}</div></section>`:""}
-    ${M("music")&&p.music_url?`<section class="${personaLayoutItemClass(pageLayout,"music")}" style="${personaLayoutItemStyle(pageLayout,"music")}"><div class="card music"><h3>${ico("music")}Profile song</h3>${musicHtml(p.music_url)}</div></section>`:""}
+    ${M("live")&&safeExternalMediaEmbedUrl(p.live_url)?`<section class="${personaLayoutItemClass(pageLayout,"live")}" style="${personaLayoutItemStyle(pageLayout,"live")}"><div class="card livebox"><h3>${ico("live")}Live now</h3>${liveHtml(p.live_url)}</div></section>`:""}
+    ${M("music")&&safeExternalMediaEmbedUrl(p.music_url)?`<section class="${personaLayoutItemClass(pageLayout,"music")}" style="${personaLayoutItemStyle(pageLayout,"music")}"><div class="card music"><h3>${ico("music")}Profile song</h3>${musicHtml(p.music_url)}</div></section>`:""}
     ${M("about")?`<section class="${personaLayoutItemClass(pageLayout,"about")}" style="${personaLayoutItemStyle(pageLayout,"about")}"><div class="card"><h3>${ico("spark")}About</h3><p style="white-space:pre-wrap">${esc(p.bio)||'<span class="muted">nothing yet…</span>'}</p>
       <div style="margin-top:10px;padding:10px;border:1px solid #cbd8e9;border-radius:10px;background:#f6f9fd"><b>AI transparency</b><div class="muted" style="margin-top:3px">${esc(p.ai_disclosure||"This is an AI-assisted persona. Public content may be drafted with AI and is owner-reviewed unless stated otherwise.")}</div></div>
       ${p.topics?`<div style="margin-top:8px">${p.topics.split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" data-page-search="${esc(t.trim())}" onclick="pageSearch(this.dataset.pageSearch)">${esc(t.trim())}</span>`).join("")}</div>`:""}</div></section>`:""}
     ${fanAvailable?`<section class="${personaLayoutItemClass(pageLayout,"fan_chat")}" style="${personaLayoutItemStyle(pageLayout,"fan_chat")}"><div class="card"><h3>${ico("spark")}Chat with ${esc(p.name)}'s AI</h3><p class="muted">This is a disclosed AI assistant, not the human owner. The owner can see saved chats and open private-session chats. If the owner joins live, every human reply is labeled Owner.</p><button class="btn sm" onclick="openPublicFanChat('${p.id}')">Start fan chat</button></div></section>`:""}
-    ${M("links")&&(links||[]).length?`<section class="${personaLayoutItemClass(pageLayout,"links")}" style="${personaLayoutItemStyle(pageLayout,"links")}"><div class="card"><h3>${ico("link")}Find me on</h3>${links.map(l=>{const pl=PLATS[l.platform]||PLATS.other,url=safeHttpUrl(l.url);return url?`<a class="chip" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div></section>`:""}
-    ${M("top8")&&top8.length?`<section class="${personaLayoutItemClass(pageLayout,"top8")}" style="${personaLayoutItemStyle(pageLayout,"top8")}"><div class="card"><h3>${ico("crown")}Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>{const mark=MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(t.avatar_url),"image");return`<div class="t8" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)"><div class="av8 ai-asset-shell${mark?" has-ai-provenance":""}" style="${safeBgStyle(t.avatar_url)}">${mark}</div>${esc(t.name)}</div>`}).join("")}</div></div></section>`:""}
+    ${M("links")&&(links||[]).length?`<section class="${personaLayoutItemClass(pageLayout,"links")}" style="${personaLayoutItemStyle(pageLayout,"links")}"><div class="card"><h3>${ico("link")}Find me on</h3>${links.map(l=>{const pl=PLATS[l.platform]||PLATS.other,url=safeExternalNavigationUrl(l.url);return url?`<a class="chip" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${ico("node")}${esc(l.handle||pl.name)}</a>`:`<span class="chip">${ico("node")}${esc(l.handle||pl.name)}</span>`}).join("")}</div></section>`:""}
+    ${M("top8")&&top8.length?`<section class="${personaLayoutItemClass(pageLayout,"top8")}" style="${personaLayoutItemStyle(pageLayout,"top8")}"><div class="card"><h3>${ico("crown")}Top ${top8.length}</h3><div class="top8grid">${top8.map(t=>{const mark=MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(t.avatar_url),"image");return`<div class="t8" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)"><div class="av8 ai-asset-shell${mark?" has-ai-provenance":""}" style="${safeBgStyle(t.avatar_url)}">${mark}</div>${esc(t.name)}</div>`}).join("")}</div></div></section>`:""}
     ${M("linked")&&linkedP.length?`<section class="${personaLayoutItemClass(pageLayout,"linked")}" style="${personaLayoutItemStyle(pageLayout,"linked")}"><div class="card"><h3>${ico("mask")}More of me</h3>${linkedP.map(t=>`<div class="t8pick" style="cursor:pointer" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)">${personaRelationAvatarHtml(t.avatar_url)}<div><b>${esc(t.name)}</b><br><span class="muted">${esc(t.tagline||"@"+t.handle)}</span></div></div>`).join("")}</div></section>`:""}
     ${M("family")&&familyP.length?`<section class="${personaLayoutItemClass(pageLayout,"family")}" style="${personaLayoutItemStyle(pageLayout,"family")}"><div class="card"><h3>${ico("user")}Family</h3>${familyP.map(t=>`<div class="t8pick" style="cursor:pointer" data-handle="${esc(t.handle)}" onclick="go('p/'+this.dataset.handle)">${personaRelationAvatarHtml(t.avatar_url)}<div><b>${esc(t.name)}</b><br><span class="muted">${esc(t.relationship_label||"family")}</span></div></div>`).join("")}</div></section>`:""}
     ${M("revenue")?personaRevenueHtml(revenue,p,isOwner,pageLayout):""}
-    ${M("albums")?`<section class="${personaLayoutItemClass(pageLayout,"albums")}" style="${personaLayoutItemStyle(pageLayout,"albums")}">${(albums||[]).filter(a=>(a.items||[]).length||isOwner).map(a=>`<div class="card"><h3>${ico(a.kind==="affiliate"?"cart":"album")}${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3><div class="albgrid">${(a.items||[]).map(it=>{const thumb=safeHttpUrl(it.thumb_url),link=safeHttpUrl(it.link_url),mark=MyPersonasAiProvenance.publicMarkerHtml(thumb,"image"),inner=`<img class="${isOwner&&thumb?"persona-asset ":""}${MyPersonasAiProvenance.imagePresentationClass(thumb)}" src="${esc(thumb)}" loading="lazy" draggable="false" alt="${esc(it.caption||a.title)}" ${personaAssetAttributes(thumb,it.caption||a.title,isOwner,"image")}>${mark}<span class="cap">${esc(it.caption)||"&nbsp;"}</span>${link?'<span class="goicon">↗</span>':""}`;return link?`<a class="albitem${mark?" has-ai-provenance":""}" href="${esc(link)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem${mark?" has-ai-provenance":""}">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join("")}</section>`:""}
-    ${M("feed")?`<section class="${personaLayoutItemClass(pageLayout,"feed")}" style="${personaLayoutItemStyle(pageLayout,"feed")}"><div class="card">${safeHttpUrl(p.feed_img_url)?`<div class="profile-media-shell${MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.feed_img_url),"image")?" has-ai-provenance":""}"><img class="${isOwner?"persona-asset":""}" src="${esc(safeHttpUrl(p.feed_img_url))}" style="width:100%;border-radius:12px;margin-bottom:10px" alt="Feed header" ${personaAssetAttributes(p.feed_img_url,"Feed header",isOwner,"image")}>${MyPersonasAiProvenance.publicMarkerHtml(safeHttpUrl(p.feed_img_url),"image")}</div>`:""}<h3>${ico("feed")}${esc(p.name)}'s feed</h3><input id="feedSearch" placeholder="search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)"><div class="feedchips"><span class="chip on" id="fk_all" onclick="setFeedKind('all')">All</span><span class="chip" id="fk_post" onclick="setFeedKind('post')">Posts</span><span class="chip" id="fk_reel" onclick="setFeedKind('reel')">Reels</span></div></div><div id="feedList">${postsError?'<div class="empty">The feed could not be loaded.</div>':(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet</div>'}</div><div id="personaFeedMoreWrap" style="text-align:center;margin-top:16px">${!postsError&&!pageState.feedDone?'<button class="btn sec" id="personaFeedMoreBtn" onclick="loadMorePersonaFeed()">Load more posts</button>':""}</div></section>`:""}
+    ${M("albums")?`<section class="${personaLayoutItemClass(pageLayout,"albums")}" style="${personaLayoutItemStyle(pageLayout,"albums")}">${(albums||[]).filter(a=>(a.items||[]).length||isOwner).map(a=>`<div class="card"><h3>${ico(a.kind==="affiliate"?"cart":"album")}${esc(a.title)} ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}</h3><div class="albgrid">${(a.items||[]).map(it=>{const source=safeHttpUrl(it.thumb_url),thumb=safePublicMediaUrl(it.thumb_url),link=safeExternalNavigationUrl(it.link_url),mark=MyPersonasAiProvenance.publicMarkerHtml(thumb,"image"),inner=`<img class="${isOwner&&source?"persona-asset ":""}${MyPersonasAiProvenance.imagePresentationClass(thumb)}"${thumb?` src="${esc(thumb)}"`:""} loading="lazy" draggable="false" alt="${esc(it.caption||a.title)}" ${personaAssetAttributes(source,it.caption||a.title,isOwner,"image",it.media_asset_id)}${personaViewerMediaAttributes(thumb,isOwner)}>${mark}<span class="cap">${esc(it.caption)||"&nbsp;"}</span>${link?'<span class="goicon">↗</span>':""}`;return link?`<a class="albitem${mark?" has-ai-provenance":""}" href="${esc(link)}" target="_blank" rel="noopener${a.kind==="affiliate"?" sponsored":""}">${inner}</a>`:`<span class="albitem${mark?" has-ai-provenance":""}">${inner}</span>`}).join("")||'<p class="muted">empty album</p>'}</div></div>`).join("")}</section>`:""}
+    ${M("feed")?`<section class="${personaLayoutItemClass(pageLayout,"feed")}" style="${personaLayoutItemStyle(pageLayout,"feed")}"><div class="card">${safeHttpUrl(p.feed_img_url)||p.feed_media_asset_id?`<div class="profile-media-shell${MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.feed_img_url),"image")?" has-ai-provenance":""}"><img class="${isOwner?"persona-asset":""}"${safePublicMediaUrl(p.feed_img_url)?` src="${esc(safePublicMediaUrl(p.feed_img_url))}"`:""} style="width:100%;border-radius:12px;margin-bottom:10px" alt="Feed header" ${personaAssetAttributes(p.feed_img_url,"Feed header",isOwner,"image",p.feed_media_asset_id)}${personaViewerMediaAttributes(p.feed_img_url,isOwner)}>${MyPersonasAiProvenance.publicMarkerHtml(safePublicMediaUrl(p.feed_img_url),"image")}</div>`:""}<h3>${ico("feed")}${esc(p.name)}'s feed</h3><input id="feedSearch" placeholder="search this page… (e.g. laptop reviews)" onkeydown="if(event.key==='Enter')pageSearch(this.value)"><div class="feedchips"><span class="chip on" id="fk_all" onclick="setFeedKind('all')">All</span><span class="chip" id="fk_post" onclick="setFeedKind('post')">Posts</span><span class="chip" id="fk_reel" onclick="setFeedKind('reel')">Reels</span></div></div><div id="feedList">${postsError?'<div class="empty">The feed could not be loaded.</div>':(posts||[]).map(x=>postHtml(x,p,isOwner)).join("")||'<div class="empty">No posts yet</div>'}</div><div id="personaFeedMoreWrap" style="text-align:center;margin-top:16px">${!postsError&&!pageState.feedDone?'<button class="btn sec" id="personaFeedMoreBtn" onclick="loadMorePersonaFeed()">Load more posts</button>':""}</div></section>`:""}
     ${pageLayout.widgets.map(personaLayoutWidgetHtml).join("")}
   </div>`;
+  if(session){hydrateOwnerMediaPreviews(app);const bgAssetId=isOwner?String(p.bg_media_asset_id||""):"",uid=session.user.id,generation=ownerMediaAuthGeneration;if(bgAssetId||PUBLIC_MEDIA_V1.test(safePublicMediaUrl(p.bg_url)))renewOwnerMediaPreview(p.bg_url,bgAssetId).then(preview=>{if(pageState?.p?.id===p.id&&ownerMediaAuthStillCurrent(uid,generation)&&ownerMediaBlobUrls.has(preview.url)){document.body.classList.add("custom-bg");document.body.style.backgroundImage=`url(${JSON.stringify(preview.url)})`}}).catch(()=>{})}
 }
 function postHtml(x,p,owner,assetOwner=owner){
+  if(!owner){x=sanitizePublicPostMedia(x);p=sanitizePublicPersonaMedia(p)}
   return `<div class="post" style="--pc:${safeTheme(p&&p.theme)}">
     ${p&&p.handle?`<div class="muted" style="margin-bottom:4px;cursor:pointer" onclick="go('p/${esc(p.handle)}')">${esc(p.name)} @${esc(p.handle)} ${x.kind==="reel"?"· reel":""}</div>`:""}
     ${x.title?`<h4>${esc(x.title)}</h4>`:""}
     <p style="white-space:pre-wrap;margin-top:4px">${esc(x.body)}</p>
-    ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind,assetOwner):""}
+    ${x.media_url?mediaHtml(x.media_url,p?p.handle:"",x.kind,assetOwner,x.media_asset_id):""}
     <div style="margin-top:8px">${(x.tags||"").split(",").filter(t=>t.trim()).map(t=>`<span class="tag2" data-tag="${esc(t.trim())}" onclick="go('tag/'+encodeURIComponent(this.dataset.tag))">#${esc(t.trim())}</span>`).join("")}
     <span class="muted" style="float:right">${new Date(x.created_at).toLocaleDateString()}</span></div>
     <div class="pactions"><button class="btn sec sm" onclick="toggleComments('${x.id}')">Comments</button></div>
@@ -1746,9 +1842,19 @@ const AUTO_DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const HOSTED_TEXT_UNSUPPORTED=new Set(["elevenlabs","ollama","lmstudio"]);
 const BUILTIN_AUTOMATION_AI_HOSTS=new Set(["api.openai.com","openrouter.ai","api.anthropic.com","api.x.ai","generativelanguage.googleapis.com","api.groq.com","api.mistral.ai","api.deepseek.com","api.together.xyz","api.fireworks.ai","api.perplexity.ai","api.cohere.ai"]);
 function backendProvider(b){return String(b?.provider||"").trim().toLowerCase()}
+function backendEndpointConfigured(b){
+  try{
+    const url=new URL(String(b?.base_url||""));if(url.protocol!=="https:")return false;
+    if(!["azure","azure-openai","azureopenai","microsoftazureopenai"].includes(backendProvider(b)))return true;
+    const host=url.hostname.toLowerCase(),resource=host.endsWith(".openai.azure.com")?host.slice(0,-".openai.azure.com".length):"",match=url.pathname.replace(/\/+$/g,"").match(/^\/openai\/deployments\/([^/]+)(?:\/chat\/completions)?$/i);
+    if(!resource||!match)return false;
+    const token=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+    const resourcePlaceholders=new Set(["yourresource","yourresourcename","yourazureopenairesource","yourazureopenairesourcename","resourcename","azureopenairesourcename"]),deploymentPlaceholders=new Set(["yourdeployment","yourdeploymentname","yourazuredeployment","yourazuredeploymentname","yourazureopenaideployment","yourazureopenaideploymentname","deploymentname","azuredeploymentname","azureopenaideploymentname"]);
+    return !resourcePlaceholders.has(token(resource))&&!deploymentPlaceholders.has(token(match[1]));
+  }catch(e){return false}
+}
 function backendAgentReady(b){
-  if(!b||!myBackendCredentialIds.has(b.id)||HOSTED_TEXT_UNSUPPORTED.has(backendProvider(b))||!String(b.model||"").trim())return false;
-  try{return new URL(String(b.base_url||"")).protocol==="https:"}catch(e){return false}
+  return !!b&&myBackendCredentialIds.has(b.id)&&!HOSTED_TEXT_UNSUPPORTED.has(backendProvider(b))&&!!String(b.model||"").trim()&&backendEndpointConfigured(b);
 }
 function readyAgentBackends(){return myBackends.filter(backendAgentReady)}
 function backendBuiltInAutomation(b){try{const host=new URL(String(b?.base_url||"")).hostname.toLowerCase();return BUILTIN_AUTOMATION_AI_HOSTS.has(host)||host.endsWith(".openai.azure.com")}catch(e){return false}}
@@ -2014,7 +2120,7 @@ function renderStudio(){
   const automationHtml=automationStudioHtml();
   const reqHtml=pendingIn.length?`<div class="card"><h3>${ico("mail")}Friend requests (${pendingIn.length})</h3>
     ${pendingIn.map(r=>{const f=r.personas;const mine=myPersonas.find(m=>m.id===r.target);
-      return `<div class="t8pick"><img src="${esc(safeHttpUrl(f?f.avatar_url:""))}" onerror="this.style.visibility='hidden'">
+      return `<div class="t8pick"><img src="${esc(safePublicMediaUrl(f?f.avatar_url:""))}" onerror="this.style.visibility='hidden'">
       <b>${esc(f?f.name:"?")}</b><span class="muted">wants to be friends with ${esc(mine?mine.name:"you")}</span>
       <span style="margin-left:auto"><button class="btn sm" onclick="acceptReq('${r.id}')">Accept</button>
       <button class="btn danger sm" onclick="declineReq('${r.id}')">✕</button></span></div>`}).join("")}</div>`:"";
@@ -2025,7 +2131,7 @@ function renderStudio(){
   const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
     <div class="autocallout" style="margin-top:10px"><b>An API key is a credential, not a personality setting.</b><br>Voice quality comes from the persona card, the chosen model, and repeatable evaluation. Current OpenAI starting points: <b>GPT-5.6 Terra</b> for balanced owner/persona chat, <b>GPT-5.6 Luna</b> for high-volume fan chat after it passes voice and boundary tests, and <b>GPT-5.6 Sol</b> for premium canon or profile synthesis. Model catalogs change, so recheck provider availability before switching.</div>
-    ${myBackends.map(b=>{const scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,status=readyCount===3?"all automations ready":readyCount?`${readyCount}/3 automations ready`:backendAgentReady(b)?"owner chat only":"needs setup";return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${backendAgentReady(b)?"connected":"attention"}">${esc(status)}</span>${(b.extra&&b.extra.is_default)?'<span class="pill connected">★ default</span>':''}${!builtIn&&backendAgentReady(b)?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
+    ${myBackends.map(b=>{const agentReady=backendAgentReady(b),scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,verified=backendVerifiedThisSession.has(b.id),configured=readyCount?`${readyCount}/3 surfaces configured`:agentReady?"owner chat configured":"needs setup",status=agentReady?`${configured} · ${verified?"tested this session":"provider test not recorded"}`:configured;return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${verified?"connected":"attention"}">${esc(status)}</span>${(b.extra&&b.extra.is_default)?'<span class="pill connected">★ default</span>':''}${!builtIn&&agentReady?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
       <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${!builtIn&&backendAgentReady(b)?`<button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','schedule')">${scheduleReady?"Unconfirm schedule host":"Confirm schedule host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','fan')">${fanReady?"Unconfirm fan host":"Confirm fan host"}</button><button class="btn sec sm" onclick="toggleBackendHostConfirmation('${b.id}','mailbox')">${mailReady?"Unconfirm inbox host":"Confirm inbox host"}</button>`:""}${backendAgentReady(b)?`<button class="btn sec sm" onclick="testBackend('${b.id}')">Test</button>`:""}${backendAgentReady(b)?`<button class="btn sm" onclick="setDefaultBackend('${b.id}')">${(b.extra&&b.extra.is_default)?"★ Default":"Make default"}</button>`:""}<button class="btn sec sm" onclick="editBackend('${b.id}')">Edit</button><button class="btn danger sm" onclick="deleteBackend('${b.id}')">✕</button></span></div>`}).join("")||""}
     <label style="margin-top:10px">Provider</label>
     <select id="nbProvider" onchange="onProviderPick()">${Object.entries(AI_PROVIDERS).map(([k,v],i)=>`<option value="${k}" ${i===0?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
@@ -2647,14 +2753,14 @@ function authenticatedAccountsEditorHtml(targetId){
 }
 function pageBuilderModuleRow(id,index,layout){const card=normalizePageCard(layout.cards[id]),visible=document.querySelector(`#eMods input[data-k="${id}"]`)?.checked;return `<div class="pagebuilder-row"><div class="pagebuilder-rowhead"><b>${esc(PAGE_LAYOUT_LABELS[id]||id)}</b>${visible===false?'<span class="pill recorded">hidden</span>':""}<button class="btn sec sm" type="button" ${index===0?"disabled":""} onclick="movePageBuilderModule('${id}',-1)" aria-label="Move ${esc(PAGE_LAYOUT_LABELS[id]||id)} up">↑</button><button class="btn sec sm" type="button" ${index===layout.order.length-1?"disabled":""} onclick="movePageBuilderModule('${id}',1)" aria-label="Move ${esc(PAGE_LAYOUT_LABELS[id]||id)} down">↓</button></div><div class="pagebuilder-controls"><label>Width<select onchange="setPageBuilderCard('${id}','span',this.value)"><option value="half" ${card.span==="half"?"selected":""}>Half</option><option value="full" ${card.span==="full"?"selected":""}>Full</option></select></label><label>Shape<select onchange="setPageBuilderCard('${id}','shape',this.value)"><option value="soft" ${card.shape==="soft"?"selected":""}>Soft</option><option value="square" ${card.shape==="square"?"selected":""}>Square</option><option value="round" ${card.shape==="round"?"selected":""}>Round</option></select></label><label>Tone<select onchange="setPageBuilderCard('${id}','tone',this.value)"><option value="default" ${card.tone==="default"?"selected":""}>Default</option><option value="theme" ${card.tone==="theme"?"selected":""}>Theme</option><option value="muted" ${card.tone==="muted"?"selected":""}>Muted</option><option value="glass" ${card.tone==="glass"?"selected":""}>Glass</option></select></label></div></div>`}
 function pageBuilderWidgetRow(widget,index){return `<div class="pagebuilder-row"><div class="pagebuilder-rowhead"><b>${esc(widget.title||"Custom box")}</b><span class="pill recorded">${esc(widget.kind)}</span><button class="btn sec sm" type="button" ${index===0?"disabled":""} onclick="movePageBuilderWidget('${widget.id}',-1)" aria-label="Move custom box up">↑</button><button class="btn sec sm" type="button" ${index===editPageLayout.widgets.length-1?"disabled":""} onclick="movePageBuilderWidget('${widget.id}',1)" aria-label="Move custom box down">↓</button><button class="btn danger sm" type="button" onclick="removePageBuilderWidget('${widget.id}')">Remove</button></div><div class="muted" style="margin-top:5px">${esc((widget.body||widget.url||"").slice(0,180))}</div></div>`}
-function renderPageBuilder(){const root=document.getElementById("pageBuilderRoot");if(!root)return;editPageLayout=normalizePersonaPageLayout(editPageLayout);root.innerHTML=`<div class="pagebuilder-grid"><section><h3>Sections</h3><p class="muted">Use the show/hide checkboxes on the main editor for visibility. This panel controls placement and presentation.</p><div class="pagebuilder-list">${editPageLayout.order.map((id,index)=>pageBuilderModuleRow(id,index,editPageLayout)).join("")}</div><h3 style="margin-top:14px">Custom field boxes</h3><p class="muted">A custom field box is a safe title plus text value. Link boxes add one reviewed HTTPS destination. Both remain escaped data, not executable code.</p><div class="pagebuilder-list">${editPageLayout.widgets.map(pageBuilderWidgetRow).join("")||'<p class="muted">No custom boxes yet.</p>'}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn sec sm" type="button" onclick="addPageBuilderWidget('text')">+ Custom field box</button><button class="btn sec sm" type="button" onclick="addPageBuilderWidget('link')">+ Link box</button></div><div class="autocallout warn" style="margin-top:12px"><b>Asset privacy release blocker</b><br>Existing public storage URLs contain a stable owner UUID path that can correlate personas. New image/video widgets and video backgrounds remain disabled until opaque asset delivery is implemented and old public paths are remediated. Existing image and GIF page fields still work.</div></section><section class="pagebuilder-console"><h3>Learning console</h3><p class="muted">The visual editor produces this code. It is displayed and copied as text; the public page executes only the validated JSON recipe, never pasted HTML, CSS, or JavaScript.</p><label>View<select id="pageBuilderCodeLang" onchange="refreshPageBuilderCode()"><option value="html">HTML structure</option><option value="css">CSS layout</option><option value="json">Validated layout JSON</option></select></label><textarea id="pageBuilderCode" readonly onselect="explainSelectedPageCode()" onkeyup="explainSelectedPageCode()"></textarea><div id="pageBuilderExplain" class="pagebuilder-explain">${esc(explainPageCodeSelection(""))}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn sec sm" type="button" onclick="copyText(document.getElementById('pageBuilderCode').value)">Copy code</button><button class="btn sec sm" type="button" onclick="savePageBuilderSnippet()">Save as private snippet</button></div><h3 style="margin-top:14px">Saved snippets</h3><p class="muted">Reusable references only. They are owner-private and are never injected into a profile.</p><div class="pagebuilder-snippets">${editPageSnippets.map(snippet=>`<div class="pagebuilder-snippet"><b>${esc(snippet.name)}</b><span class="pill recorded">${esc(snippet.language)}</span><button class="btn sec sm" type="button" onclick="copyPageBuilderSnippet('${snippet.id}')">Copy</button><button class="btn danger sm" type="button" onclick="deletePageBuilderSnippet('${snippet.id}')">Delete</button></div>`).join("")||'<p class="muted">No saved snippets yet.</p>'}</div></section></div>`;refreshPageBuilderCode()}
+function renderPageBuilder(){const root=document.getElementById("pageBuilderRoot");if(!root)return;editPageLayout=normalizePersonaPageLayout(editPageLayout);root.innerHTML=`<div class="pagebuilder-grid"><section><h3>Sections</h3><p class="muted">Use the show/hide checkboxes on the main editor for visibility. This panel controls placement and presentation.</p><div class="pagebuilder-list">${editPageLayout.order.map((id,index)=>pageBuilderModuleRow(id,index,editPageLayout)).join("")}</div><h3 style="margin-top:14px">Custom field boxes</h3><p class="muted">A custom field box is a safe title plus text value. Link boxes add one reviewed HTTPS destination. Both remain escaped data, not executable code.</p><div class="pagebuilder-list">${editPageLayout.widgets.map(pageBuilderWidgetRow).join("")||'<p class="muted">No custom boxes yet.</p>'}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn sec sm" type="button" onclick="addPageBuilderWidget('text')">+ Custom field box</button><button class="btn sec sm" type="button" onclick="addPageBuilderWidget('link')">+ Link box</button></div><div class="autocallout warn" style="margin-top:12px"><b>Asset privacy release gate</b><br>Opaque delivery is staged, but migration, service backfill, owner re-review, archive/rotation checks, and signed-in two-account privacy testing still require release evidence. Raw legacy references contain a stable owner UUID path that can correlate personas. New image/video widgets and video backgrounds remain disabled until that proof is complete. Grandfathered image and GIF page fields continue to display; raw owner-correlating Storage paths fail closed on public surfaces.</div></section><section class="pagebuilder-console"><h3>Learning console</h3><p class="muted">The visual editor produces this code. It is displayed and copied as text; the public page executes only the validated JSON recipe, never pasted HTML, CSS, or JavaScript.</p><label>View<select id="pageBuilderCodeLang" onchange="refreshPageBuilderCode()"><option value="html">HTML structure</option><option value="css">CSS layout</option><option value="json">Validated layout JSON</option></select></label><textarea id="pageBuilderCode" readonly onselect="explainSelectedPageCode()" onkeyup="explainSelectedPageCode()"></textarea><div id="pageBuilderExplain" class="pagebuilder-explain">${esc(explainPageCodeSelection(""))}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn sec sm" type="button" onclick="copyText(document.getElementById('pageBuilderCode').value)">Copy code</button><button class="btn sec sm" type="button" onclick="savePageBuilderSnippet()">Save as private snippet</button></div><h3 style="margin-top:14px">Saved snippets</h3><p class="muted">Reusable references only. They are owner-private and are never injected into a profile.</p><div class="pagebuilder-snippets">${editPageSnippets.map(snippet=>`<div class="pagebuilder-snippet"><b>${esc(snippet.name)}</b><span class="pill recorded">${esc(snippet.language)}</span><button class="btn sec sm" type="button" onclick="copyPageBuilderSnippet('${snippet.id}')">Copy</button><button class="btn danger sm" type="button" onclick="deletePageBuilderSnippet('${snippet.id}')">Delete</button></div>`).join("")||'<p class="muted">No saved snippets yet.</p>'}</div></section></div>`;refreshPageBuilderCode()}
 function openPageBuilder(){if(!editId||!pageLayoutReady){toast(editId?"Page designer setup is not available yet":"Save the persona first");return}if(document.getElementById("pageBuilderOv"))return;pageBuilderBaseline=JSON.stringify(normalizePersonaPageLayout(editPageLayout));const overlay=document.createElement("div");overlay.className="overlay";overlay.id="pageBuilderOv";overlay.innerHTML=`<div class="wizbox" style="max-width:1180px;width:min(1180px,96vw)" role="dialog" aria-modal="true" aria-labelledby="pageBuilderTitle" tabindex="-1" onkeydown="ownerModalKeydown(event,'pageBuilder')"><div class="modalsticky"><h2 id="pageBuilderTitle">Visual page designer</h2><button class="btn sec sm" type="button" onclick="closePageBuilder(false)">Cancel</button><button class="btn sm" type="button" onclick="closePageBuilder(true)">Keep changes</button></div><div id="pageBuilderRoot"></div></div>`;document.body.appendChild(overlay);activateOwnerModal(overlay);renderPageBuilder()}
 function closePageBuilder(keep){if(!keep&&pageBuilderBaseline)editPageLayout=normalizePersonaPageLayout(JSON.parse(pageBuilderBaseline));pageBuilderBaseline=null;if(document.getElementById("pageBuilderOv"))releaseOwnerModal("pageBuilderOv")}
 function movePageBuilderModule(id,delta){const order=editPageLayout.order,index=order.indexOf(id),next=index+delta;if(index<0||next<0||next>=order.length)return;[order[index],order[next]]=[order[next],order[index]];renderPageBuilder()}
 function setPageBuilderCard(id,key,value){if(!PAGE_LAYOUT_MODULES.includes(id)||!["span","shape","tone"].includes(key))return;editPageLayout.cards[id]={...normalizePageCard(editPageLayout.cards[id]),[key]:value};editPageLayout=normalizePersonaPageLayout(editPageLayout);renderPageBuilder()}
 function movePageBuilderWidget(id,delta){const list=editPageLayout.widgets,index=list.findIndex(widget=>widget.id===id),next=index+delta;if(index<0||next<0||next>=list.length)return;[list[index],list[next]]=[list[next],list[index]];renderPageBuilder()}
 function removePageBuilderWidget(id){editPageLayout.widgets=editPageLayout.widgets.filter(widget=>widget.id!==id);renderPageBuilder()}
-function addPageBuilderWidget(kind){if(editPageLayout.widgets.length>=12){toast("A page can have at most 12 custom boxes");return}const title=(prompt(kind==="link"?"Link box title":"Text box title",kind==="link"?"Useful link":"Custom box")||"").trim();if(!title)return;let body="",label="",url="";if(kind==="link"){label=(prompt("Link button label","Open link")||"").trim();url=(prompt("HTTPS destination","https://")||"").trim();if(!safeHttpUrl(url).startsWith("https://")){toast("Link boxes require a valid HTTPS URL");return}}else body=(prompt("Text for this box")||"").trim();editPageLayout.widgets.push({id:"widget_"+crypto.randomUUID().replace(/-/g,"").slice(0,18),kind,title,body,label,url,span:"half",shape:"soft",tone:"default"});editPageLayout=normalizePersonaPageLayout(editPageLayout);renderPageBuilder()}
+function addPageBuilderWidget(kind){if(editPageLayout.widgets.length>=12){toast("A page can have at most 12 custom boxes");return}const title=(prompt(kind==="link"?"Link box title":"Text box title",kind==="link"?"Useful link":"Custom box")||"").trim();if(!title)return;let body="",label="",url="";if(kind==="link"){label=(prompt("Link button label","Open link")||"").trim();url=(prompt("External HTTPS destination","https://")||"").trim();if(!safeExternalNavigationUrl(url)){toast("Link boxes require an external HTTPS URL");return}}else body=(prompt("Text for this box")||"").trim();editPageLayout.widgets.push({id:"widget_"+crypto.randomUUID().replace(/-/g,"").slice(0,18),kind,title,body,label,url,span:"half",shape:"soft",tone:"default"});editPageLayout=normalizePersonaPageLayout(editPageLayout);renderPageBuilder()}
 function refreshPageBuilderCode(){const language=document.getElementById("pageBuilderCodeLang")?.value||"html",box=document.getElementById("pageBuilderCode");if(box)box.value=pageLayoutLearningCode(editPageLayout,language);const explanation=document.getElementById("pageBuilderExplain");if(explanation)explanation.textContent=explainPageCodeSelection("")}
 function explainSelectedPageCode(){const box=document.getElementById("pageBuilderCode"),out=document.getElementById("pageBuilderExplain");if(!box||!out)return;out.textContent=explainPageCodeSelection(box.value.slice(box.selectionStart,box.selectionEnd))}
 function copyPageBuilderSnippet(id){const snippet=editPageSnippets.find(row=>row.id===id);if(snippet)copyText(snippet.code)}
@@ -2732,8 +2838,8 @@ async function renderEdit(id,epoch=++renderEpoch){
     ${[["avatar_url","Profile image"],["banner_url","Banner (wide)"],["bg_url","Page background"],["feed_img_url","Feed header"]].map(([k,lbl])=>`
       <div class="looktile">
         <label style="margin-top:0">${lbl}</label>
-        <div class="lookprev" id="prev_${k}" data-owner-persona-id="${esc(targetId)}">${personaLookPreviewHtml(p[k],lbl,targetId)}</div>
-        <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}">
+        <div class="lookprev" id="prev_${k}" data-owner-persona-id="${esc(targetId)}">${personaLookPreviewHtml(p[k],lbl,targetId,personaProfileMediaAssetId(p,k))}</div>
+        <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}" data-media-asset-id="${esc(personaProfileMediaAssetId(p,k))}">
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
           <button class="btn sec sm" aria-label="Choose ${esc(lbl)} file" onclick="uploadTo('e_${k}')">Choose file</button>
           <button class="btn sec sm" aria-label="Generate ${esc(lbl)}" onclick="openSD('${k}')">Generate</button>
@@ -2742,9 +2848,9 @@ async function renderEdit(id,epoch=++renderEpoch){
       </div>`).join("")}
     </div>
     <label>Profile song (YouTube / Spotify / SoundCloud / mp3 URL)</label>
-    <input id="e_music_url" value="${esc(p.music_url||"")}" placeholder="https://…">
+    <input id="e_music_url" value="${esc(p.music_url||"")}" placeholder="External HTTPS provider URL only">
     <label>Live stream (your Twitch / YouTube / Kick URL — shows a LIVE player while set)</label>
-    <input id="e_live_url" value="${esc(p.live_url||"")}" placeholder="https://…">
+    <input id="e_live_url" value="${esc(p.live_url||"")}" placeholder="External HTTPS provider URL only">
     <label>Show on my page (uncheck to hide a section)</label>
     <div id="eMods" style="display:flex;gap:12px;flex-wrap:wrap">
       ${[["music","Song"],["about","About"],["links","Links"],["top8","Top 8"],["linked","My personas"],["family","Family"],["revenue","Offers & reviews"],["live","Live"],["albums","Albums"],["feed","Feed"]].map(([k,l])=>
@@ -2813,7 +2919,7 @@ async function renderEdit(id,epoch=++renderEpoch){
         <button class="btn" onclick="savePersona()">Save</button>
       </div>
     </div></div>`;
-  renderEditLinks();renderT8();
+  renderEditLinks();renderT8();hydrateOwnerMediaPreviews(app);
   if(editId)loadEditAlbums(editId,epoch,ownerUid);
   if(editId&&pendingPageBuilderPersonaId===editId){pendingPageBuilderPersonaId="";setTimeout(()=>{if(editId===targetId&&epoch===renderEpoch&&session?.user?.id===ownerUid)openPageBuilder()},0)}
 }
@@ -2835,7 +2941,7 @@ function renderEditAlbums(){
       <div style="display:flex;align-items:center;gap:8px"><b>${esc(a.title)}</b>
       ${a.kind==="affiliate"?'<span class="pill priv">sponsored</span>':""}
       <button class="btn danger sm" style="margin-left:auto" onclick="deleteAlbum('${a.id}')">Delete album</button></div>
-      <div class="albgrid">${(a.items||[]).map(it=>{const thumb=safeHttpUrl(it.thumb_url),mark=MyPersonasAiProvenance.publicMarkerHtml(thumb,"image");return`<span class="albitem${mark?" has-ai-provenance":""}"><img class="${MyPersonasAiProvenance.imagePresentationClass(thumb)}" src="${esc(thumb)}" onerror="this.style.opacity=.2">${mark}
+      <div class="albgrid">${(a.items||[]).map(it=>{const source=safeHttpUrl(it.thumb_url),thumb=safePublicMediaUrl(it.thumb_url),mark=MyPersonasAiProvenance.publicMarkerHtml(thumb,"image");return`<span class="albitem${mark?" has-ai-provenance":""}"><img class="persona-asset ${MyPersonasAiProvenance.imagePresentationClass(thumb)}"${thumb?` src="${esc(thumb)}"`:""} ${personaAssetAttributes(source,it.caption||a.title,true,"image",it.media_asset_id)} onerror="hydrateOwnerMediaElement(this).catch(()=>this.style.opacity=.2)">${mark}
         <span class="cap">${esc(it.caption)||"&nbsp;"}</span>
         <span class="goicon" style="cursor:pointer" onclick="deleteAlbumItem('${it.id}')">✕</span></span>`}).join("")}</div>
       <div class="linkrow" style="margin-top:8px">
@@ -2845,7 +2951,7 @@ function renderEditAlbums(){
         <input id="ail_${a.id}" placeholder="${a.kind==="affiliate"?"affiliate/product URL":"destination URL (OF post, IG, Snap…)"}">
         <button class="btn sm" onclick="addAlbumItem('${a.id}')">+</button>
       </div>
-    </div>`).join("")||'<p class="muted">No albums yet.</p>';
+    </div>`).join("")||'<p class="muted">No albums yet.</p>';hydrateOwnerMediaPreviews(el);
 }
 async function createAlbum(){
   const title=document.getElementById("nAlbTitle").value.trim();
@@ -2859,9 +2965,10 @@ async function addAlbumItem(aid){
   const thumb=document.getElementById("ait_"+aid).value.trim();
   if(!thumb){toast("Add a thumbnail first (URL or upload)");return}
   const a=editAlbums.find(x=>x.id===aid);
+  const link=document.getElementById("ail_"+aid).value.trim();if(link&&!safeExternalNavigationUrl(link)){toast("Album destinations must use an external HTTPS URL");return}
   const{error}=await sb.rpc("save_persona_album_item",{p_item_id:null,p_album_id:aid,p_thumb_url:thumb,
     p_caption:document.getElementById("aic_"+aid).value.trim(),
-    p_link_url:document.getElementById("ail_"+aid).value.trim(),p_sort:(a.items||[]).length});
+    p_link_url:link,p_sort:(a.items||[]).length});
   if(error){toast(error.message);return}
   await loadMine();await loadEditAlbums();toast("Album item saved to the page draft; review before publishing");
 }
@@ -2876,13 +2983,14 @@ function renderEditLinks(){
 function addLink(){
   const platform=document.getElementById("lPlat").value,handle=document.getElementById("lHandle").value.trim(),url=document.getElementById("lUrl").value.trim();
   if(!handle&&!url){toast("Add a handle or URL");return}
+  if(url&&!safeExternalNavigationUrl(url)){toast("Persona links must use an external HTTPS URL");return}
   editLinks.push({platform,handle,url,sort:editLinks.length});
   document.getElementById("lHandle").value="";document.getElementById("lUrl").value="";
   renderEditLinks();
 }
 function renderT8(){
   document.getElementById("eT8").innerHTML=editT8.map((t,i)=>`
-    <div class="t8pick"><img src="${esc(safeHttpUrl(t.avatar_url))}" onerror="this.style.visibility='hidden'"><b>${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
+    <div class="t8pick"><img src="${esc(safePublicMediaUrl(t.avatar_url))}" onerror="this.style.visibility='hidden'"><b>${esc(t.name)}</b><span class="muted">@${esc(t.handle)}</span>
     <span style="margin-left:auto">
     <button class="btn sec sm" ${i===0?"disabled":""} onclick="[editT8[${i-1}],editT8[${i}]]=[editT8[${i}],editT8[${i-1}]];renderT8()">▲</button>
     <button class="btn danger sm" onclick="editT8.splice(${i},1);renderT8()">✕</button></span></div>`).join("")||'<p class="muted">Empty — search below to add up to 8.</p>';
@@ -2950,6 +3058,8 @@ async function savePersona(){
     dont:document.getElementById("eDont").value,ai_backend:document.getElementById("eBackend").value||null,top8:editT8.map(t=>t.id),
     linked:[...document.querySelectorAll("#eLinked input:checked")].map(i=>i.dataset.lp),
     modules:Object.fromEntries([...document.querySelectorAll("#eMods input")].map(i=>[i.dataset.k,i.checked]))};
+  if(d.music_url&&!safeExternalMediaEmbedUrl(d.music_url)){toast("Profile song must use an external HTTPS provider URL");document.getElementById("e_music_url").focus();return}
+  if(d.live_url&&!safeExternalMediaEmbedUrl(d.live_url)){toast("Live stream must use an external HTTPS provider URL");document.getElementById("e_live_url").focus();return}
   const links=editLinks.map((l,i)=>({platform:l.platform,handle:l.handle,url:l.url,sort:i})),note=document.getElementById("eNotes").value.trim(),contextBase=contextBaselineText(existing.context_log||""),contextDraft=normalizeContextText(document.getElementById("eContext")?.value||""),backupSelect=document.getElementById("eBackupPersona"),existingBackupId=targetId?(personaBackupForMain(targetId)?.backup?.id||""):"",requestedBackupId=backupSelect?(backupSelect.value||""):existingBackupId,backupChanged=!!targetId&&!!backupSelect&&requestedBackupId!==existingBackupId;
   if(contextCharLength(contextDraft)>20000){toast("Roadmap context must be 20,000 characters or less");document.getElementById("eContext")?.focus();return}
   if(!d.name){toast("Name required");return}
@@ -3433,17 +3543,22 @@ async function testBackend(id){
   try{
     const t=await callAI(id,[{role:"user",content:"Reply with a brief friendly hello to confirm the connection works."}],{});
     const txt=String(t||"").trim();
+    backendVerifiedThisSession.add(id);renderStudio();
     toast(txt?("✓ "+(b.name||"Model")+" works — "+txt.slice(0,140)):("⚠ "+(b.name||"Model")+" connected but returned no text."));
   }catch(e){
+    backendVerifiedThisSession.delete(id);renderStudio();
     toast("✗ "+(b.name||"Model")+" failed: "+((e&&e.message)||String(e)));
   }
 }
 
 // ---------- image previews + Stable Diffusion character tool ----------
 function setPrev(k,url){
-  const inp=document.getElementById("e_"+k);if(inp)inp.value=url||"";
+  const inp=document.getElementById("e_"+k);if(inp){inp.value=url||"";if(!url)inp.dataset.mediaAssetId=""}
+  setPrevDisplay(k,url,inp?.dataset?.mediaAssetId||"");
+}
+function setPrevDisplay(k,url,assetId=""){
   const pv=document.getElementById("prev_"+k);
-  if(pv){const labels={avatar_url:"Profile image",banner_url:"Banner",bg_url:"Page background",feed_img_url:"Feed header"};pv.innerHTML=personaLookPreviewHtml(url,labels[k]||"Page image",pv.dataset.ownerPersonaId||"")}
+  if(pv){const labels={avatar_url:"Profile image",banner_url:"Banner",bg_url:"Page background",feed_img_url:"Feed header"};pv.innerHTML=personaLookPreviewHtml(url,labels[k]||"Page image",pv.dataset.ownerPersonaId||"",assetId);hydrateOwnerMediaPreviews(pv)}
 }
 const SD_SIZES={avatar_url:[768,768],banner_url:[1152,640],bg_url:[1152,768],feed_img_url:[1152,512]};
 let sdTarget=null;
@@ -3488,8 +3603,8 @@ async function sdGenerate(){
     const r=await fetch(burl+"/functions/v1/gemini-image",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+sess.access_token},body:JSON.stringify({prompt,target:sdTarget,baseImage,personaId:editId})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.publicUrl||!j.assetId||j.watermarkState!=="system_applied")throw new Error(j.error||("Image generation failed closed before secure watermarking and provenance registration (HTTP "+r.status+")"));
-    const publicUrl=safeHttpUrl(j.publicUrl);if(!publicUrl)throw new Error("Generated media intake returned an invalid public URL");
-    out.innerHTML=`<img class="ai-content-image" src="${esc(publicUrl)}"><div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn sm" onclick="sdUse('${sdTarget}')">Use this image</button><button class="btn sec sm" onclick="sdGenerate()">Try again</button></div>`;
+    const publicUrl=safePublicMediaUrl(j.publicUrl);if(!publicUrl||!PUBLIC_PERSONA_UUID.test(String(j.assetId||"")))throw new Error("Generated media intake returned an invalid opaque asset reference");
+    const preview=await renewOwnerMediaPreview(publicUrl,String(j.assetId));out.innerHTML=`<img class="ai-content-image" src="${esc(preview.url)}"><div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn sm" onclick="sdUse('${sdTarget}')">Use this image</button><button class="btn sec sm" onclick="sdGenerate()">Try again</button></div>`;
     out.dataset.publicUrl=publicUrl;
     out.dataset.assetId=String(j.assetId||"");
     out.dataset.mime=String(j.mime||"image/png");
@@ -3521,9 +3636,9 @@ async function uploadImmutablePersonaMedia(blob,owner,scope,options={}){
 }
 async function sdUse(k){
   const out=document.getElementById("sdOut");
-  const publicUrl=safeHttpUrl(out.dataset.publicUrl||""),assetId=String(out.dataset.assetId||"");if(!publicUrl||!PUBLIC_PERSONA_UUID.test(assetId)){toast("Generated-media provenance is missing; generate the image again");return}
+  const publicUrl=safePublicMediaUrl(out.dataset.publicUrl||""),assetId=String(out.dataset.assetId||"");if(!publicUrl||!PUBLIC_PERSONA_UUID.test(assetId)){toast("Generated-media provenance is missing; generate the image again");return}
   try{
-    setPrev(k,publicUrl);
+    const input=document.getElementById("e_"+k);if(input)input.dataset.mediaAssetId=assetId;setPrev(k,publicUrl);
     toast("Server-marked image registered and applied — remember to Save");closeSD();
   }catch(e){toast("Secure generated-media intake failed: "+e.message)}
 }
@@ -3534,7 +3649,7 @@ setInterval(async()=>{
   if(!session||!session.expires_at){hideSessWarn();return}
   let remaining=session.expires_at*1000-Date.now();
   if(remaining<600000){try{const{data}=await sb.auth.getSession();if(data&&data.session&&(!session||data.session.expires_at>=session.expires_at)){session=data.session;remaining=session.expires_at*1000-Date.now()}}catch(e){}}
-  if(remaining<=0){hideSessWarn();markStale();session=null;updateAuthBtn();return}
+  if(remaining<=0){hideSessWarn();markStale();session=null;clearOwnerMediaPreviewCache();updateAuthBtn();return}
   if(remaining<120000)showSessWarn(remaining);else hideSessWarn();
 },15000);
 function showSessWarn(remaining){
@@ -3580,18 +3695,18 @@ async function extendSession(){
 // ---------- secure uploads + AI-use declaration ----------
 function uploadTo(inputId){
   if(!session){toast("Sign in first");return}
-  const f=document.createElement("input");f.type="file";f.accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
+  const profileSlot=inputId.startsWith("e_"),f=document.createElement("input");f.type="file";f.accept=profileSlot?"image/png,image/jpeg,image/webp,image/gif":"image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
   f.onchange=async()=>{
     const source=f.files[0];if(!source)return;const personaId=uploadPersonaId(inputId);if(!PUBLIC_PERSONA_UUID.test(String(personaId||""))){toast("Save or select the persona before uploading media");return}
-    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt){toast("Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
+    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt||profileSlot&&!image){toast(profileSlot?"Page Look fields currently accept PNG, JPEG, WebP, or GIF images only":"Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
     const aiUse=await MyPersonasAiProvenance.askAiUse({filename:source.name});if(!aiUse)return;
     toast(MyPersonasAiProvenance.requiresVisibleMark(aiUse)?"Sending the source to secure server-side watermarking…":"Registering declared source bytes…");
     try{
       if(MyPersonasAiProvenance.requiresVisibleMark(aiUse)&&source.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
       const sourceSha256=await MyPersonasAiProvenance.sha256Hex(source);
-      const uploaded=await uploadImmutablePersonaMedia(source,session?.user?.id,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=uploaded.publicUrl;
-      document.getElementById(inputId).value=pub;
-      if(inputId.startsWith("e_"))setPrev(inputId.slice(2),pub);
+      const uploaded=await uploadImmutablePersonaMedia(source,session?.user?.id,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=safePublicMediaUrl(uploaded.publicUrl),assetId=String(uploaded.assetId||"");if(!pub||!PUBLIC_PERSONA_UUID.test(assetId))throw new Error("Secure media intake did not return a canonical opaque asset reference");
+      const target=document.getElementById(inputId);target.value=pub;target.dataset.mediaAssetId=assetId;
+      if(inputId.startsWith("e_"))setPrevDisplay(inputId.slice(2),pub,assetId);
       toast(`${MyPersonasAiProvenance.declarationLabel(aiUse)} saved${MyPersonasAiProvenance.requiresVisibleMark(aiUse)?" · watermark applied":""} ✓`);
     }catch(error){toast(error.message);return}
   };
@@ -5811,20 +5926,17 @@ async function composerUploadSource(){
   if(!file||!personaId||!owner){toast("Choose a persona and image first");return}
   if(!PUBLIC_PERSONA_RASTER_TYPES.has(String(file.type||"").toLowerCase())){toast("Use a PNG, JPEG, or WebP image");return}if(file.size>10*1024*1024){toast("Choose an image no larger than 10 MB");return}
   const aiUse=await MyPersonasAiProvenance.askAiUse({filename:file.name});if(!aiUse)return;
-  button.disabled=true;button.textContent="Preparing…";if(status)status.textContent=MyPersonasAiProvenance.requiresVisibleMark(aiUse)?"The secure media service is creating the marked source and final social crops…":"Registering the declared source bytes…";
+  button.disabled=true;button.textContent="Preparing…";if(status)status.textContent=MyPersonasAiProvenance.requiresVisibleMark(aiUse)?"The secure media service is creating the marked source and final social crops…":"The secure media service is creating the source and three exact social crops…";
   try{
     const sourceSha256=await MyPersonasAiProvenance.sha256Hex(file),mark=MyPersonasAiProvenance.requiresVisibleMark(aiUse);if(mark&&file.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
     const source=await uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/source`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"source"});
-    let variants={facebook:"",instagram:"",x:""};
-    if(mark){
-      const uploaded=await Promise.all([
-        uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/facebook`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"facebook",crop:{width:1200,height:628}}),
-        uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/instagram`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"instagram",crop:{width:1080,height:1080}}),
-        uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/x`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"x",crop:{width:1080,height:1350}})
-      ]);variants={facebook:uploaded[0].publicUrl,instagram:uploaded[1].publicUrl,x:uploaded[2].publicUrl};
-    }
+    const uploaded=await Promise.all([
+      uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/facebook`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"facebook",crop:{width:1200,height:628}}),
+      uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/instagram`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"instagram",crop:{width:1080,height:1080}}),
+      uploadImmutablePersonaMedia(file,owner,`composer/${personaId}/x`,{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:"x",crop:{width:1080,height:1350}})
+    ]),variants={facebook:uploaded[0].publicUrl,instagram:uploaded[1].publicUrl,x:uploaded[2].publicUrl};
     const img=document.getElementById("cmpImg");img.value=source.publicUrl;img.dataset.sourceUrl=source.publicUrl;img.dataset.facebookUrl=variants.facebook;img.dataset.instagramUrl=variants.instagram;img.dataset.xUrl=variants.x;img.dataset.aiUse=aiUse;img.dataset.personaId=personaId;
-    if(status)status.textContent=`Ready · ${MyPersonasAiProvenance.declarationLabel(aiUse)}${mark?" · source plus 3 final watermarked crops":""}`;toast("Image provenance registered and selected");
+    if(status)status.textContent=`Ready · ${MyPersonasAiProvenance.declarationLabel(aiUse)} · source plus 3 ${mark?"final watermarked":"exact social"} crops`;toast("Image provenance registered and selected");
   }catch(e){if(status)status.textContent="Upload failed; no draft was staged.";toast(e.message||"Image upload failed")}
   finally{button.disabled=false;button.textContent="Prepare image"}
 }
@@ -5875,12 +5987,13 @@ async function composerRefresh(){
   if(r.error){list.innerHTML=`<span class="muted">${esc(r.error.message)}</span>`;return}
   const rows=r.data||[];if(!rows.length){list.innerHTML='<span class="muted">No drafts yet — stage one above.</span>';return}
   const groups=new Map();rows.forEach(d=>{const key=composerWeekKey(d);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(d)});groups.forEach(drafts=>drafts.sort((a,b)=>{const at=a.scheduled_for?Date.parse(a.scheduled_for):Infinity,bt=b.scheduled_for?Date.parse(b.scheduled_for):Infinity;return at-bt||Date.parse(b.created_at)-Date.parse(a.created_at)}));
-  list.classList.remove("muted");list.innerHTML=((history.data||[]).length===50?'<p class="muted">All active drafts are shown, plus the newest 50 published/skipped history rows.</p>':"")+[...groups.entries()].sort((a,b)=>String(b[0]).localeCompare(String(a[0]))).map(([key,drafts])=>`<section class="composerweek"><div class="composerweekhead"><h3 style="margin:0">${esc(composerWeekLabel(key))}</h3><span class="muted">${drafts.length} draft${drafts.length===1?"":"s"} · ${drafts.filter(d=>d.status==="scheduled").length} scheduled</span></div>${drafts.map(composerDraftHtml).join("")}</section>`).join("");
+  list.classList.remove("muted");list.innerHTML=((history.data||[]).length===50?'<p class="muted">All active drafts are shown, plus the newest 50 published/skipped history rows.</p>':"")+[...groups.entries()].sort((a,b)=>String(b[0]).localeCompare(String(a[0]))).map(([key,drafts])=>`<section class="composerweek"><div class="composerweekhead"><h3 style="margin:0">${esc(composerWeekLabel(key))}</h3><span class="muted">${drafts.length} draft${drafts.length===1?"":"s"} · ${drafts.filter(d=>d.status==="scheduled").length} scheduled</span></div>${drafts.map(composerDraftHtml).join("")}</section>`).join("");hydrateOwnerMediaPreviews(list);
 }
+function composerDraftImageHtml(url,assetId,title){const source=safeHttpUrl(url),display=safePublicMediaUrl(url),id=String(assetId||"");if(!source&&!id)return"";return `<img${display?` src="${esc(display)}"`:""} title="${esc(title)}" loading="lazy" ${personaAssetAttributes(source,title,true,"image",id)} onerror="hydrateOwnerMediaElement(this).catch(()=>this.style.opacity=.2)">`}
 function composerDraftHtml(d){
   const pname=((myPersonas||[]).find(p=>p.id===d.persona_id)||{}).name||"—";
   const targets=Array.isArray(d.targets)?d.targets:["facebook","instagram","twitter"],scheduled=d.status==="scheduled",terminal=["publishing","posted","skipped"].includes(d.status),hasResults=!!(d.fb_post_id||d.ig_media_id||d.x_tweet_id),editable=!scheduled&&!terminal&&!hasResults,pill=d.status==="posted"?"connected":d.status==="failed"?"attention":["scheduled","publishing"].includes(d.status)?"verified":"",zone=d.approved_timezone||autoTz(),page=(myAccounts||[]).find(a=>a.id===d.facebook_ledger_id),at=autoZonedInput(d.scheduled_for,zone)||autoZonedInput(new Date(Date.now()+24*60*60*1000).toISOString(),zone),disabled=editable?"":"disabled";
-  const imgs=d.fb_image_url||d.ig_image_url||d.x_image_url?`<div class="composerimgs">${d.fb_image_url?`<img src="${esc(d.fb_image_url)}" title="Facebook 1.91:1" loading="lazy">`:""}${d.ig_image_url?`<img src="${esc(d.ig_image_url)}" title="Instagram 1:1" loading="lazy">`:""}${d.x_image_url?`<img src="${esc(d.x_image_url)}" title="X 4:5" loading="lazy">`:""}</div>`:"";
+  const renderedImages=[[d.fb_image_url,d.fb_media_asset_id,"Facebook 1.91:1"],[d.ig_image_url,d.ig_media_asset_id,"Instagram 1:1"],[d.x_image_url,d.x_media_asset_id,"X 4:5"]].filter(([url,assetId])=>url||assetId).map(([url,assetId,title])=>composerDraftImageHtml(url,assetId,title)).join(""),imgs=renderedImages?`<div class="composerimgs">${renderedImages}</div>`:"";
   const missingMetaImage=(targets.includes("facebook")&&!d.fb_image_url&&!d.source_image_url)||(targets.includes("instagram")&&!d.ig_image_url&&!d.source_image_url),canRetryMeta=!scheduled&&!terminal&&!targets.includes("twitter")&&((targets.includes("facebook")&&!d.fb_post_id)||(targets.includes("instagram")&&!d.ig_media_id));
   return `<div class="card" id="cmpDraft_${d.id}" data-status="${esc(d.status)}" style="margin-top:10px">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><b>${esc(pname)}</b><div class="muted">${esc(d.brief||"")}${page?` · ${esc(page.username||page.login_email||page.id)}`:""}</div></div><span class="pill ${pill}">${esc(d.status)}</span></div>

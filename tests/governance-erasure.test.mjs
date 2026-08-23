@@ -56,6 +56,8 @@ test("content erasure explicitly removes owner organization and governance rows"
     "persona_friend_invites",
     "persona_account_sync_settings",
     "persona_extension_submissions",
+    "post_drafts",
+    "post_approved_media_handles",
   ]) {
     assert.match(
       block,
@@ -63,6 +65,12 @@ test("content erasure explicitly removes owner organization and governance rows"
       `${table} must be erased by owner`,
     );
   }
+
+  assertOrdered(block, [
+    'admin.from("post_drafts").delete().eq("owner", uid)',
+    'admin.from("post_approved_media_handles").delete().eq("owner", uid)',
+    'admin.from("personas").delete().eq("owner", uid)',
+  ]);
 
   assert.match(
     block,

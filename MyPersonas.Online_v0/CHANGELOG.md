@@ -3,6 +3,47 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Opaque reviewed media delivery and legacy preview (local release candidate) (2026-08-23)
+
+Status: **implemented locally; not applied, deployed, backfilled, finalized, or
+verified live.** Forward migrations 062-064 follow the live migration 061.
+
+- Added unguessable per-asset public ids backed by a browser-inaccessible
+  correlation table and service-only issue, rotate, batch backfill, reference
+  cutover, readiness, and private-bucket finalization operations.
+- Added a no-redirect public proxy that rechecks the exact current published
+  consumer/slot/asset/provenance review tuple, then bounds and SHA-256 verifies
+  private Storage bytes before a `no-store` response.
+- New intake returns the branded opaque URL plus `assetId`; authenticated owner
+  preview renews a local blob and no stable/signed preview or Storage path is
+  returned. Public rendering fails closed on every project Storage path while
+  retaining grandfathered external media.
+- Added review-only CloudFront/WAF/Wix IaC for the canonical
+  `media.mypersonas.online/persona/v1/<uuid>` and `/approved/v1/<uuid>` origins.
+  The Supabase Edge origins require a configured secret header and disable
+  themselves when the secret is
+  absent; no stack, secret, certificate, DNS record, or cost action was made.
+- Added a separate reference-gated approved-provider registry/proxy, immutable
+  retry/revocation and erasure behavior, and exact Facebook 1200x628, Instagram
+  1080x1080, and X 1080x1350 registered crops for every raster AI-use state.
+- Added migration 064 and an AAL2 owner **Media cleanup** route for idempotent
+  inventory, bounded safe listing, exact private preview, and Save a copy. It
+  exposes no raw Storage path, owner UUID, URL, or hash. Declaration, canonical
+  import, watermark/crop, compare-and-swap rewrite, clear, review invalidation,
+  and retired-bucket finalization remain intentionally locked second-slice work.
+- Made music/live embeds and navigation fields external-only, including persona
+  links, album destinations, page widgets, and active affiliate/product URLs.
+  Legacy `media` bucket values are counted as a finalizer-blocking NO-GO and are
+  never auto-converted from URL alone.
+- Archive/flag revokes active handles; rotation produces a new id and requires
+  owner re-review. Rich image/video widgets remain disabled pending applied
+  migration, backfill, individual publication approvals, bucket finalization,
+  WAF controls, signed-in mobile, and unrelated two-account privacy evidence.
+- See `OPAQUE-PUBLIC-MEDIA-DELIVERY.md` and
+  `RELEASE-MANIFEST-2026-08-23-OPAQUE-MEDIA.md`. The integrated local gate
+  passed 324/324 Node tests, frontend syntax, all 15 changed Edge TypeScript
+  checks, and disposable PostgreSQL apply/reapply/runtime harnesses for 062-064.
+
 ## Required AI-use declaration and forward-only provenance hardening (production release) (2026-08-23)
 
 Status: **Migration 060, the four reviewed provenance functions, and the matching Pages

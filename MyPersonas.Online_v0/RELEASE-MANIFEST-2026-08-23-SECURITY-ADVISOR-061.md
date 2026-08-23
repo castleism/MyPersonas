@@ -64,8 +64,13 @@ same-origin Edge/Worker boundary with CAPTCHA and request-rate enforcement.
   `pg_catalog`, no unintended browser or database-PUBLIC execution, authenticated-only
   research RPCs, the intentional RLS grants intact, zero waitlist rows/invalid rows, the
   bounded waitlist policy, and no future postgres-owned browser function default.
-- The complete repository suite must pass again after migration 062 finishes before a
-  combined source freeze.
+- Security Advisor refresh reported zero errors, 199 warnings, and 37 informational
+  suggestions: 17 fewer warnings than the 216-warning baseline.
+- A controlled synthetic `example.invalid` address inserted successfully through the real
+  `https://nooyouniverse.com/` form. Exactly that row was deleted, and a separate query
+  confirmed the table returned to its zero-row baseline.
+- The complete shared-worktree Node suite passed 298/298 after the exact runbook contract
+  wording was restored. This is local evidence and is not migration-062 release approval.
 
 ## Automatic-deployment finding
 
@@ -87,11 +92,11 @@ production auto-apply before the next high-risk database release.
    transaction and wrote migration history. No history row was inserted by hand.
 4. Read back both search paths; trigger/RPC/PUBLIC/anon/authenticated grants; postgres
    default function ACLs; waitlist policy, constraint, and column privileges.
-5. Re-run Security Advisor. Expected focused reduction is eleven warnings. The ten
-   intentional anonymous projection/predicate warnings and non-relocatable `pg_net`
-   warning remain accepted, not silently fixed.
-6. Exercise the public waitlist from its real origin, then remove only an exact controlled
-   test row if one was created. Verify the form cannot select, update, or delete.
+5. Security Advisor fell from 216 to 199 warnings with zero errors. Intentional anonymous
+   projection/predicate warnings and non-relocatable `pg_net` remain accepted, not
+   silently fixed.
+6. The real-origin controlled waitlist insert and exact cleanup passed. Browser table
+   grants remain insert-only for the exact two columns; select/update/delete are absent.
 
 If the transaction fails, PostgreSQL rolls it back. If postflight differs from this
 manifest, stop further releases and restore only from the captured exact pre-apply ACL and

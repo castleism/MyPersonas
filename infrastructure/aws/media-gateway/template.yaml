@@ -1,0 +1,349 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  REVIEW ONLY - MyPersonas opaque media CloudFront and AWS WAF gateway. The
+  template is approval-locked and contains no real secret or DNS mutation.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required owner approvals
+        Parameters:
+          - DeploymentApproval
+          - AcmCertificateArnUsEast1
+          - MediaGatewaySecret
+      - Label:
+          default: Reviewed operating limits
+        Parameters:
+          - ResourceNamePrefix
+          - WafRequestsPerIpFiveMinutes
+          - CloudFrontPriceClass
+    ParameterLabels:
+      DeploymentApproval:
+        default: Explicit owner cost/deployment approval
+      AcmCertificateArnUsEast1:
+        default: ACM certificate ARN from us-east-1
+      MediaGatewaySecret:
+        default: Existing secret supplied out of band
+  CostEstimatePlaceholders:
+    PricingModel: "OWNER_TO_SELECT: pay-as-you-go or eligible CloudFront flat-rate plan"
+    EstimatedMonthlyRequests: "OWNER_TO_FILL: __________"
+    EstimatedMonthlyDataTransferGB: "OWNER_TO_FILL: __________"
+    CloudFrontMonthlyUSD: "OWNER_TO_REFRESH_AND_FILL: $__________"
+    WafWebAclAndRulesMonthlyUSD: "OWNER_TO_REFRESH_AND_FILL: $__________"
+    WafRequestInspectionMonthlyUSD: "OWNER_TO_REFRESH_AND_FILL: $__________"
+    CloudWatchMetricsAndOptionalLogsMonthlyUSD: "OWNER_TO_REFRESH_AND_FILL: $__________"
+    ApprovedMonthlyCeilingUSD: "OWNER_TO_APPROVE: $__________"
+
+Parameters:
+  DeploymentApproval:
+    Type: String
+    Default: NOT_APPROVED
+    AllowedValues:
+      - NOT_APPROVED
+      - OWNER_APPROVED_AFTER_COST_AND_CHANGESET_REVIEW
+    Description: >-
+      Leave NOT_APPROVED for review. Creation is blocked until the owner has
+      reviewed the AWS estimate and the exact CloudFormation change set.
+  AcmCertificateArnUsEast1:
+    Type: String
+    AllowedPattern: '^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9A-Fa-f-]{36}$'
+    ConstraintDescription: Must be an ACM certificate ARN issued/imported in us-east-1.
+    Description: Certificate whose SAN covers media.mypersonas.online.
+  MediaGatewaySecret:
+    Type: String
+    NoEcho: true
+    MinLength: 43
+    MaxLength: 128
+    AllowedPattern: '^[A-Za-z0-9_-]{43,128}$'
+    ConstraintDescription: >-
+      Supply a 43-128 character URL-safe secret out of band. Never store it in
+      this repository, a command transcript, a ticket, or chat.
+  ResourceNamePrefix:
+    Type: String
+    Default: mypersonas-media
+    MinLength: 3
+    MaxLength: 32
+    AllowedPattern: '^[a-z][a-z0-9-]{1,30}[a-z0-9]$'
+    ConstraintDescription: Use 3-32 lowercase letters, numbers, and hyphens.
+    Description: >-
+      Stable reviewed prefix for globally named CloudFront and WAF resources.
+  WafRequestsPerIpFiveMinutes:
+    Type: Number
+    Default: 1200
+    MinValue: 10
+    MaxValue: 100000
+    Description: Per-source-IP request ceiling in AWS WAF's five-minute window.
+  CloudFrontPriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+
+Rules:
+  RequireExplicitOwnerApproval:
+    Assertions:
+      - Assert: !Equals
+          - !Ref DeploymentApproval
+          - OWNER_APPROVED_AFTER_COST_AND_CHANGESET_REVIEW
+        AssertDescription: >-
+          Review-only template: owner cost approval and a reviewed change set
+          are required before any AWS resource may be created.
+
+Resources:
+  MediaPathRouter:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${ResourceNamePrefix}-route"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Exact canonical persona and approved-provider media routes.
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function mediaGatewayReject(statusCode, statusDescription) {
+          return {
+            statusCode: statusCode,
+            statusDescription: statusDescription,
+            headers: {
+              "cache-control": { value: "no-store, max-age=0" },
+              "content-security-policy": { value: "default-src 'none'" },
+              "referrer-policy": { value: "no-referrer" },
+              "x-content-type-options": { value: "nosniff" }
+            }
+          };
+        }
+
+        function handler(event) {
+          var request = event.request;
+          var headers = request.headers || {};
+          var host = headers.host && headers.host.value || "";
+          var query = request.querystring || {};
+          var uri = request.uri || "";
+          var persona = /^\/persona\/v1\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+          var approved = /^\/approved\/v1\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+
+          // The distribution hostname is not an alternate public URL. Only the exact
+          // reviewed first-party host is canonical.
+          if (host !== "media.mypersonas.online") return mediaGatewayReject(404, "Not Found");
+          if (request.method !== "GET" && request.method !== "OPTIONS") {
+            return mediaGatewayReject(405, "Method Not Allowed");
+          }
+          if (Object.keys(query).length !== 0 || uri.length > 128 ||
+              uri.indexOf("%") !== -1 || uri.indexOf("\\") !== -1) {
+            return mediaGatewayReject(404, "Not Found");
+          }
+
+          // A viewer-supplied copy is removed. CloudFront adds/overwrites the real
+          // origin header after this viewer-request function has returned.
+          delete request.headers["x-mypersonas-media-gateway"];
+
+          var match = uri.match(persona);
+          if (match) {
+            request.uri = "/functions/v1/public-media/" + match[1];
+            request.querystring = {};
+            return request;
+          }
+
+          match = uri.match(approved);
+          if (match) {
+            if (request.method !== "GET") return mediaGatewayReject(405, "Method Not Allowed");
+            request.uri = "/functions/v1/approved-media/" + match[1];
+            request.querystring = {};
+            return request;
+          }
+          return mediaGatewayReject(404, "Not Found");
+        }
+
+  NoCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${ResourceNamePrefix}-no-cache"
+        Comment: Opaque media authorization is rechecked on every request.
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  MinimalOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "${ResourceNamePrefix}-origin"
+        Comment: Forward no viewer identity, cookie, query, or custom header.
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: none
+
+  MediaWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Ref ResourceNamePrefix
+      Description: Canonical-host, managed-rule, and source-IP rate boundary.
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: !Ref ResourceNamePrefix
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: BlockNonCanonicalHost
+          Priority: 0
+          Action:
+            Block: {}
+          Statement:
+            NotStatement:
+              Statement:
+                ByteMatchStatement:
+                  FieldToMatch:
+                    SingleHeader:
+                      Name: host
+                  PositionalConstraint: EXACTLY
+                  SearchString: media.mypersonas.online
+                  TextTransformations:
+                    - Priority: 0
+                      Type: LOWERCASE
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: BlockNonCanonicalHost
+            SampledRequestsEnabled: true
+        - Name: BlockAllQueryStrings
+          Priority: 1
+          Action:
+            Block: {}
+          Statement:
+            SizeConstraintStatement:
+              ComparisonOperator: GT
+              FieldToMatch:
+                QueryString: {}
+              Size: 0
+              TextTransformations:
+                - Priority: 0
+                  Type: NONE
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: BlockAllQueryStrings
+            SampledRequestsEnabled: true
+        - Name: AmazonIpReputation
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: AmazonIpReputation
+            SampledRequestsEnabled: true
+        - Name: CommonThreats
+          Priority: 3
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CommonThreats
+            SampledRequestsEnabled: true
+        - Name: KnownBadInputs
+          Priority: 4
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: KnownBadInputs
+            SampledRequestsEnabled: true
+        - Name: SourceIpRateLimit
+          Priority: 5
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              EvaluationWindowSec: 300
+              Limit: !Ref WafRequestsPerIpFiveMinutes
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: SourceIpRateLimit
+            SampledRequestsEnabled: true
+
+  MediaDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - media.mypersonas.online
+        Comment: MyPersonas exact reviewed opaque media gateway
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: !Ref NoCachePolicy
+          Compress: false
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt MediaPathRouter.FunctionARN
+          OriginRequestPolicyId: !Ref MinimalOriginRequestPolicy
+          SmoothStreaming: false
+          TargetOriginId: SupabasePublicMediaEdge
+          ViewerProtocolPolicy: https-only
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        Origins:
+          - Id: SupabasePublicMediaEdge
+            DomainName: nwsqyuucwzihruszocge.supabase.co
+            ConnectionAttempts: 2
+            ConnectionTimeout: 5
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginKeepaliveTimeout: 5
+              OriginProtocolPolicy: https-only
+              OriginReadTimeout: 25
+              OriginSSLProtocols:
+                - TLSv1.2
+            OriginCustomHeaders:
+              - HeaderName: X-MyPersonas-Media-Gateway
+                HeaderValue: !Ref MediaGatewaySecret
+        PriceClass: !Ref CloudFrontPriceClass
+        ViewerCertificate:
+          AcmCertificateArn: !Ref AcmCertificateArnUsEast1
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+        WebACLId: !GetAtt MediaWebAcl.Arn
+
+Outputs:
+  DistributionDomainName:
+    Description: Wix CNAME target after all pre-DNS verification and owner approval.
+    Value: !GetAtt MediaDistribution.DomainName
+  CanonicalMediaOrigin:
+    Description: The only public origin; no alternate CloudFront URL is canonical.
+    Value: https://media.mypersonas.online
+  WebAclArn:
+    Description: WAFv2 WebACL attached directly to the CloudFront distribution.
+    Value: !GetAtt MediaWebAcl.Arn

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type MIGRATIONS-VERIFIED after migration 060 is recorded in the linked ledger and its smoke tests are reviewed"
+        description: "Type OPAQUE-FOUNDATION-VERIFIED after migrations 062-064, cleanup preview, the protected gateway, and both opaque-media origins are live and read back"
         required: true
         type: string
 
@@ -33,8 +33,8 @@ jobs:
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
-          test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
-            echo "Release blocked: verify migration 060 in the linked ledger and review its smoke tests first."
+          test "${RELEASE_CONFIRMATION}" = "OPAQUE-FOUNDATION-VERIFIED" || {
+            echo "Release blocked: verify migrations 062-064, cleanup preview, the protected gateway, and the foundation functions before deploying this frontend."
             exit 1
           }
       - name: Prepare public site artifact

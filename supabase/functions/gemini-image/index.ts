@@ -4,6 +4,7 @@
 // the credential or image bytes to another host.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { publicMediaIdFromRequestUrl } from "../_shared/public-media.ts";
 import { requireAal2 } from "../_shared/aal2.ts";
 import {
   GEMINI_IMAGE_MODEL,
@@ -464,7 +465,8 @@ serve(async (req: Request) => {
   } catch (error) {
     return json({ error: "The image was generated but secure watermarking did not complete" }, 502, origin);
   }
-  if (!intakeResponse.ok || typeof intake.publicUrl !== "string" || typeof intake.assetId !== "string") {
+  if (!intakeResponse.ok || typeof intake.publicUrl !== "string" ||
+      !publicMediaIdFromRequestUrl(intake.publicUrl) || typeof intake.assetId !== "string") {
     return json({ error: typeof intake.error === "string" ? intake.error : "The image was generated but secure watermarking failed closed" }, 502, origin);
   }
   return json({

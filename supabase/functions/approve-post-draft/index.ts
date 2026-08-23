@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   type ApprovedMedia,
   stageApprovedMedia,
+  stageApprovedPersonaMediaAsset,
 } from "../_shared/approved-media.ts";
 import { requireAal2 } from "../_shared/aal2.ts";
 
@@ -55,7 +56,13 @@ function sourceFor(draft: Record<string, unknown>, target: "facebook" | "instagr
   const targetUrl = target === "facebook"
     ? String(draft.fb_image_url || "")
     : String(draft.ig_image_url || "");
-  return targetUrl || String(draft.source_image_url || "");
+  const targetAssetId = target === "facebook"
+    ? String(draft.fb_media_asset_id || "")
+    : String(draft.ig_media_asset_id || "");
+  return {
+    url: targetUrl || String(draft.source_image_url || ""),
+    assetId: targetAssetId || String(draft.source_media_asset_id || ""),
+  };
 }
 
 function mediaArgs(prefix: "fb" | "ig", media?: ApprovedMedia) {
@@ -65,6 +72,7 @@ function mediaArgs(prefix: "fb" | "ig", media?: ApprovedMedia) {
     [`p_${prefix}_media_bytes`]: media?.byteSize || 0,
     [`p_${prefix}_media_path`]: media?.path || "",
     [`p_${prefix}_media_url`]: media?.url || "",
+    [`p_${prefix}_delivery_id`]: media?.deliveryId || null,
   };
 }
 
@@ -113,7 +121,7 @@ serve(async (req) => {
   }
 
   const loaded = await admin.from("post_drafts")
-    .select("id,status,owner,source_image_url,fb_image_url,ig_image_url,fb_post_id,ig_media_id,x_tweet_id")
+    .select("id,status,owner,source_image_url,fb_image_url,ig_image_url,source_media_asset_id,fb_media_asset_id,ig_media_asset_id,x_media_asset_id,fb_post_id,ig_media_id,x_tweet_id")
     .eq("id", draftId).eq("owner", user.id).maybeSingle();
   if (loaded.error) return json({ error: "Could not load the draft." }, 500, origin);
   if (!loaded.data) return json({ error: "Draft not found." }, 404, origin);
@@ -125,33 +133,38 @@ serve(async (req) => {
 
   const facebookSource = targets.includes("facebook")
     ? sourceFor(draft, "facebook")
-    : "";
+    : { url: "", assetId: "" };
   const instagramSource = targets.includes("instagram")
     ? sourceFor(draft, "instagram")
-    : "";
-  if (targets.includes("facebook") && !facebookSource) {
+    : { url: "", assetId: "" };
+  if (targets.includes("facebook") && !facebookSource.assetId && !facebookSource.url) {
     return json({ error: "Facebook needs an image before approval." }, 409, origin);
   }
-  if (targets.includes("instagram") && !instagramSource) {
+  if (targets.includes("instagram") && !instagramSource.assetId && !instagramSource.url) {
     return json({ error: "Instagram needs an image before approval." }, 409, origin);
   }
 
   try {
     const staged = new Map<string, Promise<ApprovedMedia>>();
-    const stage = (source: string) => {
-      let pending = staged.get(source);
+    const stage = (source: { url: string; assetId: string }) => {
+      const key = source.assetId ? `asset:${source.assetId.toLowerCase()}` : `legacy:${source.url}`;
+      let pending = staged.get(key);
       if (!pending) {
-        pending = stageApprovedMedia(admin.storage, SUPABASE_URL, source, user.id);
-        staged.set(source, pending);
+        pending = source.assetId
+          ? stageApprovedPersonaMediaAsset(
+            admin, SUPABASE_URL, SERVICE_ROLE_KEY, source.assetId, user.id,
+          )
+          : stageApprovedMedia(admin, SUPABASE_URL, source.url, user.id);
+        staged.set(key, pending);
       }
       return pending;
     };
     const [facebookMedia, instagramMedia] = await Promise.all([
-      facebookSource ? stage(facebookSource) : Promise.resolve(undefined),
-      instagramSource ? stage(instagramSource) : Promise.resolve(undefined),
+      targets.includes("facebook") ? stage(facebookSource) : Promise.resolve(undefined),
+      targets.includes("instagram") ? stage(instagramSource) : Promise.resolve(undefined),
     ]);
 
-    const scheduled = await admin.rpc("approve_and_schedule_post_draft", {
+    const scheduled = await admin.rpc("approve_and_schedule_post_draft_opaque", {
       p_owner: user.id,
       p_draft_id: draftId,
       p_scheduled_for: scheduledFor,
@@ -160,8 +173,8 @@ serve(async (req) => {
       p_ig_caption: igCaption,
       p_x_caption: xCaption,
       p_targets: targets,
-      p_fb_source_url: facebookSource,
-      p_ig_source_url: instagramSource,
+      p_fb_source_url: facebookSource.url,
+      p_ig_source_url: instagramSource.url,
       ...mediaArgs("fb", facebookMedia),
       ...mediaArgs("ig", instagramMedia),
     });

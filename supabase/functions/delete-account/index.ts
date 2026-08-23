@@ -331,6 +331,30 @@ async function eraseStoragePrefix(
   }
 }
 
+async function revokeApprovedMediaDelivery(
+  admin: SupabaseClient,
+  uid: string,
+) {
+  const revoked = await admin.rpc(
+    "revoke_post_approved_media_owner_service",
+    { p_owner: uid },
+  );
+  if (revoked.error || !Number.isSafeInteger(Number(revoked.data)) ||
+    Number(revoked.data) < 0) {
+    throw new Error(
+      `approved-media delivery revocation: ${revoked.error?.message || "invalid verification result"}`,
+    );
+  }
+  const remaining = await admin.from("post_approved_media_handles")
+    .select("public_id", { count: "exact", head: true })
+    .eq("owner", uid).eq("state", "active");
+  if (remaining.error || remaining.count !== 0) {
+    throw new Error(
+      `approved-media delivery revocation verification: ${remaining.error?.message || "active handles remain"}`,
+    );
+  }
+}
+
 async function eraseOwnedStorage(admin: SupabaseClient, uid: string) {
   const normalizedOwner = uid.toLowerCase();
   const targets: OwnedStorageTarget[] = [
@@ -1458,6 +1482,24 @@ async function eraseOwnedRows(
     "persona publication reviews",
     admin.from("persona_publication_reviews").delete().eq("owner", uid),
   );
+  // Content-only erasure retains profiles. Remove service-only remediation
+  // inventory explicitly so unbound sources, blocked references, and retained
+  // rate counters cannot survive merely because their profile still exists.
+  await checked(
+    "legacy media remediation references",
+    admin.from("legacy_media_references").delete().eq("owner", uid),
+  );
+  await checked(
+    "legacy media remediation sources",
+    admin.from("legacy_media_sources").delete().eq("owner", uid),
+  );
+  await checked(
+    "legacy media remediation rate limits",
+    admin.from("legacy_media_remediation_rate_limits_064").delete().eq(
+      "owner",
+      uid,
+    ),
+  );
   await checked(
     "platform feature requests",
     admin.from("platform_feature_requests").delete().eq("owner", uid),
@@ -1507,6 +1549,18 @@ async function eraseOwnedRows(
   await checked(
     "agent settings",
     admin.from("agent_owner_settings").delete().eq("owner", uid),
+  );
+  // post_drafts.persona_id is ON DELETE SET NULL, so persona deletion alone
+  // would preserve captions, briefs, schedules, and approval metadata. Erase
+  // every owner-authored staged post explicitly on both content-only and full
+  // account erasure paths before its persona can be detached.
+  await checked(
+    "staged post drafts",
+    admin.from("post_drafts").delete().eq("owner", uid),
+  );
+  await checked(
+    "approved-media delivery handles",
+    admin.from("post_approved_media_handles").delete().eq("owner", uid),
   );
   await checked("drafts", admin.from("drafts").delete().eq("owner", uid));
   await checked("schedules", admin.from("ai_tasks").delete().eq("owner", uid));
@@ -1797,6 +1851,16 @@ export function createErasureHandler(
           "Discord webhook erasure",
         );
         await eraseDiscordWebhooks(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "approved-media delivery revocation",
+        );
+        // Revoke opaque provider URLs before deleting bytes. If later erasure
+        // work fails, retries remain safe and no provider can fetch retained
+        // owner-correlating objects during the partial-erasure interval.
+        await revokeApprovedMediaDelivery(admin, uid);
         await renewMetaOwnerErasure(
           admin,
           uid,

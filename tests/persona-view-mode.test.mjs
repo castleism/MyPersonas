@@ -206,12 +206,12 @@ test("Page looks renders semantic full images instead of cropped background prev
   assert.doesNotMatch(css, /cover/);
   assert.doesNotMatch(css, /\.lookprev img\{[^}]*border-radius/);
   const editor = html.slice(html.indexOf("<h3>${ico(\"image\")}Page looks"), html.indexOf("<label>Profile song", html.indexOf("Page looks")));
-  assert.match(editor, /personaLookPreviewHtml\(p\[k\],lbl,targetId\)/);
+  assert.match(editor, /personaLookPreviewHtml\(p\[k\],lbl,targetId,personaProfileMediaAssetId\(p,k\)\)/);
   assert.doesNotMatch(editor, /safeBgStyle\(p\[k\]\)/);
   assert.match(html, /full uncropped preview/);
   assert.match(html, /data-owner-persona-id/);
   assert.match(html, /data-persona-editor-asset="true"/);
-  assert.match(html, /onerror="personaLookPreviewFailed\(this\)"/);
+  assert.match(html, /onerror="hydrateOwnerMediaElement\(this\)\.catch\(\(\)=>personaLookPreviewFailed\(this\)\)"/);
   assert.match(html, /Preview unavailable — choose another file or clear this field/);
   assert.match(html, /ownsEditorAsset/);
   assert.match(editor, /aria-label="Choose \$\{esc\(lbl\)\} file"/);

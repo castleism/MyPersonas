@@ -6,8 +6,13 @@ task list. Agents may prepare code, SQL, tests, plans, and dashboard steps. The 
 production migrations/deployments, provider permissions, keys, MFA, publishing, and money actions
 at the exact action boundary._
 
-Current package: **Implemented and tested locally; not pushed, applied to the linked
-database, deployed, configured, activated, or verified live unless separately evidenced.**
+Current release truth: **production serves build `cbea6a1` with the migration
+ledger read back through 061. The 062-064 opaque-media and cleanup-preview
+candidate is implemented and tested locally only; it has not been pushed,
+applied, deployed, configured, activated, or verified live.** The local gate
+passed 324/324 Node tests, frontend syntax, all 15 changed Edge TypeScript checks,
+three disposable PostgreSQL apply/reapply/runtime harnesses, migration parity,
+and a high-confidence secret scan.
 Start with `RELEASE-MANIFEST-2026-08-22.md`, then this handoff. Historical live claims
 below are useful evidence snapshots but may have drifted and do not prove the current source.
 
@@ -37,16 +42,19 @@ below are useful evidence snapshots but may have drifted and do not prove the cu
     POST-QUEUE-ACTIVATION, POSTING-3PART-SPEC, DRIFT, CONNECTORS-STATUS,
     CONTEXT-BOX-SPEC, MOBILE-BLUEPRINT, then V2-BLUEPRINT/APP-REVIEW-META).
 - **Deploy model**
-  - Pushes run validation but do not deploy. Supabase Functions and Pages are separate manual
-    `workflow_dispatch` workflows; both require the exact typed confirmation
-    `MIGRATIONS-VERIFIED`.
-  - Required order is database apply/readback → Functions dispatch/verification → signed-in
-    staging smoke → Pages dispatch/live verification. Neither workflow applies migrations.
+  - The installed Supabase GitHub App auto-applies new timestamped migrations after a push to
+    `main`, and it may do so before CI finishes. A migration-bearing commit must therefore be
+    completely release-ready before push. Supabase Functions and Pages remain separate manual
+    `workflow_dispatch` workflows with release-specific typed confirmations.
+  - For opaque-media/remediation migrations 062-064, the required order is fully validated main push → production
+    migration-ledger readback plus cleanup-preview and protected-gateway verification → foundation Functions (`MIGRATIONS-062-064-GATEWAY-VERIFIED`) → Pages
+    (`OPAQUE-FOUNDATION-VERIFIED`) → signed-in live verification → producer Functions
+    (`OPAQUE-FRONTEND-VERIFIED`). The manual workflows do not themselves apply migrations.
   - A missing `SUPABASE_ACCESS_TOKEN` makes the function workflow fail closed. Historical manual
     deployments may exist, but exact current source parity is not proven.
-  - Migrations do not auto-apply. Live-safe permission probes show **035** and **038** exist.
-    Migration **037** is unverified. The lease RPC from **039** is absent from the live schema cache
-    and current callers do not use it locally. Treat **036** as dormant and do not activate it.
+  - Production migration history was read back through **061** on 2026-08-23. Migrations **062-064**
+    remain local-only until their complete release gate passes. Re-audit older dormant migrations
+    and deployed-function drift against the current runbooks before activation.
 - **Project ref:** `nwsqyuucwzihruszocge`. Site: `https://mypersonas.online`.
 - **⚠ Drift:** several deployed functions are NOT in the repo (see `DRIFT.md`): `twitter-post`,
   `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,

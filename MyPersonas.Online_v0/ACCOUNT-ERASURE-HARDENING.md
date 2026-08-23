@@ -13,6 +13,11 @@ Both `delete-account` and `erase-content` use the handler in
 `supabase/functions/delete-account/index.ts`, so this package applies to complete account
 erasure and content-only erasure.
 
+The shared handler also deletes every owner-scoped `post_drafts` row before deleting the
+owner's personas. This ordering is required because `post_drafts.persona_id` uses
+`ON DELETE SET NULL`; relying on persona deletion alone would retain detached captions,
+briefs, schedules, and approval metadata when the owner chose content-only erasure.
+
 ## Reddit erasure contract
 
 For every owner-scoped `account_ledger` row whose provider is `reddit`, erasure now:
@@ -86,6 +91,9 @@ source guarantees only until `reddit-oauth` is deployed and exercised against Re
 6. Populate a disposable file beneath each of the four exact owner prefixes plus a
    sentinel file for another owner. Verify erasure removes the four owned trees and leaves
    every sentinel untouched.
+7. Populate an owned staged post and another owner's sentinel staged post. Verify both
+   content-only and full-account erasure remove the owned `post_drafts` row before persona
+   deletion and preserve the sentinel.
 
 No provider call, storage deletion, SQL migration, function deployment, secret change, or
 live account erasure was performed while preparing this package.

@@ -1,29 +1,31 @@
 name: Deploy Supabase Edge Functions
 
 # Owner-triggered deployment for Edge Functions. This deliberately does not run
-# on push: several functions have hard schema dependencies and migrations stay
-# review-only. verify_jwt per function comes from supabase/config.toml.
+# on push because several functions have hard schema dependencies. The installed
+# Supabase GitHub App DOES auto-apply new timestamped migrations after a push to
+# main, before CI may finish; therefore migration-bearing commits must be fully
+# release-ready before they are pushed. verify_jwt comes from supabase/config.toml.
 #
 # REQUIRED repo secret: SUPABASE_ACCESS_TOKEN  (Account → Access Tokens)
 # Project ref is read from supabase/config.toml (project_id).
 #
-# Migrations are intentionally NOT auto-applied here — they are reviewed and run
-# deliberately (see CI-CD-SETUP.md). This workflow only ships function code.
+# This workflow does not itself apply migrations; it only ships function code.
+# Read back the auto-applied production ledger before entering the confirmation.
 on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type MIGRATIONS-VERIFIED after the linked database is read back through migration 060"
+        description: "Foundation: MIGRATIONS-062-064-GATEWAY-VERIFIED. Producers: OPAQUE-FRONTEND-VERIFIED."
         required: true
         type: string
       release_scope:
         description: "Deploy only this reviewed function set"
         required: true
-        default: "ai-provenance"
+        default: "opaque-media-foundation"
         type: choice
         options:
-          - ai-provenance
-          - all-reviewed
+          - opaque-media-foundation
+          - opaque-media-producers
 
 permissions:
   contents: read
@@ -44,11 +46,26 @@ jobs:
       - name: Require reviewed database release evidence
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+          RELEASE_SCOPE: ${{ inputs.release_scope }}
         run: |
-          test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
-            echo "Deployment blocked: verify and read back migration 060 before function code."
-            exit 1
-          }
+          case "${RELEASE_SCOPE}" in
+            opaque-media-foundation)
+              test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-062-064-GATEWAY-VERIFIED" || {
+                echo "Deployment blocked: read back migrations 062 through 064, then verify the protected media gateway and matching origin secret."
+                exit 1
+              }
+              ;;
+            opaque-media-producers)
+              test "${RELEASE_CONFIRMATION}" = "OPAQUE-FRONTEND-VERIFIED" || {
+                echo "Deployment blocked: verify the opaque-media frontend live and signed in before opaque media producers."
+                exit 1
+              }
+              ;;
+            *)
+              echo "Deployment blocked: unreviewed release scope."
+              exit 1
+              ;;
+          esac
           test -n "${SUPABASE_ACCESS_TOKEN}" || {
             echo "Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured."
             exit 1
@@ -65,14 +82,16 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Project ref: $ref"
 
-      - name: Deploy AI provenance functions
-        if: ${{ inputs.release_scope == 'ai-provenance' }}
+      - name: Deploy opaque-media foundation and consumers
+        if: ${{ inputs.release_scope == 'opaque-media-foundation' }}
         run: |
-          for function_name in media-ingest gemini-image compose-post ai-proxy; do
+          for function_name in public-media approved-media owner-media-preview legacy-media-remediation compose-post approve-post-draft meta-post run-post-queue delete-account erase-content; do
             supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
           done
 
-      - name: Deploy all reviewed edge functions
-        if: ${{ inputs.release_scope == 'all-reviewed' }}
+      - name: Deploy opaque-media producers after frontend verification
+        if: ${{ inputs.release_scope == 'opaque-media-producers' }}
         run: |
-          supabase functions deploy --project-ref "${{ steps.cfg.outputs.ref }}"
+          for function_name in gemini-image media-ingest; do
+            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
+          done

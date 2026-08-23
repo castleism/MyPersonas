@@ -1,11 +1,19 @@
 // Immutable approved media for the post_drafts publishing pipeline.
 //
-// Scheduling copies the exact remote bytes into a dedicated public,
-// content-addressed Storage bucket. The queue downloads that stored object and
-// re-verifies its digest, size, and detected MIME before any provider call.
+// Scheduling copies the exact remote bytes into a dedicated content-addressed
+// Storage bucket. A separate opaque delivery id is the only URL providers use;
+// the owner-correlating Storage path remains internal and becomes private after
+// the separately gated migration-063 finalizer.
+
+import {
+  readExactPublicMediaResponse,
+  validatePublicMediaResolution,
+  verifyResolvedPublicMedia,
+} from "./public-media.ts";
 
 export const APPROVED_MEDIA_BUCKET = "post-approved-media";
 export const APPROVED_MEDIA_MAX_BYTES = 10 * 1024 * 1024;
+export const APPROVED_MEDIA_DELIVERY_ORIGIN = "https://media.mypersonas.online";
 
 export type ApprovedMedia = {
   sha256: string;
@@ -13,6 +21,8 @@ export type ApprovedMedia = {
   byteSize: number;
   path: string;
   url: string;
+  deliveryId: string;
+  deliveryUrl: string;
 };
 
 type StorageApi = {
@@ -29,8 +39,16 @@ type StorageApi = {
   };
 };
 
+type RpcApi = {
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<{ data: unknown; error: { message?: string } | null }>;
+};
+
 const SHA256 = /^[0-9a-f]{64}$/;
 const OWNER = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OPAQUE_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const PATH = /^owners\/([0-9a-f-]{36})\/sha256\/([0-9a-f]{2})\/([0-9a-f]{64})\.(jpg|png|webp)$/;
 
 function bytesEqualPrefix(
@@ -94,6 +112,25 @@ export function approvedMediaUrl(supabaseUrl: string, path: string) {
     throw new Error("SUPABASE_URL must use HTTPS for public approved media.");
   }
   return `${base.origin}/storage/v1/object/public/${APPROVED_MEDIA_BUCKET}/${path}`;
+}
+
+export function approvedMediaDeliveryUrl(publicId: string) {
+  const normalized = String(publicId || "").toLowerCase();
+  if (!OPAQUE_V4.test(normalized)) {
+    throw new Error("Invalid approved-media delivery id.");
+  }
+  return `${APPROVED_MEDIA_DELIVERY_ORIGIN}/approved/v1/${normalized}`;
+}
+
+export function approvedMediaDeliveryIdFromUrl(value: string) {
+  const match = String(value || "").match(
+    /^https:\/\/media[.]mypersonas[.]online\/approved\/v1\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/,
+  );
+  return match?.[1] || null;
+}
+
+export function approvedMediaProviderUrl(media: ApprovedMedia) {
+  return media.deliveryUrl || media.url;
 }
 
 function isBlockedIpv4(hostname: string) {
@@ -263,18 +300,27 @@ export function validateApprovedMediaRecord(
     throw new Error("Approved-media path does not match its digest and MIME.");
   }
   if (media.url !== approvedMediaUrl(supabaseUrl, media.path)) {
-    throw new Error("Approved-media URL is not the canonical immutable object URL.");
+    throw new Error("Approved-media internal URL is not canonical.");
+  }
+  const deliveryId = String(media.deliveryId || "").toLowerCase();
+  const deliveryUrl = String(media.deliveryUrl || "");
+  if (deliveryId || deliveryUrl) {
+    if (!OPAQUE_V4.test(deliveryId) ||
+      deliveryUrl !== approvedMediaDeliveryUrl(deliveryId) ||
+      approvedMediaDeliveryIdFromUrl(deliveryUrl) !== deliveryId) {
+      throw new Error("Approved-media opaque delivery is not canonical.");
+    }
   }
 }
 
 export async function verifyApprovedMedia(
-  storage: StorageApi,
+  admin: RpcApi & { storage: StorageApi },
   supabaseUrl: string,
   media: ApprovedMedia,
   owner: string,
 ) {
   validateApprovedMediaRecord(media, supabaseUrl, owner);
-  const downloaded = await storage.from(APPROVED_MEDIA_BUCKET).download(media.path);
+  const downloaded = await admin.storage.from(APPROVED_MEDIA_BUCKET).download(media.path);
   if (downloaded.error || !downloaded.data) {
     throw new Error("The approved-media object is missing from Storage.");
   }
@@ -290,11 +336,28 @@ export async function verifyApprovedMedia(
   if (digest !== media.sha256) {
     throw new Error("The approved-media object checksum no longer matches approval.");
   }
+  if (media.deliveryId || media.deliveryUrl) {
+    const resolved = await admin.rpc("resolve_post_approved_media_service", {
+      p_public_id: media.deliveryId,
+    });
+    const row = Array.isArray(resolved.data) ? resolved.data[0] : resolved.data;
+    if (resolved.error || !row || typeof row !== "object") {
+      throw new Error("The approved-media opaque delivery is unavailable.");
+    }
+    const record = row as Record<string, unknown>;
+    const keys = Object.keys(record).sort();
+    if (keys.join(",") !== "bucket,byte_size,content_sha256,mime_type,storage_path" ||
+      record.bucket !== APPROVED_MEDIA_BUCKET || record.storage_path !== media.path ||
+      record.mime_type !== media.mime || Number(record.byte_size) !== media.byteSize ||
+      record.content_sha256 !== media.sha256) {
+      throw new Error("The approved-media opaque delivery no longer matches approval.");
+    }
+  }
   return true;
 }
 
 export async function stageApprovedMedia(
-  storage: StorageApi,
+  admin: RpcApi & { storage: StorageApi },
   supabaseUrl: string,
   sourceUrl: string,
   owner: string,
@@ -306,6 +369,20 @@ export async function stageApprovedMedia(
     owner,
     fetcher,
   );
+  return await stageApprovedMediaBytes(admin, supabaseUrl, bytes, mime, owner);
+}
+
+export async function stageApprovedMediaBytes(
+  admin: RpcApi & { storage: StorageApi },
+  supabaseUrl: string,
+  bytes: Uint8Array,
+  mime: ApprovedMedia["mime"],
+  owner: string,
+): Promise<ApprovedMedia> {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength < 1 ||
+    bytes.byteLength > APPROVED_MEDIA_MAX_BYTES || detectImageMime(bytes) !== mime) {
+    throw new Error("Approved media bytes are invalid.");
+  }
   const sha256 = await sha256Hex(bytes);
   const path = approvedMediaPath(owner, sha256, mime);
   const media: ApprovedMedia = {
@@ -314,8 +391,10 @@ export async function stageApprovedMedia(
     byteSize: bytes.byteLength,
     path,
     url: approvedMediaUrl(supabaseUrl, path),
+    deliveryId: "",
+    deliveryUrl: "",
   };
-  const bucket = storage.from(APPROVED_MEDIA_BUCKET);
+  const bucket = admin.storage.from(APPROVED_MEDIA_BUCKET);
   const uploaded = await bucket.upload(path, bytes, {
     contentType: mime,
     cacheControl: "31536000",
@@ -325,7 +404,7 @@ export async function stageApprovedMedia(
   // Any upload error is accepted only if the exact expected object already
   // exists and independently verifies; all other errors fail closed.
   try {
-    await verifyApprovedMedia(storage, supabaseUrl, media, owner);
+    await verifyApprovedMedia(admin, supabaseUrl, media, owner);
   } catch (error) {
     if (uploaded.error) {
       throw new Error(
@@ -334,5 +413,78 @@ export async function stageApprovedMedia(
     }
     throw error;
   }
+  const issued = await admin.rpc("issue_post_approved_media_handle_service", {
+    p_owner: owner.toLowerCase(),
+    p_storage_path: media.path,
+    p_sha256: media.sha256,
+    p_mime_type: media.mime,
+    p_byte_size: media.byteSize,
+  });
+  const deliveryId = String(issued.data || "").toLowerCase();
+  if (issued.error || !OPAQUE_V4.test(deliveryId)) {
+    throw new Error("Approved media could not receive an opaque provider delivery.");
+  }
+  media.deliveryId = deliveryId;
+  media.deliveryUrl = approvedMediaDeliveryUrl(deliveryId);
+  await verifyApprovedMedia(admin, supabaseUrl, media, owner);
   return media;
+}
+
+/**
+ * Resolve an immutable registry asset using a service-only owner boundary,
+ * download the exact private Storage bytes, and stage the verified image into
+ * the immutable publisher bucket. Neither its owner-correlating Storage path
+ * nor a service credential is returned to a caller.
+ */
+export async function stageApprovedPersonaMediaAsset(
+  admin: RpcApi & { storage: StorageApi },
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  assetId: string,
+  owner: string,
+  fetcher: typeof fetch = fetch,
+): Promise<ApprovedMedia> {
+  if (!OWNER.test(owner) || !OWNER.test(assetId) || !serviceRoleKey) {
+    throw new Error("Invalid persona-media approval boundary.");
+  }
+  const resolved = await admin.rpc("resolve_persona_media_asset_service", {
+    p_owner: owner.toLowerCase(),
+    p_asset_id: assetId.toLowerCase(),
+  });
+  const row = Array.isArray(resolved.data) ? resolved.data[0] : resolved.data;
+  if (resolved.error || !row) {
+    throw new Error("The bound persona media asset is unavailable.");
+  }
+  const resolution = validatePublicMediaResolution(row);
+  if (resolution.byte_size > APPROVED_MEDIA_MAX_BYTES ||
+    !["image/jpeg", "image/png", "image/webp"].includes(resolution.mime_type)) {
+    throw new Error("The bound persona media asset is not a supported publish image.");
+  }
+  const base = new URL(supabaseUrl);
+  if (base.protocol !== "https:" || base.username || base.password || base.port ||
+    base.pathname !== "/" || base.search || base.hash) {
+    throw new Error("SUPABASE_URL must be a canonical HTTPS project URL.");
+  }
+  const encodedPath = resolution.storage_path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetcher(
+    `${base.origin}/storage/v1/object/${resolution.bucket}/${encodedPath}`,
+    {
+      method: "GET",
+      redirect: "error",
+      headers: {
+        "Authorization": `Bearer ${serviceRoleKey}`,
+        "apikey": serviceRoleKey,
+        "Accept": "image/jpeg,image/png,image/webp",
+        "Accept-Encoding": "identity",
+      },
+      signal: AbortSignal.timeout(20_000),
+    },
+  );
+  const bytes = await readExactPublicMediaResponse(response, resolution.byte_size);
+  await verifyResolvedPublicMedia(bytes, resolution);
+  const mime = detectImageMime(bytes);
+  if (mime !== resolution.mime_type) {
+    throw new Error("The bound persona media MIME no longer matches its bytes.");
+  }
+  return await stageApprovedMediaBytes(admin, base.origin, bytes, mime, owner);
 }

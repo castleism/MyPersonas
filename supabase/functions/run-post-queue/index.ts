@@ -23,6 +23,8 @@ import {
 } from "../_shared/meta-publish.ts";
 import {
   type ApprovedMedia,
+  approvedMediaDeliveryUrl,
+  approvedMediaProviderUrl,
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
 
@@ -61,11 +63,13 @@ type Draft = {
   approved_fb_media_bytes: number;
   approved_fb_media_path: string;
   approved_fb_media_url: string;
+  approved_fb_delivery_id: string | null;
   approved_ig_media_sha256: string;
   approved_ig_media_mime: ApprovedMedia["mime"] | "";
   approved_ig_media_bytes: number;
   approved_ig_media_path: string;
   approved_ig_media_url: string;
+  approved_ig_delivery_id: string | null;
   targets: string[] | null;
   fb_caption: string | null;
   ig_caption: string | null;
@@ -121,6 +125,10 @@ function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedM
       byteSize: d.approved_fb_media_bytes,
       path: d.approved_fb_media_path,
       url: d.approved_fb_media_url,
+      deliveryId: d.approved_fb_delivery_id || "",
+      deliveryUrl: d.approved_fb_delivery_id
+        ? approvedMediaDeliveryUrl(d.approved_fb_delivery_id)
+        : "",
     }
     : {
       sha256: d.approved_ig_media_sha256,
@@ -128,6 +136,10 @@ function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedM
       byteSize: d.approved_ig_media_bytes,
       path: d.approved_ig_media_path,
       url: d.approved_ig_media_url,
+      deliveryId: d.approved_ig_delivery_id || "",
+      deliveryUrl: d.approved_ig_delivery_id
+        ? approvedMediaDeliveryUrl(d.approved_ig_delivery_id)
+        : "",
     };
 }
 
@@ -283,7 +295,7 @@ serve(async (req) => {
             continue;
           }
           try {
-            await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, d.owner);
+            await verifyApprovedMedia(admin, SUPABASE_URL, media, d.owner);
           } catch (error) {
             approvalPhase = "approved_media";
             errs.push(`${target}: ${(error as Error).message}`);
@@ -352,7 +364,7 @@ serve(async (req) => {
       }
 
       if (!reconciliationRequired && targets.includes("facebook") && !d.fb_post_id && ctx?.ok) {
-        const img = d.approved_fb_media_url;
+        const img = approvedMediaProviderUrl(approvedMediaFor(d, "facebook"));
         if (!img) errs.push("facebook: no image");
         else {
           try {
@@ -396,7 +408,7 @@ serve(async (req) => {
           if (recent.error) errs.push("instagram: could not verify the rolling publish guard");
           else if ((recent.count || 0) >= IG_ROLLING_LIMIT) errs.push("instagram: rolling 24-hour safety guard reached");
           else {
-            const img = d.approved_ig_media_url;
+            const img = approvedMediaProviderUrl(approvedMediaFor(d, "instagram"));
             if (!img) errs.push("instagram: no image");
             else {
               try {

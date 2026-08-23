@@ -134,13 +134,14 @@ test("secure intake validates source bytes and creates the final derivative serv
   assert.match(ingest, /declared media type does not match the file bytes/);
   assert.match(ingest, /sourceSha256 !== actualSourceSha256/);
   assert.ok(ingest.indexOf("validatedDimensions(bytes, detected.mime)") < ingest.indexOf('if (aiUse !== "none" && !["image/png"'));
-  assert.match(ingest, /renderWatermarkedRaster\(bytes, detected\.mime, crop\)/);
+  assert.match(ingest, /renderRasterDerivative\(bytes, detected\.mime, crop, aiUse !== "none"\)/);
   assert.match(ingest, /npm:@imagemagick\/magick-wasm@0\.0\.42/);
   assert.match(ingest, /Deno\.readFile\(new URL\("\.\/MyPersonas-AI-Watermark\.png"/);
   assert.match(ingest, /await sha256Hex\(master\) !== WATERMARK_SHA256/);
   assert.match(ingest, /watermark\.evaluate\(Channels\.Alpha, EvaluateOperator\.Multiply, WATERMARK_OPACITY\)/);
   assert.match(ingest, /image\.composite\(watermark, CompositeOperator\.Over/);
-  assert.ok(ingest.indexOf("renderWatermarkedRaster(bytes, detected.mime, crop)") < ingest.indexOf(".upload(path, finalBytes"));
+  assert.ok(ingest.indexOf('renderRasterDerivative(bytes, detected.mime, crop, aiUse !== "none")') < ingest.indexOf(".upload(path, finalBytes"));
+  assert.match(ingest, /outputDimensions\.width !== crop\.width \|\| outputDimensions\.height !== crop\.height/);
   assert.doesNotMatch(ingest, /AI-used imagery must provide a distinct final watermarked derivative/);
   assert.doesNotMatch(ingest, /use_ai_media_generation_event_service/);
   assert.match(ingest, /published\/provenance\/\$\{aiUse\}\/\$\{source\}\/\$\{personaId\}\/\$\{purpose\}/);
@@ -169,13 +170,13 @@ test("Gemini generation records evidence, honors budgets, and returns only a reg
   assert.doesNotMatch(generator, /image: `data:/);
 });
 
-test("social composer requires registered final AI crops after each crop operation", () => {
+test("social composer requires registered final crops after every raster crop operation", () => {
   for (const crop of ["width:1200,height:628", "width:1080,height:1080", "width:1080,height:1350"]) {
     assert.match(html, new RegExp(crop.replace(/[{}]/g, "\\$&")));
   }
-  assert.match(composer, /from\("persona_media_assets"\)/);
-  assert.match(composer, /AI-used media requires three distinct registered final crops/);
-  assert.match(composer, /asset\.watermark_state !== "system_applied"/);
+  assert.match(composer, /resolve_owned_persona_media_reference_service/);
+  assert.match(composer, /Every image requires three distinct registered final social crops/);
+  assert.match(composer, /sourceAsset\.ai_use === "none"[\s\S]*asset\?\.watermark_state === "not_required"[\s\S]*asset\?\.watermark_state === "system_applied"/);
   assert.match(composer, /asset\.source_sha256 !== sourceAsset\.source_sha256/);
   assert.match(composer, /media_provenance_required: true/);
   assert.match(html, /id="cmpImg" readonly/);
@@ -223,24 +224,33 @@ test("migration 060 and its release mirror bind immutable provenance into every 
   assert.match(sql, /asset\.status='active'/);
 });
 
-test("Pages deployment ships both provenance assets only after migration 060 release evidence", async () => {
+test("Pages deployment ships both provenance assets only after opaque foundation evidence", async () => {
   const workflow = await readFile(path.join(repoRoot, ".github/workflows/pages.yml"), "utf8");
   const artifactStep = workflow.slice(
     workflow.indexOf("- name: Prepare public site artifact"),
     workflow.indexOf("- uses: actions/upload-pages-artifact@v3"),
   );
-  assert.match(workflow, /release_confirmation:[\s\S]{0,240}migration 060/i);
-  assert.match(workflow, /verify migration 060 in the linked ledger/i);
+  assert.match(workflow, /release_confirmation:[\s\S]{0,240}OPAQUE-FOUNDATION-VERIFIED/);
+  assert.match(workflow, /migrations 062-064, cleanup preview, the protected gateway, and both opaque-media origins are live and read back/i);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.css'/);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.js'/);
   assert.ok(artifactStep.indexOf("/ai-content-provenance.css") < artifactStep.indexOf("--exclude '*'"));
   assert.ok(artifactStep.indexOf("/ai-content-provenance.js") < artifactStep.indexOf("--exclude '*'"));
 });
 
-test("the provenance release deploys only its reviewed function set by default", async () => {
+test("the opaque-media release separates backward-compatible consumers from producers", async () => {
   const workflow = await readFile(path.join(repoRoot, ".github/workflows/supabase-deploy.yml"), "utf8");
-  assert.match(workflow, /release_scope:[\s\S]*default: "ai-provenance"/);
-  assert.match(workflow, /if: \$\{\{ inputs\.release_scope == 'ai-provenance' \}\}/);
-  assert.match(workflow, /for function_name in media-ingest gemini-image compose-post ai-proxy/);
-  assert.match(workflow, /inputs\.release_scope == 'all-reviewed'/);
+  assert.match(workflow, /release_scope:[\s\S]*default: "opaque-media-foundation"/);
+  assert.match(workflow, /if: \$\{\{ inputs\.release_scope == 'opaque-media-foundation' \}\}/);
+  assert.match(workflow, /for function_name in public-media approved-media owner-media-preview legacy-media-remediation compose-post approve-post-draft meta-post run-post-queue delete-account erase-content/);
+  assert.match(workflow, /if: \$\{\{ inputs\.release_scope == 'opaque-media-producers' \}\}/);
+  assert.match(workflow, /for function_name in gemini-image media-ingest/);
+  assert.match(workflow, /MIGRATIONS-062-064-GATEWAY-VERIFIED/);
+  assert.match(workflow, /public-media approved-media owner-media-preview legacy-media-remediation/);
+  assert.match(workflow, /OPAQUE-FRONTEND-VERIFIED/);
+  assert.doesNotMatch(workflow, /inputs\.release_scope == '(?:ai-provenance|all-reviewed)'/);
+
+  const pagesWorkflow = await readFile(path.join(repoRoot, ".github", "workflows", "pages.yml"), "utf8");
+  assert.match(pagesWorkflow, /OPAQUE-FOUNDATION-VERIFIED/);
+  assert.doesNotMatch(pagesWorkflow, /Type MIGRATIONS-062-064-GATEWAY-VERIFIED/);
 });

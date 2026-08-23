@@ -84,6 +84,30 @@ verify_jwt = true
 verify_jwt = true
 static_files = ["./functions/media-ingest/MyPersonas-AI-Watermark.png"]
 
+# Opaque public ids are resolved server-side only after the exact current page
+# review is rechecked. The function proxies bounded hash-verified bytes and never
+# redirects to the owner-correlating private Storage path. It also requires the
+# CloudFront-only X-MyPersonas-Media-Gateway header to match the separately
+# configured PUBLIC_MEDIA_GATEWAY_SECRET; a missing secret disables the origin.
+[functions.public-media]
+verify_jwt = false
+
+# Approved social renditions use the same protected CloudFront origin contract
+# as persona media. The Edge function verifies the gateway secret itself,
+# re-resolves the exact approved reference, and streams hash-verified bytes.
+[functions.approved-media]
+verify_jwt = false
+
+# Authenticated owner/friend preview returns verified bytes directly. It never
+# exposes a private Storage path or signed URL to the browser.
+[functions.owner-media-preview]
+verify_jwt = true
+
+# AAL2 owner-only inventory and exact-byte preview for the historical `media`
+# bucket. Raw Storage paths and integrity hashes remain service-only.
+[functions.legacy-media-remediation]
+verify_jwt = true
+
 [functions.agent-board-propose]
 verify_jwt = true
 

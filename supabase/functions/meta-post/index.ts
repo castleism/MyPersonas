@@ -28,7 +28,10 @@ import {
 } from "../_shared/meta-publish.ts";
 import {
   type ApprovedMedia,
+  approvedMediaDeliveryUrl,
+  approvedMediaProviderUrl,
   stageApprovedMedia,
+  stageApprovedPersonaMediaAsset,
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
 
@@ -49,6 +52,9 @@ type Draft = {
   source_image_url: string | null;
   fb_image_url: string | null;
   ig_image_url: string | null;
+  source_media_asset_id: string | null;
+  fb_media_asset_id: string | null;
+  ig_media_asset_id: string | null;
   fb_caption: string | null;
   ig_caption: string | null;
   fb_post_id: string | null;
@@ -59,11 +65,13 @@ type Draft = {
   approved_fb_media_bytes: number;
   approved_fb_media_path: string;
   approved_fb_media_url: string;
+  approved_fb_delivery_id: string | null;
   approved_ig_media_sha256: string;
   approved_ig_media_mime: ApprovedMedia["mime"] | "";
   approved_ig_media_bytes: number;
   approved_ig_media_path: string;
   approved_ig_media_url: string;
+  approved_ig_delivery_id: string | null;
   publish_facebook_page_id: string;
   publish_instagram_business_id: string;
 };
@@ -71,11 +79,12 @@ type Draft = {
 const DRAFT_COLUMNS = [
   "id", "owner", "persona_id", "facebook_ledger_id", "status", "targets",
   "source_image_url", "fb_image_url", "ig_image_url", "fb_caption", "ig_caption",
+  "source_media_asset_id", "fb_media_asset_id", "ig_media_asset_id",
   "fb_post_id", "ig_media_id", "approved_content_hash",
   "approved_fb_media_sha256", "approved_fb_media_mime", "approved_fb_media_bytes",
-  "approved_fb_media_path", "approved_fb_media_url", "approved_ig_media_sha256",
+  "approved_fb_media_path", "approved_fb_media_url", "approved_fb_delivery_id", "approved_ig_media_sha256",
   "approved_ig_media_mime", "approved_ig_media_bytes", "approved_ig_media_path",
-  "approved_ig_media_url", "publish_facebook_page_id",
+  "approved_ig_media_url", "approved_ig_delivery_id", "publish_facebook_page_id",
   "publish_instagram_business_id",
 ].join(",");
 
@@ -87,6 +96,10 @@ function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): Appro
       byteSize: draft.approved_fb_media_bytes,
       path: draft.approved_fb_media_path,
       url: draft.approved_fb_media_url,
+      deliveryId: draft.approved_fb_delivery_id || "",
+      deliveryUrl: draft.approved_fb_delivery_id
+        ? approvedMediaDeliveryUrl(draft.approved_fb_delivery_id)
+        : "",
     }
     : {
       sha256: draft.approved_ig_media_sha256,
@@ -94,6 +107,10 @@ function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): Appro
       byteSize: draft.approved_ig_media_bytes,
       path: draft.approved_ig_media_path,
       url: draft.approved_ig_media_url,
+      deliveryId: draft.approved_ig_delivery_id || "",
+      deliveryUrl: draft.approved_ig_delivery_id
+        ? approvedMediaDeliveryUrl(draft.approved_ig_delivery_id)
+        : "",
     };
 }
 
@@ -188,20 +205,25 @@ async function ensureImmutableAttemptMedia(
       const source = target === "facebook"
         ? draft.fb_image_url || draft.source_image_url || ""
         : draft.ig_image_url || draft.source_image_url || "";
-      media = await stageApprovedMedia(
-        admin.storage,
-        SUPABASE_URL,
-        source,
-        draft.owner,
-      );
+      const assetId = target === "facebook"
+        ? draft.fb_media_asset_id || draft.source_media_asset_id || ""
+        : draft.ig_media_asset_id || draft.source_media_asset_id || "";
+      media = assetId
+        ? await stageApprovedPersonaMediaAsset(
+          admin, SUPABASE_URL, SERVICE_ROLE_KEY, assetId, draft.owner,
+        )
+        : await stageApprovedMedia(
+          admin, SUPABASE_URL, source, draft.owner,
+        );
     }
-    await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, draft.owner);
+    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner);
     const prefix = target === "facebook" ? "approved_fb_media" : "approved_ig_media";
     patch[`${prefix}_sha256`] = media.sha256;
     patch[`${prefix}_mime`] = media.mime;
     patch[`${prefix}_bytes`] = media.byteSize;
     patch[`${prefix}_path`] = media.path;
     patch[`${prefix}_url`] = media.url;
+    patch[`${prefix.replace("media", "delivery")}_id`] = media.deliveryId || null;
     patch[target === "facebook" ? "fb_image_url" : "ig_image_url"] = media.url;
   }
 
@@ -217,7 +239,7 @@ async function ensureImmutableAttemptMedia(
   for (const target of targets) {
     if (target !== "facebook" && target !== "instagram") continue;
     const media = approvedMediaFor(persisted, target);
-    await verifyApprovedMedia(admin.storage, SUPABASE_URL, media, draft.owner);
+    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner);
     const rowUrl = target === "facebook"
       ? persisted.fb_image_url
       : persisted.ig_image_url;
@@ -317,10 +339,12 @@ async function handlePublishDraft(
   if (!draft.facebook_ledger_id || !SAFE_ID.test(draft.facebook_ledger_id)) {
     validationErrors.push("The draft has no valid Facebook destination.");
   }
-  if (targets.includes("facebook") && !/^https:\/\/\S+$/i.test(draft.fb_image_url || draft.source_image_url || "")) {
+  if (targets.includes("facebook") && !draft.fb_media_asset_id && !draft.source_media_asset_id &&
+    !/^https:\/\/\S+$/i.test(draft.fb_image_url || draft.source_image_url || "")) {
     validationErrors.push("Facebook needs a public HTTPS image.");
   }
-  if (targets.includes("instagram") && !/^https:\/\/\S+$/i.test(draft.ig_image_url || draft.source_image_url || "")) {
+  if (targets.includes("instagram") && !draft.ig_media_asset_id && !draft.source_media_asset_id &&
+    !/^https:\/\/\S+$/i.test(draft.ig_image_url || draft.source_image_url || "")) {
     validationErrors.push("Instagram needs a public HTTPS image.");
   }
   if (validationErrors.length) {
@@ -425,7 +449,7 @@ async function handlePublishDraft(
       const result = await publishFacebook(
         ctx.asset.facebook_page_id,
         ctx.pageToken,
-        draft.approved_fb_media_url,
+        approvedMediaProviderUrl(approvedMediaFor(draft, "facebook")),
         draft.fb_caption || "",
         () => requireOwnerPublishingUnpaused(userId),
       );
@@ -458,7 +482,7 @@ async function handlePublishDraft(
         const result = await publishInstagram(
           ctx.asset.instagram_business_id,
           ctx.pageToken,
-          draft.approved_ig_media_url,
+          approvedMediaProviderUrl(approvedMediaFor(draft, "instagram")),
           draft.ig_caption || "",
           () => requireOwnerPublishingUnpaused(userId),
         );

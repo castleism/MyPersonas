@@ -18,6 +18,9 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/056-auth-email-attestation-hardening.sql","supabase/migrations/20260822220000_auth_email_attestation_hardening.sql"],
   ["MyPersonas.Online_v0/sql-updates/057-ai-backend-budget-guard.sql","supabase/migrations/20260822230000_ai_backend_budget_guard.sql"],
   ["MyPersonas.Online_v0/sql-updates/058-persona-view-mode.sql","supabase/migrations/20260823000000_persona_view_mode.sql"],
+  ["MyPersonas.Online_v0/sql-updates/062-opaque-public-media-delivery.sql","supabase/migrations/20260823040000_opaque_public_media_delivery.sql"],
+  ["MyPersonas.Online_v0/sql-updates/063-opaque-approved-media-delivery.sql","supabase/migrations/20260823050000_opaque_approved_media_delivery.sql"],
+  ["MyPersonas.Online_v0/sql-updates/064-legacy-media-remediation.sql","supabase/migrations/20260823060000_legacy_media_remediation.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

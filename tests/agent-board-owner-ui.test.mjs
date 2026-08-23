@@ -28,8 +28,10 @@ test("agent board is reachable from desktop, mobile, sidebar, and router",()=>{
 test("database-dependent production workflows require an explicit reviewed release",()=>{
   assert.doesNotMatch(pagesWorkflow,/\n\s+push:/);
   assert.doesNotMatch(functionsWorkflow,/\n\s+push:/);
-  assert.match(pagesWorkflow,/MIGRATIONS-VERIFIED/);
-  assert.match(functionsWorkflow,/MIGRATIONS-VERIFIED/);
+  assert.match(pagesWorkflow,/OPAQUE-FOUNDATION-VERIFIED/);
+  assert.match(functionsWorkflow,/MIGRATIONS-062-064-GATEWAY-VERIFIED/);
+  assert.match(functionsWorkflow,/public-media approved-media owner-media-preview legacy-media-remediation/);
+  assert.match(functionsWorkflow,/OPAQUE-FRONTEND-VERIFIED/);
   assert.match(functionsWorkflow,/Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured/);
 });
 

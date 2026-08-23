@@ -126,11 +126,21 @@ test("owned storage removal is exact, recursive, verified, and precedes row eras
 
   const erasure = source.slice(source.indexOf("const eraseClaimedOwner"));
   assertOrdered(erasure, [
+    '"approved-media delivery revocation"',
+    "revokeApprovedMediaDelivery(admin, uid)",
     '"owned storage erasure"',
     "eraseOwnedStorage(admin, uid)",
     '"owned-row erasure"',
     "eraseOwnedRows(admin, uid, personaIds)",
   ]);
+});
+
+test("account erasure revokes and verifies opaque approved-media delivery before deleting bytes", () => {
+  const revoke = functionBlock("revokeApprovedMediaDelivery");
+  assert.match(revoke, /admin\.rpc\(\s*"revoke_post_approved_media_owner_service"/s);
+  assert.match(revoke, /admin\.from\("post_approved_media_handles"\)/);
+  assert.match(revoke, /\.eq\("owner", uid\)\.eq\("state", "active"\)/);
+  assert.match(revoke, /remaining\.count !== 0/);
 });
 
 test("Reddit never becomes a manual erasure acknowledgement", () => {

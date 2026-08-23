@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   APPROVED_MEDIA_BUCKET,
+  approvedMediaDeliveryIdFromUrl,
+  approvedMediaDeliveryUrl,
   approvedMediaPath,
+  approvedMediaProviderUrl,
   approvedMediaUrl,
   detectImageMime,
   readBoundedBytes,
@@ -27,8 +30,12 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const src = (name) =>
   `${SUPABASE_URL}/storage/v1/object/public/persona-media/${OWNER}/${name}`;
 
-class MemoryStorage {
+const DELIVERY_ID = "06300000-0000-4000-8000-000000000001";
+
+class MemoryAdmin {
   objects = new Map();
+  handles = new Map();
+  storage = this;
 
   from(bucket) {
     assert.equal(bucket, APPROVED_MEDIA_BUCKET);
@@ -43,6 +50,32 @@ class MemoryStorage {
         error: this.objects.has(path) ? null : { message: "missing" },
       }),
     };
+  }
+
+  async rpc(name, args) {
+    if (name === "issue_post_approved_media_handle_service") {
+      const existing = this.handles.get(args.p_storage_path);
+      if (existing) return { data: existing.publicId, error: null };
+      const handle = {
+        publicId: DELIVERY_ID,
+        bucket: APPROVED_MEDIA_BUCKET,
+        storage_path: args.p_storage_path,
+        mime_type: args.p_mime_type,
+        byte_size: args.p_byte_size,
+        content_sha256: args.p_sha256,
+      };
+      this.handles.set(args.p_storage_path, handle);
+      return { data: handle.publicId, error: null };
+    }
+    if (name === "resolve_post_approved_media_service") {
+      const handle = [...this.handles.values()].find((row) =>
+        row.publicId === args.p_public_id
+      );
+      if (!handle) return { data: null, error: null };
+      const { publicId: _publicId, ...resolution } = handle;
+      return { data: resolution, error: null };
+    }
+    return { data: null, error: { message: "unknown RPC" } };
   }
 }
 
@@ -95,7 +128,7 @@ test("remote source URL validation requires an owner-scoped persona-media URL", 
   );
 });
 
-test("content path and public URL are canonical and owner scoped", async () => {
+test("internal path stays owner scoped while public provider delivery is opaque", async () => {
   const digest = await sha256Hex(PNG);
   const path = approvedMediaPath(OWNER, digest, "image/png");
   assert.equal(
@@ -108,8 +141,13 @@ test("content path and public URL are canonical and owner scoped", async () => {
     byteSize: PNG.byteLength,
     path,
     url: approvedMediaUrl(SUPABASE_URL, path),
+    deliveryId: DELIVERY_ID,
+    deliveryUrl: approvedMediaDeliveryUrl(DELIVERY_ID),
   };
   assert.doesNotThrow(() => validateApprovedMediaRecord(media, SUPABASE_URL, OWNER));
+  assert.equal(approvedMediaDeliveryIdFromUrl(media.deliveryUrl), DELIVERY_ID);
+  assert.equal(approvedMediaProviderUrl(media), media.deliveryUrl);
+  assert.doesNotMatch(media.deliveryUrl, new RegExp(OWNER, "i"));
   assert.throws(() => validateApprovedMediaRecord(
     { ...media, path: media.path.replace(OWNER, "512dfc83-3ee3-4d67-ab2a-48d108e8f75a") },
     SUPABASE_URL,
@@ -118,32 +156,34 @@ test("content path and public URL are canonical and owner scoped", async () => {
 });
 
 test("staging verifies stored bytes and safely reuses identical content", async () => {
-  const storage = new MemoryStorage();
+  const admin = new MemoryAdmin();
   const fetcher = async () => new Response(PNG, {
     status: 200,
     headers: { "Content-Type": "image/png", "Content-Length": String(PNG.byteLength) },
   });
   const first = await stageApprovedMedia(
-    storage,
+    admin,
     SUPABASE_URL,
     src("image.png"),
     OWNER,
     fetcher,
   );
   const second = await stageApprovedMedia(
-    storage,
+    admin,
     SUPABASE_URL,
     src("duplicate.png"),
     OWNER,
     fetcher,
   );
   assert.deepEqual(second, first);
-  assert.equal(storage.objects.size, 1);
-  assert.equal(await verifyApprovedMedia(storage, SUPABASE_URL, first, OWNER), true);
+  assert.equal(admin.objects.size, 1);
+  assert.equal(admin.handles.size, 1);
+  assert.equal(await verifyApprovedMedia(admin, SUPABASE_URL, first, OWNER), true);
+  assert.equal(first.deliveryUrl, approvedMediaDeliveryUrl(DELIVERY_ID));
 
-  storage.objects.set(first.path, new Blob([new Uint8Array([...PNG, 0])], { type: "image/png" }));
+  admin.objects.set(first.path, new Blob([new Uint8Array([...PNG, 0])], { type: "image/png" }));
   await assert.rejects(
-    verifyApprovedMedia(storage, SUPABASE_URL, first, OWNER),
+    verifyApprovedMedia(admin, SUPABASE_URL, first, OWNER),
     /size no longer matches/,
   );
 });
@@ -154,10 +194,10 @@ test("bounded response reader rejects an oversized stream without Content-Length
 });
 
 test("staging validates redirects and declared MIME before Storage writes", async () => {
-  const storage = new MemoryStorage();
+  const admin = new MemoryAdmin();
   await assert.rejects(
     stageApprovedMedia(
-      storage,
+      admin,
       SUPABASE_URL,
       src("image.png"),
       OWNER,
@@ -170,7 +210,7 @@ test("staging validates redirects and declared MIME before Storage writes", asyn
   );
   await assert.rejects(
     stageApprovedMedia(
-      storage,
+      admin,
       SUPABASE_URL,
       src("image.jpg"),
       OWNER,
@@ -181,7 +221,7 @@ test("staging validates redirects and declared MIME before Storage writes", asyn
     ),
     /MIME does not match/,
   );
-  assert.equal(storage.objects.size, 0);
+  assert.equal(admin.objects.size, 0);
 });
 
 test("Composer schedules only through the authenticated immutable-media boundary", async () => {
@@ -195,7 +235,7 @@ test("Composer schedules only through the authenticated immutable-media boundary
   assert.match(frontend, /Authorization":"Bearer "\+active\.access_token/);
   assert.match(frontend, /button\.textContent="Approving media…"/);
   assert.doesNotMatch(frontend, /sb\.rpc\("approve_and_schedule_post_draft"/);
-  assert.match(approvalFunction, /admin\.rpc\("approve_and_schedule_post_draft"/);
+  assert.match(approvalFunction, /admin\.rpc\("approve_and_schedule_post_draft_opaque"/);
   assert.match(config, /\[functions\.approve-post-draft\]\s*verify_jwt\s*=\s*true/);
 });
 
@@ -237,7 +277,7 @@ test("browser public uploads use the authenticated provenance intake", async () 
   assert.match(generatedUpload, /out\.dataset\.publicUrl/);
   assert.match(generatedUpload, /out\.dataset\.assetId/);
   assert.doesNotMatch(generatedUpload, /watermarkRaster|uploadImmutablePersonaMedia/);
-  assert.match(pickerUpload, /f\.accept="image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
+  assert.match(pickerUpload, /f\.accept=.*"image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
   assert.match(pickerUpload, /MyPersonasAiProvenance\.askAiUse/);
   assert.match(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(source\)/);
   assert.doesNotMatch(pickerUpload, /MyPersonasAiProvenance\.watermarkRaster\(source\)/);

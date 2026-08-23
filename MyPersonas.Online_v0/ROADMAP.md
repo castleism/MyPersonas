@@ -12,11 +12,11 @@ Current execution package: `SETUP-CONDUCTOR-HANDOFF.md`, `50-HOUR-COMMAND-BOARD.
 `REQUEST-REVIEW-SPEC.md`. These documents distinguish source, deployment, live proof, and
 owner-gated external actions.
 
-Current linked database: **the production ledger records 047–060, migration 060 was
+Current linked database: **the production ledger records 047–061, migration 061 was
 applied/read back, and the sole owner has active global-administrator and technician
 roles.** The matching source passed 284/284 Node tests, frontend syntax, migration 058's
 role-switched runtime, and the frozen-059 → 060 → 060-reapply runtime. The public Pages
-site and the four reviewed provenance functions are now live from commit `968e1ea`; CI,
+site currently serves build `cbea6a1`; CI,
 deployment runs, and byte-for-byte public asset parity are recorded in the 2026-08-23
 manifest. The current owner cleared TOTP and production owner-route QA verified
 Overview/Persona, account handles, family editor/tree, page designer/console, business
@@ -25,6 +25,11 @@ deterministic intention plan at desktop and responsive-emulation sizes with zero
 errors. Signed-in real-phone QA and unrelated-account privacy proof remain separate.
 `RELEASE-MANIFEST-2026-08-22.md` remains the historical ordered-release
 authority; `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` records the forward 060 apply.
+For migrations 062-064, frozen local validation is green while isolated staging,
+protected media-gateway, real signed-in two-account, and live evidence remain open.
+Function and Pages pushes validate but deploy nothing without their exact manual
+confirmation; a migration-bearing `main` push is different because the installed
+Supabase GitHub App may apply timestamped SQL before CI finishes.
 
 ---
 
@@ -293,8 +298,10 @@ larger product phase remains.
       provider credentials/OAuth, and future money actions still require dedicated proof.
 - [ ] Move executable inline JS/CSS/event handlers into versioned assets and host behind verified
       CSP, frame denial, HSTS, nosniff, Referrer-Policy, and Permissions-Policy headers.
-- [ ] Move OpenRouter OAuth exchange/Vault storage fully server-side and enforce code-owned exact
-      host/path maps for every known provider. Custom endpoints require an owner-reviewed allowlist.
+- [~] Known hosted AI providers now use code-owned exact host/path maps, Azure template
+      endpoints fail closed, and the Matrix distinguishes stored setup from a live provider
+      test. Moving the OpenRouter OAuth exchange/Vault write fully server-side remains open;
+      custom endpoints still require an owner-reviewed deployed allowlist.
 - [~] Per-backend AI budget guard is implemented locally in migration 057: durable
       owner/backend/mode daily and monthly request/token reservations, expiring concurrency
       leases, default-deny automated modes, narrow AAL2 policy mutation, and server-side
@@ -305,16 +312,31 @@ larger product phase remains.
       operated global emergency spend stop remain roadmap work.
 - [ ] Configure/test production SMTP, exact redirects, CAPTCHA, confirmation, magic link, password
       recovery, security notices, unsubscribe, bounce, and suppression before public email flows.
-- [~] Release workflows now require manual dispatch and the exact
-      `MIGRATIONS-VERIFIED` confirmation; pushes validate but deploy nothing. The frozen
-      local validation is green. Protected-environment reviewers, credential presence,
-      complete linked predecessor inventory, and database → functions → frontend live
-      evidence remain open.
+- [~] Function and Pages release workflows require manual dispatch and exact phased
+      confirmations: `MIGRATIONS-062-064-GATEWAY-VERIFIED`,
+      `OPAQUE-FOUNDATION-VERIFIED`, then `OPAQUE-FRONTEND-VERIFIED`. The installed
+      Supabase GitHub App can still auto-apply timestamped migrations on a main push,
+      so a migration-bearing push remains a production action. Gateway/cost approval,
+      protected reviewers, credential-name readback, and database → origins → gateway →
+      frontend → producers evidence remain open.
 - [x] Wire generated/uploaded public persona media into immutable `persona-media` paths;
       PNG/JPEG/WebP/GIF and MP4/WebM bytes are hashed after watermarking where applicable,
       written under owner/published scopes with `upsert:false`, and identical duplicates
       reuse the same address. External HTTPS and legacy URLs remain mutable and are not
       byte-integrity-bound.
+- [~] Opaque persona and approved-provider delivery is implemented and green locally in
+      migrations 062/063, Edge origins, exact registered social crops, erasure, and the
+      review-only CloudFront/WAF router. It is not applied or live. Production still has
+      120 legacy `media` references requiring verified-byte owner review; the AWS account,
+      ACM, shared secret, Wix `media` CNAME, WAF cost ceiling, provider fetch tests, and
+      manual bucket finalizers remain release gates.
+- [~] Legacy-media cleanup design is fixed: owner/AAL2 inventory, opaque records, exact-byte
+      private preview, mandatory AI declaration, immutable import, transactional compare-
+      and-swap reference rewrite, one publication invalidation, erasure, and a separate
+      retired-bucket finalizer. Migration 064 plus the scan/list/private-preview UI and
+      account/content-erasure coverage are green locally. Declaration, import, rewrite,
+      clear, and retirement remain locked second-slice work; no AI provenance may be
+      inferred from filenames, extensions, or old `-sd` markers.
 - [ ] Second Castleborn doc link from owner (pending input)
 - [x] Meta cleanup "Could not lock" root-caused and fixed (2026-08-08): migration 025
       (#variable_conflict use_column in the claim function); safe modal close + Escape
@@ -387,8 +409,10 @@ larger product phase remains.
       authenticated-only owner research RPCs, preserved public RLS/projection contracts,
       fail-closed future postgres function defaults, and a two-column bounded waitlist.
       `pg_net` remains in `public` because provider version 0.20.3 is non-relocatable.
-      CAPTCHA/WAF and same-origin waitlist intake remain open. Main-push auto-apply is now
-      a documented release gate because it ran before GitHub unit tests completed.
+      CAPTCHA/WAF and a rate-limited same-origin Edge/Worker intake remain open; the
+      current direct real-origin insert and exact synthetic cleanup passed. Main-push
+      auto-apply is now a documented release gate because it ran before GitHub unit tests
+      completed.
 
 ## Persona / product direction (2026-08-10)
 
@@ -487,15 +511,17 @@ larger product phase remains.
    to exact hashes. Generated raw pixels never reach the browser. AI-used animated media
    remains blocked until an isolated frame-by-frame transcode worker is implemented.
    Preexisting external embeds receive a one-time visibly-unverified snapshot and new
-   external media fails page review. Safe external import, C2PA signing, and opaque
-   public delivery remain gates. Current owner-route QA cleared TOTP and produced zero
+    external media fails page review. Safe legacy import and C2PA signing remain gates;
+    opaque persona and approved-provider delivery is now a green local release candidate,
+    not a live service. Current owner-route QA cleared TOTP and produced zero
    console errors, but did not spend provider tokens or prove generated-media output bytes.
 7. **Production block behavior depends on migration state** — migration 051 and its
    matching frontend are live and add symmetric account/persona block checks to direct
    reads and public projections. The current owner's friend policy rendered after TOTP;
    adversarial unrelated-account block/privacy behavior remains unverified.
-8. **Friend Realtime is local-only until migration 037 + Pages ship**; focus refresh remains
-   the fallback for deletes/cancellations that cannot use the filtered event path.
+8. **Friend Realtime and persona-mode relationship controls are live for the current owner**;
+   focus refresh remains the fallback for deletes/cancellations that cannot use the filtered
+   event path. Signed-in unrelated-account privacy and abuse behavior still need two-account QA.
 9. **prompt()/confirm() dialogs remain for several settings/destructive confirms**, although
    social identity selection now uses the proper Act as persona modal.
 10. **External publishing is connector-specific** — owner-triggered Meta is proven, Reddit is

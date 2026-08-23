@@ -9,6 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { publicMediaDeliveryUrl } from "../_shared/public-media.ts";
 import {
   Channels,
   CompositeOperator,
@@ -54,7 +55,8 @@ const ALLOWED_ORIGINS = new Set([
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-let magickReady: Promise<Uint8Array> | null = null;
+let magickRuntimeReady: Promise<void> | null = null;
+let watermarkReady: Promise<Uint8Array> | null = null;
 
 function json(body: unknown, status = 200, origin = "") {
   return new Response(body === null ? null : JSON.stringify(body), {
@@ -205,14 +207,19 @@ function validatedDimensions(bytes: Uint8Array, mime: string) {
   return dimensions;
 }
 
-function requestedCrop(form: FormData, rendition: string, aiUse: string) {
+function requestedCrop(form: FormData, rendition: string) {
   const widthValue = String(form.get("cropWidth") || "");
   const heightValue = String(form.get("cropHeight") || "");
-  if (!widthValue && !heightValue) return null;
-  if (!/^\d{2,5}$/.test(widthValue) || !/^\d{2,5}$/.test(heightValue) || aiUse === "none") {
-    throw new Error("Only AI-used final renditions may request a server crop");
-  }
   const expected = SOCIAL_CROPS[rendition as keyof typeof SOCIAL_CROPS];
+  if (!widthValue && !heightValue) {
+    if (expected) {
+      throw new Error("A social rendition requires its exact server crop dimensions");
+    }
+    return null;
+  }
+  if (!/^\d{2,5}$/.test(widthValue) || !/^\d{2,5}$/.test(heightValue)) {
+    throw new Error("Social rendition dimensions are invalid");
+  }
   const width = Number(widthValue);
   const height = Number(heightValue);
   if (!expected || width !== expected.width || height !== expected.height || width * height > MAX_OUTPUT_PIXELS) {
@@ -233,33 +240,47 @@ function magickFormat(mime: string) {
 }
 
 async function watermarkMaster() {
-  if (!magickReady) {
-    magickReady = (async () => {
-      const wasmBytes = await Deno.readFile(new URL(
-        "magick.wasm",
-        import.meta.resolve("npm:@imagemagick/magick-wasm@0.0.42"),
-      ));
-      await initializeImageMagick(wasmBytes);
+  await initializeMagickRuntime();
+  if (!watermarkReady) {
+    watermarkReady = (async () => {
       const master = await Deno.readFile(new URL("./MyPersonas-AI-Watermark.png", import.meta.url));
       if (master.byteLength !== 168751 || await sha256Hex(master) !== WATERMARK_SHA256) {
         throw new Error("The canonical MyPersonas AI watermark master failed its integrity check");
       }
       return master;
     })().catch((error) => {
-      magickReady = null;
+      watermarkReady = null;
       throw error;
     });
   }
-  return await magickReady;
+  return await watermarkReady;
 }
 
-async function renderWatermarkedRaster(
+async function initializeMagickRuntime() {
+  if (!magickRuntimeReady) {
+    magickRuntimeReady = (async () => {
+      const wasmBytes = await Deno.readFile(new URL(
+        "magick.wasm",
+        import.meta.resolve("npm:@imagemagick/magick-wasm@0.0.42"),
+      ));
+      await initializeImageMagick(wasmBytes);
+    })().catch((error) => {
+      magickRuntimeReady = null;
+      throw error;
+    });
+  }
+  await magickRuntimeReady;
+}
+
+async function renderRasterDerivative(
   sourceBytes: Uint8Array,
   mime: string,
   crop: { width: number; height: number } | null,
+  applyWatermark: boolean,
 ) {
   const sourceDimensions = validatedDimensions(sourceBytes, mime);
-  const master = await watermarkMaster();
+  await initializeMagickRuntime();
+  const master = applyWatermark ? await watermarkMaster() : null;
   const format = magickFormat(mime);
   return ImageMagick.read(sourceBytes, format, (image) => {
     image.autoOrient();
@@ -287,36 +308,38 @@ async function renderWatermarkedRaster(
       image.resize(resizedWidth, resizedHeight);
       image.resetPage();
     }
-    const margin = clamp(Math.round(Math.min(image.width, image.height) * 0.025), 8, 48);
-    const markWidth = Math.floor(Math.min(
-      clamp(Math.round(image.width * 0.24), 96, 640),
-      Math.round(image.height * 0.55),
-      image.width - margin * 2,
-    ));
-    if (markWidth < 24) throw new Error("This image is too small for a readable AI watermark");
-    const markHeight = Math.max(1, Math.round(markWidth * WATERMARK_CROP.height / WATERMARK_CROP.width));
-    const x = image.width - margin - markWidth;
-    const y = image.height - margin - markHeight;
-    ImageMagick.read(master, MagickFormat.Png, (watermark) => {
-      watermark.crop(new MagickGeometry(
-        WATERMARK_CROP.x,
-        WATERMARK_CROP.y,
-        WATERMARK_CROP.width,
-        WATERMARK_CROP.height,
+    if (master) {
+      const margin = clamp(Math.round(Math.min(image.width, image.height) * 0.025), 8, 48);
+      const markWidth = Math.floor(Math.min(
+        clamp(Math.round(image.width * 0.24), 96, 640),
+        Math.round(image.height * 0.55),
+        image.width - margin * 2,
       ));
-      watermark.resetPage();
-      const markGeometry = new MagickGeometry(markWidth, markHeight);
-      markGeometry.ignoreAspectRatio = true;
-      watermark.resize(markGeometry);
-      const haloOffset = clamp(Math.round(Math.min(image.width, image.height) / 700), 1, 2);
-      watermark.clone((halo) => {
-        halo.evaluate(Channels.RGB, EvaluateOperator.Set, 0);
-        halo.evaluate(Channels.Alpha, EvaluateOperator.Multiply, WATERMARK_HALO_OPACITY);
-        image.composite(halo, CompositeOperator.Over, new Point(x + haloOffset, y + haloOffset));
+      if (markWidth < 24) throw new Error("This image is too small for a readable AI watermark");
+      const markHeight = Math.max(1, Math.round(markWidth * WATERMARK_CROP.height / WATERMARK_CROP.width));
+      const x = image.width - margin - markWidth;
+      const y = image.height - margin - markHeight;
+      ImageMagick.read(master, MagickFormat.Png, (watermark) => {
+        watermark.crop(new MagickGeometry(
+          WATERMARK_CROP.x,
+          WATERMARK_CROP.y,
+          WATERMARK_CROP.width,
+          WATERMARK_CROP.height,
+        ));
+        watermark.resetPage();
+        const markGeometry = new MagickGeometry(markWidth, markHeight);
+        markGeometry.ignoreAspectRatio = true;
+        watermark.resize(markGeometry);
+        const haloOffset = clamp(Math.round(Math.min(image.width, image.height) / 700), 1, 2);
+        watermark.clone((halo) => {
+          halo.evaluate(Channels.RGB, EvaluateOperator.Set, 0);
+          halo.evaluate(Channels.Alpha, EvaluateOperator.Multiply, WATERMARK_HALO_OPACITY);
+          image.composite(halo, CompositeOperator.Over, new Point(x + haloOffset, y + haloOffset));
+        });
+        watermark.evaluate(Channels.Alpha, EvaluateOperator.Multiply, WATERMARK_OPACITY);
+        image.composite(watermark, CompositeOperator.Over, new Point(x, y));
       });
-      watermark.evaluate(Channels.Alpha, EvaluateOperator.Multiply, WATERMARK_OPACITY);
-      image.composite(watermark, CompositeOperator.Over, new Point(x, y));
-    });
+    }
     if (mime !== "image/png") image.quality = 92;
     return image.write(format, (data) => new Uint8Array(data));
   });
@@ -378,7 +401,7 @@ serve(async (req) => {
   }
   let crop: { width: number; height: number } | null;
   try {
-    crop = requestedCrop(form, rendition, aiUse);
+    crop = requestedCrop(form, rendition);
   } catch (error) {
     return json({ error: (error as Error).message }, 400, origin);
   }
@@ -412,6 +435,9 @@ serve(async (req) => {
   if (aiUse !== "none" && !["image/png", "image/jpeg", "image/webp"].includes(detected.mime)) {
     return json({ error: "AI-used GIF and video require frame-by-frame watermarking before public intake" }, 422, origin);
   }
+  if (crop && !["image/png", "image/jpeg", "image/webp"].includes(detected.mime)) {
+    return json({ error: "Social crops require a PNG, JPEG, or WebP source" }, 422, origin);
+  }
   if (aiUse !== "none" && hasUnsupportedAnimation(bytes, detected.mime)) {
     return json({ error: "AI-used APNG and animated WebP require frame-by-frame watermarking before public intake" }, 422, origin);
   }
@@ -424,12 +450,23 @@ serve(async (req) => {
     return json({ error: "The uploaded source bytes do not match their declared integrity hash" }, 422, origin);
   }
   let finalBytes = bytes;
-  if (aiUse !== "none") {
+  if (aiUse !== "none" || crop) {
     try {
-      finalBytes = await renderWatermarkedRaster(bytes, detected.mime, crop);
+      finalBytes = await renderRasterDerivative(bytes, detected.mime, crop, aiUse !== "none");
     } catch (error) {
-      console.error("media-ingest secure watermark failure", error);
-      return json({ error: "The server could not create a verified watermarked derivative" }, 422, origin);
+      console.error("media-ingest secure raster derivative failure", error);
+      return json({ error: "The server could not create the verified raster derivative" }, 422, origin);
+    }
+  }
+  if (crop) {
+    try {
+      const outputDimensions = validatedDimensions(finalBytes, detected.mime);
+      if (outputDimensions.width !== crop.width || outputDimensions.height !== crop.height) {
+        throw new Error("dimension mismatch");
+      }
+    } catch (error) {
+      console.error("media-ingest exact social crop verification failed", error);
+      return json({ error: "The server did not produce the exact social rendition dimensions" }, 500, origin);
     }
   }
   const contentSha256 = await sha256Hex(finalBytes);
@@ -460,14 +497,17 @@ serve(async (req) => {
       return json({ error: "The immutable media object could not be stored" }, 502, origin);
     }
   }
-  const publicUrl = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  // This canonical URL remains private registry evidence after the bucket
+  // cutover. It is never returned to the browser; authenticated preview bytes
+  // are renewed through owner-media-preview.
+  const registryUrl = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
   const watermarkState = aiUse === "none" ? "not_required" : "system_applied";
   const registered = await admin.rpc("register_persona_media_asset_service", {
     p_owner: user.id,
     p_persona_id: personaId,
     p_media_type: detected.mediaType,
     p_storage_path: path,
-    p_public_url: publicUrl,
+    p_public_url: registryUrl,
     p_mime_type: detected.mime,
     p_byte_size: finalBytes.byteLength,
     p_origin: assetOrigin,
@@ -487,10 +527,20 @@ serve(async (req) => {
     }
     return json({ error: "The bytes were stored but their provenance record failed closed" }, 500, origin);
   }
+  const issued = await admin.rpc("issue_persona_public_media_handle_service", {
+    p_asset_id: registered.data,
+    p_rotate: false,
+  });
+  if (issued.error || !UUID.test(String(issued.data || ""))) {
+    // Do not delete immutable bytes after their registry row exists. They remain
+    // unreferenced until the coordinated 062 release can issue an opaque handle.
+    console.error("media-ingest opaque handle issuance failed", issued.error);
+    return json({ error: "Media was registered but opaque public delivery is unavailable" }, 503, origin);
+  }
+  const publicUrl = publicMediaDeliveryUrl(String(issued.data).toLowerCase());
   return json({
     assetId: registered.data,
     publicUrl,
-    path,
     sha256: contentSha256,
     sourceSha256,
     mime: detected.mime,

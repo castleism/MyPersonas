@@ -169,6 +169,25 @@ const AZURE_HOST_PATTERN =
 const AZURE_DEPLOYMENT_PATH_PATTERN =
   /^\/openai\/deployments\/([A-Za-z0-9._-]{1,128})(\/chat\/completions)?$/;
 const IPV4_SHAPE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+const AZURE_RESOURCE_PLACEHOLDERS = new Set([
+  "yourresource",
+  "yourresourcename",
+  "yourazureopenairesource",
+  "yourazureopenairesourcename",
+  "resourcename",
+  "azureopenairesourcename",
+]);
+const AZURE_DEPLOYMENT_PLACEHOLDERS = new Set([
+  "yourdeployment",
+  "yourdeploymentname",
+  "yourazuredeployment",
+  "yourazuredeploymentname",
+  "yourazureopenaideployment",
+  "yourazureopenaideploymentname",
+  "deploymentname",
+  "azuredeploymentname",
+  "azureopenaideploymentname",
+]);
 
 function normalizedProvider(value: unknown) {
   return (typeof value === "string" ? value : String(value ?? ""))
@@ -192,6 +211,17 @@ function isIpLiteral(hostname: string) {
 
 function normalizedPath(pathname: string) {
   return pathname === "/" ? "" : pathname.replace(/\/+$/, "");
+}
+
+function canonicalTemplateToken(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function isAzureTemplatePlaceholder(value: string, kind: "resource" | "deployment") {
+  const token = canonicalTemplateToken(value);
+  return (kind === "resource"
+    ? AZURE_RESOURCE_PLACEHOLDERS
+    : AZURE_DEPLOYMENT_PLACEHOLDERS).has(token);
 }
 
 function validatedApiVersion(extra: Record<string, unknown> | null | undefined) {
@@ -296,6 +326,16 @@ export function resolveAiProviderEndpoint(input: {
       return endpointError(
         "Azure OpenAI requires an explicit validated deployment path.",
         "backend_provider_path_invalid",
+      );
+    }
+    const resourceName = host.slice(0, -".openai.azure.com".length);
+    if (
+      isAzureTemplatePlaceholder(resourceName, "resource") ||
+      isAzureTemplatePlaceholder(deploymentMatch[1], "deployment")
+    ) {
+      return endpointError(
+        "Replace the Azure resource and deployment placeholders with real endpoint values.",
+        "backend_endpoint_placeholder",
       );
     }
     const apiVersion = validatedApiVersion(input.extra);
