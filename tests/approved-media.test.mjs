@@ -277,16 +277,19 @@ test("browser public uploads use the authenticated provenance intake", async () 
   assert.match(generatedUpload, /out\.dataset\.publicUrl/);
   assert.match(generatedUpload, /out\.dataset\.assetId/);
   assert.doesNotMatch(generatedUpload, /watermarkRaster|uploadImmutablePersonaMedia/);
-  assert.match(pickerUpload, /f\.accept=.*"image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
+  assert.match(pickerUpload, /f\.accept="image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
+  assert.match(pickerUpload, /if\(profileSlot\)f\.accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(pickerUpload, /MyPersonasProfileCrop\.open\(\{file:source,slot:inputId\.slice\(2\)\}\)/);
   assert.match(pickerUpload, /MyPersonasAiProvenance\.askAiUse/);
-  assert.match(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(source\)/);
+  assert.match(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(prepared\)/);
+  assert.doesNotMatch(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(source\)/);
   assert.doesNotMatch(pickerUpload, /MyPersonasAiProvenance\.watermarkRaster\(source\)/);
-  assert.match(pickerUpload, /uploadImmutablePersonaMedia\(source,session\?\.user\?\.id,uploadPurpose\(inputId\)/);
+  assert.match(pickerUpload, /uploadImmutablePersonaMedia\(prepared,ownerId,uploadPurpose\(inputId\)/);
   assert.doesNotMatch(pickerUpload, /storage\.from|bucket\.upload|watermarkImage/);
   assert.ok(
-    pickerUpload.indexOf("MyPersonasAiProvenance.sha256Hex(source)") <
-      pickerUpload.indexOf("uploadImmutablePersonaMedia(source"),
-    "source integrity hashing must finish before trusted server intake",
+    pickerUpload.indexOf("MyPersonasAiProvenance.sha256Hex(prepared)") <
+      pickerUpload.indexOf("uploadImmutablePersonaMedia(prepared"),
+    "approved crop integrity hashing must finish before trusted server intake",
   );
   assert.match(composerUpload, /MyPersonasAiProvenance\.askAiUse/);
   assert.match(composerUpload, /crop:\{width:1200,height:628\}/);
