@@ -1,13 +1,27 @@
 # MyPersonas AI content provenance and watermark contract
 
 Status: **forward-only migration 060 is applied and read back in the linked production
-database; matching function/frontend deployment and live integration verification remain
-separate gates.** Migration 059 is immutable historical source and must not be edited or
-re-run to add the missing hardening. The complete contract below is the coordinated 059
-baseline plus the 060 hardening release.
+database; the four reviewed functions and matching Pages source are deployed from commit
+`968e1ea`; and the current owner completed the enrolled TOTP challenge and live owner-route
+QA.** Migration 059 is immutable historical source and must not be edited or re-run to add
+the missing hardening. The complete contract below is the coordinated 059 baseline plus
+the 060 hardening release.
 
 Exact package hashes, verification evidence, approval gates, and release order are in
 `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
+
+## Live owner QA record
+
+After the current owner cleared the enrolled TOTP challenge, the production owner routes
+rendered successfully. Overview and exact Persona mode, authenticated account handles,
+the family editor and connected tree, page designer and learning console, business draft
+workspace, staff queue, full asset preview and **Save a copy**, friend policy, and the
+deterministic intention plan were exercised at desktop size and responsive browser
+emulation with **zero console errors**.
+
+That evidence proves this owner session and those rendered paths only. It is not an
+unrelated-account privacy test, real-phone test, external-provider transaction, hosted
+load test, email-delivery test, payment test, or proof of opaque public asset delivery.
 
 ## User-visible rule
 

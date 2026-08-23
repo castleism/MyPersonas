@@ -173,6 +173,48 @@ test("governance state reset clears account-private render data", () => {
   assert.deepEqual(reset.staffRequests, []);
 });
 
+test("an intention edit during AI explanation discards the stale reply and re-enables the same button", async () => {
+  const reply = deferred();
+  const { context } = contextWith({});
+  const intention = { value: "Build a family page" };
+  const backend = { value: "backend-a" };
+  const button = {
+    disabled: false,
+    isConnected: true,
+    textContent: "Ask linked AI to explain plan",
+  };
+  const elements = new Map([
+    ["govIntention", intention],
+    ["govIntentionBackend", backend],
+    ["govIntentionAiButton", button],
+  ]);
+  const toasts = [];
+  context.document = { getElementById: (id) => elements.get(id) || null };
+  context.myBackends = [{
+    id: "backend-a",
+    name: "Example model",
+    base_url: "https://api.example.com/v1",
+  }];
+  context.backendAgentReady = () => true;
+  context.callAI = async () => reply.promise;
+  context.toast = (message) => toasts.push(message);
+  vm.runInContext('governanceState.personaId="persona-a"', context);
+
+  const explaining = context.governanceExplainIntentionWithAi();
+  assert.equal(button.disabled, true);
+  assert.equal(button.textContent, "Explaining…");
+
+  intention.value = "Changed intention while the request was pending";
+  context.governanceIntentionChanged();
+  reply.resolve("STALE PRIVATE EXPLANATION");
+  await explaining;
+
+  assert.equal(button.disabled, false);
+  assert.equal(button.textContent, "Ask linked AI to explain plan");
+  assert.equal(vm.runInContext("governanceState.intentionAiExplanation", context), "");
+  assert.deepEqual(toasts, []);
+});
+
 test("external review manifest normalizes real widget and module schemas without leaking unknown values", () => {
   const { context } = contextWith({});
   const value = vm.runInContext(`

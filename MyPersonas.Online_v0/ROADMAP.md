@@ -18,8 +18,12 @@ roles.** The matching source passed 284/284 Node tests, frontend syntax, migrati
 role-switched runtime, and the frozen-059 → 060 → 060-reapply runtime. The public Pages
 site and the four reviewed provenance functions are now live from commit `968e1ea`; CI,
 deployment runs, and byte-for-byte public asset parity are recorded in the 2026-08-23
-manifest. Post-TOTP live owner QA, signed-in real-phone QA, and two-account privacy proof
-remain separate. `RELEASE-MANIFEST-2026-08-22.md` remains the historical ordered-release
+manifest. The current owner cleared TOTP and production owner-route QA verified
+Overview/Persona, account handles, family editor/tree, page designer/console, business
+draft workspace, staff queue, asset preview/**Save a copy**, friend policy, and the
+deterministic intention plan at desktop and responsive-emulation sizes with zero console
+errors. Signed-in real-phone QA and unrelated-account privacy proof remain separate.
+`RELEASE-MANIFEST-2026-08-22.md` remains the historical ordered-release
 authority; `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` records the forward 060 apply.
 
 ---
@@ -28,23 +32,26 @@ authority; `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` records the forward 06
 
 Shipped:
 
-- Auth: Google social/federated OAuth plus email/password and magic link; TOTP enrollment exists,
-  but post-login AAL2 enforcement and enterprise SSO remain security work. Profiles are private,
+- Auth: Google social/federated OAuth plus email/password and magic link; TOTP enrollment
+  and the current owner's post-login AAL2 challenge are verified. Recovery, other-account
+  coverage, and enterprise SSO remain security work. Profiles are private,
   with no public linkage to personas by default (mailbox authorization is a separate connector)
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
 - [x] Private Backup persona pairing is database/source-complete: one-level owner-only
       main → backup relationships, a collapsible desktop rail, grouped mobile picker,
       editor assignment, and relationship-aware export/restore. Migration 048 is recorded
-      in production; the matching frontend is live from commit `968e1ea` and requires the
-      remaining post-TOTP/two-account checks in
+      in production; the matching frontend is live from commit `968e1ea`, rendered after
+      the current owner's TOTP challenge, and still requires unrelated-account checks in
       `PERSONA-BACKUP-RELATIONSHIPS.md`.
 - [~] Persona page designer phase 1 is live: owner full-asset previews
       and bounded local-copy downloads; eleven-section declarative module
       ordering/width/shape/tone, including Family and Offers & reviews;
       escaped text/HTTPS-link boxes; and a read-only HTML/CSS/JSON learning console with
       owner-private reusable snippets. Migration 050 is recorded in production and the
-      frontend matches production. Image/video widgets and video backgrounds stay blocked until public
+      frontend matches production. Post-TOTP QA verified full previews, **Save a copy**,
+      the designer, and its learning console. Image/video widgets and video backgrounds
+      stay blocked until public
       asset URLs use opaque ids instead of correlatable owner UUID paths; arbitrary
       public JavaScript remains prohibited. New first-party uploads are content-addressed
       locally. Forward migration 060 snapshots preexisting external HTTPS assets once as visibly
@@ -57,14 +64,18 @@ Shipped:
       Page-look source images now render whole and uncropped in the editor. Migration 058
       supplies the exact-actor server projection so a sibling's friendship or owner
       access cannot leak private content. Migration 058 is recorded and the matching public
-      assets are live; post-TOTP and unrelated-account interaction testing remains open.
+      assets are live; the current owner verified Overview and Persona mode after TOTP,
+      while unrelated-account interaction testing remains open.
       See `PERSONA-VIEW-MODE.md`.
-- [~] Castleborn organization data is present in production storage with tested source: 20 owner-confirmed parent
+- [~] Castleborn organization data is present in production storage with tested source:
+      20 owner-confirmed parent
       edges, four confirmed partner pairs, derived sibling labels, an owner-private
       Castleborn project with WAIS as manager, project-resource boundaries, and draft-first
-      business bios/missions/titles. Migration 049 is recorded; Abel and Enki remain
+      business bios/missions/titles. Migration 049 is recorded, and the current owner
+      verified the family editor/tree and business draft workspace after TOTP; Abel and
+      Enki remain
       unresolved rather than invented. See `CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md`.
-- [~] Review-first persona publication and governance is code-complete locally: draft /
+- [~] Review-first persona publication and governance has its database and owner UI live: draft /
       review / publish / unpublish, transparent AI disclosure, exact-revision checks,
       owner-confirmed feature tickets, separate follow/friend policies, persona account
       sync preferences, account-level maintenance roles, inert extension submissions,
@@ -81,9 +92,12 @@ Shipped:
       drains remain explicit owner/dashboard work. See
       `PUBLICATION-SOCIAL-SECURITY-GOVERNANCE.md`.
       Canonical 051 and its timestamped migration mirror are byte-identical locally; the
-      linked apply is recorded, while signed-in two-account and provider integration proof
+      linked apply is recorded; the staff queue, friend policy, and deterministic intention
+      plan rendered after the current owner's TOTP challenge, while two-account and
+      provider integration proof
       remains open.
-- [~] Family and revenue presentation modules are implemented locally. Public family
+- [~] Family presentation and editing are live for the owner and passed post-TOTP QA.
+      Public family
       cards come from the reviewed one-hop dependency projection. The revenue module
       renders reviewed disclosures, affiliate offers, and a Request review CTA only when
       the exact current page and every database gate pass. The hardened phase-1
@@ -180,18 +194,20 @@ larger product phase remains.
       configuration, and live AAL2 owner smoke remain open.
 - [~] Owner research/content hardening (migration 054): bounded owner/service RPCs,
       durable daily/lifetime creation counters, server-authored provider receipts, and
-      approval/provenance authority exist locally. Saving over an approved or scheduled
+      approval/provenance authority are recorded in the linked database. Saving over an
+      approved or scheduled
       package is an explicit AAL2-gated downgrade after the exact package row is locked.
       No research provider, publication, or evidence-quality outcome is implied.
 - [~] Agent audit retention hardening (migration 055): narrow service writers, reserved
       terminal-audit capacity, stored row/byte and mutation ceilings, and deletion/
-      erasure serialization exist locally. PostgreSQL lifecycle, upgrade, over-limit,
+      erasure serialization are recorded in the linked database. PostgreSQL lifecycle,
+      upgrade, over-limit,
       direct-DML, and writer/erasure concurrency evidence passed; an approved linked
-      retention/operations runbook remains a release gate.
+      retention/operations runbook and hosted-load evidence remain release gates.
 - [~] Auth email attestation invalidation (migration 056): stale AliaSpaces-confirmed
       email attestations are revoked on Auth email change/unconfirmation without treating
-      provider OAuth connections as the same proof. Linked Auth/database behavior remains
-      unapplied and unverified live.
+      provider OAuth connections as the same proof. Migration 056 is recorded; an actual
+      email-change/recovery exercise remains unverified.
 - [x] Native AliaSpaces post bridge: L2 exact approvals wait for the owner to press
       Stage for page review. Migration 051 disables the legacy automatic native publisher;
       an unchanged staged post becomes public only when the owner reviews and publishes
@@ -263,16 +279,18 @@ larger product phase remains.
       (today: hash routes = one indexable URL; JS-set titles/descriptions only)
 - [ ] Auto-generated per-persona sitemap (Edge Function serving sitemap.xml
       from the personas table)
-- [~] `gemini-image` function exists live and uses the owner's server-side Vault key. The current
-      source still needs exact Google host/path enforcement, header-based key transport, bounded
-      input, a pinned current image model, deployment parity proof, and a controlled live retest.
+- [~] `gemini-image` is deployed from the hashed release source with exact native Google
+      host/path enforcement, header-based key transport, bounded input, and a pinned image
+      model. The post-TOTP UI QA did not spend provider tokens. Its controlled provider-
+      account retest still needs exact Google host/path enforcement verified from the
+      hosted request and a generated-media end-to-end result.
 - [~] Migrate off legacy anon/service_role JWT keys to the new sb_publishable_/sb_secret_
       API keys. The browser already uses a publishable key; finish the function/secret
       inventory and production rotation before Supabase retires legacy keys.
-- [~] Enforce MFA, not only enrollment: migration/UI/Edge source for an AAL2 credential boundary
-      is under local development. Require AAL2 for provider credentials/OAuth, L2/L3/unpause,
-      approval/publish, export/erasure, identity/factor changes, and future money actions; test
-      AAL1 denial and AAL2 success before release.
+- [~] Enforce MFA, not only enrollment: the reusable AAL2 credential boundary is deployed,
+      unit tests prove AAL1 denial/AAL2 acceptance, and the current owner cleared TOTP before
+      private owner routes rendered. Recovery, factor changes, unrelated-account coverage,
+      provider credentials/OAuth, and future money actions still require dedicated proof.
 - [ ] Move executable inline JS/CSS/event handlers into versioned assets and host behind verified
       CSP, frame denial, HSTS, nosniff, Referrer-Policy, and Permissions-Policy headers.
 - [ ] Move OpenRouter OAuth exchange/Vault storage fully server-side and enforce code-owned exact
@@ -454,19 +472,20 @@ larger product phase remains.
    plus atomic daily call reservations prevent overlapping workers, but normal dispatch may
    occur up to about five minutes after a due time.
 5. **"Live" is an embed** of the persona's Twitch/YouTube/Kick, not native streaming.
-6. **AI media provenance is locally rebuilt but undeployed** — immutable migration 059
-   supplies the historical baseline; forward-only migration 060 completes the removal of
+6. **AI media provenance is deployed** — immutable migration 059 supplies the historical
+   baseline; forward-only migration 060 completes the removal of
    direct browser public-media writes, requires owner declarations, system-authors site
    generation evidence, and binds trusted server-created crop-last static-image watermarks
    to exact hashes. Generated raw pixels never reach the browser. AI-used animated media
    remains blocked until an isolated frame-by-frame transcode worker is implemented.
    Preexisting external embeds receive a one-time visibly-unverified snapshot and new
    external media fails page review. Safe external import, C2PA signing, and opaque
-   public delivery remain gates.
-7. **Production block behavior depends on migration state** — the legacy deployed
-   snapshot must be treated as partly client-side until reverified. Migration 051 adds
-   symmetric account/persona block checks to direct reads and public projections, but it
-   is local/unapplied and therefore not live evidence.
+   public delivery remain gates. Current owner-route QA cleared TOTP and produced zero
+   console errors, but did not spend provider tokens or prove generated-media output bytes.
+7. **Production block behavior depends on migration state** — migration 051 and its
+   matching frontend are live and add symmetric account/persona block checks to direct
+   reads and public projections. The current owner's friend policy rendered after TOTP;
+   adversarial unrelated-account block/privacy behavior remains unverified.
 8. **Friend Realtime is local-only until migration 037 + Pages ship**; focus refresh remains
    the fallback for deletes/cancellations that cannot use the filtered event path.
 9. **prompt()/confirm() dialogs remain for several settings/destructive confirms**, although

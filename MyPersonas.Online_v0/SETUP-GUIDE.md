@@ -1,12 +1,22 @@
 # AliaSpaces / MyPersonas — Setup Guide
 
-Release-package status: **migration 060 is applied/read back in the linked database and
-the requested owner staff-role rows are active; the matching source is tested locally but
-is not yet claimed pushed, function-deployed, frontend-deployed, or live-verified at this
-source freeze.** For the current package, follow `RELEASE-MANIFEST-2026-08-22.md`; this guide
-and the forward provenance boundary in
-`RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`. This guide does not itself prove a linked
-apply, deploy, or external-account change.
+Release-package status: **migration 060 is applied/read back in the linked database; the
+requested owner staff-role rows are active; the four reviewed functions and matching Pages
+source are deployed from commit `968e1ea`; and the current owner cleared TOTP and completed
+live owner-route QA with zero console errors.** Use `RELEASE-MANIFEST-2026-08-22.md` for the
+historical ordered chain and `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` for the forward
+060 release record. This guide documents procedure; it is not proof of unrelated-account,
+real-phone, provider, load, email, payment, or opaque-delivery behavior.
+
+## Current production verification checkpoint — 2026-08-23
+
+After the current owner completed the enrolled TOTP challenge, production rendered
+Overview and exact Persona mode, authenticated account handles, the family editor and
+connected tree, page designer and learning console, business draft workspace, staff queue,
+full asset preview and **Save a copy**, friend policy, and the deterministic intention plan.
+Desktop and responsive browser emulation completed with zero console errors. A real phone,
+an unrelated account, external-provider transactions, hosted load, email delivery,
+payments, and opaque public asset delivery remain unverified.
 
 Files in this repo:
 - **index.html** — the entire app (hosted as a static site)

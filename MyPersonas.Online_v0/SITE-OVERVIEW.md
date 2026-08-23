@@ -6,19 +6,20 @@
 its own MySpace-style page, owner-private and unlinked from other personas by default,
 with explicit opt-in cross-links, its own AI layer, and its own managed accounts.
 
-This overview separates proven/live behavior from the coordinated next-release source.
+This overview separates proven/live behavior from separately gated roadmap source.
 Local code, a queued migration, or a passing test is never presented as a deployed feature.
 
-Current package: **migration 060 is applied/read back in the linked production database
-and the owner staff roles are active; matching function/frontend deployment and live
-integration verification remain separate at this source freeze.**
+Current package: **migration 060 is applied/read back in the linked production database;
+the owner staff roles are active; the four reviewed functions and matching Pages source
+are deployed from commit `968e1ea`; and the current owner cleared TOTP and completed live
+owner-route QA with zero console errors.**
 The prior release boundary is `RELEASE-MANIFEST-2026-08-22.md`; the coordinated
 AI-provenance follow-on preserves 059 as immutable history and introduces forward-only 060
 under `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
 
 ---
 
-## Coordinated next release (database applied; matching source not yet claimed live)
+## Coordinated 060 release (database, functions, and Pages live)
 
 - **AI content provenance:** immutable migration 059 plus forward-only hardening migration
   060 and the matching frontend/functions require an
@@ -30,23 +31,33 @@ under `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
   until frame-by-frame transcoding exists. External media present at the first successful
   060 hardening apply receives a
   one-time visibly-unverified snapshot; new external media cannot pass review without
-  secure intake. The 060 database apply/readback is recorded, but matching deployment and
-  live parity are not yet claimed here;
+  secure intake. The 060 database readback, four-function deployment, Pages deployment,
+  and exact public-byte parity are recorded;
   see `AI-CONTENT-PROVENANCE.md`.
+
+- **Post-TOTP owner QA:** after the current owner cleared the enrolled TOTP challenge,
+  production rendered Overview and exact Persona mode, authenticated account handles, the
+  family editor and connected tree, page designer and learning console, business draft
+  workspace, staff queue, full asset preview and **Save a copy**, friend policy, and the
+  deterministic intention plan. Desktop and responsive browser emulation completed with
+  zero console errors. This is not unrelated-account, real-phone, provider, load, email,
+  payment, or opaque-delivery proof.
 
 - **Private Backup personas:** an owner can attach one persona as another persona's
   private backup. The desktop owner rail expands the backup under its main; the mobile
   picker keeps them adjacent. This never creates a public “More of me” link.
-- Migration 048, export/restore support, and local tests are present. The database change
-  is not applied and the matching page is not deployed or live-verified yet. See
-  `PERSONA-BACKUP-RELATIONSHIPS.md` for the security contract and release order.
-- **Castleborn organization:** migration 049 records confirmed private family canon,
+- Migration 048, export/restore support, and the matching page are live. The current owner
+  route rendered after TOTP; an unrelated-account privacy test remains open. See
+  `PERSONA-BACKUP-RELATIONSHIPS.md` for the security contract.
+- **Castleborn organization:** applied migration 049 records confirmed private family canon,
   derives sibling labels, groups the existing Castleborn roster into one owner-private
   project managed by WAIS, and adds draft-first business/mission/title foundations. It
   does not attach a database, publish a business, or grant WAIS account authority. The
-  matching local owner settings and public Family module exist, but family cards render
-  only from a reviewed current-page projection after release.
-- **Page design and assets:** migration 050 and the matching owner UI add full previews,
+  matching owner settings and Family module are live; the family editor/tree and business
+  draft workspace rendered in the post-TOTP owner QA. Public family cards still render
+  only from a reviewed current-page projection.
+- **Page design and assets:** applied migration 050 and the matching live owner UI add full
+  previews,
   bounded downloads, declarative layout controls, escaped text/HTTPS boxes, a read-only
   HTML/CSS/JSON learning console, and private reusable code notes across eleven built-in
   modules, including Family and Offers & review requests. New first-party uploads are
@@ -82,13 +93,15 @@ under `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
   ordered local timestamped mirror. The local affiliate redirect is likewise
   fail-closed around a separate HMAC secret, bounded attribution, HTTPS-only reviewed
   destinations, atomic current-page/cap/deduplication checks, and bounded retention.
-  Canonical 051 and its timestamped mirror are synchronized locally; final freeze hashes
-  and linked/deployed parity remain pending.
-- No provider, SSO, hook, CAPTCHA, email, WAF, logging service, payment processor, or
-  external publication was configured by this local work.
+  Canonical 051 and its timestamped mirror are synchronized and the linked apply plus
+  matching frontend are recorded. External request-review configuration remains pending.
+- No provider transaction, enterprise SSO/recovery proof, CAPTCHA delivery proof, email,
+  WAF/load proof, payment processor, or external publication was established by the
+  post-TOTP owner QA.
 - The full apply/approval boundary is in
-  `OWNER-APPROVAL-QUEUE-2026-08-22.md`; the coordinated 047–057 package, Edge functions,
-  and matching frontend remain unapplied/undeployed unless explicitly noted elsewhere.
+  `OWNER-APPROVAL-QUEUE-2026-08-22.md`; migrations 047–060 and the matching frontend are
+  recorded live. Individual Edge/provider functions remain gated unless their own release
+  evidence explicitly says otherwise.
   Migration 047's exact production name update is separate historical evidence documented
   in `VERIFICATION.md`; it does not approve or prove this release package.
 
@@ -96,9 +109,9 @@ under `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
 
 ## Existing deployed baseline (reverify before release)
 
-This section summarizes the earlier deployed/verified baseline. Provider grants,
-function versions, and live policies can drift; reread them before relying on the claim.
-The coordinated 047–057 source described above is not part of this baseline.
+This section summarizes the earlier deployed/verified baseline. The coordinated 047–060
+release above extends it. Provider grants, function versions, and live policies can drift;
+reread them before relying on a claim.
 
 ### Persona pages (the public face)
 
@@ -183,7 +196,7 @@ The coordinated 047–057 source described above is not part of this baseline.
   ladder for drafting and external-provider policy, destination modes, exact schedules
   with time zones and lead times, daily caps,
   quiet hours, global pause, approval queue, synchronized owner chat, and audit log
-- In the coordinated migration-051 source—not the deployed baseline—native-feed drafts
+- In the deployed migration-051 contract, native-feed drafts
   stage into an owner-reviewed page revision instead of auto-publishing
 - Historical scheduled-task implementation used five-minute polling, atomic leases, and
   daily reservations. Reverify current cron/function/schema state before relying on it;
@@ -195,7 +208,7 @@ The coordinated 047–057 source described above is not part of this baseline.
 - Optional SFW **fan chat**: visitors talk to a persona's AI (always disclosed as AI),
   with quotas, owner transcript review, and escalation flags
 
-### Coordinated next-release source (not yet claimed live)
+### Coordinated 047–060 source (live frontend; feature-specific proof varies)
 
 - Conflict-safe persona context, bounded AI continuity, content-plan change summaries, and
   owner-reviewed Save/Attach context
@@ -210,12 +223,14 @@ The coordinated 047–057 source described above is not part of this baseline.
 - The coordinated immutable-059/forward-060 source replaces the historical page-URL
   watermark with required AI-use declarations and a subtle, pinned MyPersonas AI mark on AI-used static
   derivatives. Site generation is system-declared; crop-specific social files are marked
-  after cropping; unsupported AI-used motion media fails closed. This is not live evidence.
+  after cropping; unsupported AI-used motion media fails closed. The database/functions/
+  Pages release is live, but the post-TOTP owner QA did not spend provider tokens or claim
+  a generated-media end-to-end result.
 - Server-side AI proxy discards browser-supplied system prompts
 - In-app error reporting; session-timeout countdown; stale-page banner
 - The coordinated 051 source replaces historical direct error-log insertion with a
-  bounded authenticated redacting RPC. That policy is not live until the migration and
-  matching page are deployed and read back.
+  bounded authenticated redacting RPC. Its migration and matching page are live; external
+  log-drain, attack-simulation, and hosted-load evidence remain separate gates.
 - Public Privacy, Terms, Data Deletion, and provider-setup pages
 
 ### Ecosystem

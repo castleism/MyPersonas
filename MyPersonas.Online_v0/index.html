@@ -314,6 +314,23 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
 .fanbox,#sdPanel{right:calc(16px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom))}
 /* Tablet tier (iPad portrait/landscape): give the studio content a little more room. */
 @media(min-width:768px) and (max-width:1024px){.cols{grid-template-columns:280px 1fr}}
+/* Compact owner chrome on phones. The Menu remains the complete Overview route
+   hub; persona perspective keeps its small identity-specific route set. */
+@media(max-width:600px){
+  header{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  header h1{font-size:20px}
+  #gsearch{display:block;width:100%;min-width:0;max-width:none}
+  header>nav{grid-column:1/-1;grid-row:2;width:100%;flex:0 0 auto;justify-content:flex-end;flex-wrap:nowrap;gap:2px}
+  header>#personaViewSwitcher{grid-column:1/-1;grid-row:3;width:100%;margin:0}
+  header>nav>button,header>nav>.menuwrap>button{padding:7px 10px;font-size:13px}
+  body:not(.persona-view-mode) header>nav>.menuwrap{display:inline-block}
+  body:not(.persona-view-mode) #siteMenu{max-height:calc(100dvh - 180px - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+  body:not(.persona-view-mode) header>nav>button:not(#authBtn){display:none}
+  body.persona-view-mode header>nav{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+  body.persona-view-mode header>nav>button[data-persona-nav]:not([hidden]),body.persona-view-mode header>nav>#primaryHomeBtn{display:inline-block!important}
+  body.persona-view-mode header>nav::-webkit-scrollbar{display:none}
+  body.persona-view-mode header>nav>#authBtn{margin-left:auto}
+}
 </style>
 </head>
 <body>

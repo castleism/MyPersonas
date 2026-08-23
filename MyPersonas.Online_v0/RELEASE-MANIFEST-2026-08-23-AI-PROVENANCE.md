@@ -72,8 +72,8 @@ mismatch voids the coordinated release.
 | Functions | GitHub Actions run `32634636972` succeeded for `media-ingest`, `gemini-image`, `compose-post`, and `ai-proxy`; the dashboard showed all four updated together |
 | Pages | GitHub Actions run `32634681995` succeeded for `https://mypersonas.online/` |
 | Public artifact | Cache-busted HTTP 200 responses for `index.html` plus owner, persona, governance, and AI-provenance JS/CSS; every remote SHA-256 matched the release checkout byte-for-byte |
-| Signed-in boundary | Google sign-in reached the enrolled TOTP challenge; no private data loaded before AAL2 |
-| Authenticated source smoke | The already-authenticated localhost origin, using the linked production backend, rendered Overview/Persona, handles, family CRUD, designer/console/snippets, previews/download, roles, friend policy, and deterministic intention planning |
+| Signed-in boundary | Google sign-in reached and cleared the enrolled TOTP challenge; no private data loaded before AAL2 |
+| Authenticated live smoke | Production rendered Overview/Persona, handles, family CRUD, designer/console/snippets, previews/**Save a copy**, roles, friend policy, and deterministic intention planning with zero console errors; the linked localhost origin reproduced the signed-in routes for responsive emulation |
 
 The live private owner routes still require an owner-entered current TOTP code. A second
 unrelated account and a real phone are also required before signed-in mobile and
@@ -125,9 +125,10 @@ cross-account privacy can be called release-proven.
   authenticated asset insert/update/delete grants, a one-time 118-reference external
   snapshot, and the requested active global-administrator and technician role rows.
 - CI, the four-function deployment, Pages deployment, and exact public artifact parity are
-  recorded in the production release table. Full live owner integration remains stopped at
-  the expected TOTP challenge; two-account isolation, real-phone QA, hosted load limits,
-  and final generated-media byte verification remain unclaimed.
+  recorded in the production release table. The current owner cleared TOTP and production
+  owner-route QA passed at desktop size and responsive browser emulation with zero console
+  errors. Two-account isolation, real-phone QA, hosted load limits, and final generated-
+  media byte verification remain unclaimed.
 
 ## Required owner-approved release sequence
 
@@ -155,9 +156,9 @@ cross-account privacy can be called release-proven.
 
 ## Known gates and follow-up work
 
-- The coordinated database, four-function, and Pages release is recorded above. Signed-in
-  live integration after TOTP, Storage/RLS adversarial proof with a second owner, and
-  hosted concurrency proof are not yet recorded in this manifest.
+- The coordinated database, four-function, and Pages release is recorded above. The
+  current-owner post-TOTP production smoke is recorded; Storage/RLS adversarial proof with
+  a second owner, a real-phone run, and hosted concurrency proof are not.
 - The pinned ImageMagick WASM is about 14.7 MB by itself. It needs local CLI bundling and
   hosted validation against the current Edge memory, CPU, and bundle limits.
 - Storage upload still precedes database finalization. Ordinary failures remove newly
