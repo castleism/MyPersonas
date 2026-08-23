@@ -20,6 +20,7 @@
 // Required secrets: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET (for refresh).
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAal2 } from "../_shared/aal2.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -85,13 +86,14 @@ serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") return json(origin, 405, { error: "POST only" });
 
   const authorization = req.headers.get("Authorization") || "";
-  if (!authorization.startsWith("Bearer ")) return json(origin, 401, { error: "Sign in again before publishing" });
   const userClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authorization } }, auth: { persistSession: false },
   });
-  const { data: userData } = await userClient.auth.getUser();
-  const uid = userData?.user?.id || "";
-  if (!uid) return json(origin, 401, { error: "Sign in again before publishing" });
+  const guard = await requireAal2(req, userClient);
+  if (!guard.ok) {
+    return json(origin, guard.status, { error: guard.error, code: guard.code });
+  }
+  const uid = guard.user.id;
 
   let draftId = "";
   try { draftId = String((await req.json())?.draftId || ""); }
@@ -169,14 +171,15 @@ serve(async (req: Request): Promise<Response> => {
   let subreddit = pickSubreddit(claimed.tags || "", username);
 
   async function writeAttemptAudit(outcome: "ok" | "error", detail: Record<string, unknown>) {
-    const { error } = await service.from("agent_actions").insert({
-      owner: uid,
-      persona_id: claimedDraft.persona_id || null,
-      action_type: "publish_external_reddit",
-      entity_type: "draft",
-      entity_id: claimedDraft.id,
-      outcome,
-      detail: {
+    const { error } = await service.rpc("insert_agent_action_service", {
+      p_owner: uid,
+      p_persona_id: claimedDraft.persona_id || null,
+      p_binding_id: null,
+      p_action_type: "publish_external_reddit",
+      p_entity_type: "draft",
+      p_entity_id: claimedDraft.id,
+      p_outcome: outcome,
+      p_detail: {
         account_id: claimedDraft.account_id,
         subreddit,
         approved_content_hash: claimedDraft.approved_content_hash,

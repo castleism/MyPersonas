@@ -3,6 +3,188 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Exact-actor Persona view and full Page looks previews (local only) (2026-08-22)
+
+Status: **Implemented and tested locally; not pushed, applied, deployed, or verified
+live.** Migration 058 is a follow-on to, and not part of, the frozen 047–057 evidence.
+
+- Added the persistent Overview / Persona switch, a visible acting-identity selector,
+  persona-only rail, friends/requests/reviewed-family/followers/following home, circle
+  feed, and the complete reviewed peer profile layout. Owner routes explicitly return to
+  the persona home without silently discarding Persona view.
+- Added exact-actor read projections and mutation wrappers. Private visibility requires
+  an accepted friendship with that exact actor; an owned sibling or another persona's
+  relationship grants nothing. Stale account/mode/actor completions are discarded.
+- Kept new activity closed for draft/revision/dependency-stale actors, allowed current
+  private actors to manage existing relationships, retained exact-actor safety cleanup,
+  kept Backup personas independent, and labeled block/mute as account-wide actions.
+- Added server-authoritative capability status, bounded connection/post-panel responses,
+  action-only redaction and cancellation for pending private requests, sorted mutation
+  locks with transaction-time authorization rechecks, and generic metadata reset across
+  logout/account changes.
+- Replaced cropped CSS-background Page looks thumbnails with semantic, whole-image
+  `object-fit: contain` previews that retain owner full-preview/save-copy access.
+- Added focused packaging, persistence, exact-actor SQL, social attribution, uncropped
+  preview, and disposable PostgreSQL apply/reapply plus API-role/RLS runtime tests, with
+  the programmer handoff in `PERSONA-VIEW-MODE.md`.
+
+## Coordinated 047–057 release candidate and manual release gates (local only) (2026-08-22)
+
+Status: **Implemented and tested locally; not pushed, applied to the linked database,
+deployed, configured, activated, or verified live unless separately evidenced.** The
+frozen local release candidate passed 259/259 Node tests, all 28 Edge Function type
+checks, the seven-case scheduled-budget behavior suite, and PostgreSQL 16 apply/reapply
+plus runtime assertions. Final migration hashes are in the release manifest.
+
+- Added `RELEASE-MANIFEST-2026-08-22.md` as the exact database/release authority: 047,
+  048, 049, 050, hardened prerequisite 043, then 051–057. It explicitly records that
+  `supabase/migrations/` is not a complete fresh-install history.
+- Added exact-revision AAL2 business publication (052), human-approved bounded agent-board
+  execution (053), narrow quota-bound research/content storage (054), reserved-capacity
+  agent audit retention and erasure serialization (055), stale Auth-email attestation
+  invalidation (056), and default-deny per-backend AI request/token leases (057).
+- Closed a legacy anonymous SECURITY DEFINER review-link mutation by making identity and
+  owner comparisons NULL-safe and restricting the owner review/affiliate RPC family to
+  authenticated callers. Disposable PostgreSQL proves anonymous and cross-owner denial
+  without mutation and exact-owner success.
+- Put scheduled `run-tasks` provider calls behind the 057 automation-budget claim using
+  the exact 055 v2 audit UUID as the idempotent request key. Success, pre-fetch zero,
+  known provider usage, ambiguous post-fetch usage, denial, and finalize-once behavior
+  are covered without reopening the 055 lifecycle.
+- Hardened Agent Board request streaming, provider-timeout accounting, third-party prompt
+  warnings, retry ceilings, and owner-cache cleanup; hardened owner asset copies with
+  byte-signature verification and inert-media MIME/size enforcement; and made restore
+  operations session-stable and explicitly partial on non-session failure.
+- Changed Supabase Function and Pages deployment workflows to manual dispatch. Both
+  require `MIGRATIONS-VERIFIED`; pushes validate but do not deploy. Required release order
+  is database apply/readback, Functions deploy/verification, then Pages/live smoke.
+- Kept production authority outside repository source: no linked SQL, deployment,
+  provider key/project, model call, Auth hook, SMTP, CAPTCHA, WAF/DNS, SSO, payment,
+  publication, affiliate activation, or social write occurred through these local changes.
+
+## Review-first publication, social, and security governance (local only) (2026-08-22)
+
+- Added draft/review/publish/unpublish page states, mandatory page intention and AI
+  disclosure, and exact-revision enforcement. Existing personas without lifecycle state
+  are deliberately backfilled `unpublished` with no published revision/timestamp; new
+  personas start as drafts. This source does not preserve implicit legacy publication.
+- Material persona, layout, post, link, album, album-item, both-endpoint family,
+  revenue-setting/offer/product/review-intake, AI-backend credential, or fan-binding
+  changes invalidate the prior review and return every affected published page to draft.
+  Top 8, linked, and family cards use reviewed one-hop dependency hashes.
+- Replaced the legacy native auto-publication path with explicit owner staging into the
+  persona-page draft, exact page review/publish, and post-commit reconciliation. A staged
+  automation draft is not marked published before its page revision is public.
+- Added distinct public-follow and policy-gated friend flows. Owner-issued invite proofs
+  are hashed and expiring; contact proof fails closed until a private server verifier exists.
+  Symmetric block/mute rules are enforced by direct persona-read RLS as well as projections,
+  and unavailable-target request logging is bounded.
+- Added owner-confirmed feature-request drafts, service-assigned maintenance roles,
+  AAL2-gated staff transitions, persona/account feed-sync preferences with stale-link
+  cleanup, and inert custom-extension submissions.
+- Added optional Auth hook functions, progressive lock state, sanitized security/error
+  visibility, hashed edge-identifier boundaries, and a service-only retention purge.
+  Removed the historical insert-open `error_logs` policy; authenticated client reports now
+  use one bounded, redacting, rate-limited RPC and direct browser DML is revoked. No
+  Auth hook, CAPTCHA, email, WAF, log drain, staff role, or provider worker was activated.
+- Added owner review/settings routes, browser-AI copy/open handoff, Castleborn organization
+  summary, public AI disclosure, separate Follow/Add friend controls, and local public
+  Family plus Offers & review requests modules. Fan chat now fails closed whenever its
+  persona is not currently published and public.
+- Replaced the public `request-review` Edge source with a fail-closed phase-1 intake:
+  exact configured Origin, streamed body cap, Turnstile timeout/action/hostname, bounded
+  normalized fields, no requester-URL fetch, rotating HMAC identifiers, current-page
+  service RPC, and a neutral receipt. Added intentional `verify_jwt=false` entries for
+  request-review and affiliate redirect. No secret, Turnstile widget, global enable,
+  notification sender, email delivery, or owner review workflow was configured.
+- Returned every legacy business page to an owner-only draft, revoked migration 049's
+  direct browser publishing path, and exposed draft-only business/profile/mission/member
+  writers. Follow-on migration 052 now supplies the dedicated exact-revision AAL2 review,
+  publish, and unpublish workflow locally; neither migration is live through this work.
+- Extended owner export, safe-state UUID-remapped restore, and full-account erasure across
+  family, project, business, publication, social, sync, extension, and typed security data.
+  Migration 051 and this UI remain unapplied, undeployed, and not live-verified.
+- Hardened the local `affiliate-redirect` source with a separate required HMAC secret,
+  bounded inputs, rotating domain-separated identifiers, credential-free HTTPS-only
+  destinations, an atomic current-page/cap/deduplication service RPC, and bounded retention.
+  The 043 mirror and 051 parity gaps were repaired locally. Release gates remain: final
+  frozen pair hashes, complete predecessor proof, affiliate-retention scheduler/runbook,
+  Edge secrets, linked application, deployment, and live source-parity checks.
+
+## Castleborn family, project, and business foundations (local only) (2026-08-22)
+
+- Added the 20 confirmed parent relationships and four explicit partner pairs as
+  owner-private working canon. Child and sibling labels are derived; no twin claim,
+  unconfirmed partner, Abel row, or Enki surname was invented.
+- Added a 21-member owner-private Castleborn project with WAIS as the sole manager.
+  Manager is presentation/orchestration metadata and grants no authentication or provider
+  permission. No database resource was fabricated.
+- Added project resource boundaries plus draft-first business profile, mission-item,
+  membership, optional public-title, and field-visibility foundations. The seeded
+  Castleborn business remains blank, owner-only, and unpublished.
+- Migration 049 passed focused tests and a disposable PostgreSQL 16 RLS/security apply;
+  it remains unapplied and undeployed in the linked project.
+
+## Persona asset preview and safe page designer phase 1 (local only) (2026-08-22)
+
+- Added accessible owner-only full previews for profile/banner/background/feed-header,
+  album, and native post media, with credential-free streamed downloads, a 50 MB cap,
+  an explicit inert-media MIME allowlist, matching file/container signatures,
+  MIME-derived extensions, active/unknown/mislabeled response rejection, sanitized
+  filenames, and honest CORS fallback guidance.
+- Added a declarative visual designer for module order, width, shape, tone, escaped text
+  boxes, and HTTPS link boxes across eleven built-in modules, including Family and
+  Offers & review requests. Public rendering never executes pasted HTML, CSS,
+  JavaScript, SVG, or extension code.
+- Added a read-only HTML/CSS/JSON learning console with local selection explanations and
+  owner-private reusable snippets, plus migration 050 and focused security tests.
+- Documented a release blocker: current public Storage URLs expose a stable owner UUID
+  path that can correlate otherwise unlinked personas. New image/video widgets and video
+  backgrounds remain disabled until an opaque asset-delivery migration and backfill are
+  complete. This source is not applied, deployed, or live-verified.
+- Hardened new browser uploads to hash final bytes after watermarking and use immutable,
+  content-addressed `persona-media` paths for PNG/JPEG/WebP/GIF and MP4/WebM with no
+  upsert. This first-party guarantee does not cover legacy or external HTTPS URLs; those
+  remain mutable and are not byte-integrity-bound by the publication manifest.
+
+## Private persona backup relationships (local only) (2026-08-22)
+
+- Added a private main-to-backup relationship with same-owner foreign keys, one main and
+  one backup per pair, RPC-only authenticated writes, serialized validation, and strict
+  one-level pairing so chains, loops, and ambiguous parents fail closed.
+- Replaced the flat private owner rail with accessible collapsible pairs. The Backup is
+  attached directly beneath its main, opens as its own persona, auto-expands when active,
+  and remains labeled in the mobile owner picker where the rail is hidden.
+- Added editor assignment/removal with readback verification and explicit copy separating
+  private Backup organization from public Linked personas.
+- Added relationship-aware JSON/CSV/XLSX export and UUID-remapped two-pass restore. Fixed
+  the pre-existing full-backup reference to undeclared `myAccountPersonaLinks` by loading
+  that owner-only dataset, and made incomplete relationship exports fail closed.
+- Added migration 048, a programmer handoff, and static/security/behavior tests. This is
+  local source only: the migration is not applied, the page is not deployed, and no live
+  account state was changed.
+
+## Persona full-name canon (production names applied) (2026-08-22)
+
+- Recorded the owner's exact full-name decisions for 20 Castleborn family members,
+  including the O'Sasaki and Ona-Right combined-family naming rules.
+- Added an idempotent, handle-keyed migration for 18 existing persona display names.
+  It changes only `public.personas.name`, fails closed on unexpected existing names,
+  tolerates fresh databases, and does not create Abel's currently unverified profile.
+- Applied that exact statement in the production SQL Editor and verified the resulting
+  19-row Castleborn roster by a separate public REST read: all 18 targeted renames match,
+  and the already-current Alexei Grigoriev row still matches. Because the SQL Editor does
+  not record repository migration history, a later linked `supabase db push` may rerun the
+  idempotent migration once to record version `20260822113925`.
+- Synchronized `Accounts!Sheet1!A6:A24` to the same full-name canon without changing the
+  roster's formatting or any account/provider columns.
+- Updated the tracked brand-manager roster and corrected the Song/Rhythm record: they
+  are owner-confirmed siblings, but the previously rejected twin/shared-origin claim
+  remains rejected. Enki's surname remains intentionally unresolved.
+- No handle, biography, visibility, account ownership, post, or provider state was
+  changed. The production readback and Accounts range were verified separately from the
+  repository migration and tests.
+
 ## Mobile navigation hotfix + desktop persona companion (2026-08-22)
 
 - **No mobile overlap:** the five-item owner bar now honors its `hidden` state and keeps

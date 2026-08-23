@@ -12,6 +12,14 @@ Current execution package: `SETUP-CONDUCTOR-HANDOFF.md`, `50-HOUR-COMMAND-BOARD.
 `REQUEST-REVIEW-SPEC.md`. These documents distinguish source, deployment, live proof, and
 owner-gated external actions.
 
+Current 047–057 package: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** `RELEASE-MANIFEST-2026-08-22.md` is the authority for ordered staging and
+release; the frozen local package passed 259/259 Node tests, all 28 Edge Function checks,
+PostgreSQL 16 apply/reapply and security runtimes, and all 12 migration parity hashes.
+Follow-on migration 058 and its Overview / Persona UI are a separate local-only change;
+they are not part of that frozen evidence package and have not been applied or deployed.
+
 ---
 
 ## v0 — Foundation (current)
@@ -23,6 +31,66 @@ Shipped:
   with no public linkage to personas by default (mailbox authorization is a separate connector)
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
+- [x] Private Backup persona pairing is code-complete locally: one-level owner-only
+      main → backup relationships, a collapsible desktop rail, grouped mobile picker,
+      editor assignment, and relationship-aware export/restore. Migration 048 and the
+      matching page remain unapplied/undeployed and require the release checks in
+      `PERSONA-BACKUP-RELATIONSHIPS.md`.
+- [~] Persona page designer phase 1 is code-complete locally: owner full-asset previews
+      and bounded local-copy downloads; eleven-section declarative module
+      ordering/width/shape/tone, including Family and Offers & reviews;
+      escaped text/HTTPS-link boxes; and a read-only HTML/CSS/JSON learning console with
+      owner-private reusable snippets. Migration 050 and the page remain unapplied and
+      undeployed. Image/video widgets and video backgrounds stay blocked until public
+      asset URLs use opaque ids instead of correlatable owner UUID paths; arbitrary
+      public JavaScript remains prohibited. New first-party uploads are content-addressed
+      locally, but legacy and external HTTPS assets are not byte-integrity-bound. See
+      `PERSONA-PAGE-LAYOUT-BUILDER.md`.
+- [~] Overview / Persona view is code-complete locally: an account-scoped mode switch,
+      exact acting-persona identity, bounded friends/requests/reviewed-family/follower/
+      following circle, bounded feed and post panels, complete reviewed peer-page layout,
+      private-request redaction/cancellation, and transaction-rechecked social mutations.
+      Page-look source images now render whole and uncropped in the editor. Migration 058
+      supplies the exact-actor server projection so a sibling's friendship or owner
+      access cannot leak private content. It is unapplied/undeployed and intentionally
+      fails closed until released. See `PERSONA-VIEW-MODE.md`.
+- [~] Castleborn organization data is code-complete locally: 20 owner-confirmed parent
+      edges, four confirmed partner pairs, derived sibling labels, an owner-private
+      Castleborn project with WAIS as manager, project-resource boundaries, and draft-first
+      business bios/missions/titles. Migration 049 is unapplied; Abel and Enki remain
+      unresolved rather than invented. See `CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md`.
+- [~] Review-first persona publication and governance is code-complete locally: draft /
+      review / publish / unpublish, transparent AI disclosure, exact-revision checks,
+      owner-confirmed feature tickets, separate follow/friend policies, persona account
+      sync preferences, account-level maintenance roles, inert extension submissions,
+      progressive security state, and retention primitives. Profile, layout, post, link,
+      album, family-edge, revenue/affiliate/request-intake, AI-backend credential, and
+      fan-binding changes invalidate the reviewed revision; direct reads honor symmetric
+      blocks; fan chat requires a currently published public persona; existing personas
+      are backfilled `unpublished`; and all legacy business pages are returned to
+      owner-only draft state. Follow-on migration 052 now supplies the dedicated,
+      exact-revision, AAL2 business review/publish/unpublish phase locally.
+      Exact-approved native drafts stage into page review rather than auto-publishing.
+      Migration 051 and the matching owner UI are
+      unapplied/undeployed. Provider workers, CAPTCHA, Auth hooks, SMTP, WAF, SSO, and log
+      drains remain explicit owner/dashboard work. See
+      `PUBLICATION-SOCIAL-SECURITY-GOVERNANCE.md`.
+      Canonical 051 and its timestamped migration mirror are now byte-identical locally;
+      the linked migration chain and focused suite still require staging proof before any
+      production apply.
+- [~] Family and revenue presentation modules are implemented locally. Public family
+      cards come from the reviewed one-hop dependency projection. The revenue module
+      renders reviewed disclosures, affiliate offers, and a Request review CTA only when
+      the exact current page and every database gate pass. The hardened phase-1
+      `request-review` Edge source uses exact-origin CORS, bounded input, Turnstile,
+      rotating HMAC identifiers, neutral receipts, and a service RPC; it remains
+      undeployed, its global/persona gates default off, and its notification sender and
+      owner evidence queue do not exist. A byte-identical timestamped migration-043 mirror
+      now exists locally but remains unapplied. The local affiliate redirect now uses a
+      separate required HMAC secret, bounded inputs, HTTPS-only reviewed destinations,
+      atomic current-page resolution, click caps/deduplication, and bounded retention;
+      those additions remain default-off and require the full linked staging chain,
+      secret installation, destination review, and runtime proof before deployment.
 - AI Models: add hosted OpenAI-compatible/Anthropic/Azure connections (key write-only in
   Vault); edit an existing connection's label, base URL, and model id in-place without
   re-entering the key (migration `042`; API key stays write-only — rotate by remove + re-add)
@@ -39,8 +107,9 @@ Shipped:
   SD character panel (local A1111/Forge), content drafts pipeline
   (chat/task output → draft → copy → post on platform; idea → ready → posted)
 - Trust & safety: pixel-burned watermarks with page URL on uploads, right-click/drag
-  guards, in-app error reporting to error_logs, session-timeout countdown popup,
-  stale-page banner
+  guards, in-app error reporting (migration 051 replaces direct `error_logs` inserts with
+  a bounded authenticated redacting RPC), session-timeout countdown popup, stale-page
+  banner
 - Platform: brand icon bank (SVG, hologram-blue), favicon, release-driven extensions
   catalog (GitHub Releases + extension.json), versioned repo layout + Pages workflow
 
@@ -98,9 +167,30 @@ larger product phase remains.
 - [x] Server-side AI proxy: browser system prompts are discarded, persona context and
       controls are loaded server-side, model keys migrate into Supabase Vault, and browser
       model CRUD is limited to owner-authenticated RPCs that never read a key back
+- [~] Human-gated agent board hardening (migration 053 + local owner UI/endpoints):
+      bounded allowlisted proposals, exact reviewed execution inputs, one-use capability,
+      idempotent exact-request runs, result/audit visibility, and expired-run recovery.
+      Proposals and execution default off; local concurrency, retry-ceiling, abuse, drift,
+      idempotency, and recovery verification passed. Linked migration, provider
+      configuration, and live AAL2 owner smoke remain open.
+- [~] Owner research/content hardening (migration 054): bounded owner/service RPCs,
+      durable daily/lifetime creation counters, server-authored provider receipts, and
+      approval/provenance authority exist locally. Saving over an approved or scheduled
+      package is an explicit AAL2-gated downgrade after the exact package row is locked.
+      No research provider, publication, or evidence-quality outcome is implied.
+- [~] Agent audit retention hardening (migration 055): narrow service writers, reserved
+      terminal-audit capacity, stored row/byte and mutation ceilings, and deletion/
+      erasure serialization exist locally. PostgreSQL lifecycle, upgrade, over-limit,
+      direct-DML, and writer/erasure concurrency evidence passed; an approved linked
+      retention/operations runbook remains a release gate.
+- [~] Auth email attestation invalidation (migration 056): stale AliaSpaces-confirmed
+      email attestations are revoked on Auth email change/unconfirmation without treating
+      provider OAuth connections as the same proof. Linked Auth/database behavior remains
+      unapplied and unverified live.
 - [x] Native AliaSpaces post bridge: L2 exact approvals wait for the owner to press
-      Publish now; L3 may publish only exact-approved native drafts on an enabled auto
-      target when due
+      Stage for page review. Migration 051 disables the legacy automatic native publisher;
+      an unchanged staged post becomes public only when the owner reviews and publishes
+      that exact persona-page revision. External provider queues remain separate gates.
 - [x] Optional SFW fan chat: fixed AI disclosure, atomic session/quota/response leasing,
       bounded session memory, owner transcript review, and escalation flags that promise
       neither an owner reply nor takeover. NSFW stays unavailable pending server-verifiable
@@ -160,7 +250,9 @@ larger product phase remains.
       public-readable posted-history table, not owner-only drafts)
 - [x] Persona deletion unblocked: migration 022 makes destination audit inserts
       cascade-safe (was aborting deletes via agent_actions binding FK)
-- [ ] Resolve persona-save session bug from verification round (error_logs driven)
+- [ ] Resolve the persona-save session bug from the verification round using redacted
+      owner/staff telemetry. After migration 051 the browser reports through bounded
+      `report_client_error`; it does not insert into or read `error_logs` directly.
 - [ ] SEO: path-based routing + prerendered persona pages so Google indexes each
       persona individually, and per-persona OG images for rich link previews
       (today: hash routes = one indexable URL; JS-set titles/descriptions only)
@@ -180,15 +272,26 @@ larger product phase remains.
       CSP, frame denial, HSTS, nosniff, Referrer-Policy, and Permissions-Policy headers.
 - [ ] Move OpenRouter OAuth exchange/Vault storage fully server-side and enforce code-owned exact
       host/path maps for every known provider. Custom endpoints require an owner-reviewed allowlist.
-- [ ] Add atomic per-backend daily/monthly budgets, concurrency/queue/hop limits, audit, expiry,
-      default-$0 policy, and a global AI-spend pause independent of publishing pause.
+- [~] Per-backend AI budget guard is implemented locally in migration 057: durable
+      owner/backend/mode daily and monthly request/token reservations, expiring concurrency
+      leases, default-deny automated modes, narrow AAL2 policy mutation, and server-side
+      reserve/finalize integration. Scheduled `run-tasks` now reuses its exact v2 audit
+      action UUID as the automation-budget request key and fails closed before provider
+      work. It stores no provider pricing, does not create a provider dashboard cap, and
+      authorizes no spend. Queue/hop limits, a provider-price ledger, and a separately
+      operated global emergency spend stop remain roadmap work.
 - [ ] Configure/test production SMTP, exact redirects, CAPTCHA, confirmation, magic link, password
       recovery, security notices, unsubscribe, bounce, and suppression before public email flows.
-- [~] Repair release gates: CI is red on the current public frontend commit and automatic Supabase
-      deployment lacks its credential. Require green validation, pinned tooling, a protected/manual
-      production environment, function allowlist, and backend → migration → frontend evidence.
-- [x] Wire externally generated or uploaded persona images into `persona-media`; new image
-      upload/generation paths now use owner-namespaced public Storage while video remains in `media`.
+- [~] Release workflows now require manual dispatch and the exact
+      `MIGRATIONS-VERIFIED` confirmation; pushes validate but deploy nothing. The frozen
+      local validation is green. Protected-environment reviewers, credential presence,
+      complete linked predecessor inventory, and database → functions → frontend live
+      evidence remain open.
+- [x] Wire generated/uploaded public persona media into immutable `persona-media` paths;
+      PNG/JPEG/WebP/GIF and MP4/WebM bytes are hashed after watermarking where applicable,
+      written under owner/published scopes with `upsert:false`, and identical duplicates
+      reuse the same address. External HTTPS and legacy URLs remain mutable and are not
+      byte-integrity-bound.
 - [ ] Second Castleborn doc link from owner (pending input)
 - [x] Meta cleanup "Could not lock" root-caused and fixed (2026-08-08): migration 025
       (#variable_conflict use_column in the claim function); safe modal close + Escape
@@ -202,10 +305,10 @@ larger product phase remains.
       2026-08-08): achievements, lessons, target architecture, P0–P3 backlog
 - [x] Data hygiene audit (2026-08-08): transient tables already clean (0 rows);
       archived+removed 1 stale error_log; `archive` schema backup convention set
-- [x] P0 refactor: CI/CD scaffolded (2026-08-08). `.github/workflows/ci.yml`
-      (tests + deno check + frontend syntax) and `supabase-deploy.yml` (function
-      deploy on merge); `CI-CD-SETUP.md`. Owner to add `SUPABASE_ACCESS_TOKEN`
-      secret to enable auto-deploy. Local CI dry-run green (17 fns, 7 tests).
+- [x] P0 refactor: CI/CD scaffolded (2026-08-08) and production triggers hardened
+      (2026-08-22). `.github/workflows/ci.yml` validates; function and Pages workflows are
+      manual confirmation-gated. `SUPABASE_ACCESS_TOKEN`, protected reviewers, and a live
+      dispatch remain owner-controlled setup, not local completion evidence.
 - [x] P1: unit test suite for pure helpers (`tests/`, `npm test`, 7 passing) +
       frontend syntax check script
 - [x] P1: email normalized (trim+lowercase) at ledger write in both save paths
@@ -348,8 +451,10 @@ larger product phase remains.
 5. **"Live" is an embed** of the persona's Twitch/YouTube/Kick, not native streaming.
 6. **Watermarking is client-side** canvas burn (images only; videos get an overlay);
    screenshots are unpreventable — treated as attribution/deterrence.
-7. **Blocks/mutes/topic filters are partly client-side** — a blocked user can't
-   friend you (RLS-enforced) but public content hiding is UX-level, not server-level.
+7. **Production block behavior depends on migration state** — the legacy deployed
+   snapshot must be treated as partly client-side until reverified. Migration 051 adds
+   symmetric account/persona block checks to direct reads and public projections, but it
+   is local/unapplied and therefore not live evidence.
 8. **Friend Realtime is local-only until migration 037 + Pages ship**; focus refresh remains
    the fallback for deletes/cancellations that cannot use the filtered event path.
 9. **prompt()/confirm() dialogs remain for several settings/destructive confirms**, although
@@ -358,7 +463,10 @@ larger product phase remains.
     locally hardened but undeployed, and other destinations remain manual or gated until their
     official write scopes, assignment, caps, audit, and reconciliation are verified.
 11. **GitHub Pages hosting** — free static host, ~10-minute cache, no server control.
-12. **error_logs is insert-open** (anyone can file) — spam-able; fine pre-launch.
+12. **Error telemetry has a migration boundary** — migration 051 removes the historical
+    insert-open policy and permits only a bounded authenticated redacting RPC plus staff
+    reads. Until 051 is applied and read back, audit the linked project's legacy policy;
+    insert-open telemetry is not acceptable release state.
 13. **Top 8 is a jsonb array** on the persona row (no referential integrity).
 14. **Extensions "Open" buttons target localhost ports** — tools must be installed
     and running locally; catalog reads GitHub API client-side (rate-limited) with a

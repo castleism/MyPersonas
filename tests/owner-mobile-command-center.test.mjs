@@ -70,7 +70,7 @@ test("route and dropdown persona changes update the companion selection", async 
   assert.equal(syncs, 2);
   assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
   assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
-  assert.match(html, /owner-app\.js\?v=20260822-4/);
+  assert.match(html, /owner-app\.js\?v=20260822-6/);
 });
 
 test("briefing workflow keeps four channels and truthful manual boundaries", async () => {

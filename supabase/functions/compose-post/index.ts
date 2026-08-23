@@ -2,13 +2,14 @@
 //
 // Given a brief + a source image, this drafts the three platform-tailored captions
 // in the persona's voice (by calling the hardened ai-proxy with the persona's linked
-// model) and derives the three platform image crops as Supabase image-transform URLs
-// (Facebook landscape 1.91:1, Instagram square 1:1, X portrait 4:5). It writes an
+// model). No-AI imagery may use Supabase image transforms; AI-used imagery must
+// arrive with separately registered, visibly watermarked final crops so a transform
+// cannot crop the mark away. It writes an
 // owner-scoped row to post_drafts with status='draft' — nothing is published here;
 // the weekly approval flow + the publisher handle that. See POSTING-3PART-SPEC.md.
 //
 // Contract (POST, owner bearer token):
-//   { action:"compose", personaId, brief, sourceImageUrl,
+//   { action:"compose", personaId, brief, sourceImageUrl, sourceImageVariants?,
 //     scheduledFor?, targets?, captions?({fb,ig,x}) }
 //   -> { draft: <post_drafts row> }
 // If captions are supplied they are used verbatim; otherwise the persona's model
@@ -27,6 +28,7 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const X_CAPTION_MAX = 280;
 const IG_CAPTION_MAX = 2200;
 const FB_CAPTION_MAX = 5000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Platform image crops (width x height, cover). FB 1.91:1, IG 1:1, X 4:5.
 const CROPS = {
@@ -177,6 +179,7 @@ async function generateCaptions(
 serve(async (req) => {
   const origin = req.headers.get("Origin") || "";
   if (req.method === "OPTIONS") return json(null, 204, origin);
+  if (origin && !ORIGINS.has(origin)) return json({ error: "Origin not allowed" }, 403);
   if (req.method !== "POST") return json({ error: "POST only" }, 405, origin);
 
   const user = await caller(req);
@@ -199,6 +202,9 @@ serve(async (req) => {
   if (sourceImageUrl && !/^https:\/\/\S+$/i.test(sourceImageUrl)) {
     return json({ error: "sourceImageUrl must be a public https URL." }, 400, origin);
   }
+  const suppliedVariants = body.sourceImageVariants && typeof body.sourceImageVariants === "object"
+    ? body.sourceImageVariants as Record<string, unknown>
+    : {};
   const targets = Array.isArray(body.targets)
     ? body.targets.map((t) => String(t)).filter((t) =>
       ["facebook", "instagram", "twitter"].includes(t)
@@ -221,6 +227,53 @@ serve(async (req) => {
   if (pErr) return json({ error: "Could not load the persona." }, 500, origin);
   if (!persona) {
     return json({ error: "Persona not found for your account." }, 404, origin);
+  }
+
+  // The browser can prepare bytes, but only the service-authored registry is
+  // provenance authority. This also rejects a hand-edited or pasted URL.
+  let sourceAsset: Record<string, unknown> | null = null;
+  let registeredVariants: Record<string, Record<string, unknown>> = {};
+  if (sourceImageUrl) {
+    const sourceResult = await admin.from("persona_media_assets")
+      .select("id,public_url,source_sha256,content_sha256,ai_use,declaration_source,watermark_state,provenance_sha256,rendition,status")
+      .eq("owner", user.id)
+      .eq("persona_id", personaId)
+      .eq("public_url", sourceImageUrl)
+      .eq("status", "active")
+      .maybeSingle();
+    if (sourceResult.error) return json({ error: "Could not verify source media provenance." }, 500, origin);
+    if (!sourceResult.data || sourceResult.data.declaration_source === "legacy") {
+      return json({ error: "Prepare this image through the secure media intake first." }, 422, origin);
+    }
+    sourceAsset = sourceResult.data as Record<string, unknown>;
+    if (sourceAsset.ai_use !== "none") {
+      const urls = {
+        facebook: String(suppliedVariants.facebook || ""),
+        instagram: String(suppliedVariants.instagram || ""),
+        x: String(suppliedVariants.x || ""),
+      };
+      if (Object.values(urls).some((value) => !/^https:\/\/\S+$/i.test(value)) || new Set(Object.values(urls)).size !== 3) {
+        return json({ error: "AI-used media requires three distinct registered final crops." }, 422, origin);
+      }
+      const variantsResult = await admin.from("persona_media_assets")
+        .select("id,public_url,source_sha256,ai_use,declaration_source,watermark_state,provenance_sha256,rendition,status")
+        .eq("owner", user.id)
+        .eq("persona_id", personaId)
+        .eq("status", "active")
+        .in("public_url", Object.values(urls));
+      if (variantsResult.error) return json({ error: "Could not verify final crop provenance." }, 500, origin);
+      const byUrl = new Map((variantsResult.data || []).map((asset) => [asset.public_url, asset]));
+      const expectedRenditions: Record<string, string> = { facebook: "facebook", instagram: "instagram", x: "x" };
+      for (const [platform, url] of Object.entries(urls)) {
+        const asset = byUrl.get(url) as Record<string, unknown> | undefined;
+        if (!asset || asset.source_sha256 !== sourceAsset.source_sha256 || asset.ai_use !== sourceAsset.ai_use ||
+            asset.declaration_source === "legacy" || asset.watermark_state !== "system_applied" ||
+            asset.rendition !== expectedRenditions[platform] || !UUID.test(String(asset.id || ""))) {
+          return json({ error: `The ${platform} crop is not an exact registered watermarked rendition.` }, 422, origin);
+        }
+        registeredVariants[platform] = asset;
+      }
+    }
   }
 
   // Captions: use supplied, else generate with the persona's linked model.
@@ -261,9 +314,10 @@ serve(async (req) => {
     }, 422, origin);
   }
 
-  const fbImg = sourceImageUrl ? transformUrl(sourceImageUrl, CROPS.fb.w, CROPS.fb.h) : "";
-  const igImg = sourceImageUrl ? transformUrl(sourceImageUrl, CROPS.ig.w, CROPS.ig.h) : "";
-  const xImg = sourceImageUrl ? transformUrl(sourceImageUrl, CROPS.x.w, CROPS.x.h) : "";
+  const aiUsed = !!sourceAsset && sourceAsset.ai_use !== "none";
+  const fbImg = sourceImageUrl ? (aiUsed ? String(registeredVariants.facebook.public_url) : transformUrl(sourceImageUrl, CROPS.fb.w, CROPS.fb.h)) : "";
+  const igImg = sourceImageUrl ? (aiUsed ? String(registeredVariants.instagram.public_url) : transformUrl(sourceImageUrl, CROPS.ig.w, CROPS.ig.h)) : "";
+  const xImg = sourceImageUrl ? (aiUsed ? String(registeredVariants.x.public_url) : transformUrl(sourceImageUrl, CROPS.x.w, CROPS.x.h)) : "";
   const weekStart = mondayOf(scheduledFor ? new Date(scheduledFor) : new Date());
 
   const { data: draft, error: insErr } = await admin.from("post_drafts")
@@ -281,6 +335,7 @@ serve(async (req) => {
       fb_image_url: fbImg,
       ig_image_url: igImg,
       x_image_url: xImg,
+      media_provenance_required: true,
       targets,
       facebook_ledger_id: facebookLedgerId,
     })

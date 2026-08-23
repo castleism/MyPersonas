@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Persona view visual QA fixture</title>
+  <link rel="stylesheet" href="../../MyPersonas.Online_v0/persona-view.css">
+</head>
+<body class="persona-view-mode" style="--persona-mode-color:#7b4dd8">
+  <header>
+    <h1>AliaSpaces</h1>
+    <div id="personaViewSwitcher" class="persona-view-switcher" aria-label="MyPersonas view">
+      <button type="button" aria-pressed="false">Overview</button>
+      <button type="button" aria-pressed="true">Persona</button>
+      <select aria-label="Acting persona"><option>Sophia Ona</option><option>Kunuk Atiq</option></select>
+    </div>
+    <nav><button>Entangle</button><button>Sophia home</button><button>My page</button></nav>
+  </header>
+  <main>
+    <section class="card" aria-labelledby="looksHeading">
+      <h3 id="looksHeading">Page looks</h3>
+      <p class="muted">Every colored edge and FULL FRAME label must remain visible.</p>
+      <div class="lookgrid">
+        <div><label>Profile image</label><div class="lookprev"><img data-width="400" data-height="900" data-color="#d64b72" alt="Profile image — full uncropped preview"></div></div>
+        <div><label>Banner</label><div class="lookprev"><img data-width="1600" data-height="400" data-color="#2c7fca" alt="Banner — full uncropped preview"></div></div>
+        <div><label>Page background</label><div class="lookprev"><img data-width="600" data-height="600" data-color="#2c9b75" alt="Page background — full uncropped preview"></div></div>
+        <div><label>Feed header</label><div class="lookprev"><img data-width="1800" data-height="300" data-color="#d58b24" alt="Feed header — full uncropped preview"></div></div>
+      </div>
+    </section>
+    <section class="persona-mode-head">
+      <div><span class="persona-mode-badge">Acting as Sophia Ona · @sophai.imagines</span><h2>Your persona circle</h2><p>Friends, requests, followers, reviewed public family, and followed personas visible to this exact identity.</p></div>
+      <div class="persona-peer-actions"><button class="btn">View my page</button><button class="btn sec">Discover</button></div>
+    </section>
+    <div class="persona-mode-notice"><b>Persona view is active.</b> Social actions use Sophia Ona only.</div>
+    <section class="persona-connection-section"><h3>Sent friend requests</h3><div class="persona-request-grid">
+      <div class="persona-request-card"><div class="persona-request-main" role="group" aria-label="Private persona identity withheld"><span class="avatar"></span><span class="copy"><b>Private persona</b><small>Profile details are unavailable</small></span></div><div class="persona-request-actions"><button class="btn sec sm">Cancel request</button></div></div>
+    </div></section>
+    <section class="persona-connection-section"><h3>Friends</h3><div class="persona-connection-grid">
+      <button class="persona-connection-card"><span class="avatar" style="background:#e4e6eb"></span><span class="copy"><b>Kunuk Atiq</b><small>@kunuk</small></span></button>
+      <button class="persona-connection-card"><span class="avatar" style="background:#e4e6eb"></span><span class="copy"><b>Fenrir Ona-Right</b><small>@fenrir</small></span></button>
+    </div></section>
+    <section class="persona-peer-shell" aria-labelledby="peerHeading">
+      <div class="persona-mode-notice"><b>Acting as Sophia Ona.</b> Interactions are sent as this exact persona.</div>
+      <div class="banner" style="--pc:#7b4dd8;background:linear-gradient(120deg,#7b4dd8,#ef8fbb)"></div>
+      <div class="pp-head"><div class="pp-av" style="background:#d9c9ff"></div><div style="flex:1"><div class="pp-name" id="peerHeading">Kunuk Atiq</div><div class="muted">@kunuk · friend of @sophai.imagines — complete reviewed page fixture</div></div><div class="persona-peer-actions"><button class="btn sec">Following</button><button class="btn sec">Remove friend</button></div></div>
+      <div class="persona-layout-grid" style="--pc:#7b4dd8">
+        <section class="persona-layout-item"><div class="card"><h3>About</h3><p>This full profile uses the reviewed module grid instead of a narrow summary column.</p><div class="muted">AI transparency: owner-reviewed AI-assisted persona.</div></div></section>
+        <section class="persona-layout-item"><div class="card"><h3>Find me on</h3><span class="chip">@kunuk</span><span class="chip">Portfolio</span></div></section>
+        <section class="persona-layout-item span-full"><div class="card"><h3>Albums</h3><div class="albgrid"><span class="albitem"><span class="cap">Wide module content</span></span><span class="albitem"><span class="cap">Mobile wraps to one column</span></span></div></div></section>
+        <section class="persona-layout-item span-full"><div class="card"><h3>Kunuk Atiq's feed</h3><div class="persona-mode-empty">Feed pagination remains inside the full-width page.</div></div></section>
+      </div>
+    </section>
+  </main>
+  <script>
+    Promise.all([
+      fetch("../../MyPersonas.Online_v0/index.html").then(response => response.text()),
+    ]).then(([html]) => {
+      const match = html.match(/<style>([\s\S]*?)<\/style>/i);
+      if (!match) throw new Error("Production inline styles were not found");
+      const style = document.createElement("style");
+      style.textContent = match[1];
+      document.head.appendChild(style);
+      document.querySelectorAll(".lookprev img").forEach(image => {
+        const width = Number(image.dataset.width);
+        const height = Number(image.dataset.height);
+        const color = image.dataset.color;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#fff"/><rect x="8" y="8" width="${width - 16}" height="${height - 16}" fill="${color}" stroke="#111" stroke-width="16"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="${Math.max(30, Math.min(width, height) / 8)}" font-weight="700" fill="#fff">FULL FRAME</text></svg>`;
+        image.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      });
+      document.documentElement.dataset.qaReady = "true";
+    }).catch(error => {
+      document.documentElement.dataset.qaError = error.message;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "version": "2026-08-22",
+  "authority": "Owner-confirmed in the MyPersonas roadmap continuation on 2026-08-22",
+  "scope": "Owner-confirmed full display names supplied for the current MyPersonas update",
+  "rules": [
+    "Akiko Sasaki and Cillian O'Sullivan combined their family names as O'Sasaki for Song, Rhythm, and Lyric.",
+    "Sophia Ona gave her children with the Founder both Ona and Right, rendered Ona-Right.",
+    "A full-name canon record does not create, publish, or authorize a persona account.",
+    "No surname was supplied for Enki; no surname is inferred for Enki by this record."
+  ],
+  "personas": [
+    { "handle": "castleborn.rohan", "given_name": "Rohan", "full_name": "Rohan Dev", "database_state": "rename_existing" },
+    { "handle": "castleborn.maria", "given_name": "Maria", "full_name": "Maria Luna Garcia", "database_state": "rename_existing" },
+    { "handle": "castleborn.alexei", "given_name": "Alexei", "full_name": "Alexei Grigoriev", "database_state": "already_current" },
+    { "handle": "castleborn.cillian", "given_name": "Cillian", "full_name": "Cillian O'Sullivan", "database_state": "rename_existing" },
+    { "handle": "castleborn.akiko", "given_name": "Akiko", "full_name": "Akiko Sasaki", "database_state": "rename_existing" },
+    { "handle": "castleborn.yarra", "given_name": "Yarra", "full_name": "Yarra Warruwi", "database_state": "rename_existing" },
+    { "handle": "castleborn.sophia", "given_name": "Sophia", "full_name": "Sophia Ona", "database_state": "rename_existing" },
+    { "handle": "castleborn.kunuk", "given_name": "Kunuk", "full_name": "Kunuk Atiq", "database_state": "rename_existing" },
+    { "handle": "castleborn.avi", "given_name": "Avi", "full_name": "Avi Dev", "database_state": "rename_existing" },
+    { "handle": "castleborn.lilly", "given_name": "Lilly", "full_name": "Lilly Dev", "database_state": "rename_existing" },
+    { "handle": "castleborn.brom", "given_name": "Brom", "full_name": "Brom Grigoriev", "database_state": "rename_existing" },
+    { "handle": "castleborn.zara", "given_name": "Zara", "full_name": "Zara Grigoriev", "database_state": "rename_existing" },
+    { "handle": "castleborn.song", "given_name": "Song", "full_name": "Song O'Sasaki", "database_state": "rename_existing" },
+    { "handle": "castleborn.rhythm", "given_name": "Rhythm", "full_name": "Rhythm O'Sasaki", "database_state": "rename_existing" },
+    { "handle": "castleborn.lyric", "given_name": "Lyric", "full_name": "Lyric O'Sasaki", "database_state": "rename_existing" },
+    { "handle": "castleborn.adam", "given_name": "Adam", "full_name": "Adam Atiq", "database_state": "rename_existing" },
+    { "handle": null, "given_name": "Abel", "full_name": "Abel Atiq", "database_state": "canon_only_no_persona_row" },
+    { "handle": "castleborn.fenrir", "given_name": "Fenrir", "full_name": "Fenrir Ona-Right", "database_state": "rename_existing" },
+    { "handle": "castleborn.hecatia", "given_name": "Hecatia", "full_name": "Hecatia Ona-Right", "database_state": "rename_existing" },
+    { "handle": "castleborn.adeola", "given_name": "Adeola", "full_name": "Adeola Dossou", "database_state": "rename_existing" }
+  ]
+}

@@ -75,8 +75,9 @@ test("50-hour board prioritizes containment and requires owner gates", async () 
 test("roadmap records the credential and release gates as unfinished", async () => {
   const text = await doc("ROADMAP.md");
   assert.match(text, /Enforce MFA, not only enrollment/i);
-  assert.match(text, /global AI-spend pause/i);
-  assert.match(text, /CI is red/i);
+  assert.match(text, /global emergency spend stop remain roadmap work/i);
+  assert.match(text, /frozen\s+local validation is green[\s\S]*live\s+evidence remain open/i);
+  assert.match(text, /pushes validate but deploy nothing/i);
   assert.match(text, /gemini-image.*still needs exact Google host\/path enforcement/is);
   assert.doesNotMatch(text, /\[x\] gemini-image Edge Function deployed/i);
 });

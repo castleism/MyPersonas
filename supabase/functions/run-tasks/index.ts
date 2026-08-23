@@ -6,6 +6,11 @@
 // Deploy: supabase functions deploy run-tasks --no-verify-jwt
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  AutomationBudgetClaimError,
+  AutomationBudgetFinalizationError,
+  runWithAutomationBudget,
+} from "./budget.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -19,7 +24,11 @@ const MAX_PROVIDER_RESPONSE_BYTES = 1_000_000;
 const MAX_PROVIDER_OUTPUT_CHARS = 40_000;
 const MAX_PROVIDER_TOKENS = 1_600;
 const MAX_PROVIDER_INPUT_BYTES = 32 * 1024;
+const MAX_BUDGET_RESERVATION_TOKENS = 50_000_000;
+const MAX_REPORTED_PROVIDER_TOKENS = 1_000_000_000;
 const UTF8_ENCODER = new TextEncoder();
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const GENERATION_FIELD_LIMITS = {
   personaName: 256,
@@ -141,18 +150,42 @@ type ProviderEndpoint = {
 
 class ProviderCallError extends Error {
   retryable: boolean;
-  constructor(message: string, retryable: boolean) {
+  budgetOutcome: "provider_error" | "request_failed";
+  budgetActualTokens: number | null;
+  budgetOutcomeCode: string;
+  constructor(
+    message: string,
+    retryable: boolean,
+    budgetOutcome: "provider_error" | "request_failed" = "request_failed",
+    budgetActualTokens: number | null = null,
+    budgetOutcomeCode = "provider_request_failed",
+  ) {
     super(message);
     this.name = "ProviderCallError";
     this.retryable = retryable;
+    this.budgetOutcome = budgetOutcome;
+    this.budgetActualTokens = budgetActualTokens;
+    this.budgetOutcomeCode = budgetOutcomeCode;
   }
 }
+
+type ProviderRequest = {
+  headers: Record<string, string>;
+  bodyText: string;
+};
+
+type ProviderCallResult = {
+  content: string;
+  actualTokens: number | null;
+};
 
 type GenerationReservation = {
   reserved?: boolean;
   code?: string;
   used?: number;
   limit?: number;
+  auditActionId?: string;
+  auditLifecycleVersion?: number;
 };
 
 type GenerationInputField = {
@@ -529,13 +562,38 @@ async function resolveBackendKey(backend: Backend, owner: string) {
   return { key: safeText(data, ""), error: false };
 }
 
-async function callProvider(
+function safeReportedTokenCount(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) &&
+      value >= 0 && value <= MAX_REPORTED_PROVIDER_TOKENS
+    ? value
+    : null;
+}
+
+function providerTokenUsage(payload: Record<string, unknown>) {
+  const usage = asRecord(payload.usage);
+  const total = safeReportedTokenCount(usage.total_tokens);
+  if (total !== null) return total;
+  const prompt = safeReportedTokenCount(
+    usage.prompt_tokens ?? usage.input_tokens,
+  );
+  const completion = safeReportedTokenCount(
+    usage.completion_tokens ?? usage.output_tokens,
+  );
+  if (prompt === null || completion === null) return null;
+  const combined = prompt + completion;
+  return Number.isSafeInteger(combined) &&
+      combined <= MAX_REPORTED_PROVIDER_TOKENS
+    ? combined
+    : null;
+}
+
+function buildProviderRequest(
   endpoint: ProviderEndpoint,
   backend: Backend,
   apiKey: string,
   system: string,
   prompt: string,
-) {
+): ProviderRequest {
   const model = safeText(backend.model, "");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -562,20 +620,42 @@ async function callProvider(
       max_tokens: MAX_PROVIDER_TOKENS,
     };
   }
+  return { headers, bodyText: JSON.stringify(requestBody) };
+}
 
+function conservativeBudgetReservation(providerBodyText: string) {
+  const inputCeiling = UTF8_ENCODER.encode(providerBodyText).byteLength;
+  return Math.min(
+    MAX_BUDGET_RESERVATION_TOKENS,
+    Math.max(1, inputCeiling + MAX_PROVIDER_TOKENS),
+  );
+}
+
+async function callProvider(
+  endpoint: ProviderEndpoint,
+  request: ProviderRequest,
+  markFetchIssued: () => void,
+): Promise<ProviderCallResult> {
   let response: Response;
   try {
+    const signal = AbortSignal.timeout(PROVIDER_TIMEOUT_MS);
+    markFetchIssued();
     response = await fetch(endpoint.url, {
       method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      headers: request.headers,
+      body: request.bodyText,
+      signal,
       redirect: "error",
     });
-  } catch {
+  } catch (error) {
+    const timedOut = error instanceof DOMException &&
+      error.name === "TimeoutError";
     throw new ProviderCallError(
       "The AI provider could not be reached or timed out.",
       true,
+      "request_failed",
+      null,
+      timedOut ? "provider_timeout" : "provider_request_failed",
     );
   }
   const transientStatus = response.status === 408 || response.status === 429 ||
@@ -585,32 +665,54 @@ async function callProvider(
     payload = await readBoundedJson(response);
   } catch (error) {
     if (!response.ok && transientStatus) {
-      throw new ProviderCallError(providerError(response.status), true);
+      throw new ProviderCallError(
+        providerError(response.status),
+        true,
+        "provider_error",
+        null,
+        "provider_http_error",
+      );
     }
     throw new ProviderCallError(
       error instanceof Error
         ? error.message
         : "The model response was invalid.",
       false,
+      "provider_error",
+      null,
+      "provider_response_invalid",
     );
   }
+  const actualTokens = providerTokenUsage(payload);
   if (!response.ok) {
     throw new ProviderCallError(
       providerError(response.status),
       transientStatus,
+      "provider_error",
+      actualTokens,
+      "provider_http_error",
     );
   }
   const content = safeText(providerContent(endpoint, payload), "");
   if (!content) {
-    throw new ProviderCallError("The model returned an empty draft.", false);
+    throw new ProviderCallError(
+      "The model returned an empty draft.",
+      false,
+      "provider_error",
+      actualTokens,
+      "provider_empty_response",
+    );
   }
   if (content.length > MAX_PROVIDER_OUTPUT_CHARS) {
     throw new ProviderCallError(
       "The model draft exceeded the output limit.",
       false,
+      "provider_error",
+      actualTokens,
+      "provider_output_too_large",
     );
   }
-  return content;
+  return { content, actualTokens };
 }
 
 function zonedParts(date: Date, timeZone: string): ZonedParts {
@@ -769,17 +871,47 @@ async function audit(
   outcome: string,
   detail: Record<string, unknown> = {},
 ) {
-  const { error } = await admin.from("agent_actions").insert({
-    owner,
-    persona_id: personaId,
-    binding_id: bindingId,
-    action_type: actionType,
-    entity_type: entityType,
-    entity_id: entityId,
-    outcome,
-    detail,
+  const { error } = await admin.rpc("insert_agent_action_service", {
+    p_owner: owner,
+    p_persona_id: personaId,
+    p_binding_id: bindingId,
+    p_action_type: actionType,
+    p_entity_type: entityType,
+    p_entity_id: entityId,
+    p_outcome: outcome,
+    p_detail: detail,
   });
   if (error) console.error("agent audit insert failed", error.message);
+  return !error;
+}
+
+async function finishGenerationAudit(
+  auditActionId: string,
+  task: TaskRow,
+  binding: Binding,
+  actionType: "ai.call.completed" | "ai.call.failed" | "ai.call.denied",
+  outcome: "ok" | "error" | "denied",
+  detail: Record<string, unknown>,
+) {
+  const { data, error } = await admin.rpc("finish_agent_action_service", {
+    p_action_id: auditActionId,
+    p_owner: task.owner,
+    p_action_type: actionType,
+    p_outcome: outcome,
+    p_detail: { ...detail, auditLifecycleVersion: 2 },
+  });
+  if (!error && data === true) return true;
+  console.error(
+    "generation audit terminal update failed",
+    error?.message || "terminal update was not accepted",
+  );
+  return false;
+}
+
+function missingOptionalRpc(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return ["PGRST202", "42883"].includes(String(error.code || "")) ||
+    /could not find the function|does not exist/i.test(error.message || "");
 }
 
 async function advanceTask(
@@ -1376,6 +1508,31 @@ async function runTask(task: TaskRow, now: Date, leaseToken: string) {
     );
   }
 
+  // Opportunistically close old unknown-outcome lifecycles before reserving a
+  // new provider attempt. The replacement reservation RPC also closes a stale
+  // row for this exact task, so a crash between these calls remains bounded.
+  const staleReconciliation = await admin.rpc(
+    "reconcile_stale_agent_action_starts_service",
+    {
+      p_owner: task.owner,
+      p_before: new Date(Date.now() - 15 * 60_000).toISOString(),
+      p_limit: 32,
+    },
+  );
+  if (
+    staleReconciliation.error &&
+    !missingOptionalRpc(staleReconciliation.error)
+  ) {
+    return await finishRetry(
+      task,
+      binding,
+      leaseToken,
+      "retry_audit_reconciliation",
+      "Stale AI audit reconciliation is unavailable; no provider request was sent.",
+      180,
+    );
+  }
+
   const { data: reservationData, error: reservationError } = await admin.rpc(
     "reserve_agent_generation",
     {
@@ -1405,41 +1562,190 @@ async function runTask(task: TaskRow, now: Date, leaseToken: string) {
       blocked.message,
     );
   }
+  const lifecycleVersion = Number(reservation.auditLifecycleVersion || 0);
+  const rawAuditActionId = typeof reservation.auditActionId === "string"
+    ? reservation.auditActionId.trim()
+    : "";
+  const generationAuditId = UUID_RE.test(rawAuditActionId)
+    ? rawAuditActionId
+    : null;
+  if (lifecycleVersion !== 2 || !generationAuditId) {
+    return await finishBlocked(
+      task,
+      binding,
+      leaseToken,
+      lifecycleVersion === 2
+        ? "audit_reservation_invalid"
+        : "audit_database_upgrade_required",
+      lifecycleVersion === 2
+        ? "The exact AI audit reservation was malformed; no provider request was sent. Reconciliation is required."
+        : "The database does not provide exact AI audit lifecycle IDs yet; no provider request was sent. Apply migration 055 before this worker.",
+    );
+  }
 
   let body = "";
+  let budgetReservedTokens = 0;
   try {
-    body = await callProvider(
+    const providerRequest = buildProviderRequest(
       endpoint,
       backend,
       apiKey,
       system,
       prompt,
     );
-    await audit(
-      task.owner,
-      task.persona_id,
-      binding.id,
-      "ai.call.completed",
-      "ai_task",
-      task.id,
-      "ok",
-      { provider: endpoint.kind },
+    budgetReservedTokens = conservativeBudgetReservation(
+      providerRequest.bodyText,
     );
+    body = await runWithAutomationBudget({
+      rpc: async (name, args) => {
+        const result = await admin.rpc(name, args);
+        return {
+          data: result.data,
+          error: result.error
+            ? { code: result.error.code, message: result.error.message }
+            : null,
+        };
+      },
+      owner: task.owner,
+      backendId: backend.id,
+      reservedTokens: budgetReservedTokens,
+      // The exact v2 audit action is unique to this provider run and stable for
+      // an idempotent claim retry; a different task/run cannot share the key.
+      requestKey: generationAuditId,
+      providerCall: async (markFetchIssued) => {
+        const result = await callProvider(
+          endpoint,
+          providerRequest,
+          markFetchIssued,
+        );
+        return { value: result.content, actualTokens: result.actualTokens };
+      },
+    });
+    const auditFinished = await finishGenerationAudit(
+      generationAuditId,
+      task,
+      binding,
+      "ai.call.completed",
+      "ok",
+      {
+        provider: endpoint.kind,
+        backend_id: backend.id,
+        budget_reserved_tokens: budgetReservedTokens,
+        budget_request_key: generationAuditId,
+      },
+    );
+    if (!auditFinished) {
+      return await finishBlocked(
+        task,
+        binding,
+        leaseToken,
+        "audit_reconciliation_required",
+        "The provider replied, but the exact AI audit lifecycle could not be completed. No draft was created; reconcile before retrying.",
+      );
+    }
   } catch (error) {
+    if (error instanceof AutomationBudgetClaimError) {
+      const auditFinished = await finishGenerationAudit(
+        generationAuditId,
+        task,
+        binding,
+        "ai.call.denied",
+        "denied",
+        {
+          provider: endpoint.kind,
+          backend_id: backend.id,
+          code: error.code,
+          budget_reserved_tokens: budgetReservedTokens,
+          budget_request_key: generationAuditId,
+          provider_fetch_issued: false,
+        },
+      );
+      if (!auditFinished) {
+        return await finishBlocked(
+          task,
+          binding,
+          leaseToken,
+          "audit_reconciliation_required",
+          "The AI budget denial could not be attached to its exact audit lifecycle. No provider request was sent; reconcile before retrying.",
+        );
+      }
+      if (error.retryable) {
+        return await finishRetry(
+          task,
+          binding,
+          leaseToken,
+          "retry_budget_claim",
+          "AI budget enforcement is unavailable; no provider request was sent.",
+          180,
+        );
+      }
+      const atCapacity = error.code.includes("limit") ||
+        error.code.includes("concurrency");
+      return await finishBlocked(
+        task,
+        binding,
+        leaseToken,
+        error.code,
+        atCapacity
+          ? "This AI backend reached an owner-configured automation budget ceiling; no provider request was sent."
+          : "Automation for this AI backend requires an enabled owner budget policy; no provider request was sent.",
+      );
+    }
+    if (error instanceof AutomationBudgetFinalizationError) {
+      const auditFinished = await finishGenerationAudit(
+        generationAuditId,
+        task,
+        binding,
+        "ai.call.failed",
+        "error",
+        {
+          provider: endpoint.kind,
+          backend_id: backend.id,
+          code: "budget_finalize_failed",
+          budget_reserved_tokens: budgetReservedTokens,
+          budget_request_key: generationAuditId,
+          provider_fetch_issued: error.providerIssued,
+        },
+      );
+      return await finishBlocked(
+        task,
+        binding,
+        leaseToken,
+        auditFinished
+          ? "budget_finalize_failed"
+          : "audit_reconciliation_required",
+        auditFinished
+          ? "The provider result was withheld because exact budget accounting could not be finalized. Reconcile the budget lease before retrying."
+          : "Budget accounting and the exact AI audit lifecycle both require reconciliation before retrying.",
+      );
+    }
     const message = `AI generation failed: ${(error as Error).message}`.slice(
       0,
       500,
     );
-    await audit(
-      task.owner,
-      task.persona_id,
-      binding.id,
+    const auditFinished = await finishGenerationAudit(
+      generationAuditId,
+      task,
+      binding,
       "ai.call.failed",
-      "ai_task",
-      task.id,
       "error",
-      { provider: endpoint.kind, reason: message },
+      {
+        provider: endpoint.kind,
+        backend_id: backend.id,
+        reason: message,
+        budget_reserved_tokens: budgetReservedTokens,
+        budget_request_key: generationAuditId,
+      },
     );
+    if (!auditFinished) {
+      return await finishBlocked(
+        task,
+        binding,
+        leaseToken,
+        "audit_reconciliation_required",
+        "The provider attempt ended, but its exact AI audit lifecycle could not be completed. Reconcile before retrying.",
+      );
+    }
     if (error instanceof ProviderCallError && !error.retryable) {
       return await finishBlocked(
         task,

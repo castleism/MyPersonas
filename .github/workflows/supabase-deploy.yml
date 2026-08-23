@@ -1,7 +1,8 @@
 name: Deploy Supabase Edge Functions
 
-# CD for edge functions. Runs on merge to main when a function (or its shared
-# code / config) changes. verify_jwt per function comes from supabase/config.toml.
+# Owner-triggered deployment for Edge Functions. This deliberately does not run
+# on push: several functions have hard schema dependencies and migrations stay
+# review-only. verify_jwt per function comes from supabase/config.toml.
 #
 # REQUIRED repo secret: SUPABASE_ACCESS_TOKEN  (Account → Access Tokens)
 # Project ref is read from supabase/config.toml (project_id).
@@ -9,13 +10,12 @@ name: Deploy Supabase Edge Functions
 # Migrations are intentionally NOT auto-applied here — they are reviewed and run
 # deliberately (see CI-CD-SETUP.md). This workflow only ships function code.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "supabase/functions/**"
-      - "supabase/config.toml"
-      - ".github/workflows/supabase-deploy.yml"
   workflow_dispatch:
+    inputs:
+      release_confirmation:
+        description: "Type MIGRATIONS-VERIFIED after the linked database is read back through migration 058"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -33,23 +33,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect optional deployment token
-        id: guard
+      - name: Require reviewed database release evidence
+        env:
+          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
-          if [ -z "${SUPABASE_ACCESS_TOKEN}" ]; then
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::SUPABASE_ACCESS_TOKEN is not set; Edge deployment must be completed from an authenticated owner workstation."
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          fi
+          test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
+            echo "Deployment blocked: verify and read back migrations before function code."
+            exit 1
+          }
+          test -n "${SUPABASE_ACCESS_TOKEN}" || {
+            echo "Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured."
+            exit 1
+          }
 
       - uses: supabase/setup-cli@v1
-        if: steps.guard.outputs.enabled == 'true'
         with:
           version: latest
 
       - name: Read project ref from config.toml
-        if: steps.guard.outputs.enabled == 'true'
         id: cfg
         run: |
           ref=$(grep -E '^project_id' supabase/config.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
@@ -57,6 +58,5 @@ jobs:
           echo "Project ref: $ref"
 
       - name: Deploy all edge functions
-        if: steps.guard.outputs.enabled == 'true'
         run: |
           supabase functions deploy --project-ref "${{ steps.cfg.outputs.ref }}"

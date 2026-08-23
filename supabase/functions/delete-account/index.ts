@@ -695,7 +695,6 @@ async function revokeGmail(admin: SupabaseClient, uid: string) {
 
     let operationError: unknown = null;
     let releaseFailed = false;
-    let ledgerDeleted = false;
     try {
       const { error: pauseError } = await admin.from("mailbox_settings").update(
         {
@@ -747,26 +746,18 @@ async function revokeGmail(admin: SupabaseClient, uid: string) {
         admin.from("gmail_oauth_transactions").delete()
           .eq("owner", uid).eq("ledger_id", ledger.id),
       );
-      await checked(
-        "Gmail account ledger",
-        admin.from("account_ledger").delete().eq("owner", uid)
-          .eq("id", ledger.id),
-      );
-      ledgerDeleted = true;
     } catch (error) {
       operationError = error;
     } finally {
-      if (!ledgerDeleted) {
-        const { data: released, error: releaseError } = await admin.rpc(
-          "release_mailbox_operation",
-          {
-            p_ledger_id: ledger.id,
-            p_owner: uid,
-            p_lease_id: leaseId,
-          },
-        );
-        releaseFailed = Boolean(releaseError) || released !== true;
-      }
+      const { data: released, error: releaseError } = await admin.rpc(
+        "release_mailbox_operation",
+        {
+          p_ledger_id: ledger.id,
+          p_owner: uid,
+          p_lease_id: leaseId,
+        },
+      );
+      releaseFailed = Boolean(releaseError) || released !== true;
     }
     if (operationError) throw operationError;
     if (releaseFailed) {
@@ -802,7 +793,6 @@ async function revokeTwitter(
     }
     let operationError: unknown = null;
     let releaseFailed = false;
-    let ledgerDeleted = false;
     try {
       const [credentialResult, connectionResult] = await Promise.all([
         admin.from("twitter_credentials").select("ledger_id,provider_subject")
@@ -919,12 +909,6 @@ async function revokeTwitter(
         admin.from("twitter_oauth_transactions").delete()
           .eq("owner", uid).eq("ledger_id", ledger.id),
       );
-      await checked(
-        "X account ledger",
-        admin.from("account_ledger").delete().eq("owner", uid)
-          .eq("id", ledger.id),
-      );
-      ledgerDeleted = true;
     } catch (error) {
       operationError = error;
     } finally {
@@ -936,8 +920,7 @@ async function revokeTwitter(
           p_lease_id: leaseId,
         },
       );
-      releaseFailed = !ledgerDeleted &&
-        (Boolean(releaseError) || released !== true);
+      releaseFailed = Boolean(releaseError) || released !== true;
     }
     if (operationError) throw operationError;
     if (releaseFailed) {
@@ -1042,11 +1025,6 @@ async function revokeReddit(admin: SupabaseClient, uid: string) {
       "pending Reddit sign-ins",
       admin.from("reddit_oauth_states").delete().eq("owner", uid)
         .eq("ledger_id", plan.ledgerId),
-    );
-    await checked(
-      "Reddit account ledger",
-      admin.from("account_ledger").delete().eq("owner", uid)
-        .eq("id", plan.ledgerId),
     );
   }
 }
@@ -1434,6 +1412,72 @@ async function eraseOwnedRows(
   uid: string,
   personaIds: string[],
 ) {
+  // Delete owner-authored organization and governance content before its
+  // account/persona parents. In particular, project_resources deliberately
+  // restricts account-ledger deletion while a resource still references it.
+  await checked(
+    "friend request security events by requester",
+    admin.from("friend_request_security_events").delete().eq(
+      "requester_owner",
+      uid,
+    ),
+  );
+  await checked(
+    "persona organization data",
+    admin.rpc("delete_persona_org_data_for_account_service", {
+      p_owner: uid,
+    }),
+  );
+  await checked(
+    "businesses",
+    admin.from("businesses").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona groups",
+    admin.from("persona_groups").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona page builder data",
+    admin.rpc("delete_persona_page_builder_data_for_account_service", {
+      p_owner: uid,
+    }),
+  );
+  await checked(
+    "revenue and product review data",
+    admin.rpc("delete_revenue_review_data_for_account_service", {
+      p_owner: uid,
+    }),
+  );
+  await checked(
+    "research, content kit, notification, and activity data",
+    admin.rpc("delete_owner_research_content_data_for_account_service", {
+      p_owner: uid,
+    }),
+  );
+  await checked(
+    "persona publication reviews",
+    admin.from("persona_publication_reviews").delete().eq("owner", uid),
+  );
+  await checked(
+    "platform feature requests",
+    admin.from("platform_feature_requests").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona friend settings",
+    admin.from("persona_friend_settings").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona friend invites",
+    admin.from("persona_friend_invites").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona account sync settings",
+    admin.from("persona_account_sync_settings").delete().eq("owner", uid),
+  );
+  await checked(
+    "persona extension submissions",
+    admin.from("persona_extension_submissions").delete().eq("owner", uid),
+  );
   await checked(
     "fan chats",
     admin.from("fan_chat_sessions").delete().eq("owner", uid),
@@ -1451,16 +1495,14 @@ async function eraseOwnedRows(
     admin.from("persona_content_plans").delete().eq("owner", uid),
   );
   await checked(
-    "agent targets",
-    admin.from("agent_destinations").delete().eq("owner", uid),
-  );
-  await checked(
-    "agent audit",
-    admin.from("agent_actions").delete().eq("owner", uid),
+    "agent targets and bounded audit",
+    admin.rpc("delete_agent_action_data_for_account_service", {
+      p_owner: uid,
+    }),
   );
   await checked(
     "agent bindings",
-    admin.from("agent_bindings").delete().eq("owner", uid),
+    admin.rpc("delete_agent_bindings_for_account_service", { p_owner: uid }),
   );
   await checked(
     "agent settings",
@@ -1468,6 +1510,12 @@ async function eraseOwnedRows(
   );
   await checked("drafts", admin.from("drafts").delete().eq("owner", uid));
   await checked("schedules", admin.from("ai_tasks").delete().eq("owner", uid));
+  await checked(
+    "AI backend budget policies and retained usage",
+    admin.rpc("delete_ai_backend_budget_data_for_account_service", {
+      p_owner: uid,
+    }),
+  );
   await checked(
     "model credentials",
     admin.from("ai_backends").delete().eq("owner", uid),
@@ -1486,11 +1534,33 @@ async function eraseOwnedRows(
   );
   await checked(
     "account ledger",
-    admin.from("account_ledger").delete().eq("owner", uid),
+    admin.rpc("delete_account_ledger_for_account_service", { p_owner: uid }),
   );
   await checked("blocks", admin.from("blocks").delete().eq("blocker", uid));
   for (let start = 0; start < personaIds.length; start += 100) {
     const batch = personaIds.slice(start, start + 100);
+    await checked(
+      "friend request security events by follower persona",
+      admin.from("friend_request_security_events").delete().in(
+        "follower_persona_id",
+        batch,
+      ),
+    );
+    await checked(
+      "friend request security events by target persona",
+      admin.from("friend_request_security_events").delete().in(
+        "target_persona_id",
+        batch,
+      ),
+    );
+    await checked(
+      "outgoing persona follows",
+      admin.from("persona_follows").delete().in("follower_persona_id", batch),
+    );
+    await checked(
+      "incoming persona follows",
+      admin.from("persona_follows").delete().in("target_persona_id", batch),
+    );
     await checked(
       "outgoing follows",
       admin.from("follows").delete().in("follower", batch),
@@ -1759,6 +1829,37 @@ export function createErasureHandler(
           return json({ deleted: true, accountDeleted: false });
         }
 
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+          "account security event erasure",
+        );
+        await checked(
+          "platform security events by actor",
+          admin.from("platform_security_events").delete().eq("actor_id", uid),
+        );
+        await checked(
+          "platform security events by account subject id",
+          admin.from("platform_security_events").delete().eq(
+            "subject_account_id",
+            uid,
+          ),
+        );
+        await checked(
+          "legacy platform security events by account subject",
+          admin.from("platform_security_events").delete().eq(
+            "subject_type",
+            "account",
+          ).eq("subject_id", uid),
+        );
+        await checked(
+          "security network blocks by account subject id",
+          admin.from("security_network_blocks").delete().eq(
+            "subject_account_id",
+            uid,
+          ),
+        );
         await renewMetaOwnerErasure(
           admin,
           uid,

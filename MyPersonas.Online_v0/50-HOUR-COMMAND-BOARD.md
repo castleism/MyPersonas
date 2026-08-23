@@ -4,6 +4,11 @@ Window: Friday 2026-08-14 through Monday morning, Alaska time.
 
 This board compresses decision-making and validation, not external review timelines. Its Monday target is a smaller set of secure, verified, revenue-capable surfaces—not a false claim that every account, site, native app, social integration, and payout system is complete.
 
+Current MyPersonas package: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** Final hashes/counts and every production action remain gated by
+`RELEASE-MANIFEST-2026-08-22.md` and `OWNER-APPROVAL-QUEUE-2026-08-22.md`.
+
 ## Operating rules
 
 - Security containment outranks feature count.
@@ -26,7 +31,7 @@ This board compresses decision-making and validation, not external review timeli
 | H8–H20 | Revenue | Prepare PrintMason current release and hidden Payhip product package | Release diff; product files; test checklist; legal/disclosure copy | Seller identity, payout/tax, hidden product creation and test charge/refund |
 | H12–H22 | Distribution | Verify Being Tea consent sequence, Search Console package, Bookshop application packet | Recorded email flow and application draft | Email/Google/Bookshop submissions |
 | H14–H26 | Lead gen | Fix My Frozen PC function deployment package and owner-specific service facts | Bounded tests; function smoke; approved hours/territory/pricing | Secrets, deploy, public facts |
-| H18–H32 | MyPersonas product | Build centralized request-review MVP: anti-spam, consent, evidence, persona routing, owner queue, disclosure, no auto-publish | Migration/function/UI tests and abuse cases | Email provider/domain, production deployment, real email test |
+| H18–H32 | MyPersonas product | Freeze and verify the now-present 043/051 mirrors plus 052–057; finish notification sender and product-review evidence phases separately; no auto-publish | Final pair hashes, full suite, disposable DB/RLS/concurrency/erasure evidence; local source is not deployment proof | Staging/apply, Turnstile/domain secrets, email provider, production deployment, real email test |
 | H22–H36 | Trial lab | Benchmark one task packet across the selected low-risk providers; keep winners only | Scorecard with model/date/cost/latency/failures | Each key/OAuth issuance and any nonzero budget |
 | H26–H40 | Content | Prepare one sourced, non-repeating approval package for Alexei, Akiko, Brom, Maria, and Justice/Sophia | Evidence ledger, platform-native drafts, disclosure, visual provenance | Publication and music/image credit spend |
 | H36–H46 | Integrated QA | Mobile/PWA/accessibility checks, auth recovery, erasure, pause, rollback, request-review abuse, purchase/email test | Screenshots/logs/IDs without secrets; defect list | Real external calls/transactions |
@@ -54,7 +59,10 @@ This board compresses decision-making and validation, not external review timeli
 1. PrintMason $19 Foundations Pack—strongest immediate candidate because the product and launch packet already exist.
 2. Being Tea Co distribution and Bookshop application—existing content should earn distribution before more generation.
 3. Fix My Frozen PC real service leads—only after TLS, intake, real availability, and pricing.
-4. MyPersonas request-review workflow—useful portfolio infrastructure, but not built yet and not a legal guarantee.
+4. MyPersonas request-review—fail-closed phase-1 intake and the 043/051 mirror repairs
+   exist in local source, but final frozen hashes, deployment/configuration, notification
+   sender, product-review evidence workflow, and live email test remain incomplete. It
+   is not a legal guarantee or revenue proof.
 
 ## Model task packets
 
@@ -81,6 +89,9 @@ Minimum credible Monday win:
 
 - all known P0 public leaks closed and re-probed;
 - CI green and production deployments gated;
+- the 047–057 manifest frozen with exact hashes and disposable database evidence; Agent
+  Board proposals/execution and automated AI budget policies remain default-off until
+  one approved staging ceremony proves exact-review/idempotency/recovery behavior;
 - MyPersonas recurring publisher still safely dormant unless every activation gate is proven;
 - one low-value model integration proven end-to-end with AAL2, Vault, host restriction, budget, revocation, and erasure;
 - PrintMason hidden product flow tested or honestly blocked on owner/business verification;

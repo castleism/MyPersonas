@@ -163,15 +163,15 @@ async function audit(
   outcome: string,
   detail: Record<string, unknown> = {},
 ) {
-  const { error } = await admin.from("agent_actions").insert({
-    owner: draft.owner,
-    persona_id: draft.persona_id,
-    binding_id: bindingId,
-    action_type: actionType,
-    entity_type: "draft",
-    entity_id: draft.id,
-    outcome,
-    detail,
+  const { error } = await admin.rpc("insert_agent_action_service", {
+    p_owner: draft.owner,
+    p_persona_id: draft.persona_id,
+    p_binding_id: bindingId,
+    p_action_type: actionType,
+    p_entity_type: "draft",
+    p_entity_id: draft.id,
+    p_outcome: outcome,
+    p_detail: detail,
   });
   if (error) console.error("agent audit insert failed", error.message);
 }

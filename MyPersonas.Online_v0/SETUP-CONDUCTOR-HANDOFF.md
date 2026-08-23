@@ -1,20 +1,27 @@
 # Setup conductor handoff
 
-Updated 2026-08-14. This document is the takeover entry point for the 50-hour portfolio sprint. It replaces earlier unverified statements about migrations, deployment, SSO, MFA, and model availability.
+Updated 2026-08-22. This document is the takeover entry point for the 50-hour portfolio
+sprint. The release-truth table below remains the dated 2026-08-14 production snapshot;
+the current 047–057 package is **implemented and tested locally; not pushed, applied to
+the linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** Its missing 043 mirror and 051 parity gaps were repaired locally. Final
+coordinated hashes/counts, linked predecessor proof, deployment, and live evidence remain.
 
 ## Read first
 
-1. `AI-TOOLING-AND-SPRINT-PLAN.md`
-2. `50-HOUR-COMMAND-BOARD.md`
-3. `SECURITY-AND-ACCESS-RUNBOOK.md`
-4. `AGENT-ROLE-PACKETS.md` and `AI-TASK-PACKET-TEMPLATE.md`
-5. `LOCAL-AI-SETUP-2026-08-14.md`
-6. `REQUEST-REVIEW-SPEC.md`
-7. `HANDOFF-CHATGPT.md`
-8. `ROADMAP-EXECUTION-2026-08-13.md`
-9. `POST-QUEUE-ACTIVATION.md`
-10. `BRAND-MANAGER-HANDOFF.md`
-11. `supabase/functions/DRIFT.md`
+1. `RELEASE-MANIFEST-2026-08-22.md`
+2. `OWNER-APPROVAL-QUEUE-2026-08-22.md`
+3. `AI-TOOLING-AND-SPRINT-PLAN.md`
+4. `50-HOUR-COMMAND-BOARD.md`
+5. `SECURITY-AND-ACCESS-RUNBOOK.md`
+6. `AGENT-ROLE-PACKETS.md` and `AI-TASK-PACKET-TEMPLATE.md`
+7. `LOCAL-AI-SETUP-2026-08-14.md`
+8. `REQUEST-REVIEW-SPEC.md`
+9. `HANDOFF-CHATGPT.md`
+10. `ROADMAP-EXECUTION-2026-08-13.md`
+11. `POST-QUEUE-ACTIVATION.md`
+12. `BRAND-MANAGER-HANDOFF.md`
+13. `supabase/functions/DRIFT.md`
 
 ## Release truth, not aspiration
 
@@ -38,6 +45,10 @@ Updated 2026-08-14. This document is the takeover entry point for the 50-hour po
 
 Never collapse `local`, `pushed`, `deployed`, `verified live`, `revenue-ready`, and `blocked` into the word “done.”
 
+Current local delta after that snapshot: migrations 047–057 and matching release source
+exist locally, production workflows are now manual confirmation-gated, and development
+verification has run. Do not rewrite the dated table as current production evidence.
+
 ## Conductor contract
 
 - One primary writer owns a file/branch/worktree at a time. Other models review read-only or in isolated worktrees.
@@ -58,8 +69,10 @@ Never collapse `local`, `pushed`, `deployed`, `verified live`, `revenue-ready`, 
 
 ### 2. Restore the MyPersonas release path
 
-- Fix the Deno typecheck errors and require green validation in every production workflow.
-- Pin deployment tooling; use a reviewed function allowlist and a protected/manual production environment.
+- Freeze and rerun the complete Node, frontend, Deno, migration-parity, PostgreSQL 16,
+  RLS, erasure, and concurrency evidence; record exact counts and hashes.
+- Production workflows are manual and confirmation-gated locally. Add protected reviewers,
+  verify credentials/tooling, and prove the explicit public/function artifact at release.
 - Inventory live migrations, cron commands, `publishing` rows, Vault secrets, and deployed function versions from authenticated admin evidence.
 - Complete and wire the Reddit owner-operation lease before applying it. Fix access-only revocation and reject unsupported body+media posts.
 - Add last-moment fail-closed pause checks before every Meta provider POST.
@@ -72,7 +85,9 @@ Never collapse `local`, `pushed`, `deployed`, `verified live`, `revenue-ready`, 
 - Move OpenRouter OAuth exchange and Vault storage server-side; the browser must never receive its plaintext key.
 - Enforce official provider host/path maps. A configured provider key must never be sent to an arbitrary URL.
 - Move to a header-capable hosting path and verify CSP, frame denial, HSTS, nosniff, referrer, and permissions policies.
-- Add default-zero atomic provider budgets, queue/concurrency/hop limits, expiry, audit, and a global AI-spend kill switch.
+- Migration 057 supplies local default-deny per-backend/mode request/token budgets and
+  expiring concurrency leases. Still add/operate the separate global AI-spend stop,
+  queue/hop limits, provider hard caps, and live reserve/finalize proof.
 - Verify production SMTP, exact redirects, CAPTCHA, confirmation, and recovery.
 
 ### 4. Onboard one model, not fifteen
@@ -84,7 +99,14 @@ After steps 1–3 are live-verified, create one low-value, expiring, tightly cap
 1. PrintMason: release current shop pages; create one hidden $19 Payhip product; test purchase, delivery, refund, receipt, tax/payout assumptions; then make it public.
 2. Being Tea Co: verify the full consent email sequence, Search Console, and Bookshop application. Use the existing editorial library instead of generating more content.
 3. Fix My Frozen PC: fix TLS and deploy bounded intake/Ask Brom; publish real owner-supplied hours, territory, and prices.
-4. MyPersonas: build one centralized spam-safe request-review workflow with owner approval, persona email routing, evidence fields, and visible AI/human disclosure. It is not currently built.
+4. MyPersonas: finish the centralized request-review workflow. A fail-closed phase-1 local
+   intake now provides exact-origin CORS, bounded JSON, Turnstile verification, rotating
+   HMAC abuse identifiers, persona/mailbox routing, neutral receipts, and a private queue
+   row. It is not migrated/deployed/configured. The hardened 043 mirror and canonical/051
+   parity now exist locally, but no notification sender, owner evidence queue, or published
+   review lifecycle exists yet. The local affiliate redirect requires a separate HMAC secret, bounded inputs,
+   HTTPS-only reviewed destinations, atomic current-page/cap/deduplication checks, and
+   bounded retention; those controls are also source-only and depend on synchronized 051.
 
 Do not rush charity donations, health claims, adult production, native-store submission, MSP endpoint software, or payment routing where legal/provider verification is still missing.
 

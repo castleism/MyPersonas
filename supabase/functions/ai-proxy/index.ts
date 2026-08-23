@@ -1,8 +1,8 @@
 // ai-proxy — authenticated, owner-scoped OpenAI-compatible model proxy.
 //
-// Persona context is always rebuilt from the database. Browser-supplied system
-// messages are discarded so a client cannot bypass binding, pause, autonomy,
-// voice, or hard-rule controls.
+// Manual persona context is rebuilt from the database. Agent Board execution
+// consumes one immutable owner-approved prompt snapshot through a one-use DB
+// capability. Browser-supplied system messages are never forwarded.
 // Deploy: supabase functions deploy ai-proxy
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -35,6 +35,9 @@ const MAX_CONTEXT_SUMMARY_CHARS = 600;
 const MAX_ATTACHED_SUMMARIES = 3;
 const MAX_ATTACHED_SUMMARY_CHARS = 800;
 const MAX_ATTACHED_SUMMARIES_CHARS = 2_400;
+const MAX_BUDGET_RESERVATION_TOKENS = 50_000_000;
+const MAX_REPORTED_PROVIDER_TOKENS = 1_000_000_000;
+const AUTOMATED_MODES = new Set<RequestMode>(["agent_board", "automation"]);
 const ROUTE_KEYS = new Set([
   "persona_chat",
   "persona_voice_draft",
@@ -55,7 +58,11 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type RequestMode = "owner_chat" | "persona_builder";
+type RequestMode =
+  | "owner_chat"
+  | "persona_builder"
+  | "agent_board"
+  | "automation";
 type ProviderMessage = { role: "user" | "assistant"; content: string };
 
 type PersonaRow = {
@@ -145,6 +152,20 @@ type ProviderEndpointResult = {
 type ProviderResponsePayload = {
   choices?: Array<{ message?: { content?: unknown } }>;
   content?: unknown;
+  usage?: {
+    total_tokens?: unknown;
+    prompt_tokens?: unknown;
+    completion_tokens?: unknown;
+    input_tokens?: unknown;
+    output_tokens?: unknown;
+  };
+};
+
+type BudgetClaimRow = {
+  allowed?: unknown;
+  lease_id?: unknown;
+  denial_code?: unknown;
+  expires_at?: unknown;
 };
 
 type BackendRow = {
@@ -156,6 +177,24 @@ type BackendRow = {
   api_key: string | null;
   model: string | null;
   extra: Record<string, unknown> | null;
+};
+
+type AgentBoardCapabilityRow = {
+  request_id?: unknown;
+  owner?: unknown;
+  target_persona_id?: unknown;
+  target_backend_id?: unknown;
+  approval_hash?: unknown;
+  review_payload?: unknown;
+};
+
+type ApprovedAgentBoardInput = {
+  context: PersonaContext;
+  backend: BackendRow;
+  credentialRevision: string;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
 };
 
 class ProviderResponseTooLargeError extends Error {}
@@ -254,11 +293,164 @@ function bearerToken(req: Request) {
   return match?.[1] || "";
 }
 
+function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  let mismatch = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index++) {
+    mismatch |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return mismatch === 0;
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function approvedAgentBoardInput(
+  payload: unknown,
+  owner: string,
+  targetPersonaId: string,
+  targetBackendId: string,
+): ApprovedAgentBoardInput | null {
+  const root = objectValue(payload);
+  const persona = objectValue(root?.target_persona);
+  const binding = objectValue(root?.target_binding);
+  const controls = objectValue(root?.owner_controls);
+  const planValue = root?.content_plan === null
+    ? null
+    : objectValue(root?.content_plan);
+  const backend = objectValue(root?.backend);
+  const execution = objectValue(root?.execution);
+  if (!root || root.schema_version !== 1 || !persona || !binding ||
+    !controls || !backend || !execution) return null;
+  if (persona.id !== targetPersonaId || binding.persona_id !== targetPersonaId ||
+    backend.id !== targetBackendId || execution.mode !== "agent_board" ||
+    execution.prompt_schema !== "agent-board-v1" ||
+    execution.max_tokens !== 2500 || typeof execution.user_prompt !== "string" ||
+    typeof execution.system_prompt !== "string" || !execution.system_prompt ||
+    execution.system_prompt.length > MAX_TOTAL_MESSAGE_CHARS ||
+    !execution.user_prompt || execution.user_prompt.length > MAX_TOTAL_MESSAGE_CHARS ||
+    typeof backend.credential_revision !== "string" ||
+    !/^[0-9a-f]{64}$/.test(backend.credential_revision) ||
+    !isUuid(binding.id)) return null;
+  const autonomy = Number(binding.autonomy_level);
+  if (!Number.isInteger(autonomy) || autonomy < 0 || autonomy > 3) return null;
+  const extra = backend.extra === null ? null : objectValue(backend.extra);
+  if (backend.extra !== null && !extra) return null;
+  const context: PersonaContext = {
+    persona: {
+      id: targetPersonaId,
+      owner,
+      name: safeField(persona.name, 2_000),
+      handle: safeField(persona.handle, 2_000),
+      tagline: safeField(persona.tagline, 4_000),
+      bio: safeField(persona.bio, 20_000),
+      purpose: safeField(persona.purpose, 20_000),
+      voice: safeField(persona.voice, 20_000),
+      topics: safeField(persona.topics, 20_000),
+      audience: safeField(persona.audience, 20_000),
+      hashtags: safeField(persona.hashtags, 20_000),
+      dont: safeField(persona.dont, 20_000),
+      nsfw: persona.nsfw === true,
+      context_log: safeField(persona.context_log, MAX_CONTEXT_LOG_CHARS),
+    },
+    binding: {
+      id: String(binding.id),
+      owner,
+      persona_id: targetPersonaId,
+      status: safeField(binding.status, 40),
+      claim_state: safeField(binding.claim_state, 40),
+      autonomy_level: autonomy,
+    },
+    settings: {
+      owner,
+      automation_paused: controls.automation_paused === true,
+    },
+    plan: planValue
+      ? {
+        primary_goal: safeField(planValue.primary_goal, 20_000),
+        success_metric: safeField(planValue.success_metric, 20_000),
+        audience_focus: safeField(planValue.audience_focus, 20_000),
+        content_pillars: safeField(planValue.content_pillars, 20_000),
+        current_campaign: safeField(planValue.current_campaign, 20_000),
+        calls_to_action: safeField(planValue.calls_to_action, 20_000),
+        offers_and_links: safeField(planValue.offers_and_links, 20_000),
+        affiliate_disclosure: safeField(planValue.affiliate_disclosure, 20_000),
+        source_notes: safeField(planValue.source_notes, 20_000),
+        platform_guidance: safeField(planValue.platform_guidance, 20_000),
+      }
+      : null,
+  };
+  return {
+    context,
+    backend: {
+      id: targetBackendId,
+      owner,
+      name: safeField(backend.name, 160),
+      provider: safeField(backend.provider, 80),
+      base_url: safeField(backend.base_url, 2_048),
+      api_key: "",
+      model: safeField(backend.model, 300),
+      extra,
+    },
+    credentialRevision: backend.credential_revision,
+    systemPrompt: execution.system_prompt,
+    userPrompt: execution.user_prompt,
+    maxTokens: 2500,
+  };
+}
+
 function clampTokens(value: unknown) {
   const requested = typeof value === "number" && Number.isFinite(value)
     ? Math.trunc(value)
     : DEFAULT_MAX_TOKENS;
   return Math.max(MIN_MAX_TOKENS, Math.min(MAX_MAX_TOKENS, requested));
+}
+
+function safeReportedTokenCount(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) &&
+      value >= 0 && value <= MAX_REPORTED_PROVIDER_TOKENS
+    ? value
+    : null;
+}
+
+function providerTokenUsage(payload: ProviderResponsePayload | null) {
+  const usage = payload?.usage;
+  if (!usage || typeof usage !== "object") return null;
+  const total = safeReportedTokenCount(usage.total_tokens);
+  if (total !== null) return total;
+
+  const prompt = safeReportedTokenCount(
+    usage.prompt_tokens ?? usage.input_tokens,
+  );
+  const completion = safeReportedTokenCount(
+    usage.completion_tokens ?? usage.output_tokens,
+  );
+  if (prompt === null || completion === null) return null;
+  const combined = prompt + completion;
+  return Number.isSafeInteger(combined) &&
+      combined <= MAX_REPORTED_PROVIDER_TOKENS
+    ? combined
+    : null;
+}
+
+function conservativeBudgetReservation(
+  providerBodyText: string,
+  maxTokens: number,
+) {
+  // UTF-8 bytes are a provider-neutral conservative ceiling for the submitted
+  // serialized request. Add the requested output ceiling; no pricing or model
+  // exchange-rate assumption enters the database budget.
+  const inputCeiling = new TextEncoder().encode(providerBodyText).byteLength;
+  return Math.min(
+    MAX_BUDGET_RESERVATION_TOKENS,
+    Math.max(1, inputCeiling + maxTokens),
+  );
 }
 
 function sanitizeMessages(input: unknown) {
@@ -909,24 +1101,24 @@ async function insertAudit(
   outcome: string,
   detail: Record<string, unknown>,
 ) {
-  const { data, error } = await admin.from("agent_actions").insert({
-    owner,
-    persona_id: personaId,
-    binding_id: bindingId,
-    action_type: actionType,
-    entity_type: "persona_ai_call",
-    entity_id: personaId,
-    outcome,
-    detail,
-  }).select("id").single();
-  if (error || !data?.id) {
+  const { data, error } = await admin.rpc("insert_agent_action_service", {
+    p_owner: owner,
+    p_persona_id: personaId,
+    p_binding_id: bindingId,
+    p_action_type: actionType,
+    p_entity_type: "persona_ai_call",
+    p_entity_id: personaId,
+    p_outcome: outcome,
+    p_detail: detail,
+  });
+  if (error || typeof data !== "string") {
     console.error(
       "persona AI audit insert failed",
       error?.message || "missing audit id",
     );
     return null;
   }
-  return data.id as string;
+  return data;
 }
 
 async function finishAudit(
@@ -936,13 +1128,15 @@ async function finishAudit(
   outcome: string,
   detail: Record<string, unknown>,
 ) {
-  const { error } = await admin.from("agent_actions").update({
-    action_type: actionType,
-    outcome,
-    detail,
-  }).eq("id", auditId).eq("owner", owner);
-  if (!error) return true;
-  console.error("persona AI audit update failed", error.message);
+  const { data, error } = await admin.rpc("finish_agent_action_service", {
+    p_action_id: auditId,
+    p_owner: owner,
+    p_action_type: actionType,
+    p_outcome: outcome,
+    p_detail: detail,
+  });
+  if (!error && data === true) return true;
+  console.error("persona AI audit update failed", error?.message || "terminal update was not accepted");
   return false;
 }
 
@@ -1007,16 +1201,6 @@ async function handleRequest(req: Request) {
     return responseJson({ error: "Origin not allowed" }, 403);
   }
 
-  const jwt = bearerToken(req);
-  if (!jwt) {
-    return responseJson({ error: "Missing bearer session" }, 401, origin);
-  }
-  const { data: userData, error: userError } = await admin.auth.getUser(jwt);
-  if (userError || !userData?.user) {
-    return responseJson({ error: "Invalid or expired session" }, 401, origin);
-  }
-  const owner = userData.user.id;
-
   const declaredLength = Number(req.headers.get("Content-Length") || "0");
   if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_CHARS) {
     return responseJson({ error: "Request is too large" }, 413, origin);
@@ -1042,26 +1226,143 @@ async function handleRequest(req: Request) {
     return responseJson({ error: "Invalid JSON request" }, 400, origin);
   }
 
-  const action = typeof payload.action === "string"
-    ? payload.action.trim()
-    : "chat";
-  if (action === "append_context" || action === "replace_context") {
-    return await handleContextMutation(owner, payload, action, origin);
-  }
-  if (action !== "chat") {
-    return responseJson({ error: "Unsupported AI action" }, 400, origin);
-  }
-
+  const jwt = bearerToken(req);
+  if (!jwt) return responseJson({ error: "Missing bearer session" }, 401, origin);
+  const action = typeof payload.action === "string" ? payload.action.trim() : "chat";
   const modeValue = typeof payload.mode === "string"
     ? payload.mode.trim()
     : "owner_chat";
-  if (modeValue !== "owner_chat" && modeValue !== "persona_builder") {
+  if (
+    modeValue !== "owner_chat" && modeValue !== "persona_builder" &&
+    modeValue !== "agent_board" && modeValue !== "automation"
+  ) {
     return responseJson({ error: "Unsupported AI request mode" }, 400, origin);
   }
   const mode = modeValue as RequestMode;
-  const requestedPersonaId = typeof payload.personaId === "string"
-    ? payload.personaId.trim()
-    : "";
+  let owner = "";
+  let requestedPersonaId = "";
+  let backendId = "";
+  let automatedRunId = "";
+  let approvedInput: ApprovedAgentBoardInput | null = null;
+  let context: PersonaContext | null = null;
+  let sanitized: ReturnType<typeof sanitizeMessages>;
+  let maxTokens: number;
+  let attachedSummaries: AttachedWorkspaceSummary[];
+
+  if (AUTOMATED_MODES.has(mode)) {
+    // General browser JWTs can never select an automated mode. The only
+    // implemented automated route is a one-use Agent Board DB capability sent
+    // with the service credential by agent-board-run.
+    if (mode !== "agent_board" || !constantTimeEqual(jwt, SERVICE_ROLE_KEY)) {
+      return responseJson(
+        { error: "Automated AI modes require a server-issued run capability" },
+        403,
+        origin,
+      );
+    }
+    const allowedKeys = new Set(["action", "mode", "runId", "capability"]);
+    if (action !== "chat" || Object.keys(payload).some((key) => !allowedKeys.has(key))) {
+      return responseJson({ error: "Invalid Agent Board capability request" }, 400, origin);
+    }
+    automatedRunId = typeof payload.runId === "string" ? payload.runId.trim() : "";
+    const capability = typeof payload.capability === "string"
+      ? payload.capability.trim()
+      : "";
+    if (!isUuid(automatedRunId) || capability.length < 32 || capability.length > 200) {
+      return responseJson({ error: "Invalid Agent Board capability request" }, 400, origin);
+    }
+    const consumed = await admin.rpc("consume_agent_board_run_capability_service", {
+      p_run_id: automatedRunId,
+      p_capability: capability,
+    });
+    const rawConsumed = Array.isArray(consumed.data) ? consumed.data[0] : consumed.data;
+    const capabilityRow = rawConsumed && typeof rawConsumed === "object"
+      ? rawConsumed as AgentBoardCapabilityRow
+      : null;
+    if (consumed.error || !capabilityRow || !isUuid(capabilityRow.owner) ||
+      !isUuid(capabilityRow.target_persona_id) ||
+      !isUuid(capabilityRow.target_backend_id)) {
+      return responseJson({ error: "Run capability is invalid, expired, or consumed" }, 403, origin);
+    }
+    owner = capabilityRow.owner;
+    requestedPersonaId = capabilityRow.target_persona_id;
+    backendId = capabilityRow.target_backend_id;
+    approvedInput = approvedAgentBoardInput(
+      capabilityRow.review_payload,
+      owner,
+      requestedPersonaId,
+      backendId,
+    );
+    if (!approvedInput) {
+      return responseJson({ error: "Approved Agent Board snapshot is invalid" }, 409, origin);
+    }
+    context = approvedInput.context;
+    sanitized = {
+      messages: [{ role: "user", content: approvedInput.userPrompt }],
+      strippedSystemMessages: 0,
+      invalidMessages: 0,
+      inputChars: approvedInput.userPrompt.length,
+    };
+    maxTokens = approvedInput.maxTokens;
+    attachedSummaries = [];
+
+    // Pause/suspension and execution switches remain live kill switches. They
+    // may deny the frozen input but never replace any reviewed prompt field.
+    const [liveBinding, liveSettings, liveBoard] = await Promise.all([
+      admin.from("agent_bindings")
+        .select("id,status,claim_state,autonomy_level")
+        .eq("id", context.binding.id).eq("owner", owner)
+        .eq("persona_id", requestedPersonaId).maybeSingle(),
+      admin.from("agent_owner_settings").select("automation_paused")
+        .eq("owner", owner).maybeSingle(),
+      admin.from("agent_board_settings")
+        .select("execution_enabled,approval_required,allowed_task_types")
+        .eq("owner", owner).eq("persona_id", requestedPersonaId).maybeSingle(),
+    ]);
+    if (liveBinding.error || liveSettings.error || liveBoard.error) {
+      return responseJson({ error: "Live Agent Board controls are unavailable" }, 503, origin);
+    }
+    const liveTaskTypes = Array.isArray(liveBoard.data?.allowed_task_types)
+      ? liveBoard.data.allowed_task_types
+      : [];
+    const approvedTaskType = safeField(
+      objectValue(objectValue(capabilityRow.review_payload)?.request)?.task_type,
+      64,
+    );
+    if (!liveBinding.data || !liveSettings.data || !liveBoard.data ||
+      liveBinding.data.status !== "active" ||
+      !["self_attested", "verified"].includes(liveBinding.data.claim_state) ||
+      liveSettings.data?.automation_paused === true ||
+      liveBoard.data?.execution_enabled !== true ||
+      liveBoard.data?.approval_required !== true ||
+      !liveTaskTypes.includes(approvedTaskType)) {
+      await auditDenied(owner, context, mode, "agent_board_live_control_denied");
+      return responseJson(
+        { error: "A live owner safety control paused this approved run", code: "live_control_denied" },
+        409,
+        origin,
+      );
+    }
+  } else {
+    const { data: userData, error: userError } = await admin.auth.getUser(jwt);
+    if (userError || !userData?.user) {
+      return responseJson({ error: "Invalid or expired session" }, 401, origin);
+    }
+    owner = userData.user.id;
+    if (action === "append_context" || action === "replace_context") {
+      return await handleContextMutation(owner, payload, action, origin);
+    }
+    if (action !== "chat") {
+      return responseJson({ error: "Unsupported AI action" }, 400, origin);
+    }
+    requestedPersonaId = typeof payload.personaId === "string"
+      ? payload.personaId.trim()
+      : "";
+    sanitized = sanitizeMessages(payload.messages);
+    maxTokens = clampTokens(payload.max_tokens);
+    attachedSummaries = sanitizeAttachedSummaries(payload.attachedSummaries);
+  }
+
   if (requestedPersonaId && !isUuid(requestedPersonaId)) {
     await auditDenied(owner, null, mode, "persona_id_invalid");
     return responseJson(
@@ -1070,8 +1371,6 @@ async function handleRequest(req: Request) {
       origin,
     );
   }
-
-  const sanitized = sanitizeMessages(payload.messages);
   if (
     !sanitized.messages.length ||
     !sanitized.messages.some((message) => message.role === "user")
@@ -1085,13 +1384,7 @@ async function handleRequest(req: Request) {
       origin,
     );
   }
-  const maxTokens = clampTokens(payload.max_tokens);
-  const attachedSummaries = sanitizeAttachedSummaries(
-    payload.attachedSummaries,
-  );
-
-  let context: PersonaContext | null = null;
-  if (requestedPersonaId) {
+  if (requestedPersonaId && !approvedInput) {
     const loaded = await loadPersonaContext(owner, requestedPersonaId);
     if (loaded.personaResult.error) {
       console.error(
@@ -1216,9 +1509,11 @@ async function handleRequest(req: Request) {
     // owner-scoped backend query below is the authorization boundary.
   }
 
-  let backendId = typeof payload.backendId === "string"
-    ? payload.backendId.trim()
-    : "";
+  if (!approvedInput) {
+    backendId = typeof payload.backendId === "string"
+      ? payload.backendId.trim()
+      : "";
+  }
   if (backendId && !isUuid(backendId)) {
     if (context) await auditDenied(owner, context, mode, "backend_id_invalid");
     return responseJson(
@@ -1288,7 +1583,10 @@ async function handleRequest(req: Request) {
     );
   }
 
-  const backendRow = backend as BackendRow;
+  const liveBackend = backend as BackendRow;
+  const backendRow: BackendRow = approvedInput
+    ? { ...approvedInput.backend, api_key: liveBackend.api_key }
+    : liveBackend;
   const apiKey = await resolveBackendApiKey(backendRow, owner);
   const endpoint = await providerEndpoint(backendRow);
   if (!endpoint.url) {
@@ -1329,7 +1627,11 @@ async function handleRequest(req: Request) {
   }
 
   let serverSystemPrompt: string;
-  if (context) {
+  if (approvedInput) {
+    // Automated execution uses the exact owner-reviewed prompt bytes. Code or
+    // profile changes after approval cannot silently change hidden input.
+    serverSystemPrompt = approvedInput.systemPrompt;
+  } else if (context) {
     serverSystemPrompt = personaSystemPrompt(context, mode, attachedSummaries);
   }
   else if (mode === "persona_builder") {
@@ -1377,8 +1679,36 @@ async function handleRequest(req: Request) {
     }
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  let budgetLeaseId: string | null = null;
+  let budgetFinalizationStarted = false;
+  let providerStartRecorded = false;
+  let fetchIssued = false;
+  let providerTimeout: ReturnType<typeof setTimeout> | undefined;
+  const finalizeBudgetOnce = async (
+    outcome: "completed" | "provider_error" | "request_failed" | "cancelled",
+    actualTokens: number | null,
+    outcomeCode: string,
+  ) => {
+    if (!budgetLeaseId) return true;
+    if (budgetFinalizationStarted) return false;
+    budgetFinalizationStarted = true;
+    const { data, error } = await admin.rpc("finalize_ai_backend_budget", {
+      p_lease_id: budgetLeaseId,
+      p_outcome: outcome,
+      p_actual_tokens: actualTokens,
+      p_provider_usage_reported: actualTokens !== null,
+      p_outcome_code: safeField(outcomeCode, 80).toLowerCase(),
+    });
+    if (error || data !== true) {
+      console.error(
+        "AI backend budget finalization failed",
+        error?.message || "lease was not active",
+      );
+      return false;
+    }
+    return true;
+  };
+
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -1405,12 +1735,139 @@ async function handleRequest(req: Request) {
         max_tokens: maxTokens,
       };
     }
+    const providerBodyText = JSON.stringify(providerBody);
+    const reservedTokens = conservativeBudgetReservation(
+      providerBodyText,
+      maxTokens,
+    );
+    auditDetail.budget_reserved_tokens = reservedTokens;
+    const budgetRequestKey = crypto.randomUUID();
+    const claim = await admin.rpc("claim_ai_backend_budget", {
+      p_owner: owner,
+      p_backend_id: backendRow.id,
+      p_mode: mode,
+      p_reserved_tokens: reservedTokens,
+      p_request_key: budgetRequestKey,
+    });
+    const rawClaim = Array.isArray(claim.data) ? claim.data[0] : claim.data;
+    const claimRow = rawClaim && typeof rawClaim === "object"
+      ? rawClaim as BudgetClaimRow
+      : null;
+    const claimedLease = typeof claimRow?.lease_id === "string" &&
+        isUuid(claimRow.lease_id)
+      ? claimRow.lease_id
+      : null;
+    const denialCode = safeField(
+      claimRow?.denial_code || (claim.error ? "budget_claim_unavailable" : ""),
+      80,
+    ).toLowerCase();
+    const malformedClaim = !claim.error && claimRow?.allowed === true &&
+      AUTOMATED_MODES.has(mode) && !claimedLease;
+    if (claim.error || !claimRow || malformedClaim) {
+      console.error(
+        "AI backend budget claim failed",
+        claim.error?.message || "invalid service response",
+      );
+      if (auditId) {
+        const audited = await finishAudit(auditId, owner, "ai.call.denied", "denied", {
+          ...auditDetail,
+          code: "budget_claim_unavailable",
+        });
+        if (!audited) {
+          return responseJson(
+            { error: "AI auditing could not record the budget denial; no model request was sent" },
+            503,
+            origin,
+          );
+        }
+      } else {
+        await auditDenied(owner, context, mode, "budget_claim_unavailable");
+      }
+      return responseJson(
+        { error: "AI budget enforcement is unavailable; no model request was sent" },
+        503,
+        origin,
+      );
+    }
+    if (claimRow.allowed !== true) {
+      const code = denialCode || "budget_policy_denied";
+      if (auditId) {
+        const audited = await finishAudit(auditId, owner, "ai.call.denied", "denied", {
+          ...auditDetail,
+          code,
+        });
+        if (!audited) {
+          return responseJson(
+            { error: "AI auditing could not record the budget denial; no model request was sent" },
+            503,
+            origin,
+          );
+        }
+      } else await auditDenied(owner, context, mode, code);
+      const atCapacity = code.includes("limit") || code.includes("concurrency");
+      return responseJson(
+        {
+          error: atCapacity
+            ? "This AI backend has reached an owner-configured budget ceiling"
+            : "This AI mode is disabled until the owner enables its budget policy",
+          code,
+        },
+        atCapacity ? 429 : 409,
+        origin,
+      );
+    }
+    budgetLeaseId = claimedLease;
+    auditDetail.budget_lease_enforced = Boolean(budgetLeaseId);
+    if (automatedRunId) {
+      const providerStart = await admin.rpc(
+        "mark_agent_board_provider_started_service",
+        {
+          p_run_id: automatedRunId,
+          p_credential_revision: approvedInput?.credentialRevision ?? "",
+        },
+      );
+      if (providerStart.error || providerStart.data !== true) {
+        const budgetFinalized = await finalizeBudgetOnce(
+          "cancelled",
+          0,
+          "agent_board_provider_start_unavailable",
+        );
+        if (auditId) {
+          await finishAudit(auditId, owner, "ai.call.denied", "denied", {
+            ...auditDetail,
+            code: "agent_board_provider_start_unavailable",
+            budget_finalized: budgetFinalized,
+          });
+        }
+        return responseJson(
+          {
+            error: budgetFinalized
+              ? "Provider start could not be recorded; no model request was sent"
+              : "Provider start and budget cleanup could not be recorded; no model request was sent",
+            code: budgetFinalized
+              ? "provider_start_unavailable"
+              : "budget_finalize_failed",
+          },
+          503,
+          origin,
+        );
+      }
+      providerStartRecorded = true;
+      auditDetail.provider_start_recorded = true;
+    }
+    const providerController = new AbortController();
+    providerTimeout = setTimeout(
+      () => providerController.abort(),
+      PROVIDER_TIMEOUT_MS,
+    );
+    fetchIssued = true;
+    auditDetail.provider_fetch_issued = true;
     const providerResponse = await fetch(endpoint.url, {
       method: "POST",
       headers,
-      signal: controller.signal,
+      signal: providerController.signal,
       redirect: "error",
-      body: JSON.stringify(providerBody),
+      body: providerBodyText,
     });
     const rawProviderBody = await readProviderBody(providerResponse);
     let providerPayload: ProviderResponsePayload | null = null;
@@ -1421,6 +1878,24 @@ async function handleRequest(req: Request) {
     }
 
     if (!providerResponse.ok) {
+      const budgetFinalized = await finalizeBudgetOnce(
+        "provider_error",
+        providerTokenUsage(providerPayload),
+        "provider_http_error",
+      );
+      if (!budgetFinalized) {
+        if (auditId) {
+          await finishAudit(auditId, owner, "ai.call.failed", "error", {
+            ...auditDetail,
+            code: "budget_finalize_failed",
+          });
+        }
+        return responseJson(
+          { error: "The provider reply was withheld because budget accounting could not be finalized" },
+          503,
+          origin,
+        );
+      }
       if (auditId) {
         await finishAudit(auditId, owner, "ai.call.failed", "error", {
           ...auditDetail,
@@ -1456,6 +1931,24 @@ async function handleRequest(req: Request) {
       content = providerPayload.choices[0].message.content;
     }
     if (!content) {
+      const budgetFinalized = await finalizeBudgetOnce(
+        "provider_error",
+        providerTokenUsage(providerPayload),
+        "provider_empty_response",
+      );
+      if (!budgetFinalized) {
+        if (auditId) {
+          await finishAudit(auditId, owner, "ai.call.failed", "error", {
+            ...auditDetail,
+            code: "budget_finalize_failed",
+          });
+        }
+        return responseJson(
+          { error: "The provider reply was withheld because budget accounting could not be finalized" },
+          503,
+          origin,
+        );
+      }
       if (auditId) {
         await finishAudit(auditId, owner, "ai.call.failed", "error", {
           ...auditDetail,
@@ -1470,6 +1963,25 @@ async function handleRequest(req: Request) {
       );
     }
 
+    const actualTokens = providerTokenUsage(providerPayload);
+    const budgetFinalized = await finalizeBudgetOnce(
+      "completed",
+      actualTokens,
+      "provider_completed",
+    );
+    if (!budgetFinalized) {
+      if (auditId) {
+        await finishAudit(auditId, owner, "ai.call.failed", "error", {
+          ...auditDetail,
+          code: "budget_finalize_failed",
+        });
+      }
+      return responseJson(
+        { error: "The reply was withheld because budget accounting could not be finalized" },
+        503,
+        origin,
+      );
+    }
     if (auditId) {
       const audited = await finishAudit(
         auditId,
@@ -1480,6 +1992,7 @@ async function handleRequest(req: Request) {
           ...auditDetail,
           provider_status: providerResponse.status,
           output_chars: content.length,
+          provider_tokens: actualTokens,
         },
       );
       if (!audited) {
@@ -1498,19 +2011,44 @@ async function handleRequest(req: Request) {
     const timedOut = error instanceof DOMException &&
       error.name === "AbortError";
     const responseTooLarge = error instanceof ProviderResponseTooLargeError;
+    const preFetchFailure = !fetchIssued;
+    auditDetail.provider_start_recorded = providerStartRecorded;
+    auditDetail.provider_fetch_issued = fetchIssued;
+    const budgetFinalized = await finalizeBudgetOnce(
+      "request_failed",
+      preFetchFailure ? 0 : null,
+      preFetchFailure
+        ? "provider_request_not_started"
+        : timedOut
+        ? "provider_timeout"
+        : responseTooLarge
+        ? "provider_response_too_large"
+        : "provider_request_failed",
+    );
     if (auditId) {
       await finishAudit(auditId, owner, "ai.call.failed", "error", {
         ...auditDetail,
-        code: timedOut
+        code: preFetchFailure
+          ? "provider_request_not_started"
+          : timedOut
           ? "provider_timeout"
           : responseTooLarge
           ? "provider_response_too_large"
           : "provider_request_failed",
       });
     }
+    if (!budgetFinalized) {
+      return responseJson(
+        { error: "The request stopped because budget accounting could not be finalized" },
+        503,
+        origin,
+      );
+    }
     return responseJson(
       {
-        error: timedOut
+        error: preFetchFailure
+          ? "The AI request stopped before contacting the provider"
+          : timedOut
           ? "The AI provider timed out"
           : responseTooLarge
           ? "The AI provider returned an unsafe response size"
@@ -1520,7 +2058,7 @@ async function handleRequest(req: Request) {
       origin,
     );
   } finally {
-    clearTimeout(timeout);
+    if (providerTimeout !== undefined) clearTimeout(providerTimeout);
   }
 }
 

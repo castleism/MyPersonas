@@ -1,7 +1,7 @@
 # MyPersonas provider setup guide
 
 **Owner checklist for MyPersonas / AliaSpaces**
-**Reviewed:** July 29, 2026
+**Reviewed:** August 22, 2026
 
 This guide covers every account type currently available in the MyPersonas Account Ledger. It distinguishes what the current site can actually connect from what a provider could support after a connector, provider review, or partner agreement is completed.
 
@@ -19,9 +19,11 @@ This guide covers every account type currently available in the MyPersonas Accou
 
 Current implementation:
 
-- **Gmail:** real OAuth and Inbox Concierge are implemented. Google still requires each testing mailbox to be listed as a test user, or the app must complete production verification.
-- **X / Twitter:** OAuth identity/read code is implemented. The production X client credentials and API credits still need to be installed. Publishing is not implemented and the current grant does not include `tweet.write`.
-- **Facebook Pages and linked Instagram professional accounts:** an official Meta pairing foundation is present for discovery. It is intentionally read/discovery-only; Meta credentials, provider review, and a separately tested publishing grant are still required.
+- **Gmail:** real OAuth and Inbox Concierge source are implemented. Google still requires each testing mailbox to be listed as a test user, or the app must complete production verification. Reverify the deployed source before relying on it.
+- **X / Twitter:** OAuth identity/read source is implemented. The production X client credentials and API credits still need owner installation. The deployed `twitter-post` source is absent from this checkout, so X publication remains fail-closed until that function is downloaded, audited, write-authorized, and reconciled with the queue.
+- **Facebook Pages and linked Instagram professional accounts:** official pairing plus owner-triggered Page/IG publishing were proven earlier on an owner-controlled asset. Recurring publishing remains off, and the current hardened source/migration release is not deployed or live-verified. App Review is still required before serving accounts outside the app's permitted owner/test roles.
+- **Reddit:** official OAuth and explicit owner-triggered posting source exist locally. Migration 021, credentials, deployment, commercial/API terms, revocation, erasure, and one disposable live post still require owner review and proof.
+- **Discord:** a channel-webhook source exists but is deliberately dormant and has no current frontend Connect/Post controls. It must not be re-enabled without immutable channel binding, Vault erasure, retry/reconciliation, and failure/race tests.
 - **Every other provider:** an inventory or planning record until its connector is built and tested. A saved username, matching email, or “ownership verified” label is not provider authorization.
 
 ## Who does what
@@ -94,7 +96,7 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 2. Convert the Instagram account to **Business or Creator**.
 3. Link that Instagram professional account to the correct Facebook Page.
 4. Put both assets in the same Meta Business Portfolio.
-5. The current MyPersonas pairing flow can then let you choose a Page and discover its linked Instagram account. It does not publish. After the write adapters, additional permissions, provider review, and live tests are complete, one approved package could be sent to both destinations with separate provider records to prevent duplicate retries.
+5. The MyPersonas pairing flow lets you choose a Page and discover its linked Instagram account. An owner-triggered Page/IG pair was proven earlier, but the recurring queue remains off and the current hardened source has not been deployed or reverified. Every retry keeps separate provider result identifiers to avoid claiming or blindly repeating a partially successful pair.
 
 **Owner steps**
 
@@ -108,15 +110,15 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 7. First authorize discovery scopes: `pages_show_list`, `pages_read_engagement`, and `instagram_basic`.
 8. After the pairing flow passes, request Advanced Access/app review for the exact production features.
 
-**Before Facebook Page posting can be enabled**
+**Before Facebook Page posting can be re-enabled from this source release**
 
 - Add `pages_manage_posts`; add `pages_manage_engagement` only if Page comment/reply management is enabled.
-- Codex must build the Page publish adapter, webhook/reconciliation path, duplicate protection, revocation, and real Page tests.
+- Deploy and verify the reviewed Page publish primitives, duplicate protection, partial-success reconciliation, revocation, and one disposable real Page test. Do not infer current deployment parity from the earlier proof.
 
-**Before linked Instagram posting can be enabled**
+**Before linked Instagram posting can be re-enabled from this source release**
 
 - Add `instagram_content_publish`; add `instagram_manage_comments` only for owner-approved comment management; add insights only if reports need them.
-- Codex must build the media-container status checks, publish adapter, media validation, and real professional-account tests.
+- Deploy and verify the reviewed media-container status checks, publish primitive, media validation, partial-success reconciliation, and one disposable professional-account test. Instagram deletion remains a manual in-app action.
 - Stories through the Facebook Login route are limited to eligible business accounts; do not assume every professional account can use every format.
 
 Meta's official references: [Facebook API workspace](https://www.postman.com/meta/facebook/overview), [Instagram API with Facebook Login](https://www.postman.com/meta/instagram/folder/23987686-3a75357f-e106-47ef-a8d9-af1aadf85365), [App Review](https://developers.facebook.com/docs/app-review/), and [Business verification](https://developers.facebook.com/docs/development/release/business-verification).

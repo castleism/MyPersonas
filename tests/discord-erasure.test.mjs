@@ -164,7 +164,7 @@ test("account erasure fails closed on Discord cleanup before generic row deletio
   const ownedRows = functionBlock(erasureSource, "eraseOwnedRows");
   assert.match(
     ownedRows,
-    /admin\.from\("account_ledger"\)\.delete\(\)\.eq\("owner", uid\)/,
+    /admin\.rpc\("delete_account_ledger_for_account_service", \{ p_owner: uid \}\)/,
   );
 });
 

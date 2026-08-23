@@ -1,10 +1,15 @@
 # Handoff — MyPersonas / AliaSpaces (for ChatGPT)
 
-_Written 2026-08-13; release truth re-audited 2026-08-14. This hands the project to ChatGPT to continue. It explains how the
+_Written 2026-08-13; release truth refreshed 2026-08-22. This hands the project to ChatGPT to continue. It explains how the
 project works, what's already built, the exact contracts you'll need, and a prioritized
 task list. Agents may prepare code, SQL, tests, plans, and dashboard steps. The owner must confirm
 production migrations/deployments, provider permissions, keys, MFA, publishing, and money actions
 at the exact action boundary._
+
+Current package: **Implemented and tested locally; not pushed, applied to the linked
+database, deployed, configured, activated, or verified live unless separately evidenced.**
+Start with `RELEASE-MANIFEST-2026-08-22.md`, then this handoff. Historical live claims
+below are useful evidence snapshots but may have drifted and do not prove the current source.
 
 ---
 
@@ -31,12 +36,14 @@ at the exact action boundary._
   - Docs: `MyPersonas.Online_v0/*.md` (start with ROADMAP-EXECUTION-2026-08-13,
     POST-QUEUE-ACTIVATION, POSTING-3PART-SPEC, DRIFT, CONNECTORS-STATUS,
     CONTEXT-BOX-SPEC, MOBILE-BLUEPRINT, then V2-BLUEPRINT/APP-REVIEW-META).
-- **Deploy model and current failure**
-  - Both Supabase and Pages workflows react to `main` independently; that does not enforce the
-    required migrations → functions → frontend order. Pages deployed the current commit even while
-    CI was red. Split releases or add protected workflow gates before the next production release.
-  - The Supabase workflow currently stops because its required `SUPABASE_ACCESS_TOKEN` is missing;
-    manual function deployments exist, but exact source parity is not proven.
+- **Deploy model**
+  - Pushes run validation but do not deploy. Supabase Functions and Pages are separate manual
+    `workflow_dispatch` workflows; both require the exact typed confirmation
+    `MIGRATIONS-VERIFIED`.
+  - Required order is database apply/readback → Functions dispatch/verification → signed-in
+    staging smoke → Pages dispatch/live verification. Neither workflow applies migrations.
+  - A missing `SUPABASE_ACCESS_TOKEN` makes the function workflow fail closed. Historical manual
+    deployments may exist, but exact current source parity is not proven.
   - Migrations do not auto-apply. Live-safe permission probes show **035** and **038** exist.
     Migration **037** is unverified. The lease RPC from **039** is absent from the live schema cache
     and current callers do not use it locally. Treat **036** as dormant and do not activate it.
@@ -55,11 +62,10 @@ The **owner-triggered Meta slice** of the 3-part system was previously verified 
   portrait 4:5 + ≤280 caption. See `POSTING-3PART-SPEC.md`.
 - **Previously deployed/live-tested:** `ai-proxy` + `compose-post` staged a draft and `meta-post`
   published/deleted the Meta test. Migration `033`+`034` created the `post_drafts` foundation.
-- **Current hardened replacements are in pushed source, and the current frontend is live:**
-  `meta-post`, `run-post-queue`, shared publishing, immutable approval, and the revised Composer.
-  Some function names are visible in the live dashboard, but exact deployed-source parity and the
-  full signed-in contract remain unverified. The scheduled cron remains dormant and X remains
-  draft-only.
+- **Current hardened replacements are local release-candidate source:** `meta-post`,
+  `run-post-queue`, shared publishing, immutable approval, and the revised Composer. Some function
+  names have historical live evidence, but exact deployed-source parity and the full signed-in
+  contract are unverified. The scheduled cron remains dormant and X remains draft-only.
 - Verified live: `compose-post` drafted persona-voice FB/IG/X captions + crops; `meta-post`
   published a real FB + IG pair (IG confirmed) and deleted the FB test. That demonstrates the
   tested owner-asset path; it is not evidence for every account, schedule, retry, or policy case.
@@ -164,10 +170,11 @@ Each item says: **goal · files · approach · blocker (if any) · deliverable.*
 6. **Meta App Review** is only needed to post for other users/go public. Use
    `APP-REVIEW-META.md` when that becomes a launch goal.
 
-## 6. How to test what you build (the human runs it)
+## 6. How to test and release what you build
 
-- Deploy: the human pushes; functions deploy via the Action; migrations they run in the SQL
-  editor. Frontend is live on Pages after push.
+- Local validation and disposable database testing may proceed without production authority.
+  Production requires the manifest's owner-approved database apply/readback, then a manual
+  Functions dispatch, then a manual Pages dispatch. A push alone deploys nothing.
 - Function smoke test from the browser console on `mypersonas.online` (already signed in):
   `fetch(CONFIG.SUPABASE_URL+'/functions/v1/<fn>', {method:'POST', headers:{'Content-Type':
   'application/json','Authorization':'Bearer '+(await sb.auth.getSession()).data.session.

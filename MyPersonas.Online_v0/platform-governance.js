@@ -1,0 +1,499 @@
+"use strict";
+
+const GOVERNANCE_AI_CHATS=Object.freeze({
+  Claude:"https://claude.ai/new",
+  ChatGPT:"https://chatgpt.com/",
+  Perplexity:"https://www.perplexity.ai/",
+  Kimi:"https://www.kimi.com/"
+});
+function newGovernanceState(){return{personaId:"",readiness:null,review:null,reviewManifest:null,reviewBaseline:null,featureRequests:[],syncSettings:[],friendSettings:null,extensions:[],roles:[],security:null,relationships:[],projects:[],businesses:[],revenueSettings:null,affiliateProducts:[],affiliateOffers:[],productReviewSettings:null,productReviewRequests:[],productReviewEvents:[],productReviewEvidence:[],assignedAccounts:[],staffRequests:[],staffExtensions:[],capabilities:{governance:true,organization:true,revenue:true,reviewInbox:true}}}
+let governanceState=newGovernanceState();
+function resetGovernanceState(){governanceState=newGovernanceState()}
+
+function governancePersona(id=""){
+  return (myPersonas||[]).find(persona=>persona.id===(id||governanceState.personaId))||(myPersonas||[])[0]||null;
+}
+
+function governancePersonaOptions(selected){
+  return (myPersonas||[]).map(persona=>`<option value="${esc(persona.id)}" ${persona.id===selected?"selected":""}>${esc(persona.name)} · @${esc(persona.handle)}</option>`).join("");
+}
+
+function governanceSetupRequired(message){
+  app.innerHTML=`<div class="card"><h2>Platform governance setup required</h2><p class="muted">${esc(message||"Migration 051 has not been applied to this environment. No publication, role, security, follow, sync, or review setting was changed.")}</p><div class="gov-actions" style="margin-top:12px"><button class="btn sec" onclick="go('studio')">Back to Matrix</button></div></div>`;
+}
+
+async function governanceMaybe(table,query){
+  try{const result=await query(sb.from(table));return result.error?{data:null,error:result.error}:{data:result.data,error:null}}catch(error){return{data:null,error}}
+}
+
+async function governanceRpc(name,args){
+  try{const result=await sb.rpc(name,args);return result.error?{data:null,error:result.error}:{data:result.data,error:null}}catch(error){return{data:null,error}}
+}
+
+async function governanceLoad(personaId){
+  const persona=governancePersona(personaId);if(!persona)return{error:new Error("Create a persona first")};
+  const owner=session?.user?.id,epoch=renderEpoch;governanceState.personaId=persona.id;
+  const readiness=await sb.rpc("persona_publication_readiness",{p_persona_id:persona.id});
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return{cancelled:true};
+  if(readiness.error)return{error:readiness.error};
+  const assigned=(myAccounts||[]).filter(account=>account.persona_id===persona.id||(myAccountPersonaLinks||[]).some(link=>link.ledger_id===account.id&&link.persona_id===persona.id));
+  const [review,features,sync,friend,extensions,roles,security,relationships,projectMembers,businessMembers,revenueSettings,affiliateProducts,affiliateOffers,productReviewSettings,productReviewRequests,productReviewEvents,productReviewEvidence]=await Promise.all([
+    governanceMaybe("persona_publication_reviews",q=>q.select("*").eq("persona_id",persona.id).maybeSingle()),
+    governanceMaybe("platform_feature_requests",q=>q.select("*").eq("persona_id",persona.id).order("updated_at",{ascending:false}).limit(100)),
+    governanceMaybe("persona_account_sync_settings",q=>q.select("*").eq("persona_id",persona.id)),
+    governanceMaybe("persona_friend_settings",q=>q.select("*").eq("persona_id",persona.id).maybeSingle()),
+    governanceMaybe("persona_extension_submissions",q=>q.select("id,owner,persona_id,title,source_type,requested_permissions,status,review_notes,submitted_at,reviewed_at,created_at,updated_at").eq("persona_id",persona.id).order("updated_at",{ascending:false}).limit(100)),
+    governanceMaybe("platform_role_assignments",q=>q.select("role_key,active,expires_at,reason").eq("account_id",owner)),
+    governanceMaybe("account_security_states",q=>q.select("password_failed_count,mfa_failed_count,locked_until,lock_reason,notification_pending,updated_at").eq("user_id",owner).maybeSingle()),
+    governanceRpc("my_persona_family",{p_persona_id:persona.id}),
+    governanceMaybe("persona_project_memberships",q=>q.select("*,persona_projects(*)").eq("persona_id",persona.id)),
+    governanceMaybe("business_persona_memberships",q=>q.select("*,businesses(*)").eq("persona_id",persona.id)),
+    governanceMaybe("persona_revenue_settings",q=>q.select("*").eq("persona_id",persona.id).maybeSingle()),
+    governanceMaybe("affiliate_products",q=>q.select("*").eq("owner",owner).order("updated_at",{ascending:false}).limit(500)),
+    governanceMaybe("persona_affiliate_offers",q=>q.select("*").eq("persona_id",persona.id).order("priority",{ascending:false}).limit(200)),
+    governanceMaybe("product_review_settings",q=>q.select("*").eq("persona_id",persona.id).maybeSingle()),
+    governanceMaybe("product_review_requests",q=>q.select("id,persona_id,requester_email,requester_name,product_name,product_url,reason,consent_to_reply,marketing_consent,status,created_at,updated_at,retention_expires_at").eq("persona_id",persona.id).order("created_at",{ascending:false}).limit(200)),
+    governanceMaybe("product_review_events",q=>q.select("id,request_id,event_type,actor_type,details,created_at").eq("persona_id",persona.id).not("request_id","is",null).order("created_at",{ascending:false}).limit(500)),
+    governanceRpc("my_product_review_notification_evidence",{p_persona_id:persona.id})
+  ]);
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return{cancelled:true};
+  governanceState={...governanceState,personaId:persona.id,readiness:readiness.data,review:review.data||null,reviewManifest:readiness.data?.review_manifest||null,featureRequests:features.data||[],syncSettings:sync.data||[],friendSettings:friend.data||null,extensions:extensions.data||[],roles:roles.data||[],security:security.data||null,relationships:relationships.data||[],projects:projectMembers.data||[],businesses:businessMembers.data||[],revenueSettings:revenueSettings.data||null,affiliateProducts:affiliateProducts.data||[],affiliateOffers:affiliateOffers.data||[],productReviewSettings:productReviewSettings.data||null,productReviewRequests:productReviewRequests.data||[],productReviewEvents:productReviewEvents.data||[],productReviewEvidence:productReviewEvidence.data||[],assignedAccounts:assigned,capabilities:{governance:true,organization:!relationships.error&&!projectMembers.error&&!businessMembers.error,revenue:!revenueSettings.error&&!affiliateProducts.error&&!affiliateOffers.error&&!productReviewSettings.error,reviewInbox:!productReviewRequests.error&&!productReviewEvents.error&&!productReviewEvidence.error}};
+  return{persona};
+}
+
+function governancePicker(route,persona){
+  return `<select class="gov-persona-picker" aria-label="Persona" onchange="go('${route}/'+this.value)">${governancePersonaOptions(persona.id)}</select>`;
+}
+
+function governanceStateLabel(persona){
+  const state=persona.publication_state||governanceState.readiness?.publication_state||"setup required";
+  return `<span class="gov-state ${esc(state)}">${esc(state.replaceAll("_"," "))}</span>`;
+}
+
+function governanceChecklistHtml(){
+  const checks=governanceState.readiness?.checks||[];
+  return `<div class="gov-checklist">${checks.map(check=>`<div class="gov-check ${check.ok?"ok":""}"><span><b>${esc(check.label||check.key)}</b><small>${check.required?"Required before publication":"Recommended"}</small></span></div>`).join("")||'<p class="muted">No checklist was returned.</p>'}</div>`;
+}
+
+function governanceKnownGaps(){
+  const gaps=[];
+  if(!governanceState.capabilities.organization)gaps.push("Family, project, and business organization storage is not available in this environment.");
+  if(governanceState.friendSettings?.request_mode==="contact_proof")gaps.push("Private email/phone acquaintance proof needs a server-side one-time proof service; the current mode fails closed.");
+  if((governanceState.syncSettings||[]).some(row=>row.enabled))gaps.push("At least one account-sync preference is enabled, but each provider still needs a scoped import/export worker and reconciliation proof.");
+  if((governanceState.extensions||[]).some(row=>["submitted","reviewing","approved"].includes(row.status)))gaps.push("Custom extension source still needs a sandboxed build, permission/CSP review, signing, and a staff-controlled release before it can run.");
+  if(governanceState.revenueSettings?.review_requests_enabled&&!governanceState.productReviewSettings?.enabled)gaps.push("The public review-request preference is on, but a connected persona Gmail destination and hardened intake approval are still required.");
+  if(governanceState.revenueSettings?.affiliate_enabled&&!(governanceState.affiliateOffers||[]).some(row=>row.status==="active"))gaps.push("Affiliate presentation is enabled, but this persona has no active product offer.");
+  return gaps;
+}
+
+function governancePrefillKnownGap(){
+  const gaps=governanceKnownGaps(),title=document.getElementById("govFeatureTitle"),description=document.getElementById("govFeatureDescription");
+  if(!title||!description)return;if(!gaps.length){toast("No deterministic platform gap was detected. Add any limitation found in your browser-AI review manually.");return}
+  title.value="Complete missing capability for this persona";description.value=["Page intention:",document.getElementById("govIntention")?.value.trim()||"(not entered)","","Detected platform gaps:",...gaps.map(value=>"- "+value),"","Expected behavior:","Implement the smallest secure capability, document permissions and recovery, test with unrelated accounts, and keep every external write owner-approved."].join("\n").slice(0,30000);description.focus();
+}
+
+function governanceRedactExternalText(value){
+  return String(value??"")
+    .replace(/-----BEGIN[\s\S]{0,200}?PRIVATE KEY-----[\s\S]*?-----END[\s\S]{0,80}?PRIVATE KEY-----/gi,"[REDACTED PRIVATE KEY]")
+    .replace(/\b(?:bearer\s+)?(?:sk-[a-z0-9_-]{12,}|gh[pousr]_[a-z0-9]{20,}|AIza[a-z0-9_-]{20,}|xox[baprs]-[a-z0-9-]{12,})\b/gi,"[REDACTED CREDENTIAL]")
+    .replace(/\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|authorization)\s*[:=]\s*[^\s,;]+/gi,"[REDACTED CREDENTIAL FIELD]")
+    .replace(/https?:\/\/[^\s)\]}]+/gi,"[URL REDACTED FROM FREEFORM TEXT]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,"[REDACTED EMAIL]")
+    .replace(/(?:\+?\d[\d ().-]{7,}\d)/g,"[REDACTED PHONE]")
+    .replace(/\b[a-z0-9_\/-]{40,}\b/gi,"[REDACTED POSSIBLE TOKEN]");
+}
+
+function governanceReviewHost(value){try{const url=new URL(String(value||""));return ["http:","https:"].includes(url.protocol)?url.hostname:""}catch{return""}}
+
+function governanceExternalReviewManifest(){
+  const manifest=governanceState.reviewManifest||{},profile=manifest.profile||{},layout=manifest.layout||{};
+  const clean=value=>governanceRedactExternalText(value),publicProfile={};
+  for(const key of ["handle","name","tagline","bio","visibility","theme","topics","hashtags","title","focus","pet_project","ai_disclosure"])publicProfile[key]=clean(profile[key]||"");
+  publicProfile.nsfw=!!profile.nsfw;publicProfile.modules=Object.fromEntries(
+    ["live","music","about","fan_chat","links","top8","linked","family","revenue","albums","feed"]
+      .map(key=>[key,profile.modules?.[key]!==false])
+  );
+  const fan=profile.fan_agent_configuration||{};publicProfile.fan_agent_configuration={
+    purpose_configured:!!fan.purpose_configured,voice_configured:!!fan.voice_configured,
+    audience_configured:!!fan.audience_configured,hard_rules_configured:!!fan.hard_rules_configured,
+    backend_configured:!!fan.backend_configured,fan_chat_configured:!!fan.fan_chat_configured,
+    configuration_sha256:/^[0-9a-f]{64}$/i.test(String(fan.configuration_sha256||""))?fan.configuration_sha256:""
+  };
+  const widgets=(Array.isArray(layout.widgets)?layout.widgets:[]).map(widget=>{
+    const style={
+      span:["half","full"].includes(widget?.span)?widget.span:"half",
+      shape:["square","soft","round"].includes(widget?.shape)?widget.shape:"soft",
+      tone:["default","theme","muted","glass"].includes(widget?.tone)?widget.tone:"default"
+    };
+    return widget?.kind==="link"
+      ?{kind:"link",title:clean(widget.title||""),body:clean(widget.body||""),label:clean(widget.label||""),destination_host:governanceReviewHost(widget.url),...style}
+      :{kind:"text",title:clean(widget?.title||""),body:clean(widget?.body||""),...style};
+  });
+  return{
+    schema_version:manifest.schema_version||1,revision:manifest.revision||0,complete:!!manifest.complete,
+    counts:manifest.counts||{},truncation_reasons:manifest.truncation_reasons||[],profile:publicProfile,
+    assets:(manifest.assets||[]).map(asset=>({label:clean(asset.label),kind:clean(asset.kind),configured:!!asset.url})),
+    layout:{version:layout.version||1,order:Array.isArray(layout.order)?layout.order:[],cards:layout.cards||{},widgets},
+    links:(manifest.links||[]).map(link=>({platform:clean(link.platform),handle:clean(link.handle),destination_host:governanceReviewHost(link.url)})),
+    posts:(manifest.posts||[]).map(post=>({kind:clean(post.kind),title:clean(post.title),body:clean(post.body),tags:clean(post.tags),media_configured:!!post.media_url,created_at:post.created_at})),
+    albums:(manifest.albums||[]).map(album=>({title:clean(album.title),kind:clean(album.kind),items:(album.items||[]).map(item=>({caption:clean(item.caption),image_configured:!!item.thumb_url,destination_host:governanceReviewHost(item.link_url)}))})),
+    family:(manifest.family||[]).map(row=>({relationship:clean(row.relationship),handle:clean(row.handle),name:clean(row.name),image_configured:!!row.avatar_url})),
+    top8:(manifest.top8||[]).map(row=>({handle:clean(row.handle),name:clean(row.name),tagline:clean(row.tagline||""),image_configured:!!row.avatar_url})),
+    linked_personas:(manifest.linked_personas||[]).map(row=>({handle:clean(row.handle),name:clean(row.name),tagline:clean(row.tagline||""),image_configured:!!row.avatar_url})),
+    revenue:{
+      settings:{
+        affiliate_enabled:!!manifest.revenue?.settings?.affiliate_enabled,
+        review_requests_enabled:!!manifest.revenue?.settings?.review_requests_enabled,
+        secure_request_intake_configured:!!manifest.revenue?.settings?.secure_request_intake_configured,
+        default_disclosure:clean(manifest.revenue?.settings?.default_disclosure||""),
+        cta_label:clean(manifest.revenue?.settings?.cta_label||""),
+        review_cta_label:clean(manifest.revenue?.settings?.review_cta_label||"")
+      },
+      offers:(manifest.revenue?.offers||[]).map(offer=>({
+        title:clean(offer.title),merchant:clean(offer.merchant),category:clean(offer.category),
+        disclosure:clean(offer.disclosure),cta_label:clean(offer.cta_label),
+        placement:clean(offer.placement),priority:Number(offer.priority)||0,
+        product_host:governanceReviewHost(offer.product_url),
+        affiliate_destination_host:governanceReviewHost(offer.affiliate_destination),
+        image_configured:!!offer.image_url
+      }))
+    },
+    withheld:manifest.withheld||[]
+  };
+}
+
+function governanceReviewPacket(){
+  const persona=governancePersona(),review=governanceState.review,checks=governanceState.readiness?.checks||[],manifest=governanceExternalReviewManifest();
+  return [
+    `MYPERSONAS SANITIZED PAGE REVIEW — ${governanceRedactExternalText(persona?.name||"Persona")} (@${governanceRedactExternalText(persona?.handle||"")})`,
+    `Publication state: ${persona?.publication_state||governanceState.readiness?.publication_state||"unknown"}\nManifest revision: ${manifest.revision}\nManifest hash: ${governanceState.readiness?.manifest_sha256||"unavailable"}`,
+    `Page intention (scanned/redacted):\n${governanceRedactExternalText(document.getElementById("govIntention")?.value||review?.intention||"")}`,
+    `AI disclosure (scanned/redacted):\n${governanceRedactExternalText(document.getElementById("govDisclosure")?.value||persona?.ai_disclosure||"")}`,
+    "Readiness:",...checks.map(item=>`- ${item.ok?"READY":"MISSING"}: ${item.label}${item.required?" (required)":" (recommended)"}`),
+    "Sanitized exact-revision manifest (asset URLs and full outbound paths omitted):",JSON.stringify(manifest,null,2),
+    "Review request:","Review for canon fidelity, privacy, transparent AI disclosure, accessibility, security, broken links, missing setup, and claims that require evidence. Return proposed edits only; do not publish or connect any external account."
+  ].join("\n\n");
+}
+
+function governanceReviewManifestHtml(){
+  const manifest=governanceState.reviewManifest;if(!manifest)return'<p class="muted">No review manifest was returned.</p>';
+  const reasons=(manifest.truncation_reasons||[]).filter(Boolean),assets=(manifest.assets||[]).filter(asset=>safeHttpUrl(asset.url));
+  return `<div class="gov-note ${manifest.complete?"":"stop"}"><b>Revision ${Number(manifest.revision||0)} manifest: ${manifest.complete?"complete":"incomplete"}.</b> ${reasons.map(esc).join(" · ")}</div><div class="gov-actions">${assets.map(asset=>`<button class="btn sec sm" data-owner-persona-id="${esc(governanceState.personaId)}" data-persona-asset-url="${esc(safeHttpUrl(asset.url))}" data-persona-asset-label="${esc(asset.label)}" data-persona-asset-kind="${esc(asset.kind)}" onclick="openPersonaAssetPreview(this,event)">Preview ${esc(asset.label)}</button>`).join("")}</div><details><summary>Inspect exact owner-only manifest JSON</summary><pre class="gov-code">${esc(JSON.stringify(manifest,null,2))}</pre></details>`;
+}
+
+function governanceFeatureSourceContext(){
+  const readiness=governanceState.readiness||{},manifest=governanceState.reviewManifest||{};
+  return{
+    persona_id:governanceState.personaId||null,
+    publication_state:readiness.publication_state||null,
+    publication_revision:Number(readiness.publication_revision||0),
+    required_missing:Number(readiness.required_missing||0),
+    checks:(readiness.checks||[]).slice(0,30).map(item=>({key:String(item.key||"").slice(0,80),required:!!item.required,ok:!!item.ok})),
+    warnings:(readiness.warnings||[]).slice(0,20).map(value=>String(value||"").slice(0,500)),
+    review_manifest:{hash:readiness.manifest_sha256||null,complete:!!manifest.complete,counts:manifest.counts||{},truncation_reasons:(manifest.truncation_reasons||[]).slice(0,20).map(value=>String(value||"").slice(0,500))}
+  };
+}
+
+async function governanceCopyReview(){
+  try{await navigator.clipboard.writeText(governanceReviewPacket());toast("Review packet copied — paste it into the browser chat you choose")}catch(error){toast("Clipboard access was blocked. Select and copy the fields manually.")}
+}
+
+function governanceOpenAi(name){
+  const url=GOVERNANCE_AI_CHATS[name];if(!url)return;window.open(url,"_blank","noopener,noreferrer");
+}
+
+async function renderPublicationReview(id=""){
+  if(!session){renderSignin();return}if(!(myPersonas||[]).length){app.innerHTML='<div class="empty">Create a persona before opening publication review.</div>';return}
+  const selected=governancePersona(id);app.innerHTML='<div class="empty">Loading publication review…</div>';
+  const result=await governanceLoad(selected?.id||"");if(result.cancelled)return;if(result.error){governanceSetupRequired(result.error.message);return}
+  const persona=result.persona,review=governanceState.review||{},missing=Number(governanceState.readiness?.required_missing||0),warnings=(governanceState.readiness?.warnings||[]).filter(Boolean),publishReady=!missing&&review.review_state==="ready"&&Number(review.reviewed_revision||0)===Number(governanceState.readiness?.publication_revision||0)&&review.readiness_snapshot?.manifest_sha256===governanceState.readiness?.manifest_sha256;
+  governanceState.reviewBaseline={intention:String(review.intention||"").trim(),disclosure:String(persona.ai_disclosure||"This is an AI-assisted persona. Public content may be drafted with AI and is owner-reviewed unless stated otherwise.").trim(),notes:String(review.owner_review_notes||"")};
+  app.innerHTML=`<div class="gov-shell">
+    <section class="gov-head"><div><span class="muted">Owner-only review workspace</span><h2>Publication review · ${esc(persona.name)}</h2></div><div class="gov-actions">${governancePicker("review",persona)}${governanceStateLabel(persona)}<button class="btn sec" onclick="go('persona-settings/${persona.id}')">Settings</button><button class="btn sec" onclick="go('edit/${persona.id}')">Edit page</button></div></section>
+    <div class="gov-grid">
+      <section class="gov-card"><h3>Readiness</h3><p class="muted">${missing?`${missing} required item${missing===1?"":"s"} still need attention.`:"All required checks are ready. Publishing still requires your explicit action."}</p>${governanceChecklistHtml()}${warnings.map(value=>`<div class="gov-note warn">${esc(value)}</div>`).join("")}</section>
+      <section class="gov-card"><h3>Intention and disclosure</h3><label for="govIntention">What should this page accomplish?</label><textarea id="govIntention" maxlength="12000" style="min-height:150px" oninput="governanceReviewDirty()" placeholder="Describe the audience, outcome, boundaries, business purpose, and what must never be implied.">${esc(review.intention||"")}</textarea><label for="govDisclosure">Transparent AI disclosure</label><textarea id="govDisclosure" maxlength="1000" oninput="governanceReviewDirty()">${esc(persona.ai_disclosure||"This is an AI-assisted persona. Public content may be drafted with AI and is owner-reviewed unless stated otherwise.")}</textarea><label for="govReviewNotes">Owner review notes</label><textarea id="govReviewNotes" maxlength="12000" oninput="governanceReviewDirty()">${esc(review.owner_review_notes||"")}</textarea><div class="gov-actions" style="margin-top:9px"><button class="btn" onclick="governanceSubmitReview()">Run review</button>${persona.publication_state==="published"?`<button class="btn danger" onclick="governanceUnpublish()">Unpublish</button>`:`<button class="btn" id="govPublishButton" ${publishReady?"":"disabled"} onclick="governancePublish()">Publish reviewed page</button>`}</div><div id="govReviewDirtyNotice" class="gov-note warn"><b>Editing a published public field returns the page to draft.</b> Intention, disclosure, or review-note changes must be reviewed again before Publish is enabled.</div></section>
+      <section class="gov-card gov-wide"><h3>Exact-revision page manifest</h3><p class="muted">This owner-only snapshot covers the public-intended profile, layout, widgets, links, posts, albums, assets, Top 8, linked personas, public family edges, disclosures, affiliate offers, and review-request presentation for the numbered revision. Publication fails closed if it is incomplete or differs from the reviewed hash.</p>${governanceReviewManifestHtml()}</section>
+      <section class="gov-card gov-wide"><h3>Use a browser AI without using a linked MyPersonas model</h3><p class="muted">Copy the sanitized packet, inspect it, open a signed-in browser chat, paste it there, then bring back only edits you approve. The generated copy omits account/provider fields, private notes, review notes, raw asset URLs, and full outbound paths; common credential, email, phone, token, and freeform-URL patterns are visibly redacted. Because public copy and intention are owner-entered, inspect the exact clipboard text before sharing it with another service.</p><div class="gov-ai-links"><button class="btn sec" onclick="governanceCopyReview()">Copy sanitized review packet</button>${Object.keys(GOVERNANCE_AI_CHATS).map(name=>`<button class="btn sec" onclick="governanceOpenAi('${esc(name)}')">Open ${esc(name)}</button>`).join("")}</div></section>
+      <section class="gov-card gov-wide"><h3>Feature request drafts</h3><p class="muted">A detected gap is never sent automatically. Save it as a draft, review the exact text, then confirm submission to the global administrator / technician queue.</p><div class="row"><div><label>Request title</label><input id="govFeatureTitle" maxlength="300" placeholder="What is missing?"></div><div><label>Priority</label><input value="Normal (staff triages after submission)" disabled></div></div><label>Request description</label><textarea id="govFeatureDescription" maxlength="30000" placeholder="What you intended, what the current page cannot do, and the expected safe behavior."></textarea><div class="gov-actions"><button class="btn sec" onclick="governancePrefillKnownGap()">Draft detected setup gaps</button><button class="btn sec" onclick="governanceSaveFeatureDraft()">Save request draft</button></div><div class="gov-list">${governanceFeatureRows()}</div></section>
+    </div></div>`;
+}
+
+function governanceReviewIsDirty(){const baseline=governanceState.reviewBaseline;if(!baseline)return true;return (document.getElementById("govIntention")?.value.trim()||"")!==baseline.intention||(document.getElementById("govDisclosure")?.value.trim()||"")!==baseline.disclosure||(document.getElementById("govReviewNotes")?.value||"")!==baseline.notes}
+function governanceReviewDirty(){const dirty=governanceReviewIsDirty(),button=document.getElementById("govPublishButton"),notice=document.getElementById("govReviewDirtyNotice");if(button&&dirty)button.disabled=true;if(notice)notice.classList.toggle("stop",dirty)}
+
+async function governanceSubmitReview(){
+  const persona=governancePersona(),intention=document.getElementById("govIntention")?.value.trim()||"",disclosure=document.getElementById("govDisclosure")?.value.trim()||"",notes=document.getElementById("govReviewNotes")?.value||"";if(!persona)return;
+  if(typeof requireAal2ForSensitiveAction==="function"&&!await requireAal2ForSensitiveAction("approve this persona page review"))return;
+  const{error}=await sb.rpc("submit_persona_for_review",{p_persona_id:persona.id,p_intention:intention,p_ai_disclosure:disclosure,p_owner_review_notes:notes});if(error){toast(error.message);return}await loadMine();toast("Review complete — publication was not automatic");go("review/"+persona.id);
+}
+
+async function governancePublish(){
+  const persona=governancePersona();if(!persona)return;
+  if(governanceReviewIsDirty()){toast("Run review again before publishing these edited fields");return}
+  if(!confirm(`Publish the reviewed ${persona.name} page now? This changes public visibility but does not publish social posts or connect providers.`))return;
+  if(typeof requireAal2ForSensitiveAction==="function"&&!await requireAal2ForSensitiveAction("publish this reviewed persona page"))return;
+  const{data,error}=await sb.rpc("publish_persona_page",{p_persona_id:persona.id});if(error){toast(error.message);return}
+  const publishMessage=data?.activation_state==="waiting_for_reviewed_dependencies"?"Reviewed revision saved; public activation is waiting for its reviewed related personas":"Page published";
+  const reconciliation=await sb.rpc("reconcile_staged_native_page_publications",{p_persona_id:null});
+  await loadMine();toast(publishMessage);
+  if(reconciliation.error){console.warn("Staged native page publication reconciliation failed",reconciliation.error);setTimeout(()=>toast("Page publication succeeded, but staged native draft reconciliation needs review: "+reconciliation.error.message),2600)}
+  go("review/"+persona.id);
+}
+
+async function governanceUnpublish(){
+  const persona=governancePersona();if(!persona||!confirm(`Unpublish ${persona.name}'s page? The owner can still edit and review it.`))return;
+  const{error}=await sb.rpc("unpublish_persona_page",{p_persona_id:persona.id});if(error){toast(error.message);return}await loadMine();toast("Page unpublished");go("review/"+persona.id);
+}
+
+function governanceFeatureRows(){
+  return (governanceState.featureRequests||[]).map(request=>{const withdrawable=["submitted","triaged","planned"].includes(request.status),deletable=["draft","withdrawn","declined","completed"].includes(request.status);return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc(request.title)}</b><div class="muted">${esc(request.description||"No description")}</div></div><span class="gov-state ${esc(request.status)}">${esc(request.status)}</span></div>${request.staff_notes?`<div class="gov-note">Staff: ${esc(request.staff_notes)}</div>`:""}<div class="gov-row-actions">${request.status==="draft"?`<button class="btn sm" onclick="governanceSubmitFeature('${request.id}')">Review &amp; submit</button>`:""}${withdrawable?`<button class="btn sec sm" onclick="governanceWithdrawFeature('${request.id}')">Withdraw</button>`:""}${deletable?`<button class="btn danger sm" onclick="governanceDeleteFeature('${request.id}')">Delete</button>`:""}</div></div>`}).join("")||'<p class="muted">No feature requests for this persona.</p>';
+}
+
+async function governanceSaveFeatureDraft(){
+  const persona=governancePersona(),title=document.getElementById("govFeatureTitle")?.value.trim()||"",description=document.getElementById("govFeatureDescription")?.value.trim()||"";if(!persona)return;
+  const{error}=await sb.rpc("create_feature_request_draft",{p_persona_id:persona.id,p_title:title,p_intention:document.getElementById("govIntention")?.value||governanceState.review?.intention||"",p_description:description,p_source_context:{publication_readiness:governanceFeatureSourceContext()}});if(error){toast(error.message);return}toast("Feature request saved as a private draft");go("review/"+persona.id);
+}
+
+async function governanceSubmitFeature(id){
+  const request=(governanceState.featureRequests||[]).find(row=>row.id===id);if(!request||!confirm(`Submit this exact feature request to the global administrator / technician queue?\n\n${request.title}\n\n${request.description||"No description"}`))return;
+  if(!await governanceRequireSensitive("submit this feature request to the staff queue"))return;
+  const{error}=await sb.rpc("submit_feature_request",{p_request_id:id});if(error){toast(error.message);return}toast("Feature request submitted");go("review/"+governanceState.personaId);
+}
+async function governanceWithdrawFeature(id){if(!confirm("Withdraw this request from the staff queue?"))return;if(!await governanceRequireSensitive("withdraw this feature request"))return;const{error}=await sb.rpc("withdraw_feature_request",{p_request_id:id});if(error){toast(error.message);return}toast("Feature request withdrawn");go("review/"+governanceState.personaId)}
+async function governanceDeleteFeature(id){if(!confirm("Permanently delete this eligible feature request and its event history?"))return;if(!await governanceRequireSensitive("delete this feature request"))return;const{error}=await sb.rpc("delete_feature_request",{p_request_id:id});if(error){toast(error.message);return}toast("Feature request deleted");go("review/"+governanceState.personaId)}
+
+function governanceAccountRows(persona){
+  const settings=new Map((governanceState.syncSettings||[]).map(row=>[row.ledger_id,row]));
+  return (governanceState.assignedAccounts||[]).map(account=>{const setting=settings.get(account.id)||{},connection=(myAccountConnections||[]).find(row=>row.ledger_id===account.id),status=connection?.connection_state||"record only",scopes=(connection?.granted_scopes||[]).join(", ")||"no provider permission";return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc((PLATS[account.provider]||PLATS.other).name)} · ${esc(account.username||account.login_email||"saved account")}</b><div class="muted">${esc(status)} · ${esc(scopes)}</div></div><span class="gov-state ${connection?.connection_state==="connected"?"published":"draft"}">${esc(status)}</span></div><div class="gov-account"><label>Feed sync<select id="govSyncEnabled_${account.id}"><option value="0" ${setting.enabled?"":"selected"}>Off</option><option value="1" ${setting.enabled?"selected":""}>On when a reviewed worker exists</option></select></label><label>Direction<select id="govSyncDirection_${account.id}"><option value="import_only" ${setting.direction!=="export_only"&&setting.direction!=="both"?"selected":""}>Import to review</option><option value="export_only" ${setting.direction==="export_only"?"selected":""}>Export approved</option><option value="both" ${setting.direction==="both"?"selected":""}>Both</option></select></label><button class="btn sec sm" onclick="governanceSaveSync('${account.id}','${persona.id}')">Save</button></div><label style="display:flex;gap:7px;align-items:center;font-weight:400"><input id="govSyncReplies_${account.id}" type="checkbox" ${setting.include_replies?"checked":""}> Include replies</label><label style="display:flex;gap:7px;align-items:center;font-weight:400"><input id="govSyncReposts_${account.id}" type="checkbox" ${setting.include_reposts?"checked":""}> Include reposts</label></div>`}).join("")||'<p class="muted">No authenticated or recorded account is assigned to this persona. Assign one in Matrix → Accounts first.</p>';
+}
+
+async function governanceSaveSync(ledgerId,personaId){
+  const enabled=document.getElementById("govSyncEnabled_"+ledgerId)?.value==="1",direction=document.getElementById("govSyncDirection_"+ledgerId)?.value||"import_only",includeReplies=!!document.getElementById("govSyncReplies_"+ledgerId)?.checked,includeReposts=!!document.getElementById("govSyncReposts_"+ledgerId)?.checked;
+  const{error}=await sb.rpc("set_persona_account_sync",{p_ledger_id:ledgerId,p_persona_id:personaId,p_enabled:enabled,p_direction:direction,p_post_kinds:["post","image","video"],p_include_replies:includeReplies,p_include_reposts:includeReposts,p_publication_policy:"review_required"});if(error){toast(error.message);return}toast(enabled?"Sync preference saved; no worker or provider action was activated":"Feed sync disabled");go("persona-settings/"+personaId);
+}
+
+function governanceFriendCard(persona){
+  const setting=governanceState.friendSettings||{},mode=setting.request_mode||"open";
+  return `<section class="gov-card"><h3>Friends and followers</h3><p class="muted">Following a published public page is immediate. Friendship is mutual and request-based.</p><label>Who may request friendship?</label><select id="govFriendMode"><option value="open" ${mode==="open"?"selected":""}>Open requests</option><option value="invite_proof" ${mode==="invite_proof"?"selected":""}>Owner invite proof</option><option value="contact_proof" ${mode==="contact_proof"?"selected":""}>Contact proof (invite token until server verifier ships)</option><option value="closed" ${mode==="closed"?"selected":""}>Closed</option></select><div class="row"><div><label>Daily requester limit</label><input id="govFriendDaily" type="number" min="1" max="100" value="${setting.daily_request_limit||20}"></div><div><label>Pending inbox cap</label><input id="govFriendPending" type="number" min="1" max="1000" value="${setting.pending_request_limit||100}"></div></div><label>Private note shown to you</label><input id="govFriendNote" maxlength="1000" value="${esc(setting.note||"")}"><div class="gov-actions" style="margin-top:8px"><button class="btn sec" onclick="governanceSaveFriendPolicy('${persona.id}')">Save friend policy</button><button class="btn sec" onclick="governanceIssueInvite('${persona.id}')">Issue one-time invite</button><button class="btn danger" onclick="governanceRevokeInvites('${persona.id}')">Revoke active invites</button></div><div class="gov-note warn">Email and phone values are never exposed or compared in the browser. A future verified-contact service may accept one-way proofs; today, owner-issued expiring invite tokens provide the safe equivalent.</div><div id="govInviteOutput"></div></section>`;
+}
+
+async function governanceSaveFriendPolicy(personaId){
+  const{error}=await sb.rpc("set_persona_friend_policy",{p_persona_id:personaId,p_request_mode:document.getElementById("govFriendMode")?.value||"open",p_daily_request_limit:Number(document.getElementById("govFriendDaily")?.value||20),p_pending_request_limit:Number(document.getElementById("govFriendPending")?.value||100),p_note:document.getElementById("govFriendNote")?.value||""});if(error){toast(error.message);return}toast("Friend policy saved");go("persona-settings/"+personaId);
+}
+
+async function governanceIssueInvite(personaId){
+  const owner=session?.user?.id,epoch=renderEpoch;if(!owner)return;
+  if(!await governanceRequireSensitive("issue a private friendship invite"))return;
+  const currentMode=document.getElementById("govFriendMode")?.value||"open",daily=Number(document.getElementById("govFriendDaily")?.value||20),pending=Number(document.getElementById("govFriendPending")?.value||100),note=document.getElementById("govFriendNote")?.value||"";
+  if(currentMode!=="invite_proof"){
+    if(!confirm("Switch this persona to owner-invite friendship requests before issuing the token?"))return;
+    const policy=await sb.rpc("set_persona_friend_policy",{p_persona_id:personaId,p_request_mode:"invite_proof",p_daily_request_limit:daily,p_pending_request_limit:pending,p_note:note});
+    if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+    if(policy.error){toast(policy.error.message);return}
+    const mode=document.getElementById("govFriendMode");if(mode)mode.value="invite_proof";
+  }
+  const expires=new Date(Date.now()+30*24*60*60*1000).toISOString(),{data,error}=await sb.rpc("issue_persona_friend_invite",{p_target_persona_id:personaId,p_label:"Owner-issued profile invite",p_max_uses:1,p_expires_at:expires});
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  if(error){toast(error.message);return}
+  const output=document.getElementById("govInviteOutput"),inviteUrl=`${location.origin}${location.pathname}#/friend-invite/${personaId}`;
+  if(output){output.innerHTML=`<div class="gov-note warn"><b>Copy both items now; the one-time token cannot be read back later.</b><div class="gov-secret">${esc(data)}</div><div class="muted" style="overflow-wrap:anywhere">${esc(inviteUrl)}</div><div class="gov-actions" style="margin-top:7px"><button class="btn sec sm" id="govCopyInviteToken">Copy token</button><button class="btn sec sm" id="govCopyInviteLink">Copy private request link</button></div></div>`;const tokenButton=document.getElementById("govCopyInviteToken"),linkButton=document.getElementById("govCopyInviteLink");if(tokenButton)tokenButton.onclick=()=>copyText(data);if(linkButton)linkButton.onclick=()=>copyText(inviteUrl)}
+}
+async function governanceRevokeInvites(personaId){if(!confirm("Revoke every active friendship invite for this persona?"))return;if(!await governanceRequireSensitive("revoke private friendship invites"))return;const{data,error}=await sb.rpc("revoke_persona_friend_invites",{p_target_persona_id:personaId});if(error){toast(error.message);return}toast(`${Number(data||0)} active invite${Number(data||0)===1?"":"s"} revoked`)}
+
+function governanceExtensionRows(){
+  return (governanceState.extensions||[]).map(item=>{const deletable=["draft","withdrawn","rejected"].includes(item.status);return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc(item.title)}</b><div class="muted">${esc(item.source_type)} · permissions: ${esc((item.requested_permissions||[]).join(", ")||"none")}</div></div><span class="gov-state ${esc(item.status)}">${esc(item.status)}</span></div>${item.review_notes?`<div class="gov-note">${esc(item.review_notes)}</div>`:""}<div class="gov-row-actions">${item.status==="draft"?`<button class="btn sm" onclick="governanceSubmitExtension('${item.id}')">Review &amp; submit</button>`:""}${item.status==="submitted"?`<button class="btn sec sm" onclick="governanceWithdrawExtension('${item.id}')">Withdraw</button>`:""}${deletable?`<button class="btn danger sm" onclick="governanceDeleteExtension('${item.id}')">Delete</button>`:""}</div></div>`}).join("")||'<p class="muted">No custom extension submissions.</p>';
+}
+
+async function governanceSaveExtension(personaId){
+  const title=document.getElementById("govExtTitle")?.value.trim()||"",sourceType=document.getElementById("govExtType")?.value||"component_json",source=document.getElementById("govExtSource")?.value||"";const{error}=await sb.rpc("create_extension_submission",{p_persona_id:personaId,p_title:title,p_source_type:sourceType,p_source_code:source,p_requested_permissions:["none"]});if(error){toast(error.message);return}toast("Extension saved as inert review draft");go("persona-settings/"+personaId);
+}
+
+async function governanceSubmitExtension(id){
+  const item=(governanceState.extensions||[]).find(row=>row.id===id);if(!item||!confirm(`Submit “${item.title}” for staff security review? Source stays inert and cannot execute on a public page.`))return;if(!await governanceRequireSensitive("submit extension source for staff security review"))return;const{error}=await sb.rpc("submit_extension_for_review",{p_submission_id:id});if(error){toast(error.message);return}toast("Extension submitted for review");go("persona-settings/"+governanceState.personaId);
+}
+async function governanceWithdrawExtension(id){if(!confirm("Withdraw this extension from the staff queue?"))return;if(!await governanceRequireSensitive("withdraw this extension submission"))return;const{error}=await sb.rpc("withdraw_extension_submission",{p_submission_id:id});if(error){toast(error.message);return}toast("Extension submission withdrawn");go("persona-settings/"+governanceState.personaId)}
+async function governanceDeleteExtension(id){if(!confirm("Permanently delete this eligible inert extension source?"))return;if(!await governanceRequireSensitive("delete this extension submission"))return;const{error}=await sb.rpc("delete_extension_submission",{p_submission_id:id});if(error){toast(error.message);return}toast("Extension submission deleted");go("persona-settings/"+governanceState.personaId)}
+
+function governanceOrganizationCard(){
+  if(!governanceState.capabilities.organization)return `<section class="gov-card"><h3>Family, projects, and businesses</h3><div class="gov-note warn">Migration 049 is not available in this environment. No organization relationship was changed.</div></section>`;
+  const byId=new Map((myPersonas||[]).map(persona=>[persona.id,persona])),persona=governancePersona();
+  const relations=(governanceState.relationships||[]).map(row=>{const other=byId.get(row.relative_persona_id),direction=row.relationship_label||"relative",shared=Number(row.shared_parent_count||0);return `<div class="gov-relation"><b>${esc(direction.replaceAll("_"," "))}</b><span>${esc(other?.name||"Private persona")}${direction==="sibling"&&shared?` · ${shared===2?"full":"half"} sibling`:""}</span><span class="muted">${esc(row.canon_status||"working")} · ${esc((row.visibility||"owner_only").replaceAll("_"," "))}</span></div>`}).join("")||'<p class="muted">No family relationship rows.</p>';
+  const projects=(governanceState.projects||[]).map(row=>`<div class="gov-row"><b>${esc(row.persona_projects?.name||"Project")}</b><div class="muted">${esc(row.role||"member")}${row.role==="manager"?" · project manager":""}</div></div>`).join("")||'<p class="muted">No project membership.</p>';
+  const businesses=(governanceState.businesses||[]).map(row=>`<div class="gov-row"><b>${esc(row.businesses?.display_name||"Business")}</b><div class="muted">${esc(row.public_title||"No public title")} · ${esc((row.membership_visibility||"owner_only").replaceAll("_"," "))}</div></div>`).join("")||'<p class="muted">No business membership.</p>';
+  return `<section class="gov-card gov-wide"><div class="gov-row-head"><h3>Family, projects, and businesses</h3><button class="btn sec sm" onclick="go('business-settings')">Manage business drafts</button></div><div class="gov-grid"><div><h4>Family</h4><div class="gov-family-tree">${relations}</div></div><div><h4>Projects</h4>${projects}<h4>Businesses</h4>${businesses}</div></div><p class="muted" style="margin-top:8px">Family canon and public business titles are data, not authorization. WAIS project-manager metadata does not grant provider, account, or database privileges.</p></section>`;
+}
+
+function governanceSecurityCard(){
+  const state=governanceState.security||{},roles=(governanceState.roles||[]).filter(role=>role.active&&(!role.expires_at||Date.parse(role.expires_at)>Date.now())).map(role=>role.role_key.replaceAll("_"," ")).join(", ")||"No current platform staff role";
+  return `<section class="gov-card"><h3>Account and platform security</h3><div class="gov-security-grid"><div class="gov-security-stat"><b>${Number(state.password_failed_count||0)}</b><span>Password failures in active window</span></div><div class="gov-security-stat"><b>${Number(state.mfa_failed_count||0)}</b><span>MFA failures in active window</span></div><div class="gov-security-stat"><b>${state.locked_until&&Date.parse(state.locked_until)>Date.now()?"Locked":"Clear"}</b><span>Progressive lock state</span></div></div><p class="muted" style="margin-top:8px">Role: ${esc(roles)}. Roles are account-level, service-assigned, and never granted by a persona or business title.</p><div class="gov-note warn">Database hooks, Auth audit storage, CAPTCHA/Turnstile, rate limits, notification email, log drains, and WAF enforcement each require a reviewed dashboard configuration. The source does not claim those production controls are active.</div></section>`;
+}
+
+function governanceProductById(id){return(governanceState.affiliateProducts||[]).find(product=>product.id===id)||null}
+
+function governanceReviewMailboxes(personaId){
+  const connected=new Set((myAccountConnections||[]).filter(row=>row.connection_state==="connected").map(row=>row.ledger_id));
+  return(myAccounts||[]).filter(account=>account.persona_id===personaId&&account.provider==="gmail"&&!account.suspended&&connected.has(account.id));
+}
+
+function governanceRevenueCard(persona){
+  if(!governanceState.capabilities.revenue)return `<section class="gov-card gov-wide"><h3>Offers and review requests</h3><div class="gov-note warn">Revenue migrations are not available in this environment. No product, affiliate, disclosure, or public review-request setting was changed.</div></section>`;
+  const settings=governanceState.revenueSettings||{},requestSettings=governanceState.productReviewSettings||{},products=governanceState.affiliateProducts||[],offers=governanceState.affiliateOffers||[],mailboxes=governanceReviewMailboxes(persona.id),currentMailbox=requestSettings.destination_ledger_id||"",productOptions=products.map(product=>`<option value="${esc(product.id)}">${esc(product.title)} · ${esc(product.status)}</option>`).join("");
+  const mailboxMissing=currentMailbox&&!mailboxes.some(account=>account.id===currentMailbox);
+  const productRows=products.map(product=>{const attached=offers.filter(offer=>offer.product_id===product.id).length,host=governanceReviewHost(product.affiliate_url)||"invalid or missing destination";return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc(product.title)}</b><div class="muted">${esc(product.merchant||"No merchant")} · ${esc(host)} · ${attached} offer${attached===1?"":"s"} on this persona</div></div><span class="gov-state ${product.status==="active"?"published":"draft"}">${esc(product.status)}</span></div><div class="gov-row-actions"><button class="btn sec sm" onclick="governanceEditProduct('${product.id}')">Edit</button><button class="btn danger sm" onclick="governanceDeleteProduct('${product.id}','${persona.id}')">Delete</button></div></div>`}).join("")||'<p class="muted">No affiliate products yet. New products start as private drafts unless you explicitly choose Active.</p>';
+  const offerRows=offers.map(offer=>{const product=governanceProductById(offer.product_id);return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc(product?.title||"Missing product")}</b><div class="muted">${esc(offer.placement||"general")} · priority ${Number(offer.priority||0)}${offer.cta_label?` · ${esc(offer.cta_label)}`:""}</div></div><span class="gov-state ${offer.status==="active"?"published":"draft"}">${esc(offer.status)}</span></div><div class="gov-row-actions"><button class="btn sec sm" onclick="governanceEditOffer('${offer.id}')">Edit</button><button class="btn danger sm" onclick="governanceDeleteOffer('${offer.id}','${persona.id}')">Remove</button></div></div>`}).join("")||'<p class="muted">No products are attached to this persona.</p>';
+  return `<section class="gov-card gov-wide"><h3>Revenue presentation</h3><div class="gov-note warn"><b>Every change returns the persona page to draft.</b> A public affiliate link appears only after the exact disclosure, product, destination, offer, and page revision are reviewed and published again.</div><div class="row"><label style="display:flex;gap:8px;align-items:center"><input id="govAffiliateEnabled" type="checkbox" ${settings.affiliate_enabled?"checked":""} style="width:auto"> Show reviewed affiliate offers</label><label style="display:flex;gap:8px;align-items:center"><input id="govReviewRequestsWanted" type="checkbox" ${settings.review_requests_enabled?"checked":""} style="width:auto"> Allow a reviewed Request Review CTA when intake is operational</label></div><label>Default affiliate disclosure</label><textarea id="govRevenueDisclosure" maxlength="2000">${esc(settings.default_disclosure||"As an affiliate, this persona may earn a commission from qualifying purchases at no extra cost to you.")}</textarea><div class="row"><div><label>Default offer button</label><input id="govRevenueCta" maxlength="200" value="${esc(settings.cta_label||"Get it here")}"></div><div><label>Review-request button</label><input id="govReviewCta" maxlength="200" value="${esc(settings.review_cta_label||"Request a review")}"></div></div><button class="btn sec" onclick="governanceSaveRevenueSettings('${persona.id}')">Save revenue presentation</button><hr style="border:0;border-top:1px solid var(--border);margin:18px 0"><h4>Secure review-request mailbox</h4><p class="muted">This setting is separate from the page preference above. Public intake remains hidden until a connected persona Gmail mailbox, CAPTCHA/HMAC secrets, the service notification worker, global intake gate, and a reviewed page revision are all operational.</p><div class="row"><label style="display:flex;gap:8px;align-items:center"><input id="govReviewIntakeEnabled" type="checkbox" ${requestSettings.enabled?"checked":""} style="width:auto"> Enable hardened intake for this persona</label><div><label>Connected persona Gmail destination</label><select id="govReviewMailbox"><option value="">Choose a connected mailbox</option>${mailboxes.map(account=>`<option value="${esc(account.id)}" ${account.id===currentMailbox?"selected":""}>${esc(account.login_email||account.username||"Connected Gmail")}</option>`).join("")}${mailboxMissing?`<option value="${esc(currentMailbox)}" selected>Configured mailbox needs reconnection</option>`:""}</select></div></div><button class="btn sec" onclick="governanceConfigureReviewIntake('${persona.id}')">Save secure intake</button>${!mailboxes.length?'<div class="gov-note warn">No connected, nonsuspended Gmail ledger is directly assigned to this persona. Connect and assign it in Matrix → Accounts before enabling intake.</div>':""}</section>
+  <section class="gov-card gov-wide"><h3>Affiliate product library</h3><p class="muted">Store only owner-approved HTTPS destinations. Tracking links may contain private commercial identifiers, so the review packet exposes only the destination host. Never paste provider credentials or payment secrets here.</p><input id="govProductId" type="hidden"><div class="row"><div><label>Product title</label><input id="govProductTitle" maxlength="500"></div><div><label>Merchant</label><input id="govProductMerchant" maxlength="500"></div></div><div class="row"><div><label>Affiliate destination (required HTTPS)</label><input id="govProductAffiliateUrl" type="url" maxlength="2048" placeholder="https://merchant.example/affiliate-link"></div><div><label>Canonical product page (HTTPS)</label><input id="govProductUrl" type="url" maxlength="2048"></div></div><div class="row"><div><label>Reviewed product image (HTTPS)</label><input id="govProductImage" type="url" maxlength="2048"></div><div><label>Category</label><input id="govProductCategory" maxlength="200"></div></div><label>Product-specific disclosure (optional)</label><textarea id="govProductDisclosure" maxlength="2000"></textarea><div class="row"><div><label>Price note (non-guaranteed)</label><input id="govProductPrice" maxlength="500"></div><div><label>Tags (comma separated, maximum 50)</label><input id="govProductTags" maxlength="5000"></div></div><label>Status</label><select id="govProductStatus"><option value="draft">Draft</option><option value="active">Active after page review</option><option value="paused">Paused</option><option value="archived">Archived</option></select><div class="gov-actions"><button class="btn sec" onclick="governanceSaveProduct('${persona.id}')">Save product</button><button class="btn sec" onclick="governanceClearProductForm()">Clear form</button></div><div class="gov-list">${productRows}</div></section>
+  <section class="gov-card gov-wide"><h3>Products attached to ${esc(persona.name)}</h3><p class="muted">Both the product and its offer must be Active, affiliate presentation must be enabled, and the exact current page revision must be reviewed before a public redirect can resolve.</p><input id="govOfferId" type="hidden"><div class="row"><div><label>Product</label><select id="govOfferProduct"><option value="">Choose a product</option>${productOptions}</select></div><div><label>Placement</label><select id="govOfferPlacement"><option value="general">General</option><option value="bio">Bio</option><option value="pinned_post">Pinned post</option><option value="review_cta">Review CTA</option><option value="album">Album</option></select></div></div><div class="row"><div><label>Button label</label><input id="govOfferCta" maxlength="200"></div><div><label>Priority</label><input id="govOfferPriority" type="number" min="-10000" max="10000" value="50"></div></div><label>Status</label><select id="govOfferStatus"><option value="active">Active after page review</option><option value="paused">Paused</option><option value="inactive">Inactive</option></select><div class="gov-actions"><button class="btn sec" ${products.length?"":"disabled"} onclick="governanceSaveOffer('${persona.id}')">Save persona offer</button><button class="btn sec" onclick="governanceClearOfferForm()">Clear form</button></div><div class="gov-list">${offerRows}</div></section>`;
+}
+
+function governanceReviewTransitions(status){return({request_received:["triaged","declined"],triaged:["owner_testing","declined"],owner_testing:["evidence_ready","declined"],evidence_ready:["owner_testing","persona_draft","declined"],persona_draft:["evidence_ready","owner_approved","declined"],owner_approved:["persona_draft","corrected_or_withdrawn"],published:["corrected_or_withdrawn"],declined:["corrected_or_withdrawn"]}[status]||[])}
+function governanceReviewInboxCard(persona){
+  if(!governanceState.capabilities.reviewInbox)return `<section class="gov-card gov-wide"><h3>Review request inbox</h3><div class="gov-note warn">The private request/evidence schema is not available in this environment. No message or status is presented as delivered.</div></section>`;
+  const requests=governanceState.productReviewRequests||[],events=governanceState.productReviewEvents||[],evidence=new Map((governanceState.productReviewEvidence||[]).map(row=>[row.request_id,row]));
+  const rows=requests.map(request=>{const delivery=evidence.get(request.id),requestEvents=events.filter(event=>event.request_id===request.id),next=governanceReviewTransitions(request.status),productUrl=safeHttpUrl(request.product_url),hasPii=!!(request.requester_email||request.requester_name||request.reason),attempts=Number(delivery?.attempt_count||0),deliveryText=!delivery?"No notification evidence":delivery.notification_status==="sent"?(delivery.provider_message_recorded?`Provider accepted send · ${attempts} attempt${attempts===1?"":"s"}`:`Marked sent; provider evidence missing · ${attempts} attempt${attempts===1?"":"s"}`):`${String(delivery.notification_status||"unknown").replaceAll("_"," ")} · ${attempts} attempt${attempts===1?"":"s"}`;return `<div class="gov-row"><div class="gov-row-head"><div><b>${esc(request.product_name)}</b><div class="muted">Received ${esc(new Date(request.created_at).toLocaleString())} · ${esc(deliveryText)} · ${requestEvents.length} audit event${requestEvents.length===1?"":"s"}</div></div><span class="gov-state ${esc(request.status)}">${esc(request.status.replaceAll("_"," "))}</span></div>${request.requester_name||request.requester_email?`<div><b>Requester:</b> ${esc(request.requester_name||"Name withheld")}${request.requester_email?` · ${esc(request.requester_email)}`:""}</div>`:""}<div class="muted">Reply consent: ${request.consent_to_reply?"yes":"no"} · marketing consent: ${request.marketing_consent?"yes":"no"} · retention target ${esc(new Date(request.retention_expires_at).toLocaleDateString())}; production purge schedule must be verified</div>${request.reason?`<p style="white-space:pre-wrap;margin-top:7px">${esc(request.reason)}</p>`:""}${productUrl?`<a href="${esc(productUrl)}" target="_blank" rel="noopener noreferrer">Open submitted product page</a>`:request.product_url?'<div class="gov-note stop">Submitted product URL is not safe to open.</div>':""}<div class="row"><div><label>Workflow status</label><select id="govReviewRequestStatus_${request.id}" ${next.length?"":"disabled"}><option value="${esc(request.status)}">${esc(request.status.replaceAll("_"," "))} (current)</option>${next.map(value=>`<option value="${value}">${esc(value.replaceAll("_"," "))}</option>`).join("")}</select></div></div><div class="gov-row-actions">${next.length?`<button class="btn sec sm" onclick="governanceSaveReviewRequestStatus('${request.id}','${persona.id}')">Save status</button>`:""}${hasPii?`<button class="btn danger sm" onclick="governanceEraseReviewRequestPii('${request.id}','${persona.id}')">Erase requester PII</button>`:""}</div>${delivery?.last_error_code?`<div class="gov-note warn">Notification evidence: ${esc(delivery.last_error_code)}</div>`:""}</div>`}).join("");
+  return `<section class="gov-card gov-wide"><h3>Review request inbox</h3><p class="muted">This private queue separates receipt, notification evidence, owner research, persona drafting, approval, and publication. A queued notification is not a sent email; “provider accepted send” is not proof of inbox delivery. Owner-approved does not publish anything.</p><div class="gov-list">${rows||'<p class="muted">No review requests have been accepted for this persona.</p>'}</div></section>`;
+}
+
+async function governanceSaveReviewRequestStatus(requestId,personaId){const select=document.getElementById("govReviewRequestStatus_"+requestId),status=select?.value||"";if(!status)return;if(!await governanceRequireSensitive("change this private review request workflow"))return;const{error}=await sb.rpc("update_product_review_request_status",{p_request_id:requestId,p_status:status});if(error){toast(error.message);return}toast("Review request status recorded; no content was published");go("persona-settings/"+personaId)}
+async function governanceEraseReviewRequestPii(requestId,personaId){if(!confirm("Erase this requester's email, name, reason, and consents now? Pending notification work will be cancelled. This cannot be undone."))return;if(!await governanceRequireSensitive("erase review request personal data"))return;const{error}=await sb.rpc("erase_product_review_request_pii",{p_request_id:requestId});if(error){toast(error.message);return}toast("Requester PII erased and pending notification cancelled");go("persona-settings/"+personaId)}
+
+async function governanceRequireSensitive(action){return typeof requireAal2ForSensitiveAction!=="function"||await requireAal2ForSensitiveAction(action)}
+
+async function governanceSaveRevenueSettings(personaId){
+  if(!await governanceRequireSensitive("change revenue and disclosure settings"))return;
+  const settings={affiliate_enabled:!!document.getElementById("govAffiliateEnabled")?.checked,review_requests_enabled:!!document.getElementById("govReviewRequestsWanted")?.checked,default_disclosure:document.getElementById("govRevenueDisclosure")?.value||"",cta_label:document.getElementById("govRevenueCta")?.value.trim()||"Get it here",review_cta_label:document.getElementById("govReviewCta")?.value.trim()||"Request a review"};
+  const{error}=await sb.rpc("save_persona_revenue_settings",{p_persona_id:personaId,p_settings:settings});if(error){toast(error.message);return}await loadMine();toast("Revenue presentation saved; page returned to draft for review");go("persona-settings/"+personaId);
+}
+
+async function governanceConfigureReviewIntake(personaId){
+  const enabled=!!document.getElementById("govReviewIntakeEnabled")?.checked,ledgerId=document.getElementById("govReviewMailbox")?.value||"";
+  if(enabled&&!governanceReviewMailboxes(personaId).some(account=>account.id===ledgerId)){toast("Choose a connected persona Gmail mailbox before enabling intake");return}
+  if(!await governanceRequireSensitive("configure the public review-request mailbox"))return;
+  const{error}=await sb.rpc("configure_product_review",{p_persona_id:personaId,p_enabled:enabled,p_destination_ledger_id:enabled?ledgerId:null});if(error){toast(error.message);return}await loadMine();toast(enabled?"Secure mailbox selected; public intake still requires the global release gates":"Review-request intake disabled");go("persona-settings/"+personaId);
+}
+
+function governanceHttpsValue(id,label,required=false){
+  const value=document.getElementById(id)?.value.trim()||"";if(!value&&!required)return"";try{const parsed=new URL(value);if(parsed.protocol!=="https:"||parsed.username||parsed.password)throw new Error();return parsed.href}catch(error){toast(`${label} must be a credential-free HTTPS URL`);return null}
+}
+
+async function governanceSaveProduct(personaId){
+  const id=document.getElementById("govProductId")?.value||null,title=document.getElementById("govProductTitle")?.value.trim()||"",affiliateUrl=governanceHttpsValue("govProductAffiliateUrl","Affiliate destination",true),productUrl=governanceHttpsValue("govProductUrl","Product page"),imageUrl=governanceHttpsValue("govProductImage","Product image");if(affiliateUrl===null||productUrl===null||imageUrl===null)return;if(!title){toast("Product title is required");return}
+  const tags=(document.getElementById("govProductTags")?.value||"").split(",").map(value=>value.trim()).filter(Boolean);if(tags.length>50){toast("Use at most 50 product tags");return}if(!await governanceRequireSensitive(id?"edit an affiliate product":"create an affiliate product"))return;
+  const product={title,merchant:document.getElementById("govProductMerchant")?.value.trim()||"",affiliate_url:affiliateUrl,product_url:productUrl,image_url:imageUrl,category:document.getElementById("govProductCategory")?.value.trim()||"",disclosure:document.getElementById("govProductDisclosure")?.value||"",price_note:document.getElementById("govProductPrice")?.value.trim()||"",tags,status:document.getElementById("govProductStatus")?.value||"draft",metadata:{source:"owner_settings"}};
+  const{error}=await sb.rpc("save_affiliate_product",{p_product_id:id,p_product:product});if(error){toast(error.message);return}await loadMine();toast("Product saved; every attached persona page returned to draft");go("persona-settings/"+personaId);
+}
+
+function governanceEditProduct(id){
+  const product=governanceProductById(id);if(!product)return;const values={govProductId:product.id,govProductTitle:product.title,govProductMerchant:product.merchant,govProductAffiliateUrl:product.affiliate_url,govProductUrl:product.product_url,govProductImage:product.image_url,govProductCategory:product.category,govProductDisclosure:product.disclosure,govProductPrice:product.price_note,govProductTags:(product.tags||[]).join(", "),govProductStatus:product.status};for(const[field,value]of Object.entries(values)){const input=document.getElementById(field);if(input)input.value=value||""}document.getElementById("govProductTitle")?.focus();
+}
+
+function governanceClearProductForm(){for(const id of["govProductId","govProductTitle","govProductMerchant","govProductAffiliateUrl","govProductUrl","govProductImage","govProductCategory","govProductDisclosure","govProductPrice","govProductTags"]){const input=document.getElementById(id);if(input)input.value=""}const status=document.getElementById("govProductStatus");if(status)status.value="draft"}
+
+async function governanceDeleteProduct(id,personaId){
+  const product=governanceProductById(id);if(!product||!confirm(`Permanently delete “${product.title}” and remove every persona offer attached to it? Published pages will return to draft. This cannot be undone.`))return;if(!await governanceRequireSensitive("delete an affiliate product and its persona offers"))return;const{error}=await sb.rpc("delete_affiliate_product",{p_product_id:id});if(error){toast(error.message);return}await loadMine();toast("Product and attached offers deleted");go("persona-settings/"+personaId);
+}
+
+async function governanceSaveOffer(personaId){
+  const id=document.getElementById("govOfferId")?.value||null,productId=document.getElementById("govOfferProduct")?.value||"";if(!productId){toast("Choose a product");return}if(!await governanceRequireSensitive(id?"edit a persona affiliate offer":"attach an affiliate offer to a persona"))return;
+  const offer={placement:document.getElementById("govOfferPlacement")?.value||"general",priority:Number(document.getElementById("govOfferPriority")?.value||50),cta_label:document.getElementById("govOfferCta")?.value.trim()||"",status:document.getElementById("govOfferStatus")?.value||"active"};const{error}=await sb.rpc("save_persona_affiliate_offer",{p_offer_id:id,p_persona_id:personaId,p_product_id:productId,p_offer:offer});if(error){toast(error.message);return}await loadMine();toast("Persona offer saved; page returned to draft for review");go("persona-settings/"+personaId);
+}
+
+function governanceEditOffer(id){const offer=(governanceState.affiliateOffers||[]).find(row=>row.id===id);if(!offer)return;const values={govOfferId:offer.id,govOfferProduct:offer.product_id,govOfferPlacement:offer.placement,govOfferPriority:offer.priority,govOfferCta:offer.cta_label,govOfferStatus:offer.status};for(const[field,value]of Object.entries(values)){const input=document.getElementById(field);if(input)input.value=value??""}document.getElementById("govOfferProduct")?.focus()}
+function governanceClearOfferForm(){for(const id of["govOfferId","govOfferProduct","govOfferCta"]){const input=document.getElementById(id);if(input)input.value=""}const placement=document.getElementById("govOfferPlacement"),priority=document.getElementById("govOfferPriority"),status=document.getElementById("govOfferStatus");if(placement)placement.value="general";if(priority)priority.value="50";if(status)status.value="active"}
+async function governanceDeleteOffer(id,personaId){if(!confirm("Remove this product from the persona page? The page will return to draft and must be reviewed again."))return;if(!await governanceRequireSensitive("remove a persona affiliate offer"))return;const{error}=await sb.rpc("delete_persona_affiliate_offer",{p_offer_id:id});if(error){toast(error.message);return}await loadMine();toast("Persona offer removed");go("persona-settings/"+personaId)}
+
+async function renderPersonaSettings(id=""){
+  if(!session){renderSignin();return}if(!(myPersonas||[]).length){app.innerHTML='<div class="empty">Create a persona before opening settings.</div>';return}
+  const selected=governancePersona(id);app.innerHTML='<div class="empty">Loading persona settings…</div>';const result=await governanceLoad(selected?.id||"");if(result.cancelled)return;if(result.error){governanceSetupRequired(result.error.message);return}const persona=result.persona;
+  app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Owner-only persona controls</span><h2>Settings · ${esc(persona.name)}</h2></div><div class="gov-actions">${governancePicker("persona-settings",persona)}${governanceStateLabel(persona)}<button class="btn" onclick="go('review/${persona.id}')">Publication review</button><button class="btn sec" onclick="go('edit/${persona.id}')">Edit fields</button>${typeof openPersonaPageBuilder==="function"?`<button class="btn sec" onclick="openPersonaPageBuilder('${persona.id}')">Page builder</button>`:""}</div></section><div class="gov-grid"><section class="gov-card gov-wide"><h3>Authenticated accounts and feed sync</h3><p class="muted">Only accounts assigned to this persona appear here. Connection state and scopes are server-attested; a saved record is not presented as authenticated. Sync preferences do not activate an importer or publisher.</p><div class="gov-list">${governanceAccountRows(persona)}</div></section>${governanceFriendCard(persona)}${governanceSecurityCard()}${governanceOrganizationCard()}${governanceRevenueCard(persona)}${governanceReviewInboxCard(persona)}<section class="gov-card gov-wide"><h3>Custom widgets and extensions</h3><div class="gov-note stop"><b>Uploaded source is inert.</b> It cannot run until staff review, sandboxed build, permission review, CSP validation, and a signed release. Public pages never eval stored source.</div><div class="row"><div><label>Extension title</label><input id="govExtTitle" maxlength="200"></div><div><label>Learning / source format</label><select id="govExtType"><option value="component_json">Safe component JSON</option><option value="html_css">HTML + CSS lesson</option><option value="typescript">TypeScript lesson</option></select></div></div><label>Source</label><textarea id="govExtSource" class="gov-source" maxlength="100000" placeholder="Describe a component or paste code for review. Do not include secrets, tokens, trackers, or third-party scripts."></textarea><button class="btn sec" onclick="governanceSaveExtension('${persona.id}')">Save inert draft</button><div class="gov-list">${governanceExtensionRows()}</div></section></div></div>`;
+}
+
+async function requestPersonaFollow(targetId){
+  return personaModeFollow(targetId,false);
+}
+
+async function requestPersonaFriendship(targetId){
+  return personaModeRequestFriend(targetId);
+}
+
+function governanceFriendInvitePersonas(){const eligible=publicInteractionPersonas();if(typeof ownerAppIsPersonaMode==="function"&&ownerAppIsPersonaMode()){const actor=ownerAppPersonaModeActor();return actor&&eligible.some(persona=>persona.id===actor.id)?[actor]:[]}return eligible}
+function renderFriendInvite(targetId=""){
+  if(!session){renderSignin();return}
+  if(!/^[0-9a-f-]{36}$/i.test(targetId)){app.innerHTML='<div class="empty">This friend invitation link is invalid.</div>';return}
+  const eligible=governanceFriendInvitePersonas(),personaMode=typeof ownerAppIsPersonaMode==="function"&&ownerAppIsPersonaMode();app.innerHTML=`<div class="gov-shell"><section class="gov-card"><span class="muted">Private friendship invitation</span><h2>Request friendship without exposing a private profile</h2><p class="muted">${personaMode?"Persona view is active, so this request can only be sent as the selected acting persona.":"Choose a current published public or unlisted persona."} Paste the owner-issued one-time token. The token is sent only to the database verifier and is not stored in this browser.</p>${eligible.length?`<label>Your persona</label><select id="govPrivateInviteFollower" ${personaMode?"disabled":""}>${eligible.map(persona=>`<option value="${persona.id}">${esc(persona.name)} · @${esc(persona.handle)}</option>`).join("")}</select><label>One-time invite token</label><input id="govPrivateInviteToken" autocomplete="off" spellcheck="false"><button class="btn" onclick="governanceRedeemFriendInvite('${targetId}')">Send friend request</button>`:'<div class="gov-note stop"><b>No eligible acting persona.</b> Review and publish a current public or unlisted persona before sending an identity-bearing friend request.</div>'}</section></div>`;
+}
+
+async function governanceRedeemFriendInvite(targetId){
+  const follower=document.getElementById("govPrivateInviteFollower")?.value||"",input=document.getElementById("govPrivateInviteToken");let token=input?.value.trim()||"";const persona=governanceFriendInvitePersonas().find(row=>row.id===follower);if(!persona||!token){toast("Choose an eligible persona and enter the one-time token");return}const actor={id:follower,persona,snapshot:ownerAppPerspectiveSnapshot(follower)},epoch=renderEpoch;if(!socialActionSnapshotCurrent(actor))return;const{data,error}=await sb.rpc("persona_mode_request_friendship",{p_actor_persona_id:follower,p_target_persona_id:targetId,p_invite_token:token});token="";if(input)input.value="";if(!socialActionSnapshotCurrent(actor)||renderEpoch!==epoch)return;if(error){toast(error.message);return}toast(data?.message||"Friend request could not be completed");if(data?.ok){await loadMine(actor.snapshot.uid,actor.snapshot.authGeneration);if(session?.user?.id!==actor.snapshot.uid||authLoadGeneration!==actor.snapshot.authGeneration)return;go("")}
+}
+
+async function renderBusinessPage(slug=""){
+  app.innerHTML='<div class="empty">Loading business page…</div>';const result=await sb.rpc("business_page_by_slug",{p_slug:slug});if(result.error){app.innerHTML=`<div class="empty">Business pages are not available in this environment.</div>`;return}const business=result.data?.[0];if(!business){app.innerHTML='<div class="empty">This business page is not published or does not exist.</div>';return}if(typeof setMeta==="function")setMeta(`${business.display_name} — AliaSpaces`,business.short_bio||business.mission||"Business profile on AliaSpaces");const items=Array.isArray(business.mission_items)?business.mission_items:[],personas=Array.isArray(business.personas)?business.personas:[];app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Business profile</span><h2>${esc(business.display_name)}</h2><p>${esc(business.short_bio||"")}</p></div></section><div class="gov-grid"><section class="gov-card gov-wide"><h3>Mission</h3><p style="white-space:pre-wrap">${esc(business.mission||"Mission statement pending.")}</p></section>${items.map(item=>`<section class="gov-card"><h3>${esc(item.title)}</h3><p style="white-space:pre-wrap">${esc(item.body||"")}</p></section>`).join("")}<section class="gov-card gov-wide"><h3>People and personas</h3><div class="pgrid">${personas.map(persona=>`<button class="pcard" style="text-align:left" onclick="go('p/${esc(persona.handle)}')"><div class="pb"><div class="av" style="${safeBgStyle(persona.avatar_url)}"></div><b>${esc(persona.name)}</b><div class="muted">${esc(persona.title||"@"+persona.handle)}</div></div></button>`).join("")||'<p class="muted">No public persona memberships.</p>'}</div></section></div></div>`;
+}
+
+function governanceBusinessReviewCard(business,review,readiness,available){
+  if(!available)return `<section class="gov-card gov-wide"><h3>Publication review</h3><div class="gov-note stop"><b>Migration 052 is required.</b> This business remains an owner-only draft. No direct publication control is available.</div></section>`;
+  const checks=Array.isArray(readiness?.checks)?readiness.checks:[],state=readiness?.review_state||review?.review_state||"draft",storedPublished=business.page_status==="published",published=storedPublished&&readiness?.publication_current===true,drifted=storedPublished&&!published,ready=state==="ready"&&Number(readiness?.required_missing||0)===0&&readiness?.review_manifest_current===true;
+  const lifecycleNotice=published?'<div class="gov-note"><b>This exact revision is published and currently public.</b> Editing public business content requires two-factor verification and immediately returns the page to a private draft.</div>':drifted?'<div class="gov-note stop"><b>The stored lifecycle says published, but exact review drift is keeping the public page offline.</b> Unpublish it, resolve the changed persona/content projection, then run a fresh review.</div>':`<label>Page intention</label><textarea id="govBusinessIntention" maxlength="12000" placeholder="What should this business page accomplish?">${esc(review?.intention||"")}</textarea><label>Owner review notes (private)</label><textarea id="govBusinessReviewNotes" maxlength="12000">${esc(review?.owner_review_notes||"")}</textarea>`;
+  return `<section class="gov-card gov-wide"><div class="gov-row-head"><div><h3>Exact business publication review</h3><p class="muted">Review the public bio, mission pieces, visibility choices, titles, and current persona-card projection. A ready review never publishes automatically.</p></div><span class="gov-state ${esc(state)}">${esc(state.replace(/_/g," "))}</span></div>${lifecycleNotice}<div class="gov-list">${checks.map(check=>`<div class="gov-row"><b>${check.ok?"✓":"○"} ${esc(check.label||check.key||"Check")}</b><span class="muted">${check.required?"required":"optional"}</span></div>`).join("")||'<p class="muted">Save an intention and run the exact review to see readiness checks.</p>'}</div><div class="gov-actions">${storedPublished?`<button class="btn danger" onclick="governanceUnpublishBusiness('${business.id}')">Unpublish with 2FA</button>${published?`<button class="btn sec" onclick="go('b/${esc(business.slug)}')">View public page</button>`:""}`:`<button class="btn sec" onclick="governanceSaveBusinessReview('${business.id}')">Save review draft</button><button class="btn sec" onclick="governanceCopyBusinessReview('${business.id}')">Copy public-intended AI review packet</button><button class="btn" onclick="governanceSubmitBusinessReview('${business.id}')">Run exact review with 2FA</button>${ready?`<button class="btn" onclick="governancePublishBusiness('${business.id}')">Publish reviewed revision</button>`:""}`}</div>${!storedPublished?'<p class="muted">The AI packet omits nonpublic mission items/memberships, persona IDs, asset URLs, and private notes. It includes your intention, so inspect it before sharing with another service.</p>':""}</section>`;
+}
+
+async function renderBusinessSettings(id=""){
+  if(!session){renderSignin();return}
+  const owner=session.user.id,epoch=renderEpoch;
+  app.innerHTML='<div class="empty">Loading business drafts…</div>';
+  const businesses=await governanceMaybe("businesses",q=>q.select("*").order("display_name"));
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  if(businesses.error){governanceSetupRequired("Migration 049 has not been applied. No business setting was changed.");return}
+  const selected=(businesses.data||[]).find(row=>row.id===id)||(businesses.data||[])[0]||null;
+  if(!selected){app.innerHTML='<div class="gov-shell"><section class="gov-card"><h2>No business draft exists</h2><p class="muted">Create an owner-private business mission page, then complete its exact review before choosing to publish it.</p><button class="btn" onclick="governanceCreateBusinessDraft()">Create private business draft</button></section></div>';return}
+  const[items,members,reviews,readinessResult]=await Promise.all([
+    governanceMaybe("business_mission_items",q=>q.select("*").eq("business_id",selected.id).order("sort_order")),
+    governanceMaybe("business_persona_memberships",q=>q.select("*").eq("business_id",selected.id).order("sort_order")),
+    governanceMaybe("business_publication_reviews",q=>q.select("*").eq("business_id",selected.id).limit(1)),
+    sb.rpc("business_publication_readiness",{p_business_id:selected.id})
+  ]);
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  const reviewAvailable=!reviews.error&&!readinessResult.error,review=reviews.data?.[0]||null,readiness=readinessResult.data||null;
+  governanceState={...governanceState,businessReviewBusinessId:selected.id,businessReviewReadiness:readiness};
+  const memberByPersona=new Map((members.data||[]).map(row=>[row.persona_id,row]));
+  const exactPublished=selected.page_status==="published"&&readiness?.publication_current===true,headerState=exactPublished?"Published business":selected.page_status==="published"?"Published record · public gate offline":"Business draft";
+  app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Owner-only business workspace</span><h2>${headerState} · ${esc(selected.display_name)}</h2></div><div class="gov-actions"><select onchange="go('business-settings/'+this.value)">${(businesses.data||[]).map(row=>`<option value="${row.id}" ${row.id===selected.id?"selected":""}>${esc(row.display_name)}</option>`).join("")}</select><button class="btn sec" onclick="governanceCreateBusinessDraft()">New business</button><button class="btn sec" onclick="go('persona-settings')">Persona settings</button>${exactPublished?`<button class="btn sec" onclick="go('b/${esc(selected.slug)}')">View public page</button>`:""}</div></section><div class="gov-grid"><section class="gov-card gov-wide"><h3>Bio and mission</h3><div class="row"><div><label>Display name</label><input id="govBusinessName" maxlength="160" value="${esc(selected.display_name)}"></div><div><label>Slug</label><input id="govBusinessSlug" maxlength="80" value="${esc(selected.slug)}"></div></div><label>Short bio</label><textarea id="govBusinessBio" maxlength="4000">${esc(selected.short_bio||"")}</textarea><label>Mission</label><textarea id="govBusinessMission" maxlength="10000">${esc(selected.mission||"")}</textarea><div class="gov-note warn"><b>Saving public-facing changes invalidates the exact review.</b> A published page returns to an owner-only draft. Business roles and titles never grant permissions.</div><button class="btn" onclick="governanceSaveBusinessDraft('${selected.id}','${esc(selected.page_status)}')">Save as private draft</button></section>${governanceBusinessReviewCard(selected,review,readiness,reviewAvailable)}<section class="gov-card"><h3>Mission pieces</h3><div class="gov-list">${(items.data||[]).map(item=>`<div class="gov-row"><b>${esc(item.title)}</b><div class="muted">${esc(item.body||"")}</div><div class="gov-actions"><span class="gov-state">${esc(item.visibility)}</span><button class="btn danger sm" onclick="governanceDeleteMissionItem('${item.id}','${selected.id}','${esc(selected.page_status)}')">Remove</button></div></div>`).join("")||'<p class="muted">No mission pieces yet.</p>'}</div><label>Piece title</label><input id="govMissionTitle" maxlength="200"><label>How it supports the mission</label><textarea id="govMissionBody" maxlength="6000"></textarea><label>Visibility</label><select id="govMissionVisibility"><option value="owner_only">Owner only</option><option value="friends">Friends (withheld from public page)</option><option value="followers">Followers (withheld from public page)</option><option value="public">Public</option></select><button class="btn sec" onclick="governanceAddMissionItem('${selected.id}','${esc(selected.page_status)}')">Add mission piece</button></section><section class="gov-card"><h3>Persona titles</h3><p class="muted">Choose a persona, optional presentation title, and explicit visibility. This never grants account, staff, provider, or database authority.</p><label>Persona</label><select id="govBusinessPersona">${(myPersonas||[]).map(persona=>`<option value="${persona.id}">${esc(persona.name)}${memberByPersona.has(persona.id)?" · attached":""}</option>`).join("")}</select><div class="row"><div><label>Role</label><select id="govBusinessRole"><option value="member">Member</option><option value="representative">Representative</option><option value="creator">Creator</option><option value="manager">Manager</option></select></div><div><label>Public title</label><input id="govBusinessTitle" maxlength="120" placeholder="Spokesperson"></div></div><div class="row"><div><label>Membership visibility</label><select id="govBusinessMembershipVis"><option value="owner_only">Owner only</option><option value="friends">Friends</option><option value="followers">Followers</option><option value="public">Public</option></select></div><div><label>Title visibility</label><select id="govBusinessTitleVis"><option value="owner_only">Owner only</option><option value="friends">Friends</option><option value="followers">Followers</option><option value="public">Public</option></select></div></div><label style="display:flex;gap:8px;align-items:center"><input id="govBusinessEnabled" type="checkbox" checked style="width:auto"> Enable membership</label><button class="btn sec" onclick="governanceSetBusinessMembership('${selected.id}','${esc(selected.page_status)}')">Save membership</button><div class="gov-list">${(members.data||[]).map(row=>`<div class="gov-row"><b>${esc(governancePersona(row.persona_id)?.name||"Persona")}</b><div>${esc(row.public_title||"No public title")}</div><span class="muted">${esc(row.membership_role)} · ${row.enabled?"enabled":"disabled"} · ${esc(row.membership_visibility)} / title ${esc(row.title_visibility)}</span></div>`).join("")||'<p class="muted">No persona memberships.</p>'}</div></section></div></div>`;
+}
+
+async function governanceBusinessPublishedMutationCheck(currentStatus,action){if(currentStatus!=="published")return true;if(!confirm(`${action} will immediately return this published business page to an owner-only draft. Continue?`))return false;return governanceRequireSensitive(action)}
+async function governanceSaveBusinessDraft(id,currentStatus){if(!await governanceBusinessPublishedMutationCheck(currentStatus,"Save these business changes"))return;const name=document.getElementById("govBusinessName")?.value.trim()||"",slug=document.getElementById("govBusinessSlug")?.value.trim()||"",bio=document.getElementById("govBusinessBio")?.value||"",mission=document.getElementById("govBusinessMission")?.value||"";const{error}=await sb.rpc("save_business_draft",{p_business_id:id,p_slug:slug,p_display_name:name,p_short_bio:bio,p_mission:mission});if(error){toast(error.message);return}toast("Business saved as an owner-only draft; prior review is stale");go("business-settings/"+id)}
+async function governanceCreateBusinessDraft(){const name=prompt("Business display name");if(!name?.trim())return;const suggested=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,80),slug=prompt("Business page slug",suggested);if(!slug?.trim())return;const{data,error}=await sb.rpc("save_business_draft",{p_business_id:null,p_slug:slug.trim(),p_display_name:name.trim(),p_short_bio:"",p_mission:""});if(error){toast(error.message);return}toast("Private business draft created");go("business-settings/"+data)}
+async function governanceAddMissionItem(businessId,currentStatus){if(!await governanceBusinessPublishedMutationCheck(currentStatus,"Add this mission piece"))return;const title=document.getElementById("govMissionTitle")?.value.trim()||"",body=document.getElementById("govMissionBody")?.value||"",visibility=document.getElementById("govMissionVisibility")?.value||"owner_only";const{error}=await sb.rpc("save_business_mission_item_draft",{p_item_id:null,p_business_id:businessId,p_title:title,p_body:body,p_sort_order:0,p_enabled:true,p_visibility:visibility});if(error){toast(error.message);return}toast("Mission piece saved; exact review is now stale");go("business-settings/"+businessId)}
+async function governanceDeleteMissionItem(itemId,businessId,currentStatus){if(!confirm("Remove this mission piece?"))return;if(!await governanceBusinessPublishedMutationCheck(currentStatus,"Remove this mission piece"))return;const{error}=await sb.rpc("delete_business_mission_item_draft",{p_item_id:itemId});if(error){toast(error.message);return}toast("Mission piece removed; exact review is now stale");go("business-settings/"+businessId)}
+async function governanceSetBusinessMembership(businessId,currentStatus){if(!await governanceBusinessPublishedMutationCheck(currentStatus,"Change this business membership"))return;const personaId=document.getElementById("govBusinessPersona")?.value||"",role=document.getElementById("govBusinessRole")?.value||"member",title=document.getElementById("govBusinessTitle")?.value.trim()||"",membershipVisibility=document.getElementById("govBusinessMembershipVis")?.value||"owner_only",titleVisibility=document.getElementById("govBusinessTitleVis")?.value||"owner_only",enabled=!!document.getElementById("govBusinessEnabled")?.checked;const{error}=await sb.rpc("set_business_persona_membership_draft",{p_business_id:businessId,p_persona_id:personaId,p_membership_role:role,p_public_title:title,p_enabled:enabled,p_membership_visibility:membershipVisibility,p_title_visibility:titleVisibility,p_sort_order:0,p_remove:false});if(error){toast(error.message);return}toast("Business membership saved; exact review is now stale");go("business-settings/"+businessId)}
+async function governanceSaveBusinessReview(businessId){const intention=document.getElementById("govBusinessIntention")?.value||"",notes=document.getElementById("govBusinessReviewNotes")?.value||"";const{error}=await sb.rpc("save_business_review_draft",{p_business_id:businessId,p_intention:intention,p_owner_review_notes:notes});if(error){toast(error.message);return}toast("Private business review draft saved");go("business-settings/"+businessId)}
+function governanceBusinessExternalReviewPacket(businessId){if(governanceState.businessReviewBusinessId!==businessId)return"";const manifest=governanceState.businessReviewReadiness?.review_manifest;if(!manifest||typeof manifest!=="object")return"";const profile=manifest.profile&&typeof manifest.profile==="object"?manifest.profile:{},missionItems=Array.isArray(manifest.mission_items)?manifest.mission_items.filter(item=>item?.enabled===true&&item?.visibility==="public").map(item=>({title:String(item.title||""),body:String(item.body||"")})):[],personas=Array.isArray(manifest.persona_memberships)?manifest.persona_memberships.filter(member=>member?.enabled===true&&member?.membership_visibility==="public"&&member?.persona_card?.public_eligible===true).map(member=>({handle:String(member.persona_card?.handle||""),name:String(member.persona_card?.name||""),title:member.title_visibility==="public"?String(member.public_title||""):""})):[];return JSON.stringify({intention:document.getElementById("govBusinessIntention")?.value.trim()||"",public_profile:{slug:String(profile.slug||""),display_name:String(profile.display_name||""),short_bio:String(profile.short_bio||""),mission:String(profile.mission||"")},public_mission_items:missionItems,public_personas:personas},null,2)}
+function governanceCopyBusinessReview(businessId){const packet=governanceBusinessExternalReviewPacket(businessId);if(!packet){toast("Run or reload the review before copying its public-intended packet");return}if(!confirm("Copy the public-intended profile, public mission pieces/personas, and your page intention? Inspect the clipboard text before sharing it with another AI service."))return;copyText(packet)}
+async function governanceSubmitBusinessReview(businessId){if(!await governanceRequireSensitive("run the exact business publication review"))return;const intention=document.getElementById("govBusinessIntention")?.value||"",notes=document.getElementById("govBusinessReviewNotes")?.value||"";const{data,error}=await sb.rpc("submit_business_for_review",{p_business_id:businessId,p_intention:intention,p_owner_review_notes:notes});if(error){toast(error.message);return}toast(Number(data?.required_missing||0)===0?"Exact business revision is ready; publication still requires your choice":"Business review found required changes");go("business-settings/"+businessId)}
+async function governancePublishBusiness(businessId){if(!confirm("Publish only the exact reviewed business revision now? No future edit will publish automatically."))return;if(!await governanceRequireSensitive("publish this exact business revision"))return;const{error}=await sb.rpc("publish_business_page",{p_business_id:businessId});if(error){toast(error.message);return}toast("Exact reviewed business revision published");go("business-settings/"+businessId)}
+async function governanceUnpublishBusiness(businessId){if(!confirm("Take this business page offline and return it to an owner-only draft?"))return;if(!await governanceRequireSensitive("unpublish this business page"))return;const{error}=await sb.rpc("unpublish_business_page",{p_business_id:businessId});if(error){toast(error.message);return}toast("Business page unpublished and returned to an owner-only draft");go("business-settings/"+businessId)}
+
+async function renderPlatformQueue(){
+  if(!session){renderSignin();return}
+  const owner=session.user.id,epoch=renderEpoch;
+  app.innerHTML='<div class="empty">Loading staff queue…</div>';
+  const roles=await governanceMaybe("platform_role_assignments",q=>q.select("role_key,active,expires_at").eq("account_id",owner));
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  if(roles.error){governanceSetupRequired(roles.error.message);return}
+  const allowed=(roles.data||[]).some(role=>role.active&&["global_administrator","technician"].includes(role.role_key)&&(!role.expires_at||Date.parse(role.expires_at)>Date.now()));
+  if(!allowed){app.innerHTML='<div class="gov-shell"><section class="gov-card"><h2>Staff queue</h2><p class="muted">This account has no active global administrator or technician assignment. Roles can be granted only through a reviewed service/admin operation.</p></section></div>';return}
+  const[requests,extensions]=await Promise.all([
+    governanceMaybe("platform_feature_requests",q=>q.select("*").not("status","in",'(draft,withdrawn)').order("submitted_at",{ascending:true}).limit(500)),
+    governanceMaybe("persona_extension_submissions",q=>q.select("*").in("status",["submitted","reviewing","approved","rejected","quarantined"]).order("submitted_at",{ascending:true}).limit(200))
+  ]);
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  if(requests.error||extensions.error){governanceSetupRequired((requests.error||extensions.error).message);return}
+  governanceState={...governanceState,staffRequests:requests.data||[],staffExtensions:extensions.data||[]};
+  const featureCards=(requests.data||[]).map(request=>`<section class="gov-card"><div class="gov-row-head"><div><b>${esc(request.title)}</b><div class="muted">${esc(request.description||"")}</div></div><span class="gov-state ${esc(request.status)}">${esc(request.status)}</span></div><div class="row"><div><label>Status</label><select id="govStaffStatus_${request.id}">${["submitted","triaged","planned","declined","completed"].map(value=>`<option value="${value}" ${value===request.status?"selected":""}>${value}</option>`).join("")}</select></div><div><label>Priority</label><select id="govStaffPriority_${request.id}">${["low","normal","high","urgent"].map(value=>`<option value="${value}" ${value===request.priority?"selected":""}>${value}</option>`).join("")}</select></div></div><label>Staff notes</label><textarea id="govStaffNotes_${request.id}" maxlength="30000">${esc(request.staff_notes||"")}</textarea><button class="btn sec" onclick="governanceStaffSave('${request.id}')">Save staff update</button></section>`).join("");
+  const extensionCards=(extensions.data||[]).map(extension=>`<section class="gov-card"><div class="gov-row-head"><div><b>${esc(extension.title)}</b><div class="muted">${esc(extension.source_type)} · permissions: ${esc((extension.requested_permissions||[]).join(", ")||"none")}</div></div><span class="gov-state ${esc(extension.status)}">${esc(extension.status)}</span></div><div class="gov-note warn">Approval records a review decision only. Source remains inert until a separate sandboxed build and release.</div><details><summary>Inspect escaped source</summary><pre class="gov-code">${esc(extension.source_code||"")}</pre></details><label>Review decision</label><select id="govExtensionStatus_${extension.id}" ${["approved","rejected","quarantined"].includes(extension.status)?"disabled":""}>${["reviewing","approved","rejected","quarantined"].map(value=>`<option value="${value}" ${value===extension.status?"selected":""}>${value}</option>`).join("")}</select><label>Review notes</label><textarea id="govExtensionNotes_${extension.id}" maxlength="12000" ${["approved","rejected","quarantined"].includes(extension.status)?"disabled":""}>${esc(extension.review_notes||"")}</textarea>${["submitted","reviewing"].includes(extension.status)?`<button class="btn sec" onclick="governanceStaffSaveExtension('${extension.id}')">Save extension decision</button>`:""}</section>`).join("");
+  app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Account-level maintenance authority · AAL2 required for changes</span><h2>Administrator / technician queue</h2></div></section><h3>Feature requests</h3><div class="gov-list">${featureCards||'<div class="empty">No submitted feature requests.</div>'}</div><h3>Custom extensions</h3><div class="gov-list">${extensionCards||'<div class="empty">No submitted extension source.</div>'}</div></div>`;
+}
+async function governanceStaffSave(id){const owner=session?.user?.id,epoch=renderEpoch,request=(governanceState.staffRequests||[]).find(row=>row.id===id);if(!owner||!request){toast("Reload the staff queue before saving");return}if(!await requireAal2ForSensitiveAction("change the staff feature queue"))return;if(epoch!==renderEpoch||session?.user?.id!==owner)return;const status=document.getElementById("govStaffStatus_"+id)?.value||"submitted",priority=document.getElementById("govStaffPriority_"+id)?.value||"normal",notes=document.getElementById("govStaffNotes_"+id)?.value||"",assignedTo=/^[0-9a-f-]{36}$/i.test(request.assigned_to||"")?request.assigned_to:null;const{error}=await sb.rpc("staff_update_feature_request",{p_request_id:id,p_status:status,p_priority:priority,p_assigned_to:assignedTo,p_staff_notes:notes});if(epoch!==renderEpoch||session?.user?.id!==owner)return;if(error){toast(error.message);return}toast("Staff queue updated");renderPlatformQueue()}
+async function governanceStaffSaveExtension(id){const owner=session?.user?.id,epoch=renderEpoch;if(!owner)return;if(!await requireAal2ForSensitiveAction("review this extension source"))return;if(epoch!==renderEpoch||session?.user?.id!==owner)return;const status=document.getElementById("govExtensionStatus_"+id)?.value||"reviewing",notes=document.getElementById("govExtensionNotes_"+id)?.value||"";const{error}=await sb.rpc("staff_update_extension_submission",{p_submission_id:id,p_status:status,p_review_notes:notes});if(epoch!==renderEpoch||session?.user?.id!==owner)return;if(error){toast(error.message);return}toast("Extension review recorded; source remains inert");renderPlatformQueue()}

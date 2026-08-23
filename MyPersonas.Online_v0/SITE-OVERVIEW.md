@@ -1,6 +1,6 @@
 # AliaSpaces / MyPersonas — What the site does today, and where it's going
 
-**Updated:** August 13, 2026 · mypersonas.online
+**Updated:** August 22, 2026 · mypersonas.online
 
 **The idea in one line:** one home for every side of you — each persona you carry gets
 its own MySpace-style page, owner-private and unlinked from other personas by default,
@@ -9,9 +9,78 @@ with explicit opt-in cross-links, its own AI layer, and its own managed accounts
 This overview separates proven/live behavior from the coordinated next-release source.
 Local code, a queued migration, or a passing test is never presented as a deployed feature.
 
+Current package: **Implemented and tested locally; not pushed, applied to the linked
+database, deployed, configured, activated, or verified live unless separately evidenced.**
+The exact release boundary is `RELEASE-MANIFEST-2026-08-22.md`.
+
 ---
 
-## What the site can do right now
+## Coordinated next release (local source, not live)
+
+- **Private Backup personas:** an owner can attach one persona as another persona's
+  private backup. The desktop owner rail expands the backup under its main; the mobile
+  picker keeps them adjacent. This never creates a public “More of me” link.
+- Migration 048, export/restore support, and local tests are present. The database change
+  is not applied and the matching page is not deployed or live-verified yet. See
+  `PERSONA-BACKUP-RELATIONSHIPS.md` for the security contract and release order.
+- **Castleborn organization:** migration 049 records confirmed private family canon,
+  derives sibling labels, groups the existing Castleborn roster into one owner-private
+  project managed by WAIS, and adds draft-first business/mission/title foundations. It
+  does not attach a database, publish a business, or grant WAIS account authority. The
+  matching local owner settings and public Family module exist, but family cards render
+  only from a reviewed current-page projection after release.
+- **Page design and assets:** migration 050 and the matching owner UI add full previews,
+  bounded downloads, declarative layout controls, escaped text/HTTPS boxes, a read-only
+  HTML/CSS/JSON learning console, and private reusable code notes across eleven built-in
+  modules, including Family and Offers & review requests. New first-party uploads are
+  content-addressed by their final bytes; legacy and external HTTPS assets are not
+  byte-integrity-bound. New public media widgets stay blocked until public asset paths no
+  longer reveal a stable owner UUID.
+- **Publication and governance:** migration 051 and the owner UI add exact-revision page
+  review, AI disclosure, publication controls, confirmed feature tickets, separate follow
+  and friend behavior, account-sync preferences, inert extension review, staff-role
+  foundations, bounded authenticated error reporting, and security/retention primitives.
+  It backfills all existing personas to `unpublished` and all legacy businesses to an
+  owner-only draft. Profile, content, family, layout, revenue, and reviewed account/AI
+  configuration changes invalidate the exact revision. Exact-approved native drafts stage
+  into page review; they no longer auto-publish through the legacy native function.
+- **Reviewed business pages:** migration 052 adds AAL2 exact-revision review, publish,
+  and unpublish controls. Mission/profile/title edits return the business to draft.
+- **Human-gated AI work:** migration 053 and the local Agent Board owner view add bounded
+  proposal/review/execution/result controls. Migration 057 adds default-deny per-backend/
+  mode request-token budgets and expiring concurrency leases. No provider is enabled and
+  no model spend is authorized by these controls.
+- **Research, audit, and identity hardening:** migration 054 narrows owner research/content
+  writes and quotas; 055 reserves terminal audit capacity and serializes agent writers
+  with erasure; 056 invalidates stale AliaSpaces confirmed-email attestations without
+  conflating them with provider OAuth connections.
+- **Revenue and request review:** the local public revenue module displays reviewed
+  disclosures and offers and can expose a Request review CTA only after all current-page,
+  mailbox, binding, global, and per-persona gates pass. The public Edge intake is
+  fail-closed around one exact CORS origin, bounded streamed JSON, Turnstile action and
+  hostname, HTTPS/non-internal URL validation, rotating HMAC identifiers, and neutral
+  receipts. It is not deployed or configured; the global/persona gates default off and no
+  notification sender or owner evidence queue exists. Hardened migration 043 now has an
+  ordered local timestamped mirror. The local affiliate redirect is likewise
+  fail-closed around a separate HMAC secret, bounded attribution, HTTPS-only reviewed
+  destinations, atomic current-page/cap/deduplication checks, and bounded retention.
+  Canonical 051 and its timestamped mirror are synchronized locally; final freeze hashes
+  and linked/deployed parity remain pending.
+- No provider, SSO, hook, CAPTCHA, email, WAF, logging service, payment processor, or
+  external publication was configured by this local work.
+- The full apply/approval boundary is in
+  `OWNER-APPROVAL-QUEUE-2026-08-22.md`; the coordinated 047–057 package, Edge functions,
+  and matching frontend remain unapplied/undeployed unless explicitly noted elsewhere.
+  Migration 047's exact production name update is separate historical evidence documented
+  in `VERIFICATION.md`; it does not approve or prove this release package.
+
+---
+
+## Existing deployed baseline (reverify before release)
+
+This section summarizes the earlier deployed/verified baseline. Provider grants,
+function versions, and live policies can drift; reread them before relying on the claim.
+The coordinated 047–057 source described above is not part of this baseline.
 
 ### Persona pages (the public face)
 
@@ -34,7 +103,10 @@ Local code, a queued migration, or a passing test is never presented as a deploy
 
 ### Anonymity model
 
-- Your email and identity are never shown anywhere
+- The public UI does not intentionally display the owner's email or account identity.
+  Current public Storage URLs can nevertheless expose a stable owner UUID path and
+  correlate otherwise unlinked personas; opaque public asset delivery remains a release
+  blocker.
 - Personas are never connected to each other or to you unless you explicitly link them
 - Private notes per persona (only you can ever read them)
 - Business documents (plans, inventories) stay out of the public repo by policy
@@ -89,14 +161,19 @@ Local code, a queued migration, or a passing test is never presented as a deploy
 - **HQ assistant** with your full roster context
 - Per-persona chatbots that speak in that persona's voice card
 - AI persona builder interview and quick-setup wizard
-- **Agent control center** per persona: strategic direction brief, L0–L3 autonomy
-  ladder (co-writer → scheduled drafts → owner-published → bounded native autopost),
-  destination modes, exact schedules with time zones and lead times, daily caps,
+- Historical **Agent control center** source per persona: strategic direction brief, L0–L3 autonomy
+  ladder for drafting and external-provider policy, destination modes, exact schedules
+  with time zones and lead times, daily caps,
   quiet hours, global pause, approval queue, synchronized owner chat, and audit log
-- Auto-running scheduled tasks server-side (five-minute polling, atomic leases, daily
-  model-call reservations — no duplicate provider calls, no self-approval)
-- Content drafts pipeline: idea → draft → approve → publish (native) or copy/handoff
-  (external), with a **cross-account Timeline** per persona showing everything posted
+- In the coordinated migration-051 source—not the deployed baseline—native-feed drafts
+  stage into an owner-reviewed page revision instead of auto-publishing
+- Historical scheduled-task implementation used five-minute polling, atomic leases, and
+  daily reservations. Reverify current cron/function/schema state before relying on it;
+  the new board and budget paths remain default-off and separately gated.
+- Content drafts pipeline: idea → draft → owner approval. External destinations remain
+  copy/handoff unless a separately approved connector exists; coordinated 051 routes
+  native content through exact persona-page review/publication. The owner-private
+  **cross-account Timeline** shows recorded completion history.
 - Optional SFW **fan chat**: visitors talk to a persona's AI (always disclosed as AI),
   with quotas, owner transcript review, and escalation flags
 
@@ -115,6 +192,9 @@ Local code, a queued migration, or a passing test is never presented as a deploy
 - Pixel-burned watermarks (your page URL) on uploads; right-click/drag guards
 - Server-side AI proxy discards browser-supplied system prompts
 - In-app error reporting; session-timeout countdown; stale-page banner
+- The coordinated 051 source replaces historical direct error-log insertion with a
+  bounded authenticated redacting RPC. That policy is not live until the migration and
+  matching page are deployed and read back.
 - Public Privacy, Terms, Data Deletion, and provider-setup pages
 
 ### Ecosystem

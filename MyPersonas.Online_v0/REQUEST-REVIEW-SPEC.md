@@ -1,6 +1,19 @@
 # Product and request-review specification
 
-Status: approved implementation specification; not yet implemented or deployed.
+Status: approved specification with phase-1 intake **implemented and tested locally; not
+pushed, applied to the linked database, deployed, configured, activated, or verified live
+unless separately evidenced.** The notification
+sender, owner evidence/review queue, `product_reviews` lifecycle, and published review UI
+remain future phases.
+
+Current implementation boundary: `043-request-review-phase1.sql` creates fail-closed
+private intake/rate/audit/notification-queue storage and the service acceptance RPC;
+`supabase/functions/request-review/index.ts` performs the public CAPTCHA/HMAC intake; the
+revenue/settings UI can configure a persona and render a CTA only through migration 051's
+current-page gate. Phase 1 queues a notification record but sends no email. The hardened
+043 file now has the ordered local mirror
+`20260822160000_request_review_phase1.sql`; it must be applied before 051. The wider
+timestamped directory remains incomplete as a fresh-install history.
 
 Purpose: let a visitor ask a persona/brand to consider a product, notify the owner through that persona's verified mailbox route, and let the owner test/research it before an AI-assisted persona draft is approved. A request is not an endorsement, review, affiliate relationship, purchase promise, or permission to market to the requester.
 
@@ -56,6 +69,8 @@ No browser can select or read a private mailbox address. Persona routing is reso
 
 ### `product_reviews`
 
+Target model; not implemented in phase 1.
+
 - owner/persona/product identity and canonical URL
 - state plus `approved_by`, `approved_at`, immutable approved-content hash
 - `owner_tested boolean`, `tested_at`, `test_method`, `items_tested`
@@ -89,6 +104,9 @@ The response should be the same for accepted, duplicate, and privacy-safe suppre
 
 ## Notification worker
 
+Not implemented in phase 1. The current database row is a private queue record, not a
+delivery attempt or sent email. A later worker must satisfy all requirements below.
+
 - Requires the global email/AI/publishing pauses as appropriate and an eligible persona mailbox destination.
 - Rechecks owner/persona/destination/suspension immediately before sending.
 - Renders a fixed template; requester fields are escaped plain text. Do not render requester HTML or fetch links.
@@ -98,6 +116,11 @@ The response should be the same for accepted, duplicate, and privacy-safe suppre
 - A marketing list receives nothing unless separate explicit consent exists; review-request consent is not newsletter consent.
 
 ## Owner queue
+
+Migration 043 did not include an owner queue. Migration 051 now adds a private inbox for
+accepted requests, bounded notification-state evidence, explicit workflow transitions,
+and AAL2-gated requester-PII erasure. It does not send the notification email, author the
+owner's evidence, or publish a persona review; those remain separate reviewed steps.
 
 Owner actions: decline, request clarification, mark testing, add evidence, create persona draft, approve exact review, correct, withdraw, and erase requester PII where legally permitted. High-impact actions require AAL2.
 
@@ -130,4 +153,23 @@ The AI receives only owner-approved evidence and persona public-safe canon. It c
 
 ## Release gates
 
-Do not build on a raw browser-to-email shortcut. First require AAL2, production SMTP, CAPTCHA, CSP/security headers, exact redirect/origin configuration, budget/rate-limit/audit primitives, and a tested email reconciliation path. Deploy migration → function/worker → owner UI → public button, with the public button last and default-off per persona.
+Do not build on a raw browser-to-email shortcut. First require AAL2, production SMTP,
+CAPTCHA, CSP/security headers, exact redirect/origin configuration,
+budget/rate-limit/audit primitives, and a tested email reconciliation path.
+
+The phase-1 Edge deployment requires one exact HTTPS
+`REQUEST_REVIEW_ALLOWED_ORIGIN`, `TURNSTILE_SECRET_KEY`,
+`REQUEST_REVIEW_TURNSTILE_ACTION=request_review`, the exact
+`REQUEST_REVIEW_TURNSTILE_HOSTNAME`, a random `REQUEST_REVIEW_HMAC_SECRET` of at least
+32 bytes, and a matching public `CONFIG.TURNSTILE_SITE_KEY`. Missing/invalid server
+configuration must return 503. `verify_jwt=false` is intentional only because the endpoint
+is public CAPTCHA intake; exact Origin, streamed 16 KiB body limit, five-second
+Turnstile verification, rotating HMACs, service-role RPC, and neutral receipt are the
+mandatory function boundary.
+
+Before deployment, prove the frozen canonical/mirror pair, then apply and read back the
+hardened 043 schema before 051 using `RELEASE-MANIFEST-2026-08-22.md`. Keep the global gate at
+`accepting_requests=false` and `abuse_paused=true`, with every persona disabled. Deploy
+database → intake function → notification worker → owner evidence UI → public button.
+Keep the public button last and default-off per persona. Until the worker and SMTP reconciliation
+exist, a successfully queued phase-1 request must never be described as an email or review.

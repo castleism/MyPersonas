@@ -15,6 +15,7 @@ import {
   type ApprovedMedia,
   stageApprovedMedia,
 } from "../_shared/approved-media.ts";
+import { requireAal2 } from "../_shared/aal2.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,15 +51,6 @@ function json(body: unknown, status = 200, origin = "") {
   });
 }
 
-async function caller(req: Request) {
-  const auth = req.headers.get("Authorization") || "";
-  if (!/^Bearer\s+\S+$/i.test(auth)) return null;
-  const { data, error } = await admin.auth.getUser(
-    auth.replace(/^Bearer\s+/i, ""),
-  );
-  return error ? null : data.user;
-}
-
 function sourceFor(draft: Record<string, unknown>, target: "facebook" | "instagram") {
   const targetUrl = target === "facebook"
     ? String(draft.fb_image_url || "")
@@ -85,8 +77,11 @@ serve(async (req) => {
   if (Number.isFinite(contentLength) && contentLength > 64 * 1024) {
     return json({ error: "Request body is too large." }, 413, origin);
   }
-  const user = await caller(req);
-  if (!user) return json({ error: "Sign in first" }, 401, origin);
+  const guard = await requireAal2(req, admin);
+  if (!guard.ok) {
+    return json({ error: guard.error, code: guard.code }, guard.status, origin);
+  }
+  const user = guard.user;
 
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return json({ error: "A JSON request body is required." }, 400, origin);

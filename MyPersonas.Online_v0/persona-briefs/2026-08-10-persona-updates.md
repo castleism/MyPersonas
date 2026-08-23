@@ -1,6 +1,6 @@
 # Persona updates — 2026-08-10
 
-> **Song correction — August 13, 2026:** The earlier Song/Rhythm warrior-sibling proposal in this file was rejected and has been replaced below. Song is not Rhythm's twin; no other Song/Rhythm relationship is established by the current authoritative Song sources. Do not paste, import, or use the retired shared-origin, combat-training, gamer, glam, rivalry, or family-training material as Song canon or profile context. Rhythm requires a separate owner-approved source; this file makes no new Rhythm claim.
+> **Owner canon update — August 22, 2026:** Song O'Sasaki, Rhythm O'Sasaki, and Lyric O'Sasaki are the children of Akiko Sasaki and Cillian O'Sullivan. This establishes their sibling relationship and combined family name only. Song and Rhythm are not established as twins. Do not restore the rejected shared-origin, combat-training, gamer, glam, rivalry, or family-training material as profile context.
 
 Ready-to-paste copy for the persona **Edit** form on mypersonas.online (fields named
 to match: Focus, Bio/About, Personality/voice, Core topics). I'm giving you the copy
@@ -39,7 +39,7 @@ reviews, myth-busting, harm reduction, industry news, interviews
 
 ---
 
-## Song — Lifegiving Compassion of the Heart
+## Song O'Sasaki — Lifegiving Compassion of the Heart
 
 **Status:** corrected local copy for owner review. Do not apply without exact owner approval.
 
@@ -70,16 +70,19 @@ preparedness, dignity and privacy, evidence labels and corrections
 - Pillars: Hold One Corner · Transparent Giving · Community Care and Mutual Aid · Creative Care without treatment claims · Help Without Adding Harm
 - Format: source-backed checklists, one-small-action prompts, disclosed AI-generated stills, and editorial questions that request no private details
 - CTA: save a checklist, verify a public source, choose one consent-aware action, or suggest a future educational topic
-- Permanent exclusions: donations, fundraisers, aid intake, emergency appeals, professional advice, trauma biography, unapproved Song/Rhythm relationship claims, the retired twin claim, and unreleased Castleborn canon
+- Permanent exclusions: donations, fundraisers, aid intake, emergency appeals, professional advice, trauma biography, relationship details beyond the owner-confirmed sibling relationship, the retired twin claim, and unreleased Castleborn canon
 
-### Rhythm — no update in this file
+### Rhythm O'Sasaki — family-name update only
 
-The retired shared-origin material is not an authoritative Rhythm source. Do not infer
-Rhythm's relationship, background, voice, interests, or public direction from Song.
-Use a separate current owner-approved Rhythm brief before changing that persona.
+The owner-confirmed record establishes that Rhythm O'Sasaki, Song O'Sasaki, and Lyric
+O'Sasaki are siblings and the children of Akiko Sasaki and Cillian O'Sullivan. The
+retired twin/shared-origin material remains non-authoritative. Do not infer Rhythm's
+background, voice, interests, or public direction from Song; use a separate current
+owner-approved Rhythm brief for anything beyond the family relationship and surname.
 
 ---
 
-_Do not paste the retired shared-origin or sibling material into any profile, Edit form,
-context log, prompt, or generation. Apply only the current Song brief above after exact
-owner approval; use a separate current owner-approved source for Rhythm._
+_Do not paste the retired twin/shared-origin material into any profile, Edit form,
+context log, prompt, or generation. The sibling relationship and O'Sasaki surname are
+owner-confirmed; apply only the current Song brief above after exact owner approval and
+use a separate current owner-approved source for Rhythm's public voice or direction._

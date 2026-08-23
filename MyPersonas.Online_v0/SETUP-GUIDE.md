@@ -1,5 +1,10 @@
 # AliaSpaces / MyPersonas — Setup Guide
 
+Release-package status: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** For the current package, follow `RELEASE-MANIFEST-2026-08-22.md`; this guide
+does not grant permission to alter a linked project or external account.
+
 Files in this repo:
 - **index.html** — the entire app (hosted as a static site)
 - **supabase-schema.sql** — the database (run once in Supabase)
@@ -20,8 +25,12 @@ clears the legacy key column, revokes direct browser model writes, and creates t
 agent-control, lease, quota, approval, publishing, and fan-chat data plane. Do not apply it
 while an older Edge/client release is the only code available.
 
-The current production project has migrations 011–018. Keep those historical files
-unchanged. Migration `016-mailbox-manager.sql` added the owner-readable sanitized mailbox
+An earlier production checkpoint confirmed migrations 011–018; do not treat that as the
+current complete migration inventory. Later evidence separately found 035 and 038 visible,
+and the 047 display-name statement was run/read back through SQL Editor without proving a
+CLI migration-history row. Inventory the linked project's actual migration table and schema
+before planning another apply. Keep historical files unchanged. Migration
+`016-mailbox-manager.sql` added the owner-readable sanitized mailbox
 reports plus service-only provider references, cursors, exact action items, and operation
 leases used by Inbox Concierge. In another environment, apply it before deploying
 `mailbox-manager`, `run-mailbox-jobs`, the Gmail permission upgrade, or the matching page.
@@ -37,10 +46,30 @@ Deploy the updated `delete-account` and `erase-content` functions before the new
 provider grants are revoked and mailbox jobs cannot race erasure. The page checks the
 versioned content-only capability before enabling erasure.
 
-For a new Supabase project, open **SQL Editor**, paste the entire contents of
-`supabase-schema.sql`, and run it. The snapshot includes the base 008–010 account/
-connection/Gmail structures plus the immutable 001–012 history and exact migrations
-013–018. There is no legacy-key transition on a fresh project.
+For a new Supabase project, `supabase-schema.sql` supplies only an earlier baseline; it is
+not a current full-schema installer. The timestamped `supabase/migrations/` directory also
+omits part of the later canonical 019–046 history. Do not combine those artifacts and
+assume a safe fresh install. First build and verify a complete predecessor inventory from
+the canonical `sql-updates/` history, then rehearse it in an isolated database.
+
+For an existing eligible baseline, apply the exact timestamped order in
+`RELEASE-MANIFEST-2026-08-22.md`: 047, 048, 049, 050, hardened prerequisite 043, then
+051, 052, 053, 054, 055, 056, and 057. The nonnumeric placement of 043 is intentional:
+051 requires its phase-1 request-review objects. Every canonical/timestamped pair must be
+byte-identical at the final freeze. Never hand-edit migration history to conceal a
+dependency or parity failure. Rehearse the sequence in staging and use
+`OWNER-APPROVAL-QUEUE-2026-08-22.md`; none of these files configures a live provider,
+staff role, Auth hook, CAPTCHA, email sender, WAF, log drain, payment processor, or DNS.
+
+Migration 058 is a separate follow-on after that frozen chain. Apply and verify
+`20260823000000_persona_view_mode.sql` before publishing the Persona-view page assets.
+Do not let the browser fall back to owner-wide RLS for a persona perspective; follow the
+exact-actor checks in `PERSONA-VIEW-MODE.md`.
+
+Migration 051 intentionally backfills every legacy persona without lifecycle state to
+`unpublished`, clears its published revision/timestamp, and returns every legacy business
+to an owner-only draft. Inventory the current pages and plan individual exact-revision
+reviews before applying it; do not rewrite the migration to preserve implicit public state.
 
 ## Step 2 — Wire the app to your project
 Dashboard → **Settings → API**:
@@ -52,9 +81,10 @@ two values identify the public Supabase client; authorization still comes from r
 policies and the authenticated Edge Functions. Never put the service-role key there.
 
 ## Step 3 — Host it
-The current site deploys from this repository through GitHub Pages. A push to the
-configured branch starts the Pages workflow; allow for CDN/cache delay before testing
-the live copy at `https://mypersonas.online`.
+The current site deploys through GitHub Pages, but a push does not publish it. After the
+database is applied/read back and matching functions are manually deployed/verified,
+dispatch `.github/workflows/pages.yml` with `MIGRATIONS-VERIFIED`. Record the workflow
+run, artifact, commit, public hash, and signed-in smoke result; allow for CDN/cache delay.
 
 ## Step 4 — Tell Supabase your site URL
 Supabase → **Authentication → URL Configuration**:
@@ -70,6 +100,86 @@ This configures the allowed return path for magic-link and provider sign-in.
 
 This signs a person into AliaSpaces. It does **not** authorize MyPersonas to read a
 Gmail inbox.
+
+## Request-review phase-1 deployment gate (default off)
+
+Do not deploy the public CTA ahead of its database and function contracts. The current
+repository source is local only and requires this order:
+
+1. Apply and verify the complete ordered release manifest in staging. Request-review
+   specifically depends on hardened 043 followed by 051; include anonymous/other-owner
+   denial and the existing-persona unpublication backfill.
+2. Create a production Turnstile widget restricted to the final hostname. Set the public
+   site key in `CONFIG.TURNSTILE_SITE_KEY`; this is an identifier, not the secret.
+3. Set these Edge Function secrets/config values directly in Supabase:
+   - `REQUEST_REVIEW_ALLOWED_ORIGIN=https://mypersonas.online` (one exact HTTPS origin);
+   - `TURNSTILE_SECRET_KEY=<provider secret>`;
+   - `REQUEST_REVIEW_TURNSTILE_ACTION=request_review`;
+   - `REQUEST_REVIEW_TURNSTILE_HOSTNAME=mypersonas.online`;
+   - `REQUEST_REVIEW_HMAC_SECRET=<at least 32 random bytes>`.
+   Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; never copy the
+   service-role value into the page, documentation, logs, or chat.
+4. Deploy `request-review` with the repository's intentional `verify_jwt=false` setting.
+   It is public CAPTCHA ingress and therefore enforces exact Origin, a streamed 16 KiB
+   body limit, a five-second Turnstile verification timeout with exact action/hostname,
+   HTTPS public-domain product URLs without fetching them, rotating HMAC abuse keys, and
+   the service-only acceptance RPC. Missing configuration returns 503.
+5. Deploy `affiliate-redirect` only after the hardened migration-051 pair is proven
+   byte-identical in the frozen release. Set a distinct
+   `AFFILIATE_CLICK_HMAC_SECRET` of at least 32 bytes. Verify bounded offer/attribution
+   input, rotating HMAC identifiers, the atomic current-page/cap/deduplication RPC,
+   credential-free HTTPS destinations, and the service-only 400-day retention RPC. Audit
+   every legacy active destination before enabling buttons and schedule retention only
+   through an approved service-role job/runbook.
+6. Keep `product_review_global_controls.accepting_requests=false`,
+   `abuse_paused=true`, and every persona request setting disabled. Enable one disposable
+   staging persona only after its current page revision, active binding, connected
+   nonsuspended Gmail ledger, and destination are verified.
+7. Prove invalid CAPTCHA/config/origin fail closed, accepted/duplicate/suppressed requests
+   receive the same neutral receipt, private personas cannot be enumerated, and no raw IP,
+   secret, mailbox address, or database error appears in logs or responses.
+
+Phase 1 writes a private request, audit event, and notification-queue row. It does not
+send email and has no notification claim/sender worker, owner evidence/review queue,
+published-review state machine, payment path, or promise of a response. Keep the global
+gate closed until those later phases and SMTP reconciliation are implemented and tested.
+
+## Agent Board and AI budget activation gate (default off)
+
+The local Agent Board is not recursive autopilot. Migration 053 requires one bounded
+proposal, one exact owner-reviewed payload/hash, an AAL2 run action, an exact request and
+idempotency key, and a short-lived one-use service capability. Migration 057 independently
+requires an enabled nonzero budget for the exact owner/backend/mode. A normal browser JWT
+cannot invoke `agent_board` or `automation` mode directly through `ai-proxy`.
+
+Use this staging-only ceremony after the full manifest database package is read back:
+
+1. Deploy the matching `agent-board-propose`, `agent-board-run`, and `ai-proxy` source
+   together. Keep every persona's proposal/execution switches off.
+2. Verify the selected backend uses a least-privilege server-side Vault credential, an
+   official allowlisted host/path, a pinned model, no auto-recharge, and the smallest
+   provider-side trial/hard cap. The application budget stores tokens/requests, not price.
+3. With AAL2, save a disabled minimal `agent_board` budget first. Review the values, then
+   explicitly enable only that backend/mode. Leave `automation` disabled.
+4. Configure one disposable persona with a nonempty task-type allowlist and a small daily
+   proposal limit. An empty allowlist denies both proposals and execution.
+5. Add one synthetic/public-data proposal. Inspect and copy the complete authoritative
+   review packet, including target persona/backend, subject, instructions, context, and
+   resolved content inputs. Approve only the displayed SHA-256-bound packet.
+6. Run that exact request once. Verify repeat clicks/tabs with the same idempotency key
+   return the existing run rather than call the provider twice; verify a different key
+   cannot run the already-running/completed request.
+7. Verify pre-provider policy/budget failure returns the request to approved without
+   consuming its review. Reconcile an expired pre-provider claim back to approved. An
+   expired claim whose provider call may have started must be quarantined for manual
+   review and never automatically retried.
+8. Read back the budget lease/finalization, board run/result, and terminal `agent_actions`
+   audit. Revoke the disposable provider key and disable proposal, execution, and budget
+   switches after the test.
+
+No Agent Board result is published. It returns owner-private result/draft material for a
+separate content/page review. Provider dashboard setup, key creation, nonzero spend, and
+the staging/live ceremony are owner-controlled actions.
 
 ## Step 6 — Gmail account authorization
 
@@ -295,10 +405,12 @@ duplicating paid calls or exceeding the configured cap. It creates drafts only a
 approves its own output.
 
 Editing an approved draft clears its exact approval and removes it from the publish queue.
-At L2, approval waits for the owner to press **Publish now**. At L3, only an exact-approved
-native draft on an enabled `auto` target may publish when due. The native bridge rechecks
-binding, pause, autonomy, target mode, hash, quiet hours, and daily caps in one database
-transaction.
+For native AliaSpaces feed content after migration 051, neither L2 nor L3 bypasses page
+review. The owner stages an exact-approved native draft into the persona page; that content
+edit advances the page revision and keeps it nonpublic. Only the owner can review and
+publish that exact current page revision. Publication then finalizes the unchanged staged
+draft, and a second reconciliation RPC activates any now-current cyclic dependencies.
+External-provider queues retain their own separate approval and provider gates.
 
 Fan chat atomically reserves the visitor/persona quota, session, saved message, audit row,
 and response lease before a model call. It is unavailable for NSFW personas until
@@ -314,7 +426,8 @@ Concierge with exact cleanup approval and Undo, X OAuth identity/read authorizat
 refresh and revocation, Meta Page/linked-Instagram identity pairing with publishing
 disabled, manual provider handoffs, persona direction, server-side AI proxy, Vault-backed model keys,
 precise scheduled draft generation with atomic call reservations, approval queue, native
-AliaSpaces publishing, global/persona pauses, caps and quiet hours, audit history,
+AliaSpaces page-review staging/publishing in the coordinated 051 source, global/persona
+pauses, caps and quiet hours, audit history,
 synchronized owner chat, and optional disclosed SFW fan chat with an owner-review inbox.
 The 2026-07-24 production rollout applied migration 016, deployed the mailbox, Gmail, and
 erasure functions, and enabled the one-minute mailbox worker. The 2026-07-29 rollout
@@ -353,6 +466,10 @@ live streaming is also still an embed; a future release can add Cloudflare Strea
 
 ## Honest notes
 - **Watermarks**: uploaded images get the page URL burned into pixels (tiled + corner tag); right-click/drag is blocked. Screenshots can't be prevented — treat watermarks as attribution + deterrence.
+- **Asset integrity**: new first-party PNG/JPEG/WebP/GIF and MP4/WebM uploads hash the
+  final bytes and use append-only content-addressed `persona-media` paths after migration
+  051. Legacy paths and external HTTPS media are reviewed as URL text, not fetched and
+  byte-hashed; they can change in place and must not be described as immutable.
 - **Adult content**: keep the 18+ page gate on NSFW personas and check the host's
   acceptable-use terms. Fan chat remains server-disabled for NSFW personas until a
   server-verifiable age-assurance system exists.

@@ -10,6 +10,11 @@ document, then do the deep research in §4 before you plan or post anything._
 > Treat it as the north star; plan aggressive-but-honest milestones, and concentrate firepower on
 > the personas with the strongest product/platform fit. Never fabricate metrics or fake growth.
 
+Current release package: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** Read `RELEASE-MANIFEST-2026-08-22.md` before relying on any current connector,
+publication, agent-board, research, or budget capability.
+
 ---
 
 ## 1. What MyPersonas is and can do
@@ -19,28 +24,50 @@ document, then do the deep research in §4 before you plan or post anything._
 - **AI voice** — talk to any persona in its own voice via the platform (the `ai-proxy` model).
   Use this to develop and sharpen personality/voice over time. **Chat workspaces** save context;
   a per-persona **context log** carries durable memory forward so the voice compounds.
+- **Private Backup persona** — local next-release source can attach one persona beneath a
+  main persona in the private owner roster. It does not publicly connect the profiles;
+  migration 048 and the matching page remain unapplied/undeployed.
+- **Castleborn shared project** — local migration 049 groups the current roster with WAIS
+  as manager metadata and records only confirmed private family canon. It does not grant
+  WAIS authentication authority or attach a database until the owner supplies the exact
+  resource. The business profile is an owner-private blank draft, not published lore.
+- **Page review and design** — local migrations 050–051 add a safe visual layout/learning
+  console plus intention/disclosure/review/publish controls. Any changed reviewed revision
+  returns to draft. These owner screens are not live until the migrations and matching
+  page are approved and deployed.
 - **3-part (→4-part) posting system** — one brief becomes platform-tailored variants:
   - **Compose** (`compose-post`): the persona writes the captions and the platform image crops
     are generated automatically (landscape / square / portrait).
   - **Approve** (`approve-post-draft`): you review/edit; exact image bytes are frozen (immutable).
-  - **Publish** (`meta-post`): posts to Facebook + Instagram. A scheduled publisher
-    (`run-post-queue`) exists for automated posting (currently dormant by design).
+  - **Publish** (`meta-post`): can post to approved Facebook Page/linked professional
+    Instagram targets when the exact deployed connector, grant, and draft pass all gates.
+    A scheduled publisher (`run-post-queue`) exists in source and remains dormant.
   - UI: **Menu → "Compose posts (3-part)"**.
-- **Connected accounts**: **Facebook + Instagram publishing WORKS** on the owner's own accounts
-  in development mode — **no Meta App Review needed** for own-account posting. (App Review is only
-  required to post on behalf of *other* people.)
+- **Connected accounts**: an earlier owner-triggered development-mode test published to one
+  Facebook/Instagram owner asset and recorded deletion evidence. That historical test does not
+  prove the current hardened source, every account, recurring publishing, permission terms, or
+  live connector parity. Reverify Meta's current terms/permissions at action time; App Review and
+  business verification remain separate gates for wider use.
 
 ### Honest status — what exists vs. what must still be built
 | Capability | Status |
 |---|---|
-| Persona pages, AI voice/chat, workspaces, context memory | ✅ live |
-| Compose → approve → publish to **Facebook + Instagram** | ✅ live (own accounts) |
+| Persona pages, AI voice/chat, workspaces, context memory | Historical live baseline; reverify current source/live parity |
+| Private main → Backup persona owner roster | 🧪 built/tested locally; migration/page not live |
+| Castleborn family/project/business foundation | 🧪 built/tested locally; migration 049 not live |
+| Visual layout, asset preview/download, learning console | 🧪 built/tested locally; migration 050 not live; opaque-asset blocker remains |
+| Review-first persona/business publication, follow/friend, settings | 🧪 built/tested locally; migrations 051–052/UI not live |
+| Human-gated agent board, research storage, audit retention, email attestation, AI budgets | 🧪 built/tested locally; migrations 053–057/functions/UI not live |
+| Compose → approve → publish to **Facebook + Instagram** | Historical one-owner test only; current parity and permissions unverified |
 | Scheduled auto-publish (`run-post-queue`) | ⚙️ built, **dormant** until activation checklist done |
 | **X (Twitter) posting** | ❌ not wired (`twitter-post` is a drifted function — must be pulled + wired) |
 | **Website blog posting** (4th cascade stage) | ❌ not built |
-| Repost queue, image queue, hourly research system, schedule generator, owner notifications | ❌ **not built** — designed in §6, build them there |
+| Research/repost/content storage | Local bounded foundation exists; provider scheduling, review UX, and live operation remain |
+| Image queue, schedule generator, owner notifications | ❌ not complete — designed in §6 |
 
-**So today the cascade runs FB + IG; X and Website are the build backlog (§6).** Plan around that.
+**So today there is no blanket live cascade claim.** Use local drafting/review tools, then
+perform only owner-approved manual/connector actions whose exact live capability has been
+reverified. X and Website remain separate build/release work.
 
 ---
 
@@ -110,7 +137,8 @@ not ad hoc.
 
 ## 4. Where everything lives — do this research FIRST (be thorough)
 
-**Read every persona's master prompt + launch kit, the consolidated pack, and the Castleborn
+**Read every persona's master prompt + launch kit, the consolidated pack, the
+[`2026-08-22 full-name canon`](persona-briefs/2026-08-22-full-name-canon.md), and the Castleborn
 anchor before planning.** For each persona, build a dossier: field, audience, voice rules, visual
 canon, brand tag, current assets, website, and current follower baseline.
 
@@ -120,30 +148,33 @@ Each folder holds the persona's `*-MASTER-*-ROADMAP-PROMPT.md` (system prompt/br
 **Newest dated folder is current; folders marked `rejected` / `pre-parent-genetics` / `_archive`
 are superseded.** The roster:
 
-- `adam-contractors-club/` — Adam · contractor/trades
-- `akiko-being-tea-launch-2026-08-08/` — Akiko · Being Tea Co (tea) — largest kit; site in `outputs/beingteaco-website/`
-- `alexei-print-mason/` — Alexei · Print Mason (printing)
-- `avi-launch-2026-08-08/` — Avi · Always Cooked Just Right (cooking)
-- `brom-fix-my-frozen-pc/` — Brom · PC repair
+- `adam-contractors-club/` — Adam Atiq · contractor/trades
+- `akiko-being-tea-launch-2026-08-08/` — Akiko Sasaki · Being Tea Co (tea) — largest kit; site in `outputs/beingteaco-website/`
+- `alexei-print-mason/` — Alexei Grigoriev · Print Mason (printing)
+- `avi-launch-2026-08-08/` — Avi Dev · Always Cooked Just Right (cooking)
+- `brom-fix-my-frozen-pc/` — Brom Grigoriev · PC repair
 - `chomes-classwoods/`, `chomie-launch-approval-2026-08-08/`, `chomie-roadmap-2026-08-09/` — Chomes / Chomie · Classwoods
 - `chris-cody/`, `christian-cody/` — Chris / Christian Cody · useful work + style
-- `cillian-noo-youniverse/` — Cillian · Noo Youniverse (large multi-area program; site `nooyouniverse.com/`)
-- `fenrir-unjustice-right/` — Fenrir · Unjustice Right
-- `hecatia-just-right-communication/` — Hecatia · communication
+- `cillian-noo-youniverse/` — Cillian O'Sullivan · Noo Youniverse (large multi-area program; site `nooyouniverse.com/`)
+- `fenrir-unjustice-right/` — Fenrir Ona-Right · Unjustice Right
+- `hecatia-just-right-communication/` — Hecatia Ona-Right · communication
 - `justice-right-castleborn/` — **Justice Right · the in-universe Castleborn creator/narrator (Castleborn anchor)**
-- `kunuk-traditional-family-values/` — Kunuk · Traditional Family Values
-- `lilly-social-persona/` (+ dated launch folders) — Lilly
-- `lyric-retriever-energy/` — Lyric · Retriever Energy
-- `maria-aware-of-my-food-launch-2026-08-08/` — Maria · Aware Of My Food (food)
-- `oversharing-mom-launch-2026-08-08/` — Adeola · Oversharing Mom
-- `rhythm-social-persona/` — Rhythm (gaming culture)
-- `rohan-launch-2026-08-08/` — Rohan · Jokes From Dads (humor)
+- `kunuk-traditional-family-values/` — Kunuk Atiq · Traditional Family Values
+- `lilly-social-persona/` (+ dated launch folders) — Lilly Dev
+- `lyric-retriever-energy/` — Lyric O'Sasaki · Retriever Energy
+- `maria-aware-of-my-food-launch-2026-08-08/` — Maria Luna Garcia · Aware Of My Food (food)
+- `oversharing-mom-launch-2026-08-08/` — Adeola Dossou · Oversharing Mom
+- `rhythm-social-persona/` — Rhythm O'Sasaki (gaming culture)
+- `rohan-launch-2026-08-08/` — Rohan Dev · Jokes From Dads (humor)
 - `sherlock-cannacandidz/`, `sherlock-chomes/`, `sherlock-roadmap-2026-08-09/` — Sherlock · CannaCandidz / Chomes (**cannabis — see §7**)
-- `song-persona-roadmap/` — Song (gaming; sibling of Rhythm)
-- `sophia-social-persona/` (+ pop-icon, music, site folders) — Sophia
+- `song-persona-roadmap/` — Song O'Sasaki (owner-confirmed sibling of Rhythm O'Sasaki and Lyric O'Sasaki)
+- `sophia-social-persona/` (+ pop-icon, music, site folders) — Sophia Ona
 - `watson-dispensary-goods/` — Watson · Dispensary Goods (**cannabis — see §7**)
-- `yarra-smile-to-your-body/` — Yarra · Smile To Your Body (movement/wellness)
-- `zara-planters-journal/` — Zara · Planters Journal (gardening)
+- `yarra-smile-to-your-body/` — Yarra Warruwi · Smile To Your Body (movement/wellness)
+- `zara-planters-journal/` — Zara Grigoriev · Planters Journal (gardening)
+
+Abel Atiq is confirmed in the full-name canon but has no current output dossier or
+verified live persona row. Enki's surname remains unconfirmed; do not infer it.
 
 ### Consolidated + platform content
 - `MyPersonas.Online_v0/content/persona-launch-pack-2026-08-01.json` — all bios, purposes, topics,
@@ -191,21 +222,21 @@ keeps a human in the loop on accuracy and makes the owner smarter about each per
 
 ## 6. Build backlog (features required to fully realize this)
 
-Design specs for the dev/AI who will build these. **Each must follow the platform's careful staged
-release order (migrations → functions → frontend), per `ROADMAP-EXECUTION-2026-08-13.md` — never
-push functions before their migrations are applied.**
+Design specs for the dev/AI who will build these. **Each must follow the manual sequence in
+`RELEASE-MANIFEST-2026-08-22.md`: database apply/readback → Functions deploy/verification →
+Pages deploy/live smoke. Never push functions against an older schema.**
 
 1. **X (Twitter) posting.** Pull the drifted `twitter-post` (see `DRIFT.md`; needs the owner's
    Supabase CLI), secret-scrub + version it, then wire X into `run-post-queue` + the Composer.
    Add the X teaser as cascade stage 1.
 2. **Website blog posting** (cascade stage 4). Auto-publish the curated blog post + photo gallery to
    each persona's site (Being Tea Co / Noo Youniverse are the templates).
-3. **Repost queue.** Table + UI: `{ link, description (pre-gen, editable), cover_image (pre-gen),
-   custom_media?, persona_id, scheduled_for, tags[] }`. Flagging a source (from the research review)
-   creates a repost item.
-4. **Hourly research check-in system.** A scheduled edge function per persona that runs the news
-   check-in, **de-duplicates against a research log**, and queues topics. The queued topics feed the
-   owner notifications (§5) and the review/flag stage.
+3. **Repost queue.** Local schema/source now provide a bounded, owner-private foundation. Finish
+   signed-in review UX, provider-independent scheduling, immutable media/provenance, erasure, and
+   staging/live verification before any connector consumes it.
+4. **Hourly research check-in system.** Local research/topic/content storage and hardened RPC/
+   quota boundaries exist. A scheduled research provider, citation/evidence QA, duplicate policy,
+   owner notification/review UX, and live default-off operation still must be built and approved.
 5. **Image queue + AI scan/describe.** Owner uploads → assign to persona → attach a description to
    steer the prompt OR AI scans + writes a description. Feeds the compose image pipeline.
 6. **Image/video staging section.** Store background/position reference images + videos per persona

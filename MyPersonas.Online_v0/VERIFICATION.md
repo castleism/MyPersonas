@@ -2,6 +2,241 @@
 
 Status: ⬜ untested · ✅ pass · ❌ fail (see note) · ⏭ skipped/blocked
 
+Release-package status: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** The frozen coordinated local run completed at `2026-08-23T06:54:04Z`;
+its exact counts and migration hashes are recorded in `RELEASE-MANIFEST-2026-08-22.md`.
+That manifest also distinguishes this complete release package from the incomplete
+fresh-install history in `supabase/migrations/`.
+
+## Coordinated release 047–057 — final verification gate
+
+- ✅ Canonical and timestamped release files now exist locally for 047, 048, 049, 050,
+  hardened prerequisite 043, and 051–057. This is packaging evidence only.
+- ✅ The frozen release run passed 259/259 Node tests, inline plus three external
+  frontend syntax checks, all 28 Edge Function type checks, the seven-case scheduled
+  AI-budget behavior suite, 12 canonical/mirror SHA-256 pairs, and PostgreSQL 16
+  apply/reapply plus runtime assertions. Exact hashes and database evidence are in the
+  release manifest.
+- ⏭ Do not infer a safe blank-project install from `supabase/migrations/`. Its historical
+  chain omits some canonical 019–046 prerequisites. Before any linked apply, inventory
+  and prove the target's predecessor schema, then rehearse the manifest sequence in a
+  matching isolated staging project.
+- ⏭ Database application must precede Edge Function deployment, which must precede the
+  Pages deployment. Both deployment workflows are manual and require the exact typed
+  confirmation `MIGRATIONS-VERIFIED`; pushes run validation but do not deploy.
+- ⏭ No Auth hook, SMTP sender, CAPTCHA, WAF/DNS rule, log drain, SSO, staff seed, provider
+  credential/project, payment system, affiliate activation, public publication, or model
+  spend is evidenced by local implementation or tests.
+
+Final freeze record:
+
+- [x] Git HEAD `ae5d9636fca8617bd6a47044f1e6c62dd1eb060b` plus a reviewed dirty-worktree
+  inventory; no commit, push, or release tag was created.
+- [x] Final SHA-256 for all 12 canonical/timestamped pairs recorded in the manifest.
+- [x] Complete Node suite: 259 tests, 259 pass, zero fail/cancel/skip/todo.
+- [x] Inline and external frontend syntax, XSS/static UI contracts, Markdown local links,
+  high-confidence credential scan, and `git diff --check` passed.
+- [x] `deno check` passed for all 28 configured Edge Function entrypoints; scheduled
+  budget behavior passed 7/7 and its files passed `deno fmt --check`.
+- [x] Disposable PostgreSQL 16.15 through-046 baseline, exact seed, ordered 047–057
+  package apply/reapply, and exact readback passed.
+- [x] AAL1/AAL2, anonymous/owner/other-owner, direct-DML, concurrency, erasure,
+  idempotency, expired-run recovery, budget, and terminal-audit evidence passed locally.
+- [x] Signed-out desktop browser smoke loaded the frozen Agent Board asset with no
+  horizontal overflow or console warning/error and showed the truthful sign-in boundary.
+- [ ] Named owner/reviewer signature, signed-in staging identities, mobile visual smoke,
+  linked-project backup/readback, rollback approval, and every explicit external gate.
+
+## Overview / Persona view and Page looks — local check 2026-08-22
+
+- ✅ Migration 058 and its timestamped mirror are byte-identical. Disposable PostgreSQL
+  16 applied the migration twice and passed exact-actor, sibling non-inheritance,
+  dependency block/mute, private pending-request redaction/cancel/respond, API-role/RLS,
+  internal-helper privilege, and two-session dependency-replacement race assertions.
+- ✅ The complete Node suite passes 268/268, including UID-scoped mode restore,
+  actor-stable asynchronous actions, server capability status, owner-chrome suppression,
+  full reviewed module/layout rendering, generic metadata reset, safe asset previews, and
+  uncropped Page looks contracts. Inline and all three external scripts parse.
+- ✅ Rendered desktop (1280×900) and mobile (390×844) fixtures show all four tall/wide/
+  square/panoramic source frames with `object-fit: contain`, zero image corner radius,
+  preserved aspect ratios, and no horizontal overflow. The mode switch, action-only
+  private-request card, and complete profile module grid fit both viewports; browser logs
+  contain no warnings or errors.
+- ⏭ Migration 058 is not applied to a linked project and the matching Pages assets are
+  not deployed or verified live. Signed-in staging, real-account privacy checks, and the
+  manual release workflow remain required before enabling this surface publicly.
+
+## Publication, social, and security governance — local check 2026-08-22
+
+- ✅ Canonical migration 051 and its timestamped mirror have been synchronized locally.
+  Final parity hash evidence belongs in the frozen release record, not this working note.
+  The governance contract covers explicit publication, exact manifest/dependency hashes,
+  lifecycle-field denial, revision invalidation, native staging plus post-commit
+  reconciliation, AI disclosure, service-only roles and retention, confirmed feature
+  tickets, separate follow/friend flows, provider-sync boundaries, inert custom source,
+  hashed network identifiers, and UI/RPC wiring.
+- ✅ Static source inspection confirms migration 051 backfills every legacy persona with
+  no lifecycle state to `unpublished`, clears its published revision/timestamp, and resets
+  every legacy business to an owner-only draft. A crafted persona insert is forced to a
+  draft lifecycle by the database trigger. These are migration semantics, not evidence
+  that production rows have changed.
+- ✅ The local public renderer contains reviewed Family and Offers & review requests
+  modules. The old native auto publisher is revoked/wrapped to fail closed; an approved
+  native draft stages into the page and is finalized only after exact page publication.
+- ✅ Migration 051 removes the historical open `error_logs` insert policy and direct
+  browser writes. `report_client_error` requires authentication, redacts a bounded shape,
+  fixes server-authored fields, and applies a serialized per-account hourly cap.
+- ✅ The stale source-shape and mirror assertions recorded during concurrent editing were
+  repaired in the local release candidate. The frozen 259/259 suite and final 051 hash
+  now replace the earlier focused checkpoints.
+- ✅ The legacy phase-1 `link_review_request_to_draft` SECURITY DEFINER function now
+  denies anonymous and cross-owner callers with no mutation. PostgreSQL runtime proof
+  also verifies authenticated-owner success and the exact legacy RPC privilege matrix.
+- ⏭ Migration 051 is not applied and the frontend is not deployed/live-verified. Auth
+  hooks, rate limits, CAPTCHA, audit storage, email, WAF, log drains, SSO, staff-role seed,
+  and provider sync workers remain explicit staging/owner gates.
+
+## Castleborn family/project/business — disposable database check 2026-08-22
+
+- ✅ Migration 049 and its mirror are byte-identical; seven focused tests pass.
+- ✅ A disposable PostgreSQL 16 apply proved 20 parent rows, four partner rows, 21 project
+  memberships with one WAIS manager, one blank owner-private business draft, and no
+  fabricated resource or business membership.
+- ✅ Owner RLS returned all 24 irreducible family rows while another owner and public
+  projections returned zero. Direct write, cross-owner RPC, and ancestry-cycle attempts
+  were denied; Lilly's derived family projection returned five relatives.
+- ⏭ Migration 049 is not applied/deployed. A real Castleborn database resource, public
+  mission/bio, and public business titles still require authoritative owner input.
+
+## Persona asset preview and safe page designer — local check 2026-08-22
+
+- ✅ Migration 050 and its timestamped Supabase mirror are byte-identical. Focused tests
+  cover RLS/grants, the narrow public projection, strict recipe and snippet bounds,
+  unknown/duplicate rejection, and owner/persona enforcement.
+- ✅ Executable helper tests prove unknown modules and unsafe link widgets are removed,
+  card settings normalize to allowlisted values, generated HTML/CSS/JSON remains text,
+  and common code selections receive local explanations without a model call.
+- ✅ Static asset tests cover the owner-only gate, profile/banner/background/feed-header,
+  album and post-media entry points, accessible modal markup, credential-free fetching,
+  a nonempty inert-media MIME allowlist, matching file/container signatures, rejection
+  of active/unknown/mislabeled payloads, MIME-only extensions, 50 MB streaming
+  cancellation, sanitized filenames, object URL revocation, and honest CORS fallback.
+- ✅ The local builder supports eleven built-in modules, including Family and Offers &
+  review requests. Approved-media tests cover final-byte SHA-256 hashing after watermarking,
+  allowlisted PNG/JPEG/WebP/GIF and MP4/WebM types, append-only `persona-media` paths,
+  duplicate-content reuse, and the persona-scoped composer path.
+- ✅ The inline application script and external owner/governance/Agent Board scripts pass
+  syntax checks; `git diff --check` passes. The complete frozen suite is 259/259.
+- ⏭ Migration 050 is not applied and the matching page is not deployed or live-verified.
+  Cross-owner/anonymous database behavior and signed-in keyboard/mobile/media smoke tests
+  remain release checks.
+- ⏭ Image/video widgets and video backgrounds remain blocked. Current public Storage
+  URLs expose a stable owner UUID prefix that can correlate personas; release requires
+  the opaque-asset remediation in `PERSONA-PAGE-LAYOUT-BUILDER.md`.
+- ⏭ Legacy and external HTTPS media are not byte-integrity-bound. The manifest hashes
+  URL-bearing JSON and does not fetch remote bytes; a remote host can replace content at
+  the same URL after review. Owner preview/download copies current bytes without proving
+  they match the reviewed bytes.
+
+## Request-review and affiliate intake — local source check 2026-08-22
+
+- ✅ `tests/request-review-spec.test.mjs` passes all eight focused source checks for exact
+  configured CORS origin, streamed 16 KiB body cap before JSON parse, fail-closed config,
+  Turnstile timeout/action/hostname, normalized field/consent/idempotency bounds, public
+  HTTPS URL validation with no requester-URL fetch, rotating domain-separated HMACs,
+  neutral non-enumerating receipts, service-RPC usage, and the intentional public JWT
+  gateway flags.
+- ✅ The TypeScript source parses with Node's type-stripping syntax check. This is not a
+  Deno network run, a Turnstile verification, a database concurrency test, a deployed
+  function comparison, or an email-delivery test.
+- ✅ Hardened `043-request-review-phase1.sql` now has the ordered local mirror
+  `20260822160000_request_review_phase1.sql`. Its presence does not apply or activate the
+  feature, and it does not make the wider timestamped folder a complete fresh-install chain.
+- ⏭ `CONFIG.TURNSTILE_SITE_KEY` is blank and the required Edge values are not documented
+  as installed. The global request gate and every persona start disabled. No notification
+  sender/claim worker or owner evidence/review queue exists, so no email or review outcome
+  is claimed.
+- ✅ The local `affiliate-redirect` source now fails closed without a distinct
+  `AFFILIATE_CLICK_HMAC_SECRET`, bounds the offer URL and attribution fields, derives
+  rotating domain-separated HMAC identifiers, and permits only credential-free HTTPS
+  destinations. The latest canonical 051 source adds an atomic current-page resolver,
+  global/offer/fingerprint caps, click deduplication, conditional analytics, and a
+  service-only 400-day retention RPC.
+- ✅ The stale affiliate source-shape assertion and the missing 051 mirror additions were
+  repaired locally. Final focused/full-suite output and pair hashes remain freeze evidence.
+- ⏭ No Edge secret, deployment, live source-parity check, real Turnstile verification,
+  email notification, or approved service-role retention schedule is evidenced.
+
+## Business, agent-board, research, audit, auth, and budget hardening — local check 2026-08-22
+
+- ✅ Migration 052 adds exact-revision, owner-reviewed, AAL2 business publication and
+  returns changed public business material to draft. It does not publish a business.
+- ✅ Migration 053 and the board endpoints/UI implement a bounded owner queue whose
+  automated execution path is default-off, human-approved, exact-request/idempotency
+  bound, and recoverable after expiration. Frozen static and PostgreSQL runtime checks
+  prove browser calls cannot invoke automated proxy modes, reviewed inputs cannot drift,
+  and exact retries cannot create a second run or provider authority.
+- ✅ Migration 054 moves research/content writes behind bounded owner/service RPCs,
+  durable daily/lifetime counters, and server-authored approval/provenance fields. It
+  requires AAL2 after the exact row lock before a draft save can downgrade an approved or
+  scheduled package; it neither performs research nor publishes content.
+- ✅ Migration 055 places agent audit inserts and terminal updates behind reserved
+  capacity, row/byte/mutation ceilings, narrow service RPCs, and erasure serialization.
+  Frozen PostgreSQL checks cover over-limit recovery, started-to-terminal behavior,
+  direct-DML denial, rolling-worker compatibility, and writer/erasure concurrency.
+- ✅ Migration 056 revokes only stale `aliaspaces_confirmed_email` attestations when the
+  Auth email is changed or unconfirmed; provider/OAuth connection attestations remain
+  separate and are not silently disconnected.
+- ✅ Migration 057 adds durable per-owner/backend/mode request-token budgets and leases.
+  `agent_board` and `automation` remain denied unless an owner saves an enabled AAL2 policy
+  with nonzero limits; it stores no provider pricing and does not authorize spend. The
+  scheduled worker now reuses its exact v2 audit UUID as the automation-budget request
+  key and cannot cross the provider boundary without a successful claim. Frozen Deno
+  behavior covers no-provider denial, known-zero/known-usage accounting, and conservative
+  ambiguous post-fetch accounting.
+- ⏭ Migrations 052–057 and their matching functions/UI are local release-candidate source.
+  None is applied, deployed, configured, activated, or live-verified.
+
+## Private persona backup relationships — local check 2026-08-22
+
+- ✅ The two migration paths are byte-identical. Static checks cover the same-owner
+  composite cascades, one-main/one-backup constraints, self and role-conflict rejection,
+  serialized owner validation, RLS, revoked browser DML, and authenticated setter RPC.
+- ✅ Executable grouping tests prove a backup appears once beneath its main, a main click
+  expands it, an active backup auto-expands its parent, and missing/corrupt relationship
+  data fails flat without hiding any persona.
+- ✅ Editor save/removal, readback verification, mobile picker labeling, JSON/CSV/XLSX
+  export, version-2 UUID-remapped restore, version-1 compatibility, and the repaired
+  `account_persona_links` export state are covered by eight feature tests.
+- ✅ At the backup-feature checkpoint, the full local Node suite passed 119 tests with no
+  failures and the syntax/diff checks passed. That historical checkpoint is not the current
+  release result; use the publication-governance section above for today's unresolved run.
+- ⏭ The in-app browser blocks `file:` and synthetic `data:` navigation, so a visual local
+  fixture could not be opened there. No alternate browser-policy workaround was used.
+  A signed-in visual smoke test remains part of the release checklist.
+- ⏭ Migration 048 is not applied, the page is not deployed, no backup pair was written to
+  a live account, and cross-owner/direct-DML/deletion behavior still requires a rollback
+  test in a non-production Supabase environment before release.
+
+## Persona full-name canon — production data check 2026-08-22
+
+- ✅ The exact handle-keyed statement in
+  `supabase/migrations/20260822113925_persona_full_name_canon.sql` completed in the
+  production Supabase SQL Editor without an error.
+- ✅ An independent public REST read matched all 19 expected existing handles and names
+  against `content/persona-full-name-canon-2026-08-22.json`: 19 matched, 0 mismatched.
+  `castleborn.abel` remained absent as intended; no persona row was created.
+- ✅ The connected Accounts spreadsheet range `Sheet1!A6:A24` was read back as the same
+  19 full names and visually inspected in Google Sheets. Existing row colors and the other
+  account/provider columns were preserved.
+- ✅ At the full-name checkpoint, the full local Node test suite passed 111 tests with no
+  failures and `git diff --check` passed. This remains evidence for that data change, not
+  a current whole-release result.
+- ⏭ Direct SQL Editor execution does not write Supabase CLI migration history. A later
+  linked `supabase db push` may rerun this idempotent file once to record version
+  `20260822113925`; do not fabricate the history row manually.
+
 ## Provider management and Meta Page pairing — release check 2026-07-29
 
 - ✅ Migration 018 is live on project `nwsqyuucwzihruszocge`. All eight Meta tables
@@ -146,9 +381,10 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
       ✅ live signed-in desktop tabs; ⬜ final real-phone width check remains
 - [ ] A9. Direction fields persist and are present in a generated draft's server-built
       prompt; persona hard rules remain authoritative — ⬜
-- [ ] A10. L0 allows co-writing only; L1 enables scheduled drafts; L2 exact approval waits
-      for the owner to press Publish now; L3 auto mode still requires exact approval but
-      may publish an approved native draft when due — ⬜
+- [ ] A10. L0 allows co-writing only and L1 enables scheduled drafts. Under migration 051,
+      neither L2 nor L3 auto-publishes native page content: an exact-approved draft is
+      staged, advances the persona revision, and remains nonpublic until the owner reviews
+      and publishes that exact page revision — ⬜
 - [ ] A11. Global pause and persona pause each stop new persona AI calls, draft generation,
       publishing, and new fan-chat requests; resume restores only previously enabled
       paths — ⬜
@@ -184,10 +420,11 @@ persona available. If custom model hosts are used, set `SCHEDULE_AI_HOSTS` and
       insufficient autonomy, manual targets, invalid approvals, caps, and quiet hours — ⬜
 - [ ] A22. An eligible L2 exact-approved draft remains waiting when cron runs, then
       publishes exactly once only after the owner presses Publish now — ⬜
-- [ ] A23. An eligible L3 exact-approved draft on an enabled native `auto` target publishes
-      only when due; a repeated queue invocation is idempotent — ⬜
-- [ ] A24. The atomic native publisher cannot exceed a destination daily cap or create a
-      post without finalizing the corresponding draft and audit record — ⬜
+- [ ] A23. An eligible exact-approved native draft stages idempotently into the persona
+      page but cannot become public from a queue invocation. Only exact owner page review
+      and `publish_persona_page` finalize it; repeated reconciliation is idempotent — ⬜
+- [ ] A24. Staging/publishing cannot expose a post without the matching current page
+      revision, unchanged approved-draft hash, finalized draft provenance, and audit row — ⬜
 - [ ] A25. Every external destination returns a clear gated/no-write-connector result even
       when the ledger account is ownership verified or Gmail API connected — ⬜
 - [ ] A26. After the owner posts externally by hand, “mark manually posted” records the
@@ -307,7 +544,10 @@ Verification round 2026-07-10 run by Claude (browser automation) + Christian.
 - [ ] 28. Persona chat responds in voice; "Save draft" lands in Matrix drafts — ⬜
 - [ ] 29. Task ▶ Run works; drafts advance idea → ready → posted; Copy copies — ⬜
 - [x] 30. Extensions card shows Concept entry (minimal, no GitHub release yet); Personas app download works — ✅ zip serves 200 (42 KB). FINDING: static fallback assets/Extensions/Concept/releases.json referenced by registry.json does not exist (404) — create it so the GitHub-rate-limit fallback works
-- [x] 31. Report a problem creates a row in error_logs — ✅ insert path verified (row "[QA] verification test report" — confirm visible in dashboard). NOTE: the button itself uses prompt(), untestable via automation
+- [x] 31. Historical pre-051 check: Report a problem created an `error_logs` row in the
+      then-deployed release. Migration 051 deliberately supersedes that insert path with
+      authenticated `report_client_error`; rerun the bounded/redaction/rate-limit checks
+      after deployment. The historical row is not proof of the current source contract.
 ​
 ## Growth
 - [x] 32. Promote panel: 3 ad variants, Copy works, X share opens pre-filled — ✅ (deployed & tested; variants personalized from tagline/topics, clipboard verified, twitter.com/intent/tweet pre-filled)

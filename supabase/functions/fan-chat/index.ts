@@ -135,6 +135,7 @@ type Persona = {
   bio: string | null;
   nsfw: boolean | null;
   visibility: string;
+  publication_state: string;
   topics: string | null;
   purpose: string | null;
   voice: string | null;
@@ -727,13 +728,21 @@ async function chooseBackend(owner: string, preferredId: string | null) {
 async function loadEligibility(
   personaId: string,
 ): Promise<Eligibility | EligibilityFailure> {
+  const { data: publicationCurrent, error: publicationError } = await admin.rpc(
+    "persona_publication_is_current",
+    { pid: personaId },
+  );
+  if (publicationError || publicationCurrent !== true) {
+    return { status: 404, reason: "persona_unavailable" };
+  }
   const { data: personaData, error: personaError } = await admin.from(
     "personas",
   )
     .select(
-      "id,owner,name,handle,tagline,bio,nsfw,visibility,topics,purpose,voice,audience,hashtags,dont,ai_backend",
+      "id,owner,name,handle,tagline,bio,nsfw,visibility,publication_state,topics,purpose,voice,audience,hashtags,dont,ai_backend",
     )
     .eq("id", personaId)
+    .eq("publication_state", "published")
     .in("visibility", ["public", "unlisted"])
     .maybeSingle();
   if (personaError || !personaData) {
@@ -894,6 +903,20 @@ async function pollVisitorSession(
     ownerLive: !!liveUntil && Date.parse(liveUntil) > Date.now(),
     ownerLiveUntil: liveUntil,
   } as const;
+}
+
+async function isPublishedFanChatPersona(personaId: string): Promise<boolean> {
+  const [{ data, error }, current] = await Promise.all([
+    admin.from("personas")
+      .select("id")
+      .eq("id", personaId)
+      .eq("publication_state", "published")
+      .in("visibility", ["public", "unlisted"])
+      .or("nsfw.is.null,nsfw.eq.false")
+      .maybeSingle(),
+    admin.rpc("persona_publication_is_current", { pid: personaId }),
+  ]);
+  return !error && !!data && !current.error && current.data === true;
 }
 
 async function reserveFanChatMessage(
@@ -1276,6 +1299,15 @@ serve(async (req) => {
     }
 
     if (action === "poll") {
+      if (!await isPublishedFanChatPersona(personaId)) {
+        await closeVisitorSession(personaId, sessionId, visitorKeyHash);
+        return json(origin, {
+          available: false,
+          reason: "persona_unavailable",
+          messages: [],
+          disclosure: FIXED_AI_DISCLOSURE,
+        }, 404);
+      }
       const result = await pollVisitorSession(
         personaId,
         sessionId,

@@ -1,9 +1,12 @@
 name: Deploy site to GitHub Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      release_confirmation:
+        description: "Type MIGRATIONS-VERIFIED after the linked migration ledger and staging smoke tests are reviewed"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -26,6 +29,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Require reviewed database release evidence
+        env:
+          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+        run: |
+          test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
+            echo "Release blocked: verify the linked migration ledger and staging smoke tests first."
+            exit 1
+          }
       - name: Prepare public site artifact
         run: |
           mkdir -p .pages-artifact
@@ -34,6 +45,12 @@ jobs:
             --include '/index.html' \
             --include '/owner-app.css' \
             --include '/owner-app.js' \
+            --include '/persona-view.css' \
+            --include '/persona-view.js' \
+            --include '/platform-governance.css' \
+            --include '/platform-governance.js' \
+            --include '/agent-board.css' \
+            --include '/agent-board.js' \
             --include '/assets/***' \
             --include '/brand/app-icon/***' \
             --include '/manifest.webmanifest' \

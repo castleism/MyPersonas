@@ -262,7 +262,7 @@ export async function buildAkikoLocalDraftPack() {
     },
     persona: {
       key: "akiko",
-      display_name: "Akiko / Being Tea Co.",
+      display_name: "Akiko Sasaki / Being Tea Co.",
       persona_id: null,
       requires_owner_confirmation: true,
       provisional_pronouns: "she/her",

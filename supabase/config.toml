@@ -20,6 +20,16 @@ verify_jwt = true
 [functions.fan-chat]
 verify_jwt = false
 
+# Public CAPTCHA intake has no user JWT. The function itself requires one exact
+# configured origin, bounded JSON, Turnstile verification, and the service RPC.
+[functions.request-review]
+verify_jwt = false
+
+# Public offer links must open without a JWT. The function resolves only the
+# database-controlled active destination before issuing a redirect.
+[functions.affiliate-redirect]
+verify_jwt = false
+
 [functions.gmail-oauth]
 verify_jwt = false
 
@@ -68,4 +78,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.gemini-image]
+verify_jwt = true
+
+[functions.media-ingest]
+verify_jwt = true
+
+[functions.agent-board-propose]
+verify_jwt = true
+
+[functions.agent-board-run]
 verify_jwt = true

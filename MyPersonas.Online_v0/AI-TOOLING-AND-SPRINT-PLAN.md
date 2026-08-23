@@ -1,23 +1,24 @@
 # AI tooling and trial-credit plan
 
-Status: owner working document, updated 2026-08-14 (America/Anchorage).
+Status: owner working document, model catalog refreshed 2026-08-22 (America/Anchorage).
 
 This is the operating plan for the MyPersonas/Castleborn portfolio and its related sites and apps. It uses a small, benchmarked model set. Creating one project or API key per persona would multiply cost, key exposure, and maintenance without improving persona separation. Personas belong in MyPersonas as data and policy; provider projects are separated by environment and risk.
 
 ## Current truth
 
-- MyPersonas source and the public Pages frontend are current, but the release is not healthy: local contract tests pass while the GitHub Deno typecheck is red and automatic Supabase deployment is blocked by a missing workflow credential.
-- Live MyPersonas currently has one Google text backend using the moving alias `gemini-flash-latest`. Do not add a fleet of keys until the security and release gates below are closed; replace that alias with a pinned stable model only after a controlled test.
+- The coordinated 047–057 release passed its frozen local regression. That is not proof that the linked database, Edge Functions, or Pages are current. Both production workflows are now manual, require the typed `MIGRATIONS-VERIFIED` gate, and must follow database → Functions → Pages after owner approval.
+- The most recent owner-visible backend inventory recorded one Google text backend using the moving alias `gemini-flash-latest`; recheck the linked database before treating that as current. Do not add a fleet of keys until the security and release gates below are closed; replace a moving alias with a pinned stable model only after a controlled test.
 - The recurring Meta publisher remains off. FB/IG owner-triggered publishing was proven earlier, but the hardened exact-source release still needs coordinated verification. X remains off.
 - Google social sign-in and TOTP enrollment exist. That is not enterprise SSO. An AAL2 challenge and protected credential boundary are implemented locally but remain unapplied and undeployed, so production must still be treated as lacking that protection.
 - This desktop now has Ollama `gpt-oss:20b`, `gemma3:12b`, and `embeddinggemma`, tested locally on `127.0.0.1:11434`. Ollama must remain loopback-only because its local API has no authentication boundary.
-- Claude desktop is already at roughly 75% of its weekly allowance. Reserve it for architecture, canon, and final review instead of bulk generation.
+- A 2026-08-22 zero-cost structured-output smoke passed for `gpt-oss:20b` and failed for `gemma3:12b`; keep GPT-OSS in the structured agent lane and Gemma in multimodal/review work until a JSON-mode retest passes. See `benchmarks/2026-08-22-local-structured-output-smoke.md`.
+- The 2026-08-14 snapshot put Claude desktop at roughly 75% of its weekly allowance; recheck the live meter before use. Reserve it for architecture, canon, and final review instead of bulk generation.
 
 ## The smallest useful stack
 
 | Role | Default | Escalation | Use in this portfolio |
 |---|---|---|---|
-| Primary engineering conductor | Codex `gpt-5.6-terra` | `gpt-5.6-sol` for hard security/release review; `gpt-5.6-luna` for bounded bulk work | One writer per branch/worktree; tests and evidence required. |
+| Primary engineering conductor | Codex `gpt-5.6-terra` at medium reasoning | `gpt-5.6-sol` high/xhigh for hard security and release review; `gpt-5.6-luna` low/medium for bounded bulk work | Terra is the cost/quality default; Sol is the complex-work escalation; Luna is the high-volume lane. One writer per branch/worktree; tests and evidence required. |
 | Architecture and editorial review | Claude `claude-sonnet-5` | `claude-opus-5` only for a final difficult decision | Read-only review or isolated worktree; preserve the limited weekly allowance. |
 | Hosted MyPersonas text | Gemini stable `gemini-3.6-flash` | Evaluate `gemini-3.5-flash` or a current Pro preview only on the fixed benchmark | First stable replacement candidate for the current moving alias. |
 | Sourced web research | Perplexity `sonar` | `sonar-pro`; `sonar-deep-research` only for a bounded dossier | Sources go in the evidence record; generated prose never becomes evidence. |
@@ -30,7 +31,7 @@ This is the operating plan for the MyPersonas/Castleborn portfolio and its relat
 | Image generation | Gemini `gemini-3.1-flash-image` (Nano Banana 2) | `gemini-3-pro-image` for approved hero art; Lite for bulk tests | Preserve persona visual bibles, label synthetic media, and keep provenance. |
 | Image understanding | Local Ollama `gemma3:12b` or a current Gemini vision model | Human review for identity/canon | DiffusionGemma is text-output multimodal reasoning, not an image generator. |
 
-Current official references: [OpenAI models](https://developers.openai.com/api/docs/models), [Claude models](https://platform.claude.com/docs/en/about-claude/models/overview), [Gemini models](https://ai.google.dev/gemini-api/docs/models), [Gemini image generation](https://ai.google.dev/gemini-api/docs/image-generation), [Perplexity Sonar](https://docs.perplexity.ai/docs/sonar/models), [Groq production models](https://console.groq.com/docs/models), [ElevenLabs models](https://elevenlabs.io/docs/overview/models), and [Ollama models](https://ollama.com/library).
+Current official references: [OpenAI models](https://developers.openai.com/api/docs/models), [Claude models](https://platform.claude.com/docs/en/about-claude/models/overview), [Gemini models](https://ai.google.dev/gemini-api/docs/models), [Gemini image generation](https://ai.google.dev/gemini-api/docs/image-generation), [Perplexity Sonar](https://docs.perplexity.ai/docs/sonar/models), [Groq production models](https://console.groq.com/docs/models), [Mistral models](https://docs.mistral.ai/models), [Cohere Rerank](https://docs.cohere.com/v2/docs/rerank), [Together serverless models](https://docs.together.ai/docs/serverless/models), [DeepSeek models and pricing](https://api-docs.deepseek.com/quick_start/pricing/), [ElevenLabs models](https://elevenlabs.io/docs/overview/models), [LM Studio authentication](https://lmstudio.ai/docs/developer/core/authentication), and [Ollama models](https://ollama.com/library).
 
 Model availability and trial terms change. Recheck the provider's official model page immediately before creating a deployment or key.
 
@@ -39,14 +40,16 @@ Model availability and trial terms change. Recheck the provider's official model
 | Provider/tool | Decision | Recommended use/model |
 |---|---|---|
 | OpenRouter | Evaluation and controlled fallback only | Require `data_collection: deny`, ZDR, required parameters, a provider allowlist, explicit fallback order, and a maximum price. Use only public/redacted data until routing is verified. |
-| Together AI and Fireworks AI | Run the same redacted benchmark, then keep one | Prefer serverless/batch. Do not start a dedicated GPU trial. |
-| Mistral | OCR/document specialist candidate | `mistral-small-2603`, `mistral-medium-3-5`, and `mistral-ocr-4-0`. |
+| Together AI and Fireworks AI | Run the same redacted benchmark, then keep one | Prefer serverless/batch and compare the same `openai/gpt-oss-120b`, Kimi K2.6, and GLM 5.1 class where each live catalog offers it. Do not start a dedicated GPU trial. |
+| Mistral | OCR/document specialist candidate | Benchmark the currently offered Small/Medium chat models and use `mistral-ocr-4-1` for the OCR lane; do not pin an older chat model until the live catalog confirms it is still active. |
+| Cohere | Hosted retrieval specialist candidate | Compare `embed-v4.0` plus `rerank-v4.0-fast` with local `embeddinggemma`; keep hosted retrieval only if the fixed relevance benchmark justifies transferring the approved corpus. |
 | DeepSeek | Cheap independent reasoning benchmark | `deepseek-v4-flash` or `deepseek-v4-pro`; retired `deepseek-chat`/`deepseek-reasoner` aliases must not be used. |
 | xAI/Grok | Adversarial review and X-native research | `grok-4.5` for a hard review, `grok-4.3` for a cheaper pass. Never grant X write access during research. |
 | Azure AI Foundry | Enterprise control-plane experiment | One `mypersonas-rnd` project using Entra/RBAC and keyless auth where available. No paid deployment until the benchmark justifies it. |
 | AWS Bedrock | Standby portability test | Keep dormant unless Foundry or the direct provider fails a real requirement. |
 | IBM watsonx | Governance/RAG experiment | `ibm/granite-4-h-small`; avoid hourly dedicated trial capacity. |
 | Meta AI | Redacted evaluation only | No production connector or persona secrets. |
+| Hugging Face / DiffusionGemma | Model-card and local research lane | Treat DiffusionGemma as multimodal reasoning that emits text, not an image generator. Review the model card, license, files, and hardware fit before any download or endpoint; never send private canon to a public Space. |
 | LM Studio | Optional local compatibility server | Bind to loopback, enable authentication, and use only if a client cannot speak Ollama. |
 | Bionic | Project-management experiment | Do not connect production repos or secrets until its permissions/export/deletion behavior is reviewed. |
 
@@ -119,6 +122,7 @@ Score correctness, source fidelity, canon fidelity, JSON validity, latency, toke
 | Tool | Project/task to use | Access posture | Current/setup gate |
 |---|---|---|---|
 | Codex | Current MyPersonas task; `portfolio-p0-containment`, `mypersonas-release`, then `mypersonas-security` packets | Primary writer for the assigned files only | Active locally; Git push/deploy remains owner-gated. |
+| ChatGPT / OpenAI API | `mypersonas-rnd` only if a product API lane survives the benchmark | Server-side Responses API; scoped project/service account, hard budget, no browser key | ChatGPT/Codex access is not an API credential. Project/key creation remains a separate owner-approved external action. |
 | Claude desktop | Existing MyPersonas project; task `final-architecture-and-canon-review` | Read-only review of diffs/task packets; no secrets or production tools | Existing projects observed; weekly allowance is scarce, so do not create a bulk queue. |
 | GitHub Copilot | Repository workspace `MyPersonas`; task `ide-second-opinion` | Local repo only; no autonomous push/deploy | Repo attachment changes access and needs owner confirmation. |
 | Kimi | Project `MyPersonas Independent Review`; tasks `long-context-roadmap-audit` and `release-diff-review` | Public/redacted docs or isolated worktree; no YOLO/AFK/production | Project creation and any repo connection need owner confirmation. |
@@ -129,11 +133,14 @@ Score correctness, source fidelity, canon fidelity, JSON validity, latency, toke
 | LM Studio | `mypersonas-local-compat` only if needed | Loopback plus API auth; no LAN exposure | Dormant; avoid duplicate local serving until a client requires it. |
 | OpenRouter | `mypersonas-rnd` fixed benchmark | Redacted evaluation only with strict routing/data policy | Wait for AAL2/server exchange/host/budget controls, then owner confirms one scoped key. |
 | Groq, Mistral, DeepSeek, Together, Fireworks | Same `mypersonas-rnd` benchmark packet | Public/redacted data; no production MyPersonas assignment initially | Verify trial terms and create at most one bounded key per provider with owner confirmation. Drop losers. |
-| Gemini/Google | Existing MyPersonas backend, then `mypersonas-rnd` image/text benchmark | Stable pinned model; service-account-bound/server-side key where supported | Current moving alias should change only after green release and a controlled owner-approved test. |
+| Cohere | `mypersonas-rnd-retrieval` benchmark, or the shared R&D project if that is all the dashboard supports | Approved public/redacted corpus only; embeddings and reranking, not general persona generation | Compare with local retrieval first; create no production corpus or key until retention/region and deletion are verified. |
+| Hugging Face / DiffusionGemma | Local model-card/license review; optional public/redacted notebook only | No production endpoint, private canon upload, or unreviewed model download | Confirm license, exact revision hash, malware/safetensors posture, disk/RAM/VRAM, and task fit before downloading. |
+| Gemini / Google AI Studio / Cloud Console | Existing MyPersonas backend, then `mypersonas-rnd` image/text benchmark | Stable pinned model; service-account-bound/server-side key where supported | Current moving alias should change only after green release and a controlled owner-approved test. DeepMind pages are research references, not a product credential. |
 | Azure Foundry | `mypersonas-rnd` governance/control-plane trial | Entra/RBAC; keyless where available; no paid deployment | Owner must confirm tenant/subscription/region/role and $0 budget. |
 | AWS Bedrock | No project unless Foundry/direct providers fail a requirement | Standby only | Do not activate paid model access during the first wave. |
 | IBM watsonx, Meta AI, Grok | One redacted specialist benchmark each | No production keys/data/writes | Owner confirmation at key/project creation; remove if no measurable win. |
 | ElevenLabs | `mypersonas-stage-voice`; one approved voice test | Scoped/expiring/credit-limited key; rights record required | Do not create voices or spend credits until the exact persona/voice is approved. |
+| Supabase | Existing MyPersonas project plus an isolated matching-schema staging project | Database/Auth/Edge control plane; least-privilege CLI token, Vault-held provider secrets, audited manual release | Follow `RELEASE-MANIFEST-2026-08-22.md`; do not manufacture missing migration history or treat a signed-in dashboard as configured. |
 
 “Set up” means the project, policy, task packet, budget, and revocation record exist and a bounded test passed. Merely opening a dashboard or signing in is not setup completion.
 

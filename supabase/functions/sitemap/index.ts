@@ -12,19 +12,20 @@ const SITE = "https://aliaspaces.com";
 
 serve(async () => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data } = await admin
-    .from("personas")
-    .select("handle, updated_at, created_at")
-    .eq("visibility", "public")
-    .order("created_at", { ascending: false })
-    .limit(50000);
+  const { data, error } = await admin.rpc("public_reviewed_persona_sitemap");
+  if (error || !Array.isArray(data)) {
+    return new Response("Sitemap is temporarily unavailable", {
+      status: 503,
+      headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" },
+    });
+  }
 
   const esc = (s: string) => s.replace(/[<>&'"]/g, (c) =>
     ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c] as string));
 
   const urls = [`<url><loc>${SITE}/</loc><changefreq>daily</changefreq></url>`];
   for (const p of data || []) {
-    const lastmod = (p.updated_at || p.created_at || "").slice(0, 10);
+    const lastmod = String(p.last_modified_at || "").slice(0, 10);
     urls.push(
       `<url><loc>${SITE}/#/p/${esc(p.handle)}</loc>` +
       (lastmod ? `<lastmod>${lastmod}</lastmod>` : "") +

@@ -198,3 +198,63 @@ test("Composer schedules only through the authenticated immutable-media boundary
   assert.match(approvalFunction, /admin\.rpc\("approve_and_schedule_post_draft"/);
   assert.match(config, /\[functions\.approve-post-draft\]\s*verify_jwt\s*=\s*true/);
 });
+
+test("browser public uploads use the authenticated provenance intake", async () => {
+  const frontend = await readFile(
+    path.join(repoRoot, "MyPersonas.Online_v0/index.html"),
+    "utf8",
+  );
+  const immutableUpload = frontend.slice(
+    frontend.indexOf("async function uploadImmutablePersonaMedia"),
+    frontend.indexOf("async function sdUse"),
+  );
+  const uploadPolicy = frontend.slice(
+    frontend.indexOf("const PUBLIC_PERSONA_MEDIA_EXTENSIONS"),
+    frontend.indexOf("async function sdUse"),
+  );
+  const generatedUpload = frontend.slice(
+    frontend.indexOf("async function sdUse"),
+    frontend.indexOf("// ---------- session timeout warning"),
+  );
+  const pickerUpload = frontend.slice(
+    frontend.indexOf("function uploadTo"),
+    frontend.indexOf("// ================= ACCOUNT:"),
+  );
+  const composerUpload = frontend.slice(
+    frontend.indexOf("async function composerUploadSource"),
+    frontend.indexOf("async function openComposer"),
+  );
+
+  assert.match(frontend, /PUBLIC_PERSONA_MEDIA_EXTENSIONS=Object\.freeze\(\{"image\/png":"png","image\/jpeg":"jpg","image\/webp":"webp","image\/gif":"gif","video\/mp4":"mp4","video\/webm":"webm"\}\)/);
+  assert.doesNotMatch(uploadPolicy, /image\/svg\+xml/);
+  assert.doesNotMatch(frontend, /accept="image\/\*/);
+  assert.match(immutableUpload, /sb\.auth\.getSession\(\)/);
+  assert.match(immutableUpload, /new FormData\(\)/);
+  assert.match(immutableUpload, /form\.append\("personaId",personaId\)/);
+  assert.match(immutableUpload, /form\.append\("aiUse",aiUse\)/);
+  assert.match(immutableUpload, /functions\/v1\/media-ingest/);
+  assert.doesNotMatch(immutableUpload, /storage\.from|bucket\.upload/);
+  assert.match(generatedUpload, /PUBLIC_PERSONA_RASTER_TYPES\.has\(mime\)/);
+  assert.match(generatedUpload, /MyPersonasAiProvenance\.watermarkRaster\(source/);
+  assert.match(generatedUpload, /origin:"site_generated"/);
+  assert.match(generatedUpload, /generationEventId/);
+  assert.match(pickerUpload, /f\.accept="image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
+  assert.match(pickerUpload, /MyPersonasAiProvenance\.askAiUse/);
+  assert.match(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(source\)/);
+  assert.match(pickerUpload, /MyPersonasAiProvenance\.watermarkRaster\(source\)/);
+  assert.match(pickerUpload, /uploadImmutablePersonaMedia\(file,session\?\.user\?\.id,uploadPurpose\(inputId\)/);
+  assert.doesNotMatch(pickerUpload, /storage\.from|bucket\.upload|watermarkImage/);
+  assert.ok(
+    pickerUpload.indexOf("await MyPersonasAiProvenance.watermarkRaster(source)") <
+      pickerUpload.indexOf("uploadImmutablePersonaMedia(file"),
+    "watermarking must finish before secure intake",
+  );
+  assert.match(composerUpload, /MyPersonasAiProvenance\.askAiUse/);
+  assert.match(composerUpload, /crop:\{width:1200,height:628\}/);
+  assert.match(composerUpload, /crop:\{width:1080,height:1080\}/);
+  assert.match(composerUpload, /crop:\{width:1080,height:1350\}/);
+  assert.match(composerUpload, /rendition:"facebook"/);
+  assert.match(composerUpload, /rendition:"instagram"/);
+  assert.match(composerUpload, /rendition:"x"/);
+  assert.doesNotMatch(composerUpload, /storage\.from|bucket\.upload/);
+});

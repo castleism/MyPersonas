@@ -65,7 +65,7 @@ test("Reddit provider revocation uses the required fail-closed request", () => {
   assert.match(block, /catch \{\s*return false;/s);
 });
 
-test("all Reddit revocations precede every local token and ledger deletion", () => {
+test("all Reddit revocations precede local token cleanup and ledgers remain for dependency-ordered erasure", () => {
   const inventory = functionBlock("listRedditLedgers");
   assert.match(inventory, /\.eq\("owner", uid\)\.eq\("provider", "reddit"\)/);
   assert.match(inventory, /\.range\(from, from \+ 499\)/);
@@ -78,8 +78,8 @@ test("all Reddit revocations precede every local token and ledger deletion", () 
     "revokeRedditRefreshToken(",
     '"reddit_clear_tokens_service"',
     'admin.from("reddit_oauth_states").delete()',
-    'admin.from("account_ledger").delete()',
   ]);
+  assert.doesNotMatch(block, /admin\.from\("account_ledger"\)\.delete/);
   assert.match(block, /plan\.refreshToken &&\s*!await revokeRedditRefreshToken/s);
   assert.match(block, /hasStoredToken: Boolean\(accessToken \|\| refreshToken\)/);
   assert.match(
@@ -93,7 +93,7 @@ test("Reddit state cleanup is ordered before the generic ledger delete", () => {
   const block = functionBlock("eraseOwnedRows");
   assertOrdered(block, [
     'admin.from("reddit_oauth_states").delete().eq("owner", uid)',
-    'admin.from("account_ledger").delete().eq("owner", uid)',
+    'admin.rpc("delete_account_ledger_for_account_service"',
   ]);
 
   const erasure = source.slice(source.indexOf("const eraseClaimedOwner"));

@@ -35,6 +35,15 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   },
 });
 
+async function sha256Hex(bytes: Uint8Array) {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", copy.buffer);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 class BodyTooLargeError extends Error {}
 
 function cors(origin: string) {
@@ -182,6 +191,27 @@ serve(async (req: Request) => {
   if (prompt.length > MAX_PROMPT_CHARS) {
     return json({ error: "The prompt is too long" }, 400, origin);
   }
+  const personaId = typeof body.personaId === "string"
+    ? body.personaId.trim()
+    : "";
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(personaId)
+  ) {
+    return json(
+      { error: "An owned persona is required for generated-media provenance" },
+      400,
+      origin,
+    );
+  }
+  const persona = await admin.from("personas").select("id")
+    .eq("id", personaId).eq("owner", guard.user.id).maybeSingle();
+  if (persona.error) {
+    return json({ error: "Could not verify the persona" }, 500, origin);
+  }
+  if (!persona.data) {
+    return json({ error: "Owned persona not found" }, 404, origin);
+  }
 
   if (body.provider !== undefined && !isGoogleImageProvider(body.provider)) {
     return json(
@@ -326,5 +356,42 @@ serve(async (req: Request) => {
       origin,
     );
   }
-  return json({ image: `data:${mime};base64,${imageData}`, mime }, 200, origin);
+  let outputBytes: Uint8Array;
+  try {
+    const decoded = atob(imageData);
+    outputBytes = Uint8Array.from(
+      decoded,
+      (character) => character.charCodeAt(0),
+    );
+  } catch {
+    return json({ error: "Gemini returned invalid image bytes" }, 502, origin);
+  }
+  const [outputSha256, promptSha256] = await Promise.all([
+    sha256Hex(outputBytes),
+    sha256Hex(new TextEncoder().encode(prompt)),
+  ]);
+  const generation = await admin.from("ai_media_generation_events").insert({
+    owner: guard.user.id,
+    persona_id: personaId,
+    backend_id: backend.id,
+    provider: "google",
+    model,
+    prompt_sha256: promptSha256,
+    output_sha256: outputSha256,
+    output_mime: mime,
+  }).select("id,expires_at").single();
+  if (generation.error || !generation.data) {
+    return json(
+      { error: "The image was generated but its server provenance event could not be recorded" },
+      500,
+      origin,
+    );
+  }
+  return json({
+    image: `data:${mime};base64,${imageData}`,
+    mime,
+    sourceSha256: outputSha256,
+    generationEventId: generation.data.id,
+    generationEventExpiresAt: generation.data.expires_at,
+  }, 200, origin);
 });

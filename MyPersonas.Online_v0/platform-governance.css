@@ -1,0 +1,31 @@
+.gov-shell{display:grid;gap:14px}
+.gov-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.gov-head h2{margin:0}.gov-actions{display:flex;gap:7px;flex-wrap:wrap}
+.gov-persona-picker{min-width:240px;max-width:420px}
+.gov-state{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 9px;background:#f7f9fc;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.gov-state.published,.gov-check.ok{color:#176b2c;background:#eafff1;border-color:#a8dfb7}
+.gov-state.draft,.gov-state.unpublished,.gov-state.in_review{color:#8a4a00;background:#fff5dd;border-color:#f0cd83}
+.gov-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.gov-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+.gov-card h3{margin:0 0 8px}.gov-card h4{margin:13px 0 6px}
+.gov-wide{grid-column:1/-1}
+.gov-checklist{display:grid;gap:7px;margin-top:10px}
+.gov-check{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:9px;padding:9px;background:#fff7f7;color:#8d2534}
+.gov-check.ok::before{content:"✓";font-weight:900}.gov-check:not(.ok)::before{content:"!";font-weight:900}
+.gov-check span{display:block}.gov-check small{display:block;color:var(--dim);margin-top:2px}
+.gov-note{border-left:4px solid var(--accent);background:#eef6ff;border-radius:8px;padding:10px 12px;margin:9px 0;color:#26415e}
+.gov-note.warn{border-color:#d99100;background:#fff7e8;color:#684500}
+.gov-note.stop{border-color:var(--red);background:#fff0f3;color:#7c1d2c}
+.gov-ai-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.gov-list{display:grid;gap:8px;margin-top:8px}
+.gov-row{border:1px solid var(--border);border-radius:10px;padding:10px;background:#fafbfd}
+.gov-row-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.gov-row-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.gov-account{display:grid;grid-template-columns:minmax(160px,1fr) minmax(140px,.8fr) auto;gap:8px;align-items:end}
+.gov-account label{margin:0}.gov-source{min-height:180px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;tab-size:2}
+.gov-secret{border:1px dashed #d99100;background:#fff8e8;border-radius:9px;padding:10px;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.gov-code{max-height:28rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--border);border-radius:9px;padding:10px;background:#111;color:#f6f6f6;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem}
+.gov-family-tree{display:grid;gap:6px}.gov-relation{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border)}
+.gov-relation:last-child{border-bottom:0}
+.gov-security-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.gov-security-stat{background:#f7f9fc;border:1px solid var(--border);border-radius:9px;padding:9px}.gov-security-stat b{display:block;font-size:18px}
+@media(max-width:760px){.gov-grid{grid-template-columns:1fr}.gov-wide{grid-column:1}.gov-account{grid-template-columns:1fr}.gov-security-grid{grid-template-columns:1fr}.gov-persona-picker{width:100%;max-width:none}}

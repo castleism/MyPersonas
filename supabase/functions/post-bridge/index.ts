@@ -6,6 +6,7 @@
 // Deploy: supabase functions deploy post-bridge
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAal2 } from "../_shared/aal2.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -183,16 +184,6 @@ function inQuietHours(
     : current >= start.total && current < end.total;
 }
 
-async function caller(req: Request) {
-  const jwt = (req.headers.get("Authorization") || "").replace(
-    /^Bearer\s+/i,
-    "",
-  );
-  if (!jwt) return null;
-  const { data, error } = await admin.auth.getUser(jwt);
-  return error ? null : data.user;
-}
-
 async function audit(
   owner: string,
   personaId: string,
@@ -202,15 +193,15 @@ async function audit(
   outcome: string,
   detail: Record<string, unknown> = {},
 ) {
-  const { error } = await admin.from("agent_actions").insert({
-    owner,
-    persona_id: personaId,
-    binding_id: bindingId,
-    action_type: actionType,
-    entity_type: "draft",
-    entity_id: draftId,
-    outcome,
-    detail,
+  const { error } = await admin.rpc("insert_agent_action_service", {
+    p_owner: owner,
+    p_persona_id: personaId,
+    p_binding_id: bindingId,
+    p_action_type: actionType,
+    p_entity_type: "draft",
+    p_entity_id: draftId,
+    p_outcome: outcome,
+    p_detail: detail,
   });
   if (error) console.error("agent audit insert failed", error.message);
 }
@@ -362,10 +353,15 @@ serve(async (req) => {
     return responseJson({ error: "Origin not allowed" }, 403);
   }
 
-  const user = await caller(req);
-  if (!user) {
-    return responseJson({ error: "Invalid or expired session" }, 401, origin);
+  const guard = await requireAal2(req, admin);
+  if (!guard.ok) {
+    return responseJson(
+      { error: guard.error, code: guard.code },
+      guard.status,
+      origin,
+    );
   }
+  const user = guard.user;
   let payload: { draftId?: string };
   try {
     payload = await req.json();

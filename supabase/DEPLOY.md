@@ -2,12 +2,25 @@
 
 The browser app is hosted by GitHub Pages. Supabase provides authentication, the
 database, Vault, OAuth connectors, scheduled drafting, native publishing, and fan chat.
-> **CI/CD (2026-08-08):** function deploys can now be automated — see
-> [`CI-CD-SETUP.md`](../CI-CD-SETUP.md). On merge to `main`, `supabase-deploy.yml`
-> deploys the edge functions (once the `SUPABASE_ACCESS_TOKEN` secret is set);
-> `ci.yml` runs tests + `deno check` + a frontend syntax check on every PR. The
-> manual commands below remain valid as a fallback and for migrations, which stay
-> deliberate (not auto-applied).
+> **Current release rule (2026-08-22):** pushes validate but do not deploy.
+> `.github/workflows/supabase-deploy.yml` and `.github/workflows/pages.yml` are manual
+> `workflow_dispatch` workflows and each requires the exact typed confirmation
+> `MIGRATIONS-VERIFIED`. Apply and read back the database first, deploy functions second,
+> and publish Pages last. See [`CI-CD-SETUP.md`](../CI-CD-SETUP.md).
+
+Release-package status: **Implemented and tested locally; not pushed, applied to the
+linked database, deployed, configured, activated, or verified live unless separately
+evidenced.** The exact 047–057 order, frozen local hashes, prerequisite warning, test
+evidence, and owner gates are in
+[`RELEASE-MANIFEST-2026-08-22.md`](../MyPersonas.Online_v0/RELEASE-MANIFEST-2026-08-22.md).
+The timestamped directory is not a complete fresh-install chain; prove all required
+predecessors in the target before using a linked push.
+
+Follow-on migration `20260823000000_persona_view_mode.sql` (canonical 058) is separate
+from the frozen 047–057 package. It must be applied and security-tested after 057 and
+before publishing `persona-view.js`, `persona-view.css`, or the matching page changes.
+The client intentionally refuses to fall back to account-wide reads when 058 is missing.
+See [`PERSONA-VIEW-MODE.md`](../MyPersonas.Online_v0/PERSONA-VIEW-MODE.md).
 
 This is a deployment runbook for the repository state. The 2026-07-24 production rollout
 applied migration 016, deployed the matching mailbox/Gmail/erasure functions, and enabled
@@ -16,19 +29,187 @@ the mailbox cron. The 2026-07-29 rollout applied migrations 017 and 018 and depl
 A signed-in Gmail re-consent, real mailbox action, and credentialed Meta owner flow remain
 explicit owner-run smoke tests.
 
-## 2026-08-22 owner command center and fan inbox release
+## Historical 2026-08-22 owner command center and fan inbox package
 
-The CLI migration history is now mirrored in `supabase/migrations/`. Apply the two pending
-migrations in order before pushing the matching function and Pages changes:
+Apply the two migrations in order before their matching function and Pages changes in an
+environment whose predecessor schema is already proven:
 
 1. `20260822111946_owner_mobile_command_center.sql`
 2. `20260822111947_fan_inbox_live_chat_privacy.sql`
 
 Migration 046 deliberately fails closed unless `pg_cron` is installed, because the
 five-minute abandoned-ephemeral-chat cleanup is part of the privacy promise. Validate with
-`supabase db push --linked --dry-run`, apply with `supabase db push --linked`, and confirm
-both versions appear in `supabase migration list --linked`. The push to `main` may follow
-only after that database step; it automatically deploys Edge Functions and the Pages site.
+`supabase db push --linked --dry-run`, apply only after owner approval, and confirm both
+versions appear in `supabase migration list --linked`. A push does not deploy the current
+release; manually dispatch functions and Pages in that order after database readback.
+
+## 2026-08-22 persona full-name canon data migration
+
+`20260822113925_persona_full_name_canon.sql` is a narrow, idempotent data migration.
+It updates the `name` display field for existing Castleborn persona rows by exact handle,
+leaves UUIDs, handles, visibility, ownership, biographies, and publishing state untouched,
+and stops if a targeted row has an unexpected current name. It does not create Abel Atiq
+or infer a surname for Enki.
+
+Production data status (2026-08-22): the exact repository statement was applied manually
+through the Supabase SQL Editor, then all 19 existing Castleborn rows in the canon set were
+read back through the public REST API and matched (18 renamed rows plus Alexei Grigoriev,
+which was already current). Direct SQL Editor execution does not add a
+`supabase_migrations.schema_migrations` entry. The next linked `supabase db push` may
+therefore execute this idempotent file once more to record version `20260822113925`; do not
+insert migration-history rows by hand.
+
+Before applying in any other environment, inspect the targeted handles and names in the
+linked project. After applying, repeat the same read and compare it with
+`MyPersonas.Online_v0/content/persona-full-name-canon-2026-08-22.json`. A migration-list
+entry proves SQL history only; persistence verification must read the resulting persona
+rows. The owner-safe preflight/postflight query is available at
+`supabase/snippets/verify_persona_full_name_canon.sql`.
+
+## 2026-08-22 private persona backup relationships (pending)
+
+`20260822130000_persona_backup_relationships.sql` creates only the private owner-roster
+relationship table, its validation trigger, and the authenticated setter RPC. It does not
+backfill or infer relationships, alter public persona pages, or enable any provider action.
+Apply it before publishing the matching `index.html` and `owner-app.js`; an older database
+makes the new client fail flat and disables assignment, but release order still requires
+the database first.
+
+Current status: repository source and static tests only. It has not been applied to the
+linked production project. Run `supabase db push --linked --dry-run`, confirm the plan may
+first record/rerun the idempotent `20260822113925` full-name migration as documented above,
+then apply through the normal linked migration path. Verify table/RLS/grants, owner-only
+read, attach/detach, role-conflict rejection, and endpoint-deletion behavior before the
+page release. Do not insert migration-history rows by hand.
+
+## 2026-08-22 persona page layout builder (pending)
+
+`20260822150000_persona_page_layout_builder.sql` adds bounded declarative page layouts
+and owner-private HTML/CSS/JSON learning snippets. It does not execute owner-supplied
+code, enable arbitrary widgets, publish a page, or migrate existing public asset URLs.
+Apply migration 050 before the matching page release; without it the client deliberately
+keeps the legacy safe layout and disables the designer.
+
+Current status: repository source and focused tests only. It has not been applied to the
+linked project. Before any release, follow `MyPersonas.Online_v0/PERSONA-PAGE-LAYOUT-BUILDER.md`,
+including cross-owner/anonymous RPC tests and the documented opaque-public-asset privacy
+blocker. Do not enable image/video widgets or video backgrounds until viewer-facing asset
+URLs no longer expose a stable owner UUID path.
+
+## 2026-08-22 Castleborn relationships, project, and business (pending)
+
+`20260822140000_persona_relationships_projects_businesses.sql` records only the current
+confirmed family edges, derives inverse/sibling labels, creates an owner-private Castleborn
+project with WAIS as manager metadata, and creates a blank owner-private business draft.
+It neither invents unresolved canon nor attaches a database/provider resource. Apply it
+after 048 and before 050. A disposable PostgreSQL 16 apply/RLS/security run passed; the
+linked production project remains unchanged.
+
+## 2026-08-22 publication, social, and security governance (pending)
+
+`20260822170000_publication_social_security_governance.sql` depends on 049 and 050. It
+adds review-first persona publication, transparent AI disclosure, separate follow/friend
+flows, confirmed feature requests, service-assigned roles, account-sync preferences,
+inert extension review, and security/retention primitives. Apply it before the matching
+`platform-governance.js`/CSS/index release.
+
+The canonical 051 source and its timestamped mirror are synchronized locally. Record their
+final frozen pair hash and replay evidence before any linked apply; do not substitute an
+earlier working-tree hash for the release record.
+
+Migration 051 also has earlier schema prerequisites. Migration 041 supplies the revenue
+tables, and hardened `MyPersonas.Online_v0/sql-updates/043-request-review-phase1.sql`
+supplies the `product_review_*` tables and service RPC that 051 wraps. Hardened 043 now
+has the ordered local mirror `20260822160000_request_review_phase1.sql`. Apply/read it
+before 051 and verify its objects. This repair does not make the wider timestamped
+directory a complete fresh-install chain. Never insert a migration-history row by hand or
+assume the older 041 `persona_review_requests` table is the hardened phase-1 contract.
+
+Applying 051 intentionally sets every legacy persona whose lifecycle is uninitialized to
+`unpublished` and clears its published revision/timestamp. It also resets every legacy
+business to `draft` + `owner_only`. Inventory and export those records before the window;
+afterward publish only individual exact revisions through owner review. Material profile,
+post/link/album, family, layout, revenue/product/review-setting, AI-backend credential,
+and fan-binding changes invalidate the reviewed page revision. The old native auto
+publisher is disabled: approved native drafts stage into page review and become public
+only through `publish_persona_page` plus post-commit reconciliation.
+
+The migration does not seed a role or activate Auth hooks, CAPTCHA, SMTP, WAF, log drains,
+SSO, provider workers, or page publication. Rehearse it with two unrelated Auth users and follow
+`MyPersonas.Online_v0/OWNER-APPROVAL-QUEUE-2026-08-22.md`. Never infer the owner Auth UUID,
+put raw IP/contact proof into the app log, or deploy the frontend before the database.
+
+### Request-review and affiliate public functions (pending)
+
+Both public endpoints intentionally set `verify_jwt=false` in `supabase/config.toml`; this
+is not an authorization shortcut. Deploy them only after their exact database contracts
+are applied and verified.
+
+Set the request-review configuration directly in the Edge environment:
+
+```powershell
+supabase secrets set REQUEST_REVIEW_ALLOWED_ORIGIN="https://mypersonas.online"
+supabase secrets set TURNSTILE_SECRET_KEY="<provider secret>"
+supabase secrets set REQUEST_REVIEW_TURNSTILE_ACTION="request_review"
+supabase secrets set REQUEST_REVIEW_TURNSTILE_HOSTNAME="mypersonas.online"
+supabase secrets set REQUEST_REVIEW_HMAC_SECRET="<at least 32 random bytes>"
+supabase secrets set AFFILIATE_CLICK_HMAC_SECRET="<separate secret, at least 32 random bytes>"
+```
+
+Set the matching public Turnstile site key in `CONFIG.TURNSTILE_SITE_KEY`. Supabase
+provides `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; do not expose or duplicate the
+service-role secret. With any required server value missing or malformed, the function
+returns 503. With the wrong/missing Origin it returns 403 without granting CORS. It
+streams/caps JSON before parsing, verifies Turnstile with timeout/action/hostname,
+validates but never fetches requester URLs, HMACs abuse identifiers, resolves only a
+currently published persona, calls `accept_product_review_request_service`, and returns
+one neutral 202 receipt for accepted/duplicate/suppressed valid requests.
+
+Leave `product_review_global_controls` at its fail-closed defaults
+(`accepting_requests=false`, `abuse_paused=true`) and every persona disabled until a
+disposable staging flow passes. Migration 043 queues notification rows only; no
+notification worker or email sender exists. A database row is not a delivered email.
+
+Before deploying `affiliate-redirect`, set a separate 32-byte-or-longer
+`AFFILIATE_CLICK_HMAC_SECRET`, audit every active legacy destination, and verify the final
+frozen canonical/mirror 051 hash. The local Edge source
+bounds the offer URL and attribution fields, generates rotating domain-separated HMAC
+identifiers, and permits only credential-free HTTPS destinations. Its service RPC atomically
+rechecks the current reviewed page, applies global/offer/fingerprint caps and deduplication,
+and conditionally records click analytics. Verify those paths plus the service-only cleanup
+RPC for expired limiter rows and click events older than 400 days; give retention an approved
+scheduler/runbook. These changes are local source, not proof of deployed configuration or
+traffic. A successful redirect proves neither a sale nor revenue.
+
+### Public asset release boundary
+
+Migration 051 makes authenticated first-party `persona-media` writes content-addressed
+and append-only. The matching page hashes final bytes after watermarking and uploads only
+PNG/JPEG/WebP/GIF or MP4/WebM with `upsert:false`. This does not make legacy or external
+HTTPS URL fields byte-integrity-bound; the review manifest commits URL text and never
+fetches remote bytes. Release-critical external media must be ingested/hash-verified or
+treated as mutable. Viewer-facing first-party URLs also retain an owner UUID prefix, so
+the opaque-asset correlation remediation remains required before new media widgets.
+
+## 2026-08-22 follow-on hardening 052–057 (pending)
+
+After 051, apply and read back the remaining manifest entries in order:
+
+- 052: exact-revision AAL2 business review/publish/unpublish;
+- 053: bounded, human-approved Agent Board proposal and execution authority;
+- 054: narrow quota-bound owner research/content writes and service provenance;
+- 055: reserved terminal capacity and service-only agent audit mutation/erasure ordering;
+- 056: Auth-email-triggered invalidation of stale AliaSpaces email attestations; and
+- 057: durable per-owner/backend/mode request-token budgets and expiring leases.
+
+All are default-safe local schema contracts. They do not enable an Agent Board, create a
+model/provider project, configure a secret, spend trial credit, grant a staff role, publish
+content, send email, or schedule a worker. Apply/reapply, AAL1/AAL2, cross-owner, direct-DML,
+budget concurrency, exact-review/idempotency, terminal-audit, and writer/erasure tests must
+pass against the frozen files before the Functions workflow is dispatched. They passed in
+the disposable local release run and must be reproduced in staging against the inventoried
+linked predecessor. Automated modes must remain disabled until a separately approved
+staging owner saves explicit nonzero limits.
 
 ## 1. Link the Supabase project
 
@@ -119,10 +300,12 @@ design and enforce their applicable checks in code.
 
 ## 3. Apply the database changes
 
-For a new project, run `MyPersonas.Online_v0/supabase-schema.sql`. The fresh-install
-snapshot contains the base schema plus the immutable migration history through 018. For
-an existing project, run every unapplied file in
-`MyPersonas.Online_v0/sql-updates` in numeric order.
+`MyPersonas.Online_v0/supabase-schema.sql` is an earlier baseline, not a current complete
+fresh-install artifact. The timestamped folder also omits part of canonical 019–046. For a
+new project, first construct and verify the complete canonical predecessor chain in an
+isolated environment. For an existing project, inventory the linked ledger/schema and run
+only proven unapplied files. The current package follows the manifest's explicit order,
+not simple numeric order, because hardened 043 is intentionally placed between 050 and 051.
 The automation release requires:
 
 - `008-account-ledger.sql` — private external-account inventory; no passwords or tokens.
@@ -239,19 +422,21 @@ Scheduled generation creates a draft only. It never approves content.
 
 ### Approval and native publishing
 
-Approval hashes the exact text, media, persona, destination, platform, format, and publish
-time. Editing any protected field invalidates the approval and removes the draft from the
-queue. Native publication then rechecks the current pause, claim, binding, autonomy,
-destination mode, content type, quiet hours, daily cap, and hash in one database
-transaction that inserts the post, finalizes the draft, and writes audit history.
+Before migration 051, approval hashes the exact text, media, persona, destination,
+platform, format, and publish time, and the legacy native bridge could finalize a post.
+Do not use that behavior as the current release contract.
 
-- **L2 / approval target:** exact approval prepares the draft, but the queue worker waits.
-  The owner must press **Publish now**, which calls the authenticated `post-bridge`.
-- **L3 / auto target:** an exact owner-approved native draft may publish automatically
-  when its scheduled time is due. L3 still cannot approve its own draft.
+After migration 051, `publish_native_agent_draft` fails closed for background callers.
+An authenticated owner may call `stage_native_agent_draft_for_review` for an exact-approved
+native-feed draft. Staging inserts or verifies the corresponding page post, advances the
+persona revision, and marks the automation draft blocked/staged—not published. The owner
+must complete the exact page review and call `publish_persona_page`. That transaction
+publishes the page and finalizes only unchanged staged drafts. The frontend then calls
+`reconcile_staged_native_page_publications({p_persona_id:null})`; reconciliation failure is
+surfaced as a warning and never changes the original publish response into a false claim.
 
-`run-publish-queue` processes only due, exact-approved native drafts on enabled L3 `auto`
-targets. It deliberately defers L2 `approval` targets.
+`run-publish-queue` is not a native-page auto-publication path after 051. External Meta or
+other provider queues are separate systems with their own dormant/approval/provider gates.
 
 ### Fan chat
 

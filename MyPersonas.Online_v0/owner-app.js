@@ -40,6 +40,8 @@ const ownerAppState = {
   loadedAt: 0,
   requestId: 0,
   selectedPersonaId: "",
+  viewMode: "overview",
+  perspectiveGeneration: 0,
   briefPersonaFilter: "",
   briefStatusFilter: "new",
   schedulePersonaFilter: "",
@@ -72,6 +74,8 @@ function ownerAppReset() {
   ownerAppState.loadedAt = 0;
   ownerAppState.requestId += 1;
   ownerAppState.selectedPersonaId = "";
+  ownerAppState.viewMode = "overview";
+  ownerAppState.perspectiveGeneration += 1;
   for (const key of ["briefs", "topics", "annotations", "packages", "variants", "notifications", "activities", "modelRoutes", "researchSettings", "postDrafts", "fanSessions", "fanMessages"]) ownerAppState[key] = [];
   ownerAppState.capabilities = {};
   ownerAppState.unreadCount = 0;
@@ -118,27 +122,122 @@ function ownerAppSelectionKey(uid) {
   return `aliaspaces_owner_persona_${uid}`;
 }
 
+function ownerAppViewModeKey(uid) {
+  return `aliaspaces_view_mode_${uid}`;
+}
+
+function ownerAppSelectedPersonaStrict(id = ownerAppState.selectedPersonaId) {
+  if (!id) return null;
+  return (myPersonas || []).find((persona) => persona.id === id) || null;
+}
+
+function ownerAppPersonaModeActor() {
+  return ownerAppState.viewMode === "persona" ? ownerAppSelectedPersonaStrict() : null;
+}
+
+function ownerAppIsPersonaMode() {
+  return !!ownerAppPersonaModeActor();
+}
+
+function ownerAppRememberViewMode(uid = session?.user?.id || "") {
+  if (!uid) return;
+  try { localStorage.setItem(ownerAppViewModeKey(uid), ownerAppState.viewMode); } catch (_) {}
+}
+
 function ownerAppRestorePersona(uid) {
-  let saved = "";
-  try { saved = localStorage.getItem(ownerAppSelectionKey(uid)) || ""; } catch (_) {}
-  if (!myPersonas.some((persona) => persona.id === saved)) saved = myPersonas[0]?.id || "";
-  ownerAppState.selectedPersonaId = saved;
+  let saved = "", savedMode = "overview";
+  try {
+    saved = localStorage.getItem(ownerAppSelectionKey(uid)) || "";
+    savedMode = localStorage.getItem(ownerAppViewModeKey(uid)) || "overview";
+  } catch (_) {}
+  const savedPersona = ownerAppSelectedPersonaStrict(saved);
+  ownerAppState.selectedPersonaId = savedPersona?.id || myPersonas[0]?.id || "";
+  ownerAppState.viewMode = savedMode === "persona" && !!savedPersona ? "persona" : "overview";
+  ownerAppState.perspectiveGeneration += 1;
+  ownerAppRememberViewMode(uid);
+  if (typeof syncPersonaViewChrome === "function") syncPersonaViewChrome();
 }
 
 function ownerAppRememberPersona(personaId, syncCompanion = true) {
   if (!personaId || !myPersonas.some((persona) => persona.id === personaId)) return false;
   const changed = ownerAppState.selectedPersonaId !== personaId;
   ownerAppState.selectedPersonaId = personaId;
+  if (changed && ownerAppState.viewMode === "persona") ownerAppState.perspectiveGeneration += 1;
   const uid = typeof session !== "undefined" ? session?.user?.id : "";
   if (uid) {
     try { localStorage.setItem(ownerAppSelectionKey(uid), personaId); } catch (_) {}
   }
   if (syncCompanion && typeof ownerAppSyncCompanion === "function") ownerAppSyncCompanion();
+  if (typeof syncPersonaViewChrome === "function") syncPersonaViewChrome();
   return changed;
 }
 
+function ownerAppSetViewMode(mode, navigate = true) {
+  const next = mode === "persona" ? "persona" : "overview";
+  if (next === "persona" && !ownerAppSelectedPersonaStrict()) {
+    if (typeof toast === "function") toast("Create or select a persona before entering Persona view");
+    return false;
+  }
+  const changed = ownerAppState.viewMode !== next;
+  ownerAppState.viewMode = next;
+  if (changed) ownerAppState.perspectiveGeneration += 1;
+  ownerAppRememberViewMode();
+  if (typeof syncPersonaViewChrome === "function") syncPersonaViewChrome();
+  if (navigate && typeof go === "function") {
+    const current = location.hash.replace(/^#\//, "").split("/")[0];
+    if (current === "owner") {
+      if (typeof route === "function") route();
+    } else go("owner");
+  }
+  return true;
+}
+
+function ownerAppSelectActingPersona(personaId) {
+  if (!ownerAppSelectedPersonaStrict(personaId)) {
+    ownerAppSetViewMode("overview", false);
+    if (typeof toast === "function") toast("That acting persona is no longer available");
+    return false;
+  }
+  ownerAppRememberPersona(personaId);
+  if (ownerAppState.viewMode !== "persona") {
+    ownerAppState.viewMode = "persona";
+    ownerAppState.perspectiveGeneration += 1;
+    ownerAppRememberViewMode();
+  }
+  if (typeof syncPersonaViewChrome === "function") syncPersonaViewChrome();
+  if (location.hash.replace(/^#\//, "").split("/")[0] === "owner" && typeof route === "function") route();
+  else if (typeof go === "function") go("owner");
+  return true;
+}
+
+function ownerAppInvalidatePerspective() {
+  ownerAppState.viewMode = "overview";
+  ownerAppState.perspectiveGeneration += 1;
+  if (typeof syncPersonaViewChrome === "function") syncPersonaViewChrome();
+}
+
+function ownerAppPerspectiveSnapshot(actorId = ownerAppPersonaModeActor()?.id || "") {
+  return {
+    uid: session?.user?.id || "",
+    authGeneration: typeof authLoadGeneration === "number" ? authLoadGeneration : -1,
+    perspectiveGeneration: ownerAppState.perspectiveGeneration,
+    viewMode: ownerAppState.viewMode,
+    actorId,
+  };
+}
+
+function ownerAppPerspectiveSnapshotCurrent(snapshot) {
+  if (!snapshot || !snapshot.uid || session?.user?.id !== snapshot.uid) return false;
+  if (typeof authLoadGeneration === "number" && authLoadGeneration !== snapshot.authGeneration) return false;
+  if (ownerAppState.perspectiveGeneration !== snapshot.perspectiveGeneration || ownerAppState.viewMode !== snapshot.viewMode) return false;
+  if (!ownerAppSelectedPersonaStrict(snapshot.actorId)) return false;
+  return snapshot.viewMode !== "persona" || ownerAppPersonaModeActor()?.id === snapshot.actorId;
+}
+
 function ownerAppSelectRoutePersona(view, arg) {
+  if (ownerAppIsPersonaMode()) return "";
   const personaId = view === "edit" ? arg
+    : ["review", "persona-settings"].includes(view) ? arg
     : view === "p" ? (myPersonas.find((persona) => persona.handle === arg)?.id || "")
       : "";
   if (personaId) ownerAppRememberPersona(personaId);
@@ -237,6 +336,7 @@ function ownerAppUpdateUnread() {
 
 async function ownerAppAfterMineLoaded(uid) {
   if (!uid || session?.user?.id !== uid) return;
+  ownerAppRestorePersona(uid);
   if (ownerAppState.uid !== uid) ownerAppState.loadedAt = 0;
   ownerAppState.fanSessions = (myFanSessions || []).slice();
   ownerAppState.fanMessages = (myFanMessages || []).slice();
@@ -320,15 +420,16 @@ function ownerAppSyncCompanion() {
 function ownerAppSyncChrome() {
   const authenticated = typeof session !== "undefined" && !!session && typeof privateSessionReady !== "undefined" && privateSessionReady;
   const mobile = ownerAppIsMobile();
+  const personaMode = typeof ownerAppIsPersonaMode === "function" && ownerAppIsPersonaMode();
   const nav = document.getElementById("ownerMobileNav");
   const quickActions = document.getElementById("ownerQuickActions");
   const bug = document.getElementById("bugBtn");
   const companion = document.getElementById("ownerPersonaCompanion");
-  if (nav) nav.hidden = !authenticated;
+  if (nav) nav.hidden = !authenticated || personaMode;
   if (quickActions) quickActions.hidden = authenticated && mobile;
   if (bug) bug.hidden = authenticated;
-  if (companion) companion.hidden = !authenticated || mobile;
-  if (!authenticated || !mobile) ownerAppToggleMore(false, false);
+  if (companion) companion.hidden = !authenticated || mobile || personaMode;
+  if (!authenticated || !mobile || personaMode) ownerAppToggleMore(false, false);
   ownerAppSyncCompanion();
 }
 
@@ -336,7 +437,8 @@ function ownerAppToggleMore(force, restoreFocus = true) {
   const modal = document.getElementById("ownerMobileMore");
   const button = document.getElementById("ownerMobileMoreBtn");
   if (!modal || !button) return;
-  const allowed = typeof session !== "undefined" && !!session && typeof privateSessionReady !== "undefined" && privateSessionReady && ownerAppIsMobile();
+  const allowed = typeof session !== "undefined" && !!session && typeof privateSessionReady !== "undefined" && privateSessionReady && ownerAppIsMobile()
+    && !(typeof ownerAppIsPersonaMode === "function" && ownerAppIsPersonaMode());
   const open = allowed && (typeof force === "boolean" ? force : modal.hidden);
   modal.hidden = !open;
   button.setAttribute("aria-expanded", String(open));
@@ -375,8 +477,14 @@ function ownerAppPickerHtml(destination, allowAll = false) {
       : destination === "activity" ? ownerAppState.activityPersonaFilter
         : ownerAppState.selectedPersonaId;
   const persona = ownerAppPersona(selected || ownerAppState.selectedPersonaId);
+  const groups = typeof personaBackupGroups === "function"
+    ? personaBackupGroups(myPersonas, typeof personaBackupsReady !== "undefined" && personaBackupsReady && typeof myPersonaBackups !== "undefined" ? myPersonaBackups : [])
+    : myPersonas.map((main) => ({ main, backup: null }));
   const options = (allowAll ? '<option value="">All personas</option>' : "") +
-    myPersonas.map((p) => `<option value="${esc(p.id)}" ${p.id === selected ? "selected" : ""}>${esc(p.name)} · @${esc(p.handle)}</option>`).join("");
+    groups.flatMap(({ main, backup }) => [
+      `<option value="${esc(main.id)}" ${main.id === selected ? "selected" : ""}>${esc(main.name)} · @${esc(main.handle)}</option>`,
+      backup ? `<option value="${esc(backup.id)}" ${backup.id === selected ? "selected" : ""}>↳ Backup for ${esc(main.name)} — ${esc(backup.name)} · @${esc(backup.handle)}</option>` : "",
+    ]).join("");
   return `<div class="oa-picker">
     <span class="oa-picker-avatar" style="${safeBgStyle(persona?.avatar_url)}"></span>
     <label><span>${allowAll ? "Filter by persona" : "Working as"}</span>
@@ -422,13 +530,12 @@ function ownerAppAccountsFor(personaId) {
 
 async function ownerAppLog(personaId, eventType, summary, metadata = {}) {
   if (!session?.user?.id || !ownerAppState.capabilities.activities) return;
-  await sb.from("persona_activity_events").insert({
-    owner: session.user.id,
-    persona_id: personaId || null,
-    event_type: String(eventType).slice(0, 80),
-    source: "mypersonas",
-    summary: String(summary).slice(0, 1000),
-    metadata,
+  const subjectId = eventType === "portal_opened" ? metadata.account_ledger_id || null : null;
+  await sb.rpc("record_owner_local_activity", {
+    p_persona_id: personaId || null,
+    p_event_type: String(eventType).slice(0, 80),
+    p_subject_id: subjectId,
+    p_metadata: metadata,
   });
 }
 
@@ -670,7 +777,12 @@ async function ownerAppSaveHighlight(briefId) {
     context_before: at >= 0 ? allText.slice(Math.max(0, at - 240), at) : "",
     context_after: at >= 0 ? allText.slice(at + text.length, at + text.length + 240) : "",
   };
-  const result = await sb.from("research_brief_annotations").insert(row);
+  const result = await sb.rpc("save_owner_research_annotation", {
+    p_annotation_id: null, p_brief_id: row.brief_id, p_topic_id: row.topic_id,
+    p_annotation_type: row.annotation_type, p_selected_text: row.selected_text,
+    p_context_before: row.context_before, p_context_after: row.context_after,
+    p_image_url: "", p_owner_comment: "", p_include_in_generation: true,
+  });
   if (result.error) { toast(result.error.message); return; }
   selection.removeAllRanges();
   toast("Highlight saved for post generation");
@@ -681,9 +793,11 @@ async function ownerAppSaveComment(briefId) {
   const value = document.getElementById("ownerBriefComment")?.value.trim() || "";
   if (!value) { toast("Write a note first"); return; }
   const brief = ownerAppState.briefs.find((row) => row.id === briefId);
-  const result = await sb.from("research_brief_annotations").insert({
-    owner: session.user.id, persona_id: brief.persona_id, brief_id: briefId,
-    annotation_type: "comment", owner_comment: value.slice(0, 4000),
+  const result = await sb.rpc("save_owner_research_annotation", {
+    p_annotation_id: null, p_brief_id: briefId, p_topic_id: null,
+    p_annotation_type: "comment", p_selected_text: "", p_context_before: "",
+    p_context_after: "", p_image_url: "", p_owner_comment: value.slice(0, 4000),
+    p_include_in_generation: true,
   });
   if (result.error) { toast(result.error.message); return; }
   toast("Owner guidance saved");
@@ -695,9 +809,11 @@ async function ownerAppAddImage(briefId) {
   if (!safeHttpUrl(value) || !value.startsWith("https://")) { if (value) toast("Use a public HTTPS image URL"); return; }
   const comment = prompt("Optional note about how this image should influence the post:", "") || "";
   const brief = ownerAppState.briefs.find((row) => row.id === briefId);
-  const result = await sb.from("research_brief_annotations").insert({
-    owner: session.user.id, persona_id: brief.persona_id, brief_id: briefId,
-    annotation_type: "image", image_url: value, owner_comment: comment.slice(0, 4000),
+  const result = await sb.rpc("save_owner_research_annotation", {
+    p_annotation_id: null, p_brief_id: briefId, p_topic_id: null,
+    p_annotation_type: "image", p_selected_text: "", p_context_before: "",
+    p_context_after: "", p_image_url: value, p_owner_comment: comment.slice(0, 4000),
+    p_include_in_generation: true,
   });
   if (result.error) { toast(result.error.message); return; }
   toast("Image reference saved");
@@ -707,7 +823,7 @@ async function ownerAppAddImage(briefId) {
 async function ownerAppDeleteAnnotation(id) {
   const annotation = ownerAppState.annotations.find((row) => row.id === id);
   if (!annotation) return;
-  const result = await sb.from("research_brief_annotations").delete().eq("id", id).eq("owner", session.user.id);
+  const result = await sb.rpc("delete_owner_research_annotation", { p_annotation_id: id });
   if (result.error) { toast(result.error.message); return; }
   await ownerAppRefreshAndReopen(annotation.brief_id);
 }
@@ -734,7 +850,7 @@ async function ownerAppRejectTopic(id) {
 
 async function ownerAppMarkBrief(id, status) {
   if (!["reviewed", "archived"].includes(status)) return;
-  const result = await sb.from("persona_research_briefs").update({ status }).eq("id", id).eq("owner", session.user.id);
+  const result = await sb.rpc("set_owner_research_brief_status", { p_brief_id: id, p_status: status });
   if (result.error) { toast(result.error.message); return; }
   toast(status === "reviewed" ? "Brief marked reviewed" : "Brief archived");
   ownerAppCloseBrief();
@@ -870,27 +986,17 @@ async function ownerAppGenerateKit(briefId) {
   try {
     const raw = await ownerAppCallRoute(brief.persona_id, "persona_voice_draft", promptText, 4096);
     const kit = ownerAppNormalizeKit(ownerAppExtractJson(raw));
-    const created = await sb.from("persona_content_packages").insert({
-      owner: session.user.id,
-      persona_id: brief.persona_id,
-      source_brief_id: briefId,
-      source_topic_ids: topicIds,
-      title: kit.title,
-      owner_guidance: guidance.slice(0, 6000),
-      status: "generating",
-      timezone: autoTz(),
-    }).select("id").single();
+    const variants = kit.rows.map(({ channel, title, body, description, alt_text, media_plan }) => ({
+      channel, title, body, description, alt_text, media_plan,
+    }));
+    const created = await sb.rpc("create_owner_content_package", {
+      p_persona_id: brief.persona_id, p_source_brief_id: briefId,
+      p_source_topic_ids: topicIds, p_title: kit.title,
+      p_owner_guidance: guidance.slice(0, 6000), p_timezone: autoTz(),
+      p_variants: variants,
+    });
     if (created.error || !created.data) throw new Error(created.error?.message || "The content package could not be created");
-    const packageId = created.data.id;
-    const variants = kit.rows.map((row) => ({ ...row, owner: session.user.id, persona_id: brief.persona_id, package_id: packageId }));
-    const inserted = await sb.from("persona_content_variants").insert(variants);
-    if (inserted.error) {
-      await sb.from("persona_content_packages").delete().eq("id", packageId).eq("owner", session.user.id);
-      throw new Error(inserted.error.message);
-    }
-    const ready = await sb.from("persona_content_packages").update({ status: "owner_review" }).eq("id", packageId).eq("owner", session.user.id);
-    if (ready.error) throw new Error(ready.error.message);
-    await sb.from("persona_research_briefs").update({ status: "reviewed" }).eq("id", briefId).eq("owner", session.user.id);
+    const packageId = created.data;
     ownerAppCloseBrief();
     ownerAppState.loadedAt = 0;
     await ownerAppLoad(true);
@@ -958,7 +1064,8 @@ async function ownerAppCopyImage(url) {
 }
 
 async function ownerAppLaunchHandoff(copyImage) {
-  const provider = OWNER_APP_AI_WEB[document.getElementById("ownerHandoffProvider")?.value] || OWNER_APP_AI_WEB.gemini;
+  const providerKey = document.getElementById("ownerHandoffProvider")?.value || "gemini";
+  const provider = OWNER_APP_AI_WEB[providerKey] || OWNER_APP_AI_WEB.gemini;
   const text = document.getElementById("ownerHandoffText")?.value || ownerAppState.handoff?.text || "";
   const tab = window.open("about:blank", "_blank");
   if (tab) tab.opener = null;
@@ -967,7 +1074,7 @@ async function ownerAppLaunchHandoff(copyImage) {
     else await navigator.clipboard.writeText(text);
     if (tab) tab.location.replace(provider.url); else window.open(provider.url, "_blank", "noopener,noreferrer");
     toast(copyImage ? `Image copied; paste it into ${provider.label}` : `Prompt copied; paste it into ${provider.label}`);
-    ownerAppLog(ownerAppState.handoff?.personaId, "ai_workroom_opened", `Opened ${provider.label} manual workroom`, { copied: copyImage ? "image" : "prompt" });
+    ownerAppLog(ownerAppState.handoff?.personaId, "ai_workroom_opened", `Opened ${provider.label} manual workroom`, { provider: OWNER_APP_AI_WEB[providerKey] ? providerKey : "gemini", copied: copyImage ? "image" : "prompt" });
   } catch (error) {
     if (tab) tab.close();
     try { await navigator.clipboard.writeText(copyImage ? ownerAppState.handoff?.imageUrl || text : text); } catch (_) {}
@@ -1074,7 +1181,7 @@ async function ownerAppRefreshFanThread(id, initial = false) {
   if (initial) {
     await Promise.all([
       sb.from("fan_chat_sessions").update({ inbox_state: "read" }).eq("owner", session.user.id).eq("id", id),
-      ownerAppState.capabilities.notifications ? sb.from("owner_notifications").update({ status: "read", read_at: new Date().toISOString() }).eq("owner", session.user.id).eq("subject_type", "fan_chat_session").eq("subject_id", id) : Promise.resolve(),
+      ownerAppState.capabilities.notifications ? sb.rpc("mark_owner_notifications_read", { p_ids: null, p_subject_type: "fan_chat_session", p_subject_id: id }) : Promise.resolve(),
     ]);
     ownerAppState.fanSessions = ownerAppState.fanSessions.map((item) => item.id === id ? { ...item, inbox_state: "read" } : item);
     ownerAppUpdateUnread();
@@ -1214,23 +1321,22 @@ async function ownerAppSavePackage(id) {
   if (!pack) return;
   const variants = ownerAppPackageVariants(id);
   const updates = variants.map((variant) => ({
-    id: variant.id,
+    channel: variant.channel,
     title: document.getElementById(`ownerVariantTitle_${variant.id}`)?.value.trim().slice(0, 300) || "",
     body: document.getElementById(`ownerVariantBody_${variant.id}`)?.value.trim() || "",
     description: document.getElementById(`ownerVariantDescription_${variant.id}`)?.value.trim().slice(0, 2000) || "",
     alt_text: document.getElementById(`ownerVariantAlt_${variant.id}`)?.value.trim().slice(0, 2000) || "",
+    media_plan: Array.isArray(variant.media_plan) ? variant.media_plan : [],
   }));
   if (updates.some((row) => !row.body)) { toast("Every channel needs body content"); return; }
-  if (updates.find((row) => variants.find((v) => v.id === row.id)?.channel === "x")?.body.length > 280) { toast("X content must be 280 characters or fewer"); return; }
-  const packageResult = await sb.from("persona_content_packages").update({
-    title: document.getElementById("ownerPackageTitle")?.value.trim().slice(0, 300) || "Content kit",
-    owner_guidance: document.getElementById("ownerPackageGuidance")?.value.trim().slice(0, 6000) || "",
-  }).eq("id", id).eq("owner", session.user.id);
+  if (updates.find((row) => row.channel === "x")?.body.length > 280) { toast("X content must be 280 characters or fewer"); return; }
+  const packageResult = await sb.rpc("save_owner_content_package_draft", {
+    p_package_id: id,
+    p_title: document.getElementById("ownerPackageTitle")?.value.trim().slice(0, 300) || "Content kit",
+    p_owner_guidance: document.getElementById("ownerPackageGuidance")?.value.trim().slice(0, 6000) || "",
+    p_variants: updates,
+  });
   if (packageResult.error) { toast(packageResult.error.message); return; }
-  for (const update of updates) {
-    const result = await sb.from("persona_content_variants").update({ title: update.title, body: update.body, description: update.description, alt_text: update.alt_text, status: "ready" }).eq("id", update.id).eq("owner", session.user.id);
-    if (result.error) { toast(`Some edits may not be saved: ${result.error.message}`); return; }
-  }
   toast("Kit saved; any prior approval was cleared");
   ownerAppClosePackage(); ownerAppState.loadedAt = 0; await ownerAppLoad(true); ownerAppRenderScheduleLoaded(); ownerAppEditPackage(id);
 }
@@ -1286,15 +1392,10 @@ function ownerAppOpenChannel(id) {
 
 async function ownerAppMarkVariantPosted(id) {
   const variant = ownerAppState.variants.find((row) => row.id === id);
-  if (!variant || !confirm(`Confirm that you manually posted the ${variant.channel} variant and verified it on the provider?`)) return;
-  const result = await sb.from("persona_content_variants").update({ status: "manually_posted" }).eq("id", id).eq("owner", session.user.id);
+  if (!variant || !confirm(`Confirm that you personally posted the ${variant.channel} variant? This records your attestation, not a provider receipt.`)) return;
+  const result = await sb.rpc("mark_owner_content_variant_manually_posted", { p_variant_id: id });
   if (result.error) { toast(result.error.message); return; }
-  await ownerAppLog(variant.persona_id, "manual_post_confirmed", `${variant.channel} variant confirmed manually posted`, { content_variant_id: id, package_id: variant.package_id });
-  const siblings = ownerAppPackageVariants(variant.package_id).filter((row) => row.id !== id);
-  if (siblings.every((row) => ["manually_posted", "published", "skipped"].includes(row.status))) {
-    await sb.from("persona_content_packages").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", variant.package_id).eq("owner", session.user.id);
-  }
-  toast("Manual provider receipt recorded");
+  toast("Owner manual-post attestation recorded; no provider receipt was claimed");
   ownerAppClosePackage(); ownerAppState.loadedAt = 0; await ownerAppLoad(true); ownerAppRenderScheduleLoaded();
 }
 
@@ -1323,7 +1424,7 @@ async function ownerAppReadNotificationFor(subjectType, subjectId) {
   if (!ownerAppState.capabilities.notifications) return;
   const rows = ownerAppState.notifications.filter((row) => row.subject_type === subjectType && row.subject_id === subjectId && row.status === "unread");
   if (!rows.length) return;
-  await sb.from("owner_notifications").update({ status: "read", read_at: new Date().toISOString() }).in("id", rows.map((row) => row.id)).eq("owner", session.user.id);
+  await sb.rpc("mark_owner_notifications_read", { p_ids: rows.map((row) => row.id), p_subject_type: null, p_subject_id: null });
   rows.forEach((row) => { row.status = "read"; row.read_at = new Date().toISOString(); });
   ownerAppUpdateUnread();
 }
@@ -1332,7 +1433,7 @@ async function ownerAppOpenNotification(id) {
   const row = ownerAppState.notifications.find((item) => item.id === id);
   if (!row) return;
   if (row.status === "unread") {
-    await sb.from("owner_notifications").update({ status: "read", read_at: new Date().toISOString() }).eq("id", id).eq("owner", session.user.id);
+    await sb.rpc("mark_owner_notifications_read", { p_ids: [id], p_subject_type: null, p_subject_id: null });
     row.status = "read"; ownerAppUpdateUnread();
   }
   const route = String(row.action_route || "").replace(/^#?\/?/, "");
@@ -1340,7 +1441,9 @@ async function ownerAppOpenNotification(id) {
 }
 
 async function ownerAppMarkAllNotificationsRead() {
-  const result = await sb.from("owner_notifications").update({ status: "read", read_at: new Date().toISOString() }).eq("owner", session.user.id).eq("status", "unread");
+  const ids = ownerAppState.notifications.filter((row) => row.status === "unread").slice(0, 500).map((row) => row.id);
+  if (!ids.length) return;
+  const result = await sb.rpc("mark_owner_notifications_read", { p_ids: ids, p_subject_type: null, p_subject_id: null });
   if (result.error) { toast(result.error.message); return; }
   ownerAppState.notifications.forEach((row) => { if (row.status === "unread") row.status = "read"; });
   ownerAppUpdateUnread(); ownerAppRenderNotificationsLoaded();
@@ -1414,7 +1517,12 @@ async function ownerAppSaveResearchSettings(personaId) {
     max_findings_per_brief: Math.max(1, Math.min(8, Number(document.getElementById("ownerResearchMax")?.value) || 5)),
     preferred_backend_id: document.getElementById("ownerResearchBackend")?.value || null,
   };
-  const result = await sb.from("persona_research_settings").upsert(row, { onConflict: "persona_id" });
+  const result = await sb.rpc("save_owner_research_settings", {
+    p_persona_id: personaId, p_research_enabled: row.research_enabled,
+    p_brief_frequency: row.brief_frequency, p_research_depth: row.research_depth,
+    p_max_findings_per_brief: row.max_findings_per_brief,
+    p_preferred_backend_id: row.preferred_backend_id,
+  });
   if (result.error) { toast(result.error.message); return; }
   toast(row.research_enabled ? "Research enabled for owner-triggered briefings" : "Research kept disabled");
   document.getElementById("ownerResearchModal")?.remove(); ownerAppState.loadedAt = 0; await ownerAppLoad(true);

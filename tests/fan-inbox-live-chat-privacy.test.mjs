@@ -80,6 +80,9 @@ test("public fan-chat endpoint authenticates the visitor session and skips AI du
   assert.match(source, /body\.ownerVisibilityAccepted !== true/);
   assert.match(source, /action === "poll"/);
   assert.match(source, /action === "close"/);
+  assert.match(source, /\.eq\("publication_state", "published"\)/);
+  assert.match(source, /isPublishedFanChatPersona/);
+  assert.match(source, /reason: "persona_unavailable",\s*messages: \[\]/);
   assert.match(source, /if \(ownerLive\)/);
   assert.match(source, /deliveredToOwner: true/);
   assert.match(source, /row\.role !== "owner"/);
