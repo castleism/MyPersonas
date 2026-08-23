@@ -31,7 +31,9 @@
 <link rel="stylesheet" href="./platform-governance.css?v=20260822-1">
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
 <link rel="stylesheet" href="./ai-content-provenance.css?v=20260823-2">
+<link rel="stylesheet" href="./profile-image-crop.css?v=20260823-1">
 <script src="./pwa.js" defer></script>
+<script src="./profile-image-crop.js?v=20260823-1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
@@ -1131,6 +1133,7 @@ function isHidden(personaId){return hasPersonaVisibilityRule(personaId)}
 
 // ---------- router ----------
 async function route(){
+  if(window.MyPersonasProfileCrop)window.MyPersonasProfileCrop.cancel();
   if(document.getElementById("personaAssetPreview"))closePersonaAssetPreview();
   if(document.getElementById("pageBuilderOv"))closePageBuilder(false);
   setMeta("AliaSpaces — every persona, one home","A home page for every side of you. Create anonymous persona pages with feeds, albums, music, Top 8 friends and every account you live on — never linked to your identity.");
@@ -2737,7 +2740,7 @@ async function renderEdit(id,epoch=++renderEpoch){
     <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
     <hr>
     <h3>${ico("image")}Page looks</h3>
-    <p class="muted">Previews show the complete image without cropping. Every upload requires an AI-use declaration; site-generated images are marked automatically.</p>
+    <p class="muted">Previews show the complete saved image. Choosing a file opens a placement window with avatar, banner, background, and feed-safe previews before anything uploads. Every upload requires an AI-use declaration; site-generated images are marked automatically.</p>
     <div class="lookgrid">
     ${[["avatar_url","Profile image"],["banner_url","Banner (wide)"],["bg_url","Page background"],["feed_img_url","Feed header"]].map(([k,lbl])=>`
       <div class="looktile">
@@ -2745,7 +2748,7 @@ async function renderEdit(id,epoch=++renderEpoch){
         <div class="lookprev" id="prev_${k}" data-owner-persona-id="${esc(targetId)}">${personaLookPreviewHtml(p[k],lbl,targetId)}</div>
         <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}">
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-          <button class="btn sec sm" aria-label="Choose ${esc(lbl)} file" onclick="uploadTo('e_${k}')">Choose file</button>
+          <button class="btn sec sm" aria-label="Choose ${esc(lbl)} file" title="Choose a file and place its crop" onclick="uploadTo('e_${k}')">Choose &amp; crop</button>
           <button class="btn sec sm" aria-label="Generate ${esc(lbl)}" onclick="openSD('${k}')">Generate</button>
           <button class="btn danger sm" aria-label="Clear ${esc(lbl)}" onclick="setPrev('${k}','')">Clear</button>
         </div>
@@ -3588,19 +3591,38 @@ async function extendSession(){
 }
 
 // ---------- secure uploads + AI-use declaration ----------
+const mediaUploadGenerations=new Map();
+function mediaUploadStillCurrent(inputId,generation,ownerId,personaId,epoch,target){
+  return mediaUploadGenerations.get(inputId)===generation&&
+    String(session?.user?.id||"")===ownerId&&
+    String(uploadPersonaId(inputId)||"")===personaId&&
+    renderEpoch===epoch&&document.getElementById(inputId)===target;
+}
 function uploadTo(inputId){
   if(!session){toast("Sign in first");return}
-  const f=document.createElement("input");f.type="file";f.accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
+  const profileSlot=inputId.startsWith("e_"),ownerId=String(session.user?.id||""),personaId=String(uploadPersonaId(inputId)||""),epoch=renderEpoch,targetAtOpen=document.getElementById(inputId),generation=(mediaUploadGenerations.get(inputId)||0)+1;mediaUploadGenerations.set(inputId,generation);
+  if(!targetAtOpen||!PUBLIC_PERSONA_UUID.test(personaId)){toast("Save or select the persona before uploading media");return}
+  const stillCurrent=()=>mediaUploadStillCurrent(inputId,generation,ownerId,personaId,epoch,targetAtOpen);
+  const f=document.createElement("input");f.type="file";f.accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";if(profileSlot)f.accept="image/png,image/jpeg,image/webp";
   f.onchange=async()=>{
-    const source=f.files[0];if(!source)return;const personaId=uploadPersonaId(inputId);if(!PUBLIC_PERSONA_UUID.test(String(personaId||""))){toast("Save or select the persona before uploading media");return}
-    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt){toast("Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
+    const source=f.files[0];if(!source||!stillCurrent())return;
+    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt||profileSlot&&!PUBLIC_PERSONA_RASTER_TYPES.has(initialMime)){toast(profileSlot?"Profile images accept PNG, JPEG, or WebP so the crop stays a static image":"Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
+    let prepared=source;
+    if(profileSlot){
+      try{if(!window.MyPersonasProfileCrop)throw new Error("The crop tool did not load — refresh and try again");prepared=await window.MyPersonasProfileCrop.open({file:source,slot:inputId.slice(2)})}catch(error){toast(error.message||String(error));return}
+      if(!prepared)return;
+      if(!stillCurrent()){toast("The persona editor changed before the crop finished — choose the image again");return}
+    }
     const aiUse=await MyPersonasAiProvenance.askAiUse({filename:source.name});if(!aiUse)return;
+    if(!stillCurrent()){toast("The persona editor changed before the upload started — choose the image again");return}
     toast(MyPersonasAiProvenance.requiresVisibleMark(aiUse)?"Sending the source to secure server-side watermarking…":"Registering declared source bytes…");
     try{
-      if(MyPersonasAiProvenance.requiresVisibleMark(aiUse)&&source.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
-      const sourceSha256=await MyPersonasAiProvenance.sha256Hex(source);
-      const uploaded=await uploadImmutablePersonaMedia(source,session?.user?.id,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=uploaded.publicUrl;
-      document.getElementById(inputId).value=pub;
+      if(MyPersonasAiProvenance.requiresVisibleMark(aiUse)&&prepared.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
+      const sourceSha256=await MyPersonasAiProvenance.sha256Hex(prepared);if(!stillCurrent())throw new Error("The persona editor changed before the upload started — choose the image again");
+      const uploaded=await uploadImmutablePersonaMedia(prepared,ownerId,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=safeHttpUrl(uploaded.publicUrl),assetId=String(uploaded.assetId||"");
+      if(!pub||!PUBLIC_PERSONA_UUID.test(assetId))throw new Error("Secure media intake returned an invalid asset reference");
+      if(!stillCurrent())throw new Error("The image uploaded safely, but this editor changed before it could be applied — choose it again");
+      const target=document.getElementById(inputId);target.value=pub;target.dataset.mediaAssetId=assetId;
       if(inputId.startsWith("e_"))setPrev(inputId.slice(2),pub);
       toast(`${MyPersonasAiProvenance.declarationLabel(aiUse)} saved${MyPersonasAiProvenance.requiresVisibleMark(aiUse)?" · watermark applied":""} ✓`);
     }catch(error){toast(error.message);return}
