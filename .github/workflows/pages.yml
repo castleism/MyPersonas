@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type MIGRATIONS-VERIFIED after the linked migration ledger and staging smoke tests are reviewed"
+        description: "Type MIGRATIONS-VERIFIED after migration 060 is recorded in the linked ledger and its smoke tests are reviewed"
         required: true
         type: string
 
@@ -34,7 +34,7 @@ jobs:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
           test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
-            echo "Release blocked: verify the linked migration ledger and staging smoke tests first."
+            echo "Release blocked: verify migration 060 in the linked ledger and review its smoke tests first."
             exit 1
           }
       - name: Prepare public site artifact
@@ -49,6 +49,8 @@ jobs:
             --include '/persona-view.js' \
             --include '/platform-governance.css' \
             --include '/platform-governance.js' \
+            --include '/ai-content-provenance.css' \
+            --include '/ai-content-provenance.js' \
             --include '/agent-board.css' \
             --include '/agent-board.js' \
             --include '/assets/***' \

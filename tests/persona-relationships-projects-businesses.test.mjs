@@ -151,6 +151,26 @@ test("owner mutation RPCs validate same-owner resources and keep public reads se
   assert.doesNotMatch(migration.match(/create or replace function public\.business_page_by_slug[\s\S]*?\$\$;/)?.[0] || "", /owner_notes|resource_locator|account_ledger_id/);
 });
 
+test("persona Settings can create, edit, remove, and scope direct family connections", async () => {
+  const governance = await read("MyPersonas.Online_v0/platform-governance.js");
+  const card = governance.slice(
+    governance.indexOf("function governanceOrganizationCard"),
+    governance.indexOf("function governanceSecurityCard"),
+  );
+  assert.match(governance, /governanceMaybe\("persona_family_relationships"/);
+  assert.match(card, /id="govFamilyKind"/);
+  assert.match(card, /id="govFamilyRelative"/);
+  assert.match(card, /id="govFamilyVisibility"/);
+  for (const visibility of ["owner_only", "friends", "followers", "public"]) {
+    assert.match(card, new RegExp(`<option value="${visibility}">`));
+  }
+  assert.match(card, /governanceEditFamilyRelationship/);
+  assert.match(card, /governanceDeleteFamilyRelationship/);
+  assert.match(card, /sb\.rpc\("set_persona_family_relationship"[\s\S]{0,420}p_visibility:document\.getElementById\("govFamilyVisibility"\)/);
+  assert.match(card, /sb\.rpc\("delete_persona_family_relationship"/);
+  assert.match(card, /Sibling labels are derived safely from shared parent connections/);
+});
+
 test("handoff records unresolved canon and the production approval gates", async () => {
   const doc = await read("MyPersonas.Online_v0/CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md");
   assert.match(doc, /Implemented and tested locally/i);

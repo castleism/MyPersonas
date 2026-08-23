@@ -12,13 +12,14 @@ Current execution package: `SETUP-CONDUCTOR-HANDOFF.md`, `50-HOUR-COMMAND-BOARD.
 `REQUEST-REVIEW-SPEC.md`. These documents distinguish source, deployment, live proof, and
 owner-gated external actions.
 
-Current 047–057 package: **Implemented and tested locally; not pushed, applied to the
-linked database, deployed, configured, activated, or verified live unless separately
-evidenced.** `RELEASE-MANIFEST-2026-08-22.md` is the authority for ordered staging and
-release; the frozen local package passed 259/259 Node tests, all 28 Edge Function checks,
-PostgreSQL 16 apply/reapply and security runtimes, and all 12 migration parity hashes.
-Follow-on migration 058 and its Overview / Persona UI are a separate local-only change;
-they are not part of that frozen evidence package and have not been applied or deployed.
+Current linked database: **the production ledger records 047–060, migration 060 was
+applied/read back, and the sole owner has active global-administrator and technician
+roles.** The matching source passed 284/284 Node tests, frontend syntax, migration 058's
+role-switched runtime, and the frozen-059 → 060 → 060-reapply runtime. The public Pages
+site is still an older frontend until the release workflow below succeeds, and deployed
+function/source parity, signed-in mobile QA, and two-account privacy proof remain
+separate. `RELEASE-MANIFEST-2026-08-22.md` remains the historical ordered-release
+authority; `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` records the forward 060 apply.
 
 ---
 
@@ -31,33 +32,35 @@ Shipped:
   with no public linkage to personas by default (mailbox authorization is a separate connector)
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
-- [x] Private Backup persona pairing is code-complete locally: one-level owner-only
+- [x] Private Backup persona pairing is database/source-complete: one-level owner-only
       main → backup relationships, a collapsible desktop rail, grouped mobile picker,
-      editor assignment, and relationship-aware export/restore. Migration 048 and the
-      matching page remain unapplied/undeployed and require the release checks in
+      editor assignment, and relationship-aware export/restore. Migration 048 is recorded
+      in production; the matching page remains pending the frontend workflow and requires
+      the release checks in
       `PERSONA-BACKUP-RELATIONSHIPS.md`.
 - [~] Persona page designer phase 1 is code-complete locally: owner full-asset previews
       and bounded local-copy downloads; eleven-section declarative module
       ordering/width/shape/tone, including Family and Offers & reviews;
       escaped text/HTTPS-link boxes; and a read-only HTML/CSS/JSON learning console with
-      owner-private reusable snippets. Migration 050 and the page remain unapplied and
-      undeployed. Image/video widgets and video backgrounds stay blocked until public
+      owner-private reusable snippets. Migration 050 is recorded in production and the
+      page remains pending the frontend workflow. Image/video widgets and video backgrounds stay blocked until public
       asset URLs use opaque ids instead of correlatable owner UUID paths; arbitrary
       public JavaScript remains prohibited. New first-party uploads are content-addressed
-      locally, but legacy and external HTTPS assets are not byte-integrity-bound. See
+      locally. Forward migration 060 snapshots preexisting external HTTPS assets once as visibly
+      unverified and blocks new unregistered external media from publication. See
       `PERSONA-PAGE-LAYOUT-BUILDER.md`.
-- [~] Overview / Persona view is code-complete locally: an account-scoped mode switch,
+- [~] Overview / Persona view has its production database projection and tested source: an account-scoped mode switch,
       exact acting-persona identity, bounded friends/requests/reviewed-family/follower/
       following circle, bounded feed and post panels, complete reviewed peer-page layout,
       private-request redaction/cancellation, and transaction-rechecked social mutations.
       Page-look source images now render whole and uncropped in the editor. Migration 058
       supplies the exact-actor server projection so a sibling's friendship or owner
-      access cannot leak private content. It is unapplied/undeployed and intentionally
-      fails closed until released. See `PERSONA-VIEW-MODE.md`.
-- [~] Castleborn organization data is code-complete locally: 20 owner-confirmed parent
+      access cannot leak private content. Migration 058 is recorded; the matching frontend
+      remains pending and intentionally fails closed if parity is absent. See `PERSONA-VIEW-MODE.md`.
+- [~] Castleborn organization data is present in production storage with tested source: 20 owner-confirmed parent
       edges, four confirmed partner pairs, derived sibling labels, an owner-private
       Castleborn project with WAIS as manager, project-resource boundaries, and draft-first
-      business bios/missions/titles. Migration 049 is unapplied; Abel and Enki remain
+      business bios/missions/titles. Migration 049 is recorded; Abel and Enki remain
       unresolved rather than invented. See `CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md`.
 - [~] Review-first persona publication and governance is code-complete locally: draft /
       review / publish / unpublish, transparent AI disclosure, exact-revision checks,
@@ -71,13 +74,13 @@ Shipped:
       owner-only draft state. Follow-on migration 052 now supplies the dedicated,
       exact-revision, AAL2 business review/publish/unpublish phase locally.
       Exact-approved native drafts stage into page review rather than auto-publishing.
-      Migration 051 and the matching owner UI are
-      unapplied/undeployed. Provider workers, CAPTCHA, Auth hooks, SMTP, WAF, SSO, and log
+      Migration 051 is recorded and the matching owner UI remains pending the frontend
+      workflow. Provider workers, CAPTCHA, Auth hooks, SMTP, WAF, SSO, and log
       drains remain explicit owner/dashboard work. See
       `PUBLICATION-SOCIAL-SECURITY-GOVERNANCE.md`.
-      Canonical 051 and its timestamped migration mirror are now byte-identical locally;
-      the linked migration chain and focused suite still require staging proof before any
-      production apply.
+      Canonical 051 and its timestamped migration mirror are byte-identical locally; the
+      linked apply is recorded, while signed-in two-account and provider integration proof
+      remains open.
 - [~] Family and revenue presentation modules are implemented locally. Public family
       cards come from the reviewed one-hop dependency projection. The revenue module
       renders reviewed disclosures, affiliate offers, and a Request review CTA only when
@@ -449,8 +452,15 @@ larger product phase remains.
    plus atomic daily call reservations prevent overlapping workers, but normal dispatch may
    occur up to about five minutes after a due time.
 5. **"Live" is an embed** of the persona's Twitch/YouTube/Kick, not native streaming.
-6. **Watermarking is client-side** canvas burn (images only; videos get an overlay);
-   screenshots are unpreventable — treated as attribution/deterrence.
+6. **AI media provenance is locally rebuilt but undeployed** — immutable migration 059
+   supplies the historical baseline; forward-only migration 060 completes the removal of
+   direct browser public-media writes, requires owner declarations, system-authors site
+   generation evidence, and binds trusted server-created crop-last static-image watermarks
+   to exact hashes. Generated raw pixels never reach the browser. AI-used animated media
+   remains blocked until an isolated frame-by-frame transcode worker is implemented.
+   Preexisting external embeds receive a one-time visibly-unverified snapshot and new
+   external media fails page review. Safe external import, C2PA signing, and opaque
+   public delivery remain gates.
 7. **Production block behavior depends on migration state** — the legacy deployed
    snapshot must be treated as partly client-side until reverified. Migration 051 adds
    symmetric account/persona block checks to direct reads and public projections, but it

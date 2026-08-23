@@ -753,6 +753,11 @@ test("owner governance UI parses and keeps browser AI handoff and submission con
   assert.match(source, /function renderBusinessPage/);
   assert.match(source, /function renderPlatformQueue/);
   assert.match(source, /Draft detected setup gaps/);
+  assert.match(source, /function governanceBuildIntentionPlan/);
+  assert.match(source, /purpose:"capability_explain"/);
+  assert.match(source, /const stillCurrent=\(\)=>session\?\.user\?\.id===uid&&renderEpoch===epoch/);
+  assert.match(source, /function governanceIntentionChanged\(\)[\s\S]*intentionAiExplanation=""/);
+  assert.doesNotMatch(source, /governanceExplainIntentionWithAi[\s\S]{0,3000}\{role:"system"/);
   assert.match(source, /governanceRpc\("my_persona_family"/);
   assert.match(source, /Copy sanitized review packet/);
   assert.match(source, /generated copy omits account\/provider fields/);
@@ -773,6 +778,8 @@ test("owner governance UI parses and keeps browser AI handoff and submission con
   assert.match(workflow, /--include '\/platform-governance\.js'/);
   assert.match(index, /platform-governance\.css/);
   assert.match(index, /platform-governance\.js/);
+  assert.match(index, /if\(context\.purpose\)requestBody\.purpose=context\.purpose/);
+  assert.match(index, /if\(context\.personaId\)requestBody\.personaId=context\.personaId/);
   assert.match(index, /if\(view==="review"\)return renderPublicationReview\(arg\)/);
   assert.match(index, /if\(view==="persona-settings"\)return renderPersonaSettings\(arg\)/);
   assert.match(index, /if\(view==="business-settings"\)return renderBusinessSettings\(arg\)/);

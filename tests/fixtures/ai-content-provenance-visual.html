@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MyPersonas AI provenance visual QA</title>
+  <link rel="stylesheet" href="../../MyPersonas.Online_v0/ai-content-provenance.css?v=20260823-2">
+  <style>
+    :root{color-scheme:light;--ink:#14243a;--muted:#5c6d80;--line:#cfdae7;--blue:#1268d2}
+    *{box-sizing:border-box}body{margin:0;background:#edf3f9;color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+    main{width:min(1180px,calc(100% - 28px));margin:28px auto 60px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
+    h1{margin:0 0 5px;font-size:clamp(24px,4vw,38px)}p{margin:0;color:var(--muted)}button{padding:10px 14px;border:0;border-radius:9px;background:var(--blue);color:white;font:700 14px system-ui;cursor:pointer}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:16px}.card{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:white;box-shadow:0 8px 26px rgba(28,50,78,.08)}
+    .media{position:relative;display:grid;place-items:center;min-height:220px;background:#101923;overflow:hidden}.media img{display:block;width:100%;height:100%;min-height:220px;object-fit:contain}.copy{padding:14px}.copy h2{margin:0 0 5px;font-size:17px}.copy p{font-size:13px}
+    .external-demo{height:220px;background:radial-gradient(circle at 20% 20%,#fff4b0,transparent 30%),linear-gradient(135deg,#d22a8a,#492aab 55%,#07375b)}
+    .external-demo::before{content:"Legacy external media";color:white;font-size:22px;font-weight:800;text-shadow:0 2px 12px #000;letter-spacing:.02em}
+    .status{display:inline-flex;margin-top:9px;padding:4px 8px;border-radius:999px;background:#dff7e8;color:#12643a;font-size:12px;font-weight:800}
+    @media(max-width:780px){main{width:min(100% - 18px,520px);margin-top:18px}.top{display:grid}.grid{grid-template-columns:1fr}.media,.media img{min-height:190px}.external-demo{height:190px}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <div><h1>AI provenance visual QA</h1><p>Burned-in final images, accessible labels, legacy disclosure, and required declaration.</p><span id="qaStatus" class="status">Preparing exact watermark previews…</span></div>
+      <button id="declarationDemo" type="button">Test upload declaration</button>
+    </div>
+    <section class="grid" aria-label="AI provenance examples">
+      <article class="card"><div id="landscapeShell" class="media has-ai-provenance"><img id="landscape" alt="Landscape AI-generated watermark example"></div><div class="copy"><h2>Generated landscape</h2><p>Final 1200 × 628 crop, then the faint mark is burned into the bottom right.</p></div></article>
+      <article class="card"><div id="portraitShell" class="media reel has-ai-provenance"><img id="portrait" alt="Portrait AI-assisted watermark example"></div><div class="copy"><h2>Assisted portrait</h2><p>The full final image stays visible; the separate label survives presentation crops.</p></div></article>
+      <article class="card"><div id="externalShell" class="media external-demo has-ai-provenance"></div><div class="copy"><h2>Grandfathered external</h2><p>No provenance is invented. The asset remains plainly labeled until secure re-ingest.</p></div></article>
+    </section>
+  </main>
+  <script src="../../MyPersonas.Online_v0/ai-content-provenance.js?v=20260823-2"></script>
+  <script>
+    const api=window.MyPersonasAiProvenance;
+    const canonical=(aiUse,source,persona,purpose)=>`https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/persona-media/owner/published/provenance/${aiUse}/${source}/${persona}/${purpose}/hash.png`;
+    function sourceFile(width,height,name,colors){
+      const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+      const context=canvas.getContext("2d");const gradient=context.createLinearGradient(0,0,width,height);
+      gradient.addColorStop(0,colors[0]);gradient.addColorStop(.55,colors[1]);gradient.addColorStop(1,colors[2]);context.fillStyle=gradient;context.fillRect(0,0,width,height);
+      context.fillStyle="rgba(255,255,255,.16)";for(let i=0;i<8;i++){context.beginPath();context.arc(width*(.12+i*.12),height*(.22+(i%3)*.2),Math.min(width,height)*(.05+i*.006),0,Math.PI*2);context.fill()}
+      context.fillStyle="#fff";context.font=`800 ${Math.round(Math.min(width,height)*.09)}px system-ui`;context.fillText(name,Math.round(width*.06),Math.round(height*.18));
+      return new Promise(resolve=>canvas.toBlob(blob=>resolve(new File([blob],`${name}.png`,{type:"image/png"})),"image/png"));
+    }
+    async function render(){
+      const landscapeSource=await sourceFile(1500,900,"Generated",["#0b5b8f","#4a2d86","#d83b78"]);
+      const portraitSource=await sourceFile(900,1500,"Assisted",["#174f3d","#267c72","#c5842e"]);
+      const landscape=await api.watermarkRaster(landscapeSource,{crop:{width:1200,height:628},suffix:"qa"});
+      const portrait=await api.watermarkRaster(portraitSource,{suffix:"qa"});
+      document.getElementById("landscape").src=URL.createObjectURL(landscape);
+      document.getElementById("portrait").src=URL.createObjectURL(portrait);
+      document.getElementById("landscapeShell").insertAdjacentHTML("beforeend",api.publicMarkerHtml(canonical("generated","generated","persona","profile/banner"),"image"));
+      document.getElementById("portraitShell").insertAdjacentHTML("beforeend",api.publicMarkerHtml(canonical("assisted","uploaded","persona","reel/final"),"image"));
+      document.getElementById("externalShell").insertAdjacentHTML("beforeend",api.publicMarkerHtml("https://legacy.example.test/image.png","image"));
+      const status=document.getElementById("qaStatus");status.textContent="Exact-hash previews ready";document.documentElement.dataset.qaReady="true";
+    }
+    document.getElementById("declarationDemo").addEventListener("click",()=>api.askAiUse({filename:"persona-cover.png"}));
+    render().catch(error=>{document.getElementById("qaStatus").textContent=`QA failed: ${error.message}`;document.documentElement.dataset.qaReady="error";console.error(error)});
+  </script>
+</body>
+</html>

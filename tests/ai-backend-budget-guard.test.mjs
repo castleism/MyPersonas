@@ -102,3 +102,18 @@ test("proxy and board runner use the database guard without a spoofable header",
   assert.match(runner, /mode: "agent_board"/);
   assert.doesNotMatch(runner, /mode: "owner_chat"/);
 });
+
+test("capability explanation is server-prompted, context-free, and charged as owner chat", () => {
+  assert.doesNotMatch(proxy, /\| "capability_explain"/);
+  assert.match(proxy, /purpose === "capability_explain"/);
+  assert.match(proxy, /mode !== "owner_chat" \|\| requestedPersonaId \|\| attachedSummaries\.length/);
+  assert.match(proxy, /sanitized\.messages\.length !== 1 \|\| sanitized\.messages\[0\]\?\.role !== "user"/);
+  assert.match(proxy, /allowedKeys = new Set\(\[[\s\S]*"purpose"[\s\S]*"messages"[\s\S]*"max_tokens"/);
+  assert.match(proxy, /serverSystemPrompt = capabilityExplainSystemPrompt\(\)/);
+  assert.match(proxy, /The application-supplied statuses in the user message are authoritative/);
+  assert.ok(
+    proxy.indexOf('purpose === "capability_explain"') <
+      proxy.indexOf("serverSystemPrompt = await ownerHqSystemPrompt(owner)"),
+  );
+  assert.match(proxy, /p_mode: mode/);
+});

@@ -1,19 +1,22 @@
 (function attachMyPersonasAiProvenance(global) {
   "use strict";
 
+  const SCRIPT_BASE = global.document?.currentScript?.src || global.location?.href || "https://mypersonas.online/";
+  const WATERMARK_SHA256 = "c8ff9543374ab294ebf73ce0859581abf5e12251b7ce2735d86399d015e046b2";
   const CONFIG = Object.freeze({
     version: "mypersonas-ai-watermark-v1",
-    assetUrl: "./assets/MyPersonas-AI-Watermark.png",
-    assetSha256: "c8ff9543374ab294ebf73ce0859581abf5e12251b7ce2735d86399d015e046b2",
+    assetUrl: new URL(`./assets/MyPersonas-AI-Watermark.png?sha256=${WATERMARK_SHA256}`, SCRIPT_BASE).href,
+    assetSha256: WATERMARK_SHA256,
     sourceCrop: Object.freeze({ x: 345, y: 204, width: 1481, height: 306 }),
     opacity: 0.22,
     haloOpacity: 0.10,
-    maxSourcePixels: 60_000_000,
-    maxOutputPixels: 24_000_000,
+    maxSourcePixels: 12_000_000,
+    maxOutputPixels: 2_000_000,
   });
   const AI_USES = new Set(["none", "assisted", "generated", "unknown"]);
-  const SOURCES = new Set(["uploaded", "generated", "sourced", "remixed"]);
+  const SOURCES = new Set(["uploaded", "generated"]);
   const RASTER_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+  const CANONICAL_STORAGE_HOSTS = new Set(["nwsqyuucwzihruszocge.supabase.co"]);
   const LABELS = Object.freeze({
     none: "No generative AI declared",
     assisted: "AI-assisted content",
@@ -52,18 +55,27 @@
 
   function provenanceFromUrl(value) {
     let path = "";
+    const raw = String(value || "").trim();
     try {
-      const parsed = new URL(String(value || ""), global.location?.href || "https://mypersonas.online/");
+      const parsed = new URL(raw, global.location?.href || "https://mypersonas.online/");
+      if (!CANONICAL_STORAGE_HOSTS.has(parsed.hostname.toLowerCase())) {
+        if (/^https:\/\//i.test(raw)) {
+          return Object.freeze({
+            aiUse: "unknown",source: "sourced",embedded: false,legacy: true,external: true,
+          });
+        }
+        return null;
+      }
       path = decodeURIComponent(parsed.pathname).toLowerCase();
     } catch {
       return null;
     }
-    const current = path.match(/\/persona-media\/[^/]+\/published\/provenance\/(none|assisted|generated|unknown)\/(uploaded|generated|sourced|remixed)\//);
+    const current = path.match(/\/persona-media\/[^/]+\/published\/provenance\/(none|assisted|generated|unknown)\/(uploaded|generated)\//);
     if (current) {
       return Object.freeze({ aiUse: current[1], source: current[2], embedded: current[1] !== "none", legacy: false });
     }
     if (/\/persona-media\/[^/]+\/published\/generated\//.test(path)) {
-      return Object.freeze({ aiUse: "generated", source: "generated", embedded: false, legacy: true });
+      return Object.freeze({ aiUse: "unknown", source: "generated", embedded: false, legacy: true });
     }
     return null;
   }
@@ -166,8 +178,11 @@
       const requestedCrop = options.crop && Number.isInteger(options.crop.width) && Number.isInteger(options.crop.height)
         ? options.crop
         : null;
-      const width = requestedCrop ? requestedCrop.width : source.width;
-      const height = requestedCrop ? requestedCrop.height : source.height;
+      const outputScale = !requestedCrop && source.width * source.height > CONFIG.maxOutputPixels
+        ? Math.sqrt(CONFIG.maxOutputPixels / (source.width * source.height))
+        : 1;
+      const width = requestedCrop ? requestedCrop.width : Math.max(32, Math.floor(source.width * outputScale));
+      const height = requestedCrop ? requestedCrop.height : Math.max(32, Math.floor(source.height * outputScale));
       if (width < 32 || height < 32 || width * height > CONFIG.maxOutputPixels) {
         throw new Error("The requested watermarked image size is not supported");
       }
@@ -177,7 +192,7 @@
       const ctx = canvas.getContext("2d", { alpha: true, willReadFrequently: false });
       if (!ctx) throw new Error("This browser cannot prepare a watermarked image");
       if (requestedCrop) drawCover(ctx, source, width, height);
-      else ctx.drawImage(source, 0, 0);
+      else ctx.drawImage(source, 0, 0, width, height);
       drawWatermark(ctx, width, height, await loadWatermarkBitmap());
       const quality = mime === "image/png" ? undefined : 0.92;
       const blob = await new Promise((resolve, reject) => {
@@ -191,6 +206,7 @@
 
   function askAiUse(options = {}) {
     return new Promise((resolve) => {
+      const previousFocus = document.activeElement;
       const old = document.getElementById("aiUseDeclarationOverlay");
       if (old) old.remove();
       const overlay = document.createElement("div");
@@ -211,19 +227,31 @@
       const filename = String(options.filename || "").slice(0, 160);
       const fileNode = overlay.querySelector("#aiDeclarationFile");
       if (fileNode) fileNode.textContent = filename ? `File: ${filename}` : "This choice is required before upload.";
+      const background = Array.from(document.body.children).filter((element) => element !== overlay);
+      const priorInert = background.map((element) => ({ element, inert: element.inert }));
       const finish = (value) => {
         document.removeEventListener("keydown", onKeydown, true);
+        priorInert.forEach(({ element, inert }) => { element.inert = inert; });
         overlay.remove();
+        previousFocus?.focus?.();
         resolve(value);
       };
       const onKeydown = (event) => {
         if (event.key === "Escape") { event.preventDefault(); finish(null); }
+        if (event.key === "Tab") {
+          const focusable = Array.from(overlay.querySelectorAll("button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])"));
+          if (!focusable.length) { event.preventDefault(); return; }
+          const first = focusable[0], last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
       };
       overlay.querySelectorAll("[data-ai-use]").forEach((button) => button.addEventListener("click", () => finish(button.dataset.aiUse)));
       overlay.querySelector(".ai-declaration-cancel")?.addEventListener("click", () => finish(null));
       overlay.addEventListener("click", (event) => { if (event.target === overlay) finish(null); });
       document.addEventListener("keydown", onKeydown, true);
       document.body.appendChild(overlay);
+      priorInert.forEach(({ element }) => { element.inert = true; });
       overlay.querySelector("[data-ai-use]")?.focus();
     });
   }

@@ -82,6 +82,7 @@ verify_jwt = true
 
 [functions.media-ingest]
 verify_jwt = true
+static_files = ["./functions/media-ingest/MyPersonas-AI-Watermark.png"]
 
 [functions.agent-board-propose]
 verify_jwt = true

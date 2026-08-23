@@ -234,20 +234,19 @@ test("browser public uploads use the authenticated provenance intake", async () 
   assert.match(immutableUpload, /form\.append\("aiUse",aiUse\)/);
   assert.match(immutableUpload, /functions\/v1\/media-ingest/);
   assert.doesNotMatch(immutableUpload, /storage\.from|bucket\.upload/);
-  assert.match(generatedUpload, /PUBLIC_PERSONA_RASTER_TYPES\.has\(mime\)/);
-  assert.match(generatedUpload, /MyPersonasAiProvenance\.watermarkRaster\(source/);
-  assert.match(generatedUpload, /origin:"site_generated"/);
-  assert.match(generatedUpload, /generationEventId/);
+  assert.match(generatedUpload, /out\.dataset\.publicUrl/);
+  assert.match(generatedUpload, /out\.dataset\.assetId/);
+  assert.doesNotMatch(generatedUpload, /watermarkRaster|uploadImmutablePersonaMedia/);
   assert.match(pickerUpload, /f\.accept="image\/png,image\/jpeg,image\/webp,image\/gif,video\/mp4,video\/webm"/);
   assert.match(pickerUpload, /MyPersonasAiProvenance\.askAiUse/);
   assert.match(pickerUpload, /MyPersonasAiProvenance\.sha256Hex\(source\)/);
-  assert.match(pickerUpload, /MyPersonasAiProvenance\.watermarkRaster\(source\)/);
-  assert.match(pickerUpload, /uploadImmutablePersonaMedia\(file,session\?\.user\?\.id,uploadPurpose\(inputId\)/);
+  assert.doesNotMatch(pickerUpload, /MyPersonasAiProvenance\.watermarkRaster\(source\)/);
+  assert.match(pickerUpload, /uploadImmutablePersonaMedia\(source,session\?\.user\?\.id,uploadPurpose\(inputId\)/);
   assert.doesNotMatch(pickerUpload, /storage\.from|bucket\.upload|watermarkImage/);
   assert.ok(
-    pickerUpload.indexOf("await MyPersonasAiProvenance.watermarkRaster(source)") <
-      pickerUpload.indexOf("uploadImmutablePersonaMedia(file"),
-    "watermarking must finish before secure intake",
+    pickerUpload.indexOf("MyPersonasAiProvenance.sha256Hex(source)") <
+      pickerUpload.indexOf("uploadImmutablePersonaMedia(source"),
+    "source integrity hashing must finish before trusted server intake",
   );
   assert.match(composerUpload, /MyPersonasAiProvenance\.askAiUse/);
   assert.match(composerUpload, /crop:\{width:1200,height:628\}/);
@@ -256,5 +255,5 @@ test("browser public uploads use the authenticated provenance intake", async () 
   assert.match(composerUpload, /rendition:"facebook"/);
   assert.match(composerUpload, /rendition:"instagram"/);
   assert.match(composerUpload, /rendition:"x"/);
-  assert.doesNotMatch(composerUpload, /storage\.from|bucket\.upload/);
+  assert.doesNotMatch(composerUpload, /storage\.from|bucket\.upload|watermarkRaster/);
 });

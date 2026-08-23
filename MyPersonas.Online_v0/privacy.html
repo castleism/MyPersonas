@@ -69,7 +69,7 @@
     <div class="hero">
       <h1>Privacy Notice</h1>
       <p class="lede">This notice explains the data the current MyPersonas / AliaSpaces service uses, what can be public, and what happens when you connect an external account or an AI provider.</p>
-      <span class="effective">Effective July 28, 2026</span>
+      <span class="effective">Effective August 23, 2026</span>
       <div class="notice">
         <strong>Current connector scope matters.</strong>
         Gmail mailbox tools are deployed but remain subject to Google's test-user or production-verification gate. X identity/read authorization code is deployed but cannot accept connections until its developer credentials and current API access are installed. The Meta foundation can pair Facebook Pages and Page-linked professional Instagram accounts only after its Business app credentials are installed; it does not have publishing permission. Other provider records are private planning inventory until an official connector is added. A saved account name, email match, password, or cookie is never treated as provider authorization.
@@ -100,7 +100,7 @@
 
       <h3>Persona and social content</h3>
       <ul>
-        <li>Persona names, handles, bios, themes, visibility settings, links, posts, comments, reactions, albums, media, follows, blocks, and other page content.</li>
+        <li>Persona names, handles, bios, themes, visibility settings, links, posts, comments, reactions, albums, media, follows, blocks, and other page content. For new media, this can include your AI-use declaration, source and final file hashes, MIME type, byte size, watermark version/state, rendition, and the persona and public asset URL to which it is bound.</li>
         <li>Private notes, drafts, schedules, content plans, persona instructions, affiliate disclosure text, approval records, automation history, owner-assistant conversations, and any private main-to-backup persona roster assignment you choose.</li>
         <li>Public fan-chat messages, whether the visitor selected a saved transcript or private session, the persona involved, a one-way hash of the visitor’s random browser token, safety flags, live-owner state, and escalation state. The persona owner can see saved chats and private-session chats while they remain open. Fan chat is currently disabled for adult/NSFW personas.</li>
       </ul>
@@ -136,7 +136,7 @@
     <section>
       <h2>4. What is public and what is private</h2>
       <p>Your profile, owner-to-persona relationship, and private Backup roster assignments are private database records protected by owner-based access rules. Marking a persona as Backup does not publish or reveal a relationship; the separate Linked personas control is the explicit opt-in public cross-link. Public and unlisted persona pages can expose the content, links, interactions, and profile details you put on those pages. Private persona visibility restricts the page, but it is not a promise of absolute anonymity.</p>
-      <div class="callout"><strong>Uploaded media uses a public media bucket.</strong> Treat an uploaded media URL as public even when it appears on a private or unlisted persona. Do not upload material that must remain confidential.</div>
+      <div class="callout"><strong>Uploaded media uses a public media bucket.</strong> Treat an uploaded media URL and its visible AI-use marking as public even when it appears on a private or unlisted persona. Public asset paths can contain a stable owner identifier and may correlate personas. Do not upload material that must remain confidential.</div>
       <p>Other people, search engines, external links, or caches can retain copies of public material. Avoid including identifying information if separation between personas matters to you.</p>
     </section>
 
@@ -156,7 +156,8 @@
       <h2>6. AI processing</h2>
       <p>When you choose an AI backend, the relevant prompt, persona instructions, conversation content, or draft context is sent through a server-side proxy to that provider. Supported hosted endpoints can include OpenAI-compatible services, Anthropic, Azure OpenAI, Google Gemini endpoints, OpenRouter, xAI, Groq, Mistral, DeepSeek, Together, Fireworks, and explicitly approved custom hosts. Which provider receives data depends on the model connection you select.</p>
       <p>Optional AI mailbox classification is off until you select a model for that mailbox and accept the mailbox-specific disclosure. It sends only bounded sender/subject/preview-snippet inputs for ambiguous messages—not full bodies or attachments. A custom mailbox AI host needs separate confirmation.</p>
-      <p>If you use a locally configured Stable Diffusion endpoint, the prompt is sent to the endpoint URL stored in that browser. A generated image is uploaded to the public media bucket only when you choose to save it.</p>
+      <p>When the site generates an image, it records a short-lived server event and passes the provider output directly to secure media intake. That event can include the owner and persona identifiers, selected backend, provider and model, hashes of the prompt and output, output MIME type, creation time, expiry, and derivative-use count. The prompt text is not stored in this generation event. The browser receives only the visibly watermarked, registered public derivative; event consumption and provenance registration are one database transaction.</p>
+      <p>Every media upload asks whether generative AI was used. “AI-assisted,” “AI-generated,” and “Not sure” static images receive the MyPersonas AI mark; “No AI” retains the exact uploaded bytes. Pre-existing external media can remain visibly labeled “AI use not known,” while new unregistered external media prevents publication. The service does not claim that an owner declaration or automated detector can prove how external content was made. AI-used GIF, APNG, animated WebP, and video upload remains unavailable until the service can mark every frame.</p>
       <p>AI providers process submitted data under their own terms and privacy notices. Avoid sending secrets or information you are not permitted to disclose.</p>
     </section>
 

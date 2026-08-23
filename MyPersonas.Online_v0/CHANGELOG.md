@@ -3,10 +3,58 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
-## Exact-actor Persona view and full Page looks previews (local only) (2026-08-22)
+## Required AI-use declaration and forward-only provenance hardening (database applied; app deployment pending) (2026-08-23)
 
-Status: **Implemented and tested locally; not pushed, applied, deployed, or verified
-live.** Migration 058 is a follow-on to, and not part of, the frozen 047–057 evidence.
+Status: **Migration 060 was applied and read back in the linked production database;
+matching functions/frontend are tested locally but are not yet claimed deployed or
+verified live at this source freeze.** The original migration 059 is restored and frozen
+as historical source. The missing complete hardening shipped as new, forward-only
+migration 060; an existing 059 ledger row must never be repaired by replacing or
+re-running 059. The 284-test Node suite, frontend syntax check, migration 058 runtime, and
+frozen-059 → 060 → 060-reapply runtime all passed.
+
+- Added the exact owner-supplied MyPersonas AI watermark master with a pinned SHA-256,
+  subtle bottom-right raster treatment, full-image editor previews, visible public labels,
+  and crop-last Facebook/Instagram/X derivatives.
+- Every browser media picker now requires No AI, AI-assisted, AI-generated, or Not sure.
+  The latter three are visibly marked; site-generated images are always system-declared
+  generated and require a short-lived server generation event.
+- Replaced direct browser `persona-media` writes with authenticated `media-ingest`, which
+  receives raw source bytes, validates ownership, bounds, byte signatures, hashes, and
+  generation evidence, then creates the final crop-last ImageMagick/WASM derivative and
+  verifies the bundled watermark master before a service-only write and registry insert.
+- Gemini now passes raw output directly to secure intake and returns only the registered
+  marked URL. Owner-configured AI budgets cover image calls; browser-supplied derivatives
+  are never accepted as `system_applied` authority.
+- Migration 060 binds profile, post, album, draft, and social-draft URLs to immutable media asset IDs.
+  Page review exposes safe provenance, new canonical URLs fail without authority, and
+  social approval freezes exact provenance hashes. Asset status changes require AAL2 and
+  stale the published revision. One-time snapshots preserve existing external media as
+  visibly unverified, while new external media fails publication review. Persona-scoped
+  paths prevent cross-persona collisions; generation-event consumption is atomic with
+  registration; retained-byte, daily, owner-count, and per-persona quotas fail closed.
+- AI-used GIF/APNG/animated-WebP/video remains fail-closed until frame-by-frame transcoding exists. The
+  source master contains a C2PA/JUMBF container, but derivative signing is not claimed.
+  See `AI-CONTENT-PROVENANCE.md` for the complete contract and
+  `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` for frozen-059/forward-060 hashes and
+  release gates. Opaque public asset delivery is not included; rich public media widgets
+  remain disabled because current public paths can reveal a stable owner UUID.
+- Production readback verified both 060 grandfather tables, 118 frozen legacy external
+  references, safe render/reference functions, zero false provenance-required draft
+  flags, and no authenticated asset insert/update/delete grants. The sole 28-persona
+  owner now has active global-administrator and technician role rows.
+- The coordinated frontend exposes the Settings-to-page-designer bridge, editable scoped
+  family connections, full Page looks previews/downloads, attached account handles in
+  Edit, and a no-token deterministic intention plan. Its optional linked-model explanation
+  is server-prompted, context-free, token-explicit, stale-response guarded, and cannot
+  publish, save, or submit a feature ticket.
+
+## Exact-actor Persona view and full Page looks previews (database applied; frontend deployment pending) (2026-08-22)
+
+Status: **Migration 058 is recorded in the linked production ledger and its local
+role-switched runtime harness passed; the matching frontend is not yet claimed deployed
+or verified live at this source freeze.** Migration 058 is a follow-on to, and not part
+of, the frozen 047–057 evidence.
 
 - Added the persistent Overview / Persona switch, a visible acting-identity selector,
   persona-only rail, friends/requests/reviewed-family/followers/following home, circle

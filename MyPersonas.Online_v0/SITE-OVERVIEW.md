@@ -1,6 +1,6 @@
 # AliaSpaces / MyPersonas — What the site does today, and where it's going
 
-**Updated:** August 22, 2026 · mypersonas.online
+**Updated:** August 23, 2026 · mypersonas.online
 
 **The idea in one line:** one home for every side of you — each persona you carry gets
 its own MySpace-style page, owner-private and unlinked from other personas by default,
@@ -9,13 +9,30 @@ with explicit opt-in cross-links, its own AI layer, and its own managed accounts
 This overview separates proven/live behavior from the coordinated next-release source.
 Local code, a queued migration, or a passing test is never presented as a deployed feature.
 
-Current package: **Implemented and tested locally; not pushed, applied to the linked
-database, deployed, configured, activated, or verified live unless separately evidenced.**
-The exact release boundary is `RELEASE-MANIFEST-2026-08-22.md`.
+Current package: **migration 060 is applied/read back in the linked production database
+and the owner staff roles are active; matching function/frontend deployment and live
+integration verification remain separate at this source freeze.**
+The prior release boundary is `RELEASE-MANIFEST-2026-08-22.md`; the coordinated
+AI-provenance follow-on preserves 059 as immutable history and introduces forward-only 060
+under `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`.
 
 ---
 
-## Coordinated next release (local source, not live)
+## Coordinated next release (database applied; matching source not yet claimed live)
+
+- **AI content provenance:** immutable migration 059 plus forward-only hardening migration
+  060 and the matching frontend/functions require an
+  AI-use declaration for every upload, automatically classify site-generated images,
+  return generated media only after trusted server watermarking, burn the pinned
+  MyPersonas AI mark into AI-used static image bytes, and watermark final social crops
+  after cropping. New media writes are service-only and bind exact hashes and immutable
+  provenance IDs into page review and social approval. AI-used animated media is blocked
+  until frame-by-frame transcoding exists. External media present at the first successful
+  060 hardening apply receives a
+  one-time visibly-unverified snapshot; new external media cannot pass review without
+  secure intake. The 060 database apply/readback is recorded, but matching deployment and
+  live parity are not yet claimed here;
+  see `AI-CONTENT-PROVENANCE.md`.
 
 - **Private Backup personas:** an owner can attach one persona as another persona's
   private backup. The desktop owner rail expands the backup under its main; the mobile
@@ -33,9 +50,10 @@ The exact release boundary is `RELEASE-MANIFEST-2026-08-22.md`.
   bounded downloads, declarative layout controls, escaped text/HTTPS boxes, a read-only
   HTML/CSS/JSON learning console, and private reusable code notes across eleven built-in
   modules, including Family and Offers & review requests. New first-party uploads are
-  content-addressed by their final bytes; legacy and external HTTPS assets are not
-  byte-integrity-bound. New public media widgets stay blocked until public asset paths no
-  longer reveal a stable owner UUID.
+  content-addressed by their final bytes; forward migration 060 creates one-time legacy external HTTPS snapshots that are
+  visibly unverified and new external media is blocked from publication. New public
+  media widgets and video backgrounds stay blocked until an opaque-id migration and
+  backfill ensure public asset paths no longer reveal a stable owner UUID.
 - **Publication and governance:** migration 051 and the owner UI add exact-revision page
   review, AI disclosure, publication controls, confirmed feature tickets, separate follow
   and friend behavior, account-sync preferences, inert extension review, staff-role
@@ -189,7 +207,10 @@ The coordinated 047–057 source described above is not part of this baseline.
 
 ### Trust & safety
 
-- Pixel-burned watermarks (your page URL) on uploads; right-click/drag guards
+- The coordinated immutable-059/forward-060 source replaces the historical page-URL
+  watermark with required AI-use declarations and a subtle, pinned MyPersonas AI mark on AI-used static
+  derivatives. Site generation is system-declared; crop-specific social files are marked
+  after cropping; unsupported AI-used motion media fails closed. This is not live evidence.
 - Server-side AI proxy discards browser-supplied system prompts
 - In-app error reporting; session-timeout countdown; stale-page banner
 - The coordinated 051 source replaces historical direct error-log insertion with a

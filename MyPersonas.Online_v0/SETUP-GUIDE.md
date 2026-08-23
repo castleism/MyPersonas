@@ -1,9 +1,12 @@
 # AliaSpaces / MyPersonas — Setup Guide
 
-Release-package status: **Implemented and tested locally; not pushed, applied to the
-linked database, deployed, configured, activated, or verified live unless separately
-evidenced.** For the current package, follow `RELEASE-MANIFEST-2026-08-22.md`; this guide
-does not grant permission to alter a linked project or external account.
+Release-package status: **migration 060 is applied/read back in the linked database and
+the requested owner staff-role rows are active; the matching source is tested locally but
+is not yet claimed pushed, function-deployed, frontend-deployed, or live-verified at this
+source freeze.** For the current package, follow `RELEASE-MANIFEST-2026-08-22.md`; this guide
+and the forward provenance boundary in
+`RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md`. This guide does not itself prove a linked
+apply, deploy, or external-account change.
 
 Files in this repo:
 - **index.html** — the entire app (hosted as a static site)
@@ -65,6 +68,19 @@ Migration 058 is a separate follow-on after that frozen chain. Apply and verify
 `20260823000000_persona_view_mode.sql` before publishing the Persona-view page assets.
 Do not let the browser fall back to owner-wide RLS for a persona perspective; follow the
 exact-actor checks in `PERSONA-VIEW-MODE.md`.
+
+Migration 059 is immutable historical source. If the linked migration ledger already
+records 059, do not edit, replace, or re-run it even when schema readback shows that some
+hardening is absent. The missing complete media-provenance contract is the new,
+forward-only migration 060. The linked production project applied and read back **060
+only** on 2026-08-23. Other environments must use a maintenance window with matching
+`media-ingest`, `gemini-image`, `compose-post`, `ai-proxy`, publisher, frontend, and cache versions
+ready. First run `scripts/test-ai-content-provenance-sql.ps1` against Docker PostgreSQL 16;
+the required sequence is prerequisite seed → frozen 059 → 060 → 060 reapply → runtime.
+Then follow the backup, readback, function, page, signed-in, and resume order in
+`AI-CONTENT-PROVENANCE.md`. Deploy `media-ingest` with local Supabase CLI bundling and its
+configured watermark `static_files`; the pinned ImageMagick WASM is too large for the
+server-side dashboard bundle path. Do not re-enable the old browser Storage policy as rollback.
 
 Migration 051 intentionally backfills every legacy persona without lifecycle state to
 `unpublished`, clears its published revision/timestamp, and returns every legacy business
@@ -465,11 +481,18 @@ provider-specific testing. Gmail mailbox access does not authorize social postin
 live streaming is also still an embed; a future release can add Cloudflare Stream or Mux.
 
 ## Honest notes
-- **Watermarks**: uploaded images get the page URL burned into pixels (tiled + corner tag); right-click/drag is blocked. Screenshots can't be prevented — treat watermarks as attribution + deterrence.
+- **Historical watermark note:** older source burned a page URL into uploads. The
+  immutable 059 baseline plus forward-only migration 060 replaces that design with a required AI-use declaration, trusted
+  server-created MyPersonas AI derivatives, immutable provenance, and accessible labels.
 - **Asset integrity**: new first-party PNG/JPEG/WebP/GIF and MP4/WebM uploads hash the
-  final bytes and use append-only content-addressed `persona-media` paths after migration
-  051. Legacy paths and external HTTPS media are reviewed as URL text, not fetched and
-  byte-hashed; they can change in place and must not be described as immutable.
+  final bytes and use append-only content-addressed `persona-media` paths after the
+  coordinated 060 release. External HTTPS media present at the first successful 060 apply is snapshotted once as visibly
+  unverified URL text, not fetched or byte-hashed; changing it makes page review fail.
+  Newly supplied external media is blocked until a secure declared-import workflow exists.
+- **Opaque delivery remains blocked:** 060 does not replace stable owner UUIDs in current
+  public Storage paths. Keep rich public image/video widgets and video backgrounds
+  disabled until an opaque-id migration, backfill, and signed-in two-account privacy test
+  pass.
 - **Adult content**: keep the 18+ page gate on NSFW personas and check the host's
   acceptable-use terms. Fan chat remains server-disabled for NSFW personas until a
   server-verifiable age-assurance system exists.

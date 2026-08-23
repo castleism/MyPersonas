@@ -17,6 +17,8 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const MAX_PROVIDER_RESPONSE_BYTES = 32 * 1024 * 1024;
+const MAX_GENERATED_SOURCE_BYTES = 5 * 1024 * 1024;
+const IMAGE_BUDGET_RESERVATION_TOKENS = 32_768;
 const MAX_PROMPT_CHARS = 5_000;
 const MAX_KEY_CHARS = 32_768;
 const GOOGLE_PROVIDERS = ["google", "google_legacy"];
@@ -212,6 +214,10 @@ serve(async (req: Request) => {
   if (!persona.data) {
     return json({ error: "Owned persona not found" }, 404, origin);
   }
+  const target = typeof body.target === "string" ? body.target.trim().toLowerCase() : "";
+  if (!["avatar_url", "banner_url", "bg_url", "feed_img_url"].includes(target)) {
+    return json({ error: "A supported persona image target is required" }, 400, origin);
+  }
 
   if (body.provider !== undefined && !isGoogleImageProvider(body.provider)) {
     return json(
@@ -272,6 +278,35 @@ serve(async (req: Request) => {
     });
   }
 
+  const budgetClaim = await admin.rpc("claim_ai_backend_budget", {
+    p_owner: guard.user.id,
+    p_backend_id: backend.id,
+    p_mode: "persona_builder",
+    p_reserved_tokens: IMAGE_BUDGET_RESERVATION_TOKENS,
+    p_request_key: crypto.randomUUID(),
+  });
+  const rawBudget = Array.isArray(budgetClaim.data) ? budgetClaim.data[0] : budgetClaim.data;
+  const budgetRow = rawBudget && typeof rawBudget === "object" ? rawBudget as Record<string, unknown> : null;
+  const budgetLeaseId = typeof budgetRow?.lease_id === "string" ? budgetRow.lease_id : null;
+  if (budgetClaim.error || !budgetRow || budgetRow.allowed !== true) {
+    const code = typeof budgetRow?.denial_code === "string" ? budgetRow.denial_code : "budget_claim_unavailable";
+    return json({ error: code.includes("limit") || code.includes("concurrency") ? "This Gemini connection has reached its owner-configured budget ceiling" : "Gemini image generation is unavailable until its budget policy allows this request", code }, budgetClaim.error ? 503 : 429, origin);
+  }
+  let budgetFinalized = false;
+  const finalizeBudget = async (outcome: "completed" | "provider_error" | "request_failed", actualTokens: number | null, code: string) => {
+    if (!budgetLeaseId) return true;
+    if (budgetFinalized) return false;
+    budgetFinalized = true;
+    const result = await admin.rpc("finalize_ai_backend_budget", {
+      p_lease_id: budgetLeaseId,
+      p_outcome: outcome,
+      p_actual_tokens: actualTokens,
+      p_provider_usage_reported: actualTokens !== null,
+      p_outcome_code: code,
+    });
+    return !result.error && result.data === true;
+  };
+
   let providerResponse: Response;
   try {
     providerResponse = await fetch(geminiGenerateContentUrl(model), {
@@ -288,6 +323,7 @@ serve(async (req: Request) => {
       signal: AbortSignal.timeout(90_000),
     });
   } catch {
+    await finalizeBudget("provider_error", null, "gemini_image_unreachable");
     return json(
       { error: "Could not reach the pinned Gemini endpoint" },
       502,
@@ -304,6 +340,7 @@ serve(async (req: Request) => {
     );
     providerBody = requestObject(raw) || {};
   } catch {
+    await finalizeBudget("provider_error", null, "gemini_image_invalid_response");
     return json(
       { error: "Gemini returned an invalid or oversized response" },
       502,
@@ -311,6 +348,7 @@ serve(async (req: Request) => {
     );
   }
   if (!providerResponse.ok) {
+    await finalizeBudget("provider_error", null, `gemini_http_${providerResponse.status}`);
     const providerStatus =
       providerResponse.status >= 400 && providerResponse.status <= 599
         ? providerResponse.status
@@ -347,6 +385,7 @@ serve(async (req: Request) => {
     ? inline.mime_type
     : "";
   if (!imageData || !["image/jpeg", "image/png", "image/webp"].includes(mime)) {
+    await finalizeBudget("provider_error", null, "gemini_image_missing");
     return json(
       {
         error:
@@ -364,7 +403,18 @@ serve(async (req: Request) => {
       (character) => character.charCodeAt(0),
     );
   } catch {
+    await finalizeBudget("provider_error", null, "gemini_image_invalid_bytes");
     return json({ error: "Gemini returned invalid image bytes" }, 502, origin);
+  }
+  if (outputBytes.byteLength < 1 || outputBytes.byteLength > MAX_GENERATED_SOURCE_BYTES) {
+    await finalizeBudget("provider_error", null, "gemini_image_oversized");
+    return json({ error: "Gemini returned an image too large for secure server watermarking" }, 502, origin);
+  }
+  const usage = providerBody.usageMetadata as Record<string, unknown> | undefined;
+  const reportedTokens = Number(usage?.totalTokenCount ?? usage?.total_token_count);
+  const actualTokens = Number.isSafeInteger(reportedTokens) && reportedTokens >= 0 ? reportedTokens : null;
+  if (!await finalizeBudget("completed", actualTokens, actualTokens === null ? "gemini_image_usage_unreported" : "gemini_image_completed")) {
+    return json({ error: "The image was generated but budget accounting could not be finalized" }, 503, origin);
   }
   const [outputSha256, promptSha256] = await Promise.all([
     sha256Hex(outputBytes),
@@ -387,11 +437,42 @@ serve(async (req: Request) => {
       origin,
     );
   }
+  const authorization = req.headers.get("Authorization") || "";
+  const extension = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+  const intakeForm = new FormData();
+  intakeForm.append("file", new File([outputBytes], `generated-${target}.${extension}`, { type: mime }));
+  intakeForm.append("personaId", personaId);
+  intakeForm.append("aiUse", "generated");
+  intakeForm.append("origin", "site_generated");
+  intakeForm.append("purpose", `generation-preview/${target}/${generation.data.id}`);
+  intakeForm.append("sourceSha256", outputSha256);
+  intakeForm.append("generationEventId", generation.data.id);
+  intakeForm.append("rendition", target);
+  let intakeResponse: Response;
+  let intake: Record<string, unknown> = {};
+  try {
+    intakeResponse = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/media-ingest`, {
+      method: "POST",
+      headers: { "Authorization": authorization },
+      body: intakeForm,
+      redirect: "error",
+      signal: AbortSignal.timeout(45_000),
+    });
+    intake = requestObject(await readBoundedText(intakeResponse, 64 * 1024, "Media intake response")) || {};
+  } catch (error) {
+    return json({ error: "The image was generated but secure watermarking did not complete" }, 502, origin);
+  }
+  if (!intakeResponse.ok || typeof intake.publicUrl !== "string" || typeof intake.assetId !== "string") {
+    return json({ error: typeof intake.error === "string" ? intake.error : "The image was generated but secure watermarking failed closed" }, 502, origin);
+  }
   return json({
-    image: `data:${mime};base64,${imageData}`,
-    mime,
+    publicUrl: intake.publicUrl,
+    assetId: intake.assetId,
+    mime: intake.mime,
+    contentSha256: intake.sha256,
     sourceSha256: outputSha256,
     generationEventId: generation.data.id,
-    generationEventExpiresAt: generation.data.expires_at,
+    watermarkState: intake.watermarkState,
+    watermarkVersion: intake.watermarkVersion,
   }, 200, origin);
 });

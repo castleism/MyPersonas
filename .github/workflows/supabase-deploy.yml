@@ -13,9 +13,17 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type MIGRATIONS-VERIFIED after the linked database is read back through migration 058"
+        description: "Type MIGRATIONS-VERIFIED after the linked database is read back through migration 060"
         required: true
         type: string
+      release_scope:
+        description: "Deploy only this reviewed function set"
+        required: true
+        default: "ai-provenance"
+        type: choice
+        options:
+          - ai-provenance
+          - all-reviewed
 
 permissions:
   contents: read
@@ -38,7 +46,7 @@ jobs:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
           test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
-            echo "Deployment blocked: verify and read back migrations before function code."
+            echo "Deployment blocked: verify and read back migration 060 before function code."
             exit 1
           }
           test -n "${SUPABASE_ACCESS_TOKEN}" || {
@@ -57,6 +65,14 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Project ref: $ref"
 
-      - name: Deploy all edge functions
+      - name: Deploy AI provenance functions
+        if: ${{ inputs.release_scope == 'ai-provenance' }}
+        run: |
+          for function_name in media-ingest gemini-image compose-post ai-proxy; do
+            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
+          done
+
+      - name: Deploy all reviewed edge functions
+        if: ${{ inputs.release_scope == 'all-reviewed' }}
         run: |
           supabase functions deploy --project-ref "${{ steps.cfg.outputs.ref }}"

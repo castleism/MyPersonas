@@ -121,6 +121,37 @@ test("learning console is local, read-only, and never becomes a public code runt
   assert.doesNotMatch(builder, /\beval\s*\(|new Function|srcdoc|allow-scripts/);
 });
 
+test("persona Settings has a working bridge into the visual page builder", async () => {
+  const { html } = await sources();
+  const governance = await fs.readFile(path.join(root, "MyPersonas.Online_v0", "platform-governance.js"), "utf8");
+  const bridge = html.slice(
+    html.indexOf("function openPersonaPageBuilder"),
+    html.indexOf("function authenticatedAccountsEditorHtml"),
+  );
+  assert.match(bridge, /function openPersonaPageBuilder\(personaId\)/);
+  assert.match(bridge, /pendingPageBuilderPersonaId=personaId/);
+  assert.match(bridge, /go\("edit\/"\+personaId\)/);
+  assert.match(html, /pendingPageBuilderPersonaId===editId[\s\S]{0,220}openPageBuilder\(\)/);
+  assert.match(governance, /typeof openPersonaPageBuilder==="function"[\s\S]{0,180}>Page builder<\/button>/);
+  assert.match(governance, /onclick="openPersonaPageBuilder\('\$\{persona\.id\}'\)"/);
+});
+
+test("persona Edit shows private provider handles and attested connection details", async () => {
+  const { html } = await sources();
+  const helper = html.slice(
+    html.indexOf("function authenticatedAccountsEditorHtml"),
+    html.indexOf("function pageBuilderModuleRow"),
+  );
+  const edit = html.slice(html.indexOf("// ---------- edit persona ----------"), html.indexOf("// ----- album manager -----"));
+  assert.match(helper, /Attached authenticated accounts/);
+  assert.match(helper, /account\.username\|\|account\.login_email\|\|"saved account"/);
+  assert.match(helper, /provider=\(PLATS\[account\.provider\]\|\|PLATS\.other\)\.name/);
+  assert.match(helper, /connection\?\.connection_state\|\|"record only"/);
+  assert.match(helper, /connection\?\.granted_scopes/);
+  assert.match(helper, /account\.persona_id===targetId/);
+  assert.match(edit, /Social &amp; gaming links[\s\S]{0,240}authenticatedAccountsEditorHtml\(targetId\)/);
+});
+
 test("owner asset preview covers page art and media with bounded credential-free downloads", async () => {
   const { html } = await sources();
   const governance = await fs.readFile(path.join(root, "MyPersonas.Online_v0", "platform-governance.js"), "utf8");
