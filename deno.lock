@@ -1,5 +1,13 @@
 {
   "version": "5",
+  "specifiers": {
+    "npm:@imagemagick/magick-wasm@0.0.42": "0.0.42"
+  },
+  "npm": {
+    "@imagemagick/magick-wasm@0.0.42": {
+      "integrity": "sha512-SUX54Pf3uMBS4ThdmHvbcKqP83W2FRc8kVnqxtwm1csgeaDPn8h47zQh6Yt7U1kmZL7ziV22j4W3GmAef5uLWg=="
+    }
+  },
   "redirects": {
     "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.112.3"
   },
