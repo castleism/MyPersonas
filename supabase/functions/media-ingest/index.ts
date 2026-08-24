@@ -9,7 +9,10 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { publicMediaDeliveryUrl } from "../_shared/public-media.ts";
+import {
+  loadMediaEnvironmentConfig,
+  publicMediaDeliveryUrl,
+} from "../_shared/public-media.ts";
 import {
   Channels,
   CompositeOperator,
@@ -369,6 +372,12 @@ serve(async (req) => {
 
   const user = await caller(req);
   if (!user) return json({ error: "Sign in first" }, 401, origin);
+  let environment;
+  try {
+    environment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return json({ error: "Secure media delivery is unavailable" }, 503, origin);
+  }
   const requestLength = Number(req.headers.get("content-length") || 0);
   if (!Number.isSafeInteger(requestLength) || requestLength < 1 || requestLength > MAX_REQUEST_BYTES) {
     return json({ error: "A bounded multipart request is required" }, 413, origin);
@@ -537,7 +546,10 @@ serve(async (req) => {
     console.error("media-ingest opaque handle issuance failed", issued.error);
     return json({ error: "Media was registered but opaque public delivery is unavailable" }, 503, origin);
   }
-  const publicUrl = publicMediaDeliveryUrl(String(issued.data).toLowerCase());
+  const publicUrl = publicMediaDeliveryUrl(
+    String(issued.data).toLowerCase(),
+    environment.publicMediaOrigin,
+  );
   return json({
     assetId: registered.data,
     publicUrl,

@@ -20,4 +20,12 @@ test("phone header keeps the complete menu and compacts duplicate overview route
   assert.match(html, /body:not\(\.persona-view-mode\) header>nav>button:not\(#authBtn\)\{display:none\}/);
   assert.match(html, /body\.persona-view-mode header>nav>button\[data-persona-nav\]:not\(\[hidden\]\),body\.persona-view-mode header>nav>#primaryHomeBtn\{display:inline-block!important\}/);
   assert.match(html, /body\.persona-view-mode header>nav>#authBtn\{margin-left:auto\}/);
+  assert.match(html, /main\{width:100%;min-width:0;padding-left:max\(12px,env\(safe-area-inset-left\)\)/);
+  assert.match(html, /\.matrix-actions\{width:100%;min-width:0;flex-wrap:wrap\}/);
+  assert.match(html, /\.pgrid\{width:100%;min-width:0;grid-template-columns:minmax\(0,1fr\)\}/);
+  assert.match(html, /class="matrix-head"/);
+  assert.match(html, /class="matrix-actions"/);
+  assert.match(html, /\.matrix-models \.t8pick\{min-width:0;flex-wrap:wrap\}/);
+  assert.match(html, /\.matrix-models \.t8pick>span\[style\*="margin-left:auto"\]\{width:100%;min-width:0;margin-left:0!important;flex-wrap:wrap\}/);
+  assert.match(html, /class="card matrix-models"/);
 });

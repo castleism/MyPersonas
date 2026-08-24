@@ -6,6 +6,9 @@
 // the separately gated migration-063 finalizer.
 
 import {
+  canonicalPublicMediaOrigin,
+  loadMediaEnvironmentConfig,
+  PUBLIC_MEDIA_ORIGIN,
   readExactPublicMediaResponse,
   validatePublicMediaResolution,
   verifyResolvedPublicMedia,
@@ -13,7 +16,7 @@ import {
 
 export const APPROVED_MEDIA_BUCKET = "post-approved-media";
 export const APPROVED_MEDIA_MAX_BYTES = 10 * 1024 * 1024;
-export const APPROVED_MEDIA_DELIVERY_ORIGIN = "https://media.mypersonas.online";
+export const APPROVED_MEDIA_DELIVERY_ORIGIN = PUBLIC_MEDIA_ORIGIN;
 
 export type ApprovedMedia = {
   sha256: string;
@@ -114,19 +117,38 @@ export function approvedMediaUrl(supabaseUrl: string, path: string) {
   return `${base.origin}/storage/v1/object/public/${APPROVED_MEDIA_BUCKET}/${path}`;
 }
 
-export function approvedMediaDeliveryUrl(publicId: string) {
+export function approvedMediaDeliveryUrl(
+  publicId: string,
+  publicMediaOrigin = APPROVED_MEDIA_DELIVERY_ORIGIN,
+) {
   const normalized = String(publicId || "").toLowerCase();
   if (!OPAQUE_V4.test(normalized)) {
     throw new Error("Invalid approved-media delivery id.");
   }
-  return `${APPROVED_MEDIA_DELIVERY_ORIGIN}/approved/v1/${normalized}`;
+  const origin = canonicalPublicMediaOrigin(publicMediaOrigin);
+  if (!origin) throw new Error("Invalid approved-media delivery origin.");
+  return `${origin}/approved/v1/${normalized}`;
 }
 
-export function approvedMediaDeliveryIdFromUrl(value: string) {
-  const match = String(value || "").match(
-    /^https:\/\/media[.]mypersonas[.]online\/approved\/v1\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/,
+export function approvedMediaDeliveryIdFromUrl(
+  value: string,
+  publicMediaOrigin = APPROVED_MEDIA_DELIVERY_ORIGIN,
+) {
+  const origin = canonicalPublicMediaOrigin(publicMediaOrigin);
+  const raw = String(value || "");
+  if (!origin || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== origin || parsed.username || parsed.password || parsed.search || parsed.hash ||
+      /%[0-9a-f]{2}/i.test(parsed.pathname)) return null;
+  const match = parsed.pathname.match(
+    /^\/approved\/v1\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/,
   );
-  return match?.[1] || null;
+  return match && raw === `${origin}/approved/v1/${match[1]}` ? match[1] : null;
 }
 
 export function approvedMediaProviderUrl(media: ApprovedMedia) {
@@ -289,6 +311,7 @@ export function validateApprovedMediaRecord(
   media: ApprovedMedia,
   supabaseUrl: string,
   owner: string,
+  publicMediaOrigin = APPROVED_MEDIA_DELIVERY_ORIGIN,
 ) {
   if (!SHA256.test(media.sha256)) throw new Error("Invalid approved-media digest.");
   if (!Number.isSafeInteger(media.byteSize) || media.byteSize < 1 ||
@@ -306,8 +329,8 @@ export function validateApprovedMediaRecord(
   const deliveryUrl = String(media.deliveryUrl || "");
   if (deliveryId || deliveryUrl) {
     if (!OPAQUE_V4.test(deliveryId) ||
-      deliveryUrl !== approvedMediaDeliveryUrl(deliveryId) ||
-      approvedMediaDeliveryIdFromUrl(deliveryUrl) !== deliveryId) {
+      deliveryUrl !== approvedMediaDeliveryUrl(deliveryId, publicMediaOrigin) ||
+      approvedMediaDeliveryIdFromUrl(deliveryUrl, publicMediaOrigin) !== deliveryId) {
       throw new Error("Approved-media opaque delivery is not canonical.");
     }
   }
@@ -318,8 +341,11 @@ export async function verifyApprovedMedia(
   supabaseUrl: string,
   media: ApprovedMedia,
   owner: string,
+  publicMediaOrigin?: string,
 ) {
-  validateApprovedMediaRecord(media, supabaseUrl, owner);
+  const deliveryOrigin = publicMediaOrigin ||
+    (await loadMediaEnvironmentConfig(admin, supabaseUrl)).publicMediaOrigin;
+  validateApprovedMediaRecord(media, supabaseUrl, owner, deliveryOrigin);
   const downloaded = await admin.storage.from(APPROVED_MEDIA_BUCKET).download(media.path);
   if (downloaded.error || !downloaded.data) {
     throw new Error("The approved-media object is missing from Storage.");
@@ -379,6 +405,7 @@ export async function stageApprovedMediaBytes(
   mime: ApprovedMedia["mime"],
   owner: string,
 ): Promise<ApprovedMedia> {
+  const environment = await loadMediaEnvironmentConfig(admin, supabaseUrl);
   if (!(bytes instanceof Uint8Array) || bytes.byteLength < 1 ||
     bytes.byteLength > APPROVED_MEDIA_MAX_BYTES || detectImageMime(bytes) !== mime) {
     throw new Error("Approved media bytes are invalid.");
@@ -404,7 +431,7 @@ export async function stageApprovedMediaBytes(
   // Any upload error is accepted only if the exact expected object already
   // exists and independently verifies; all other errors fail closed.
   try {
-    await verifyApprovedMedia(admin, supabaseUrl, media, owner);
+    await verifyApprovedMedia(admin, supabaseUrl, media, owner, environment.publicMediaOrigin);
   } catch (error) {
     if (uploaded.error) {
       throw new Error(
@@ -425,8 +452,8 @@ export async function stageApprovedMediaBytes(
     throw new Error("Approved media could not receive an opaque provider delivery.");
   }
   media.deliveryId = deliveryId;
-  media.deliveryUrl = approvedMediaDeliveryUrl(deliveryId);
-  await verifyApprovedMedia(admin, supabaseUrl, media, owner);
+  media.deliveryUrl = approvedMediaDeliveryUrl(deliveryId, environment.publicMediaOrigin);
+  await verifyApprovedMedia(admin, supabaseUrl, media, owner, environment.publicMediaOrigin);
   return media;
 }
 

@@ -27,6 +27,7 @@ import {
   approvedMediaProviderUrl,
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
+import { loadMediaEnvironmentConfig } from "../_shared/public-media.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -117,7 +118,11 @@ async function expectedHash(d: Draft) {
   });
 }
 
-function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedMedia {
+function approvedMediaFor(
+  d: Draft,
+  target: "facebook" | "instagram",
+  publicMediaOrigin: string,
+): ApprovedMedia {
   return target === "facebook"
     ? {
       sha256: d.approved_fb_media_sha256,
@@ -127,7 +132,7 @@ function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedM
       url: d.approved_fb_media_url,
       deliveryId: d.approved_fb_delivery_id || "",
       deliveryUrl: d.approved_fb_delivery_id
-        ? approvedMediaDeliveryUrl(d.approved_fb_delivery_id)
+        ? approvedMediaDeliveryUrl(d.approved_fb_delivery_id, publicMediaOrigin)
         : "",
     }
     : {
@@ -138,7 +143,7 @@ function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedM
       url: d.approved_ig_media_url,
       deliveryId: d.approved_ig_delivery_id || "",
       deliveryUrl: d.approved_ig_delivery_id
-        ? approvedMediaDeliveryUrl(d.approved_ig_delivery_id)
+        ? approvedMediaDeliveryUrl(d.approved_ig_delivery_id, publicMediaOrigin)
         : "",
     };
 }
@@ -234,6 +239,12 @@ serve(async (req) => {
   if (!CRON_SECRET || req.headers.get("X-Cron-Secret") !== CRON_SECRET) {
     return json({ error: "forbidden" }, 403);
   }
+  let mediaEnvironment;
+  try {
+    mediaEnvironment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return json({ error: "Secure media delivery is unavailable" }, 503);
+  }
 
   const { data: due, error } = await admin.rpc("claim_due_post_drafts", { p_limit: BATCH });
   if (error) return json({ error: error.message }, 500);
@@ -287,7 +298,7 @@ serve(async (req) => {
       if (!errs.length) {
         for (const target of targets) {
           if (target !== "facebook" && target !== "instagram") continue;
-          const media = approvedMediaFor(d, target);
+          const media = approvedMediaFor(d, target, mediaEnvironment.publicMediaOrigin);
           const rowUrl = target === "facebook" ? d.fb_image_url : d.ig_image_url;
           if (!media.url || rowUrl !== media.url) {
             approvalPhase = "approved_media";
@@ -295,7 +306,13 @@ serve(async (req) => {
             continue;
           }
           try {
-            await verifyApprovedMedia(admin, SUPABASE_URL, media, d.owner);
+            await verifyApprovedMedia(
+              admin,
+              SUPABASE_URL,
+              media,
+              d.owner,
+              mediaEnvironment.publicMediaOrigin,
+            );
           } catch (error) {
             approvalPhase = "approved_media";
             errs.push(`${target}: ${(error as Error).message}`);
@@ -364,7 +381,11 @@ serve(async (req) => {
       }
 
       if (!reconciliationRequired && targets.includes("facebook") && !d.fb_post_id && ctx?.ok) {
-        const img = approvedMediaProviderUrl(approvedMediaFor(d, "facebook"));
+        const img = approvedMediaProviderUrl(approvedMediaFor(
+          d,
+          "facebook",
+          mediaEnvironment.publicMediaOrigin,
+        ));
         if (!img) errs.push("facebook: no image");
         else {
           try {
@@ -408,7 +429,11 @@ serve(async (req) => {
           if (recent.error) errs.push("instagram: could not verify the rolling publish guard");
           else if ((recent.count || 0) >= IG_ROLLING_LIMIT) errs.push("instagram: rolling 24-hour safety guard reached");
           else {
-            const img = approvedMediaProviderUrl(approvedMediaFor(d, "instagram"));
+            const img = approvedMediaProviderUrl(approvedMediaFor(
+              d,
+              "instagram",
+              mediaEnvironment.publicMediaOrigin,
+            ));
             if (!img) errs.push("instagram: no image");
             else {
               try {

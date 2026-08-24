@@ -5,7 +5,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (value) => readFile(path.join(root, value), "utf8");
+const read = (value) => readFile(path.join(root, value), "utf8")
+  .then((text) => text.replace(/\r\n?/g, "\n"));
 
 test("portable and privacy exports fail closed across organization and governance data", async () => {
   const html = await read("MyPersonas.Online_v0/index.html");

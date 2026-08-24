@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  loadMediaEnvironmentConfig,
   PUBLIC_MEDIA_GATEWAY_HEADER,
   publicMediaIdFromOriginRequestUrl,
   publicMediaResponseHeaders,
@@ -67,11 +68,17 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "GET") return errorResponse(405, "Method not allowed");
   if (req.headers.has("range")) return errorResponse(416, "Range requests are unavailable");
 
-  const publicId = publicMediaIdFromOriginRequestUrl(req.url);
-  if (!publicId) return errorResponse(404, "Media not found");
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  let environment;
+  try {
+    environment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return errorResponse(503, "Media unavailable");
+  }
+  const publicId = publicMediaIdFromOriginRequestUrl(req.url, SUPABASE_URL);
+  if (!publicId) return errorResponse(404, "Media not found");
 
   const limited = await admin.rpc("consume_public_media_rate_limit_service", {
     p_public_id: publicId,

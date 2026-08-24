@@ -26,6 +26,15 @@ owner approval for the exact account, region, change set, and cost ceiling.
   bounded two-secret rotation window. Remove it after CloudFront uses the new
   primary secret.
 
+The template defaults to the production host and project, but both are explicit
+reviewed parameters: `MediaGatewayHostname=media.mypersonas.online` and
+`SupabaseOriginHostname=nwsqyuucwzihruszocge.supabase.co`. An isolated staging
+stack must instead use its own exact media subdomain and its own 20-character
+Supabase project hostname. Those values must match the locked database media
+environment record and the staging frontend's `PUBLIC_MEDIA_ORIGIN` and
+`SUPABASE_URL`. Never point a staging alias, distribution, or secret at the
+production origin.
+
 AWS documents that CloudFront custom origin headers can be used to prevent
 direct custom-origin bypass, and that CloudFront overwrites a same-named viewer
 header. Access to CloudFront distribution configuration must therefore be
@@ -93,8 +102,10 @@ is too permissive. Database limits remain a second, independent emergency bound.
 
 1. Confirm the AWS account, `us-east-1`, pricing model, filled cost worksheet,
    Budget alert recipients, and an owner-approved monthly ceiling.
-2. Request or import an ACM certificate in `us-east-1` whose SAN contains
-   `media.mypersonas.online`. ACM supplies one or more DNS validation CNAMEs.
+2. Select and record the exact `MediaGatewayHostname` and
+   `SupabaseOriginHostname`; compare both with the locked service-only database
+   readback. Request or import an ACM certificate in `us-east-1` whose SAN
+   contains that media hostname. ACM supplies one or more DNS validation CNAMEs.
 3. In Wix, open the domain's DNS records and add only those exact ACM validation
    CNAMEs. Do not change nameservers, the apex, the website CNAME, mail records,
    or any unrelated record. Wait until ACM reports `Issued`.
@@ -107,7 +118,8 @@ is too permissive. Database limits remain a second, independent emergency bound.
    A direct call without the gateway header must fail; never test by putting the
    secret in a URL or a recorded command line.
 6. Validate `template.yaml`, create a CloudFormation **change set** in
-   `us-east-1`, and supply the ACM ARN and the same secret out of band. Leave
+   `us-east-1`, and supply the two reviewed host parameters, ACM ARN, and the
+   same secret out of band. Leave
    `DeploymentApproval=NOT_APPROVED` until the owner reviews the exact change
    set and cost worksheet. Do not log parameter values.
 7. After separate execution approval, set
@@ -115,8 +127,8 @@ is too permissive. Database limits remain a second, independent emergency bound.
    the reviewed change set, and record the stack id, distribution id, WebACL id,
    CloudFront Function ETag, and configuration hashes without recording the
    secret.
-8. Before DNS, use CloudFront Function test events with
-   `Host: media.mypersonas.online` to prove exact rewrite and rejection cases.
+8. Before DNS, use CloudFront Function test events with the selected exact
+   `Host` value to prove exact rewrite and rejection cases.
    Confirm the distribution is `Deployed`, WAF is attached, TTLs are zero,
    viewer query/header/cookie forwarding is none, and the origin custom header
    is configured. The distribution hostname itself must return 404 because it

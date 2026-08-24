@@ -12,6 +12,8 @@ Metadata:
           - DeploymentApproval
           - AcmCertificateArnUsEast1
           - MediaGatewaySecret
+          - MediaGatewayHostname
+          - SupabaseOriginHostname
       - Label:
           default: Reviewed operating limits
         Parameters:
@@ -25,6 +27,10 @@ Metadata:
         default: ACM certificate ARN from us-east-1
       MediaGatewaySecret:
         default: Existing secret supplied out of band
+      MediaGatewayHostname:
+        default: Reviewed canonical media hostname
+      SupabaseOriginHostname:
+        default: Exact reviewed Supabase project hostname
   CostEstimatePlaceholders:
     PricingModel: "OWNER_TO_SELECT: pay-as-you-go or eligible CloudFront flat-rate plan"
     EstimatedMonthlyRequests: "OWNER_TO_FILL: __________"
@@ -49,7 +55,7 @@ Parameters:
     Type: String
     AllowedPattern: '^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9A-Fa-f-]{36}$'
     ConstraintDescription: Must be an ACM certificate ARN issued/imported in us-east-1.
-    Description: Certificate whose SAN covers media.mypersonas.online.
+    Description: Certificate whose SAN covers the selected MediaGatewayHostname.
   MediaGatewaySecret:
     Type: String
     NoEcho: true
@@ -59,6 +65,18 @@ Parameters:
     ConstraintDescription: >-
       Supply a 43-128 character URL-safe secret out of band. Never store it in
       this repository, a command transcript, a ticket, or chat.
+  MediaGatewayHostname:
+    Type: String
+    Default: media.mypersonas.online
+    MinLength: 20
+    MaxLength: 84
+    AllowedPattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$'
+    ConstraintDescription: Must be one exact lowercase MyPersonas media subdomain.
+  SupabaseOriginHostname:
+    Type: String
+    Default: nwsqyuucwzihruszocge.supabase.co
+    AllowedPattern: '^[a-z0-9]{20}[.]supabase[.]co$'
+    ConstraintDescription: Must be one exact hosted Supabase project hostname.
   ResourceNamePrefix:
     Type: String
     Default: mypersonas-media
@@ -101,7 +119,7 @@ Resources:
       FunctionConfig:
         Comment: Exact canonical persona and approved-provider media routes.
         Runtime: cloudfront-js-2.0
-      FunctionCode: |
+      FunctionCode: !Sub |
         function mediaGatewayReject(statusCode, statusDescription) {
           return {
             statusCode: statusCode,
@@ -126,7 +144,7 @@ Resources:
 
           // The distribution hostname is not an alternate public URL. Only the exact
           // reviewed first-party host is canonical.
-          if (host !== "media.mypersonas.online") return mediaGatewayReject(404, "Not Found");
+          if (host !== "${MediaGatewayHostname}") return mediaGatewayReject(404, "Not Found");
           if (request.method !== "GET" && request.method !== "OPTIONS") {
             return mediaGatewayReject(405, "Method Not Allowed");
           }
@@ -213,7 +231,7 @@ Resources:
                     SingleHeader:
                       Name: host
                   PositionalConstraint: EXACTLY
-                  SearchString: media.mypersonas.online
+                  SearchString: !Ref MediaGatewayHostname
                   TextTransformations:
                     - Priority: 0
                       Type: LOWERCASE
@@ -293,7 +311,7 @@ Resources:
     Properties:
       DistributionConfig:
         Aliases:
-          - media.mypersonas.online
+          - !Ref MediaGatewayHostname
         Comment: MyPersonas exact reviewed opaque media gateway
         DefaultCacheBehavior:
           AllowedMethods:
@@ -317,7 +335,7 @@ Resources:
         IPV6Enabled: true
         Origins:
           - Id: SupabasePublicMediaEdge
-            DomainName: nwsqyuucwzihruszocge.supabase.co
+            DomainName: !Ref SupabaseOriginHostname
             ConnectionAttempts: 2
             ConnectionTimeout: 5
             CustomOriginConfig:
@@ -343,7 +361,7 @@ Outputs:
     Value: !GetAtt MediaDistribution.DomainName
   CanonicalMediaOrigin:
     Description: The only public origin; no alternate CloudFront URL is canonical.
-    Value: https://media.mypersonas.online
+    Value: !Sub "https://${MediaGatewayHostname}"
   WebAclArn:
     Description: WAFv2 WebACL attached directly to the CloudFront distribution.
     Value: !GetAtt MediaWebAcl.Arn

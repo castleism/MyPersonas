@@ -3,6 +3,78 @@
 -- but the lifecycle portion below intentionally mutates only its seeded rows.
 begin;
 
+do $isolated_staging_environment$
+declare v_id constant uuid:='11111111-1111-4111-8111-111111111111';v_url text;
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  perform public.configure_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated staging boundary review'
+  );
+  perform public.lock_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated staging lock evidence'
+  );
+  v_url:=public.public_media_delivery_url(v_id);
+  if v_url<>'https://media-staging.mypersonas.online/persona/v1/'||v_id::text
+    or public.public_media_handle_from_url(v_url) is distinct from v_id
+    or not public.is_persona_media_storage_reference_062(
+      'https://abcdefghijklmnopqrst.supabase.co/storage/v1/object/public/persona-media/a.png')
+    or public.is_persona_media_storage_reference_062(
+      'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/persona-media/a.png') then
+    raise exception 'Staging did not use only its configured delivery and Storage origins';
+  end if;
+end
+$isolated_staging_environment$;
+
+rollback;
+begin;
+
+do $media_environment$
+declare v_row record;v_rejected boolean:=false;
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  begin
+    perform public.configure_media_environment_service(
+      'staging','https://nwsqyuucwzihruszocge.supabase.co',
+      'https://media-staging.mypersonas.online','adversarial staging overlap test'
+    );
+  exception when others then v_rejected:=true;
+  end;
+  if not v_rejected then raise exception 'Staging accepted a production origin'; end if;
+  perform public.configure_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable production boundary review'
+  );
+  perform public.lock_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable runtime lock evidence'
+  );
+  select * into strict v_row from public.media_environment_config_service();
+  if v_row.environment_name<>'production'
+    or v_row.supabase_origin<>'https://nwsqyuucwzihruszocge.supabase.co'
+    or v_row.public_media_origin<>'https://media.mypersonas.online'
+    or v_row.locked_at is null then
+    raise exception 'Locked media environment readback changed';
+  end if;
+  v_rejected:=false;
+  begin
+    perform public.configure_media_environment_service(
+      'production','https://nwsqyuucwzihruszocge.supabase.co',
+      'https://media.mypersonas.online','post-lock mutation attempt'
+    );
+  exception when others then v_rejected:=true;
+  end;
+  if not v_rejected then raise exception 'Locked media environment remained mutable'; end if;
+  if has_table_privilege('anon','public.media_environment_config_062','select')
+    or has_table_privilege('authenticated','public.media_environment_config_062','select')
+    or has_function_privilege('anon','public.media_environment_config_service()','execute')
+    or has_function_privilege('authenticated','public.media_environment_config_service()','execute') then
+    raise exception 'Browser role can inspect the private media environment';
+  end if;
+end
+$media_environment$;
+
 do $assert$
 declare
   v_id constant uuid:='11111111-1111-4111-8111-111111111111';

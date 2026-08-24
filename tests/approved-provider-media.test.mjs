@@ -64,7 +64,7 @@ test("provider consumers verify immutable bytes and pass only opaque delivery UR
   for (const consumer of [meta, queue]) {
     assert.match(consumer, /approved_fb_delivery_id/);
     assert.match(consumer, /approved_ig_delivery_id/);
-    assert.match(consumer, /verifyApprovedMedia\(admin,/);
+    assert.match(consumer, /verifyApprovedMedia\(\s*admin,/);
     assert.match(consumer, /approvedMediaProviderUrl\(approvedMediaFor\(/);
   }
 });

@@ -4,11 +4,14 @@ import path from "node:path";
 import test from "node:test";
 import {
   MAX_PUBLIC_MEDIA_BYTES,
-  PUBLIC_MEDIA_EDGE_ORIGIN,
+  PRODUCTION_SUPABASE_ORIGIN,
   PUBLIC_MEDIA_EDGE_PATH_PREFIX,
   PUBLIC_MEDIA_GATEWAY_HEADER,
   PUBLIC_MEDIA_ORIGIN,
   PUBLIC_MEDIA_PATH_PREFIX,
+  canonicalPublicMediaOrigin,
+  canonicalSupabaseOrigin,
+  loadMediaEnvironmentConfig,
   publicMediaDeliveryUrl,
   publicMediaIdFromOriginRequestUrl,
   publicMediaIdFromRequestUrl,
@@ -40,12 +43,12 @@ async function fixture(bytes = new TextEncoder().encode("reviewed opaque media")
 
 test("public media parsers separate the one canonical URL from the private Edge origin", () => {
   const valid = `${PUBLIC_MEDIA_ORIGIN}${PUBLIC_MEDIA_PATH_PREFIX}${PUBLIC_ID}`;
-  const origin = `${PUBLIC_MEDIA_EDGE_ORIGIN}${PUBLIC_MEDIA_EDGE_PATH_PREFIX}${PUBLIC_ID}`;
+  const origin = `${PRODUCTION_SUPABASE_ORIGIN}${PUBLIC_MEDIA_EDGE_PATH_PREFIX}${PUBLIC_ID}`;
   assert.equal(publicMediaIdFromRequestUrl(valid), PUBLIC_ID);
   assert.equal(publicMediaDeliveryUrl(PUBLIC_ID), valid);
-  assert.equal(publicMediaIdFromOriginRequestUrl(origin), PUBLIC_ID);
+  assert.equal(publicMediaIdFromOriginRequestUrl(origin, PRODUCTION_SUPABASE_ORIGIN), PUBLIC_ID);
   assert.equal(publicMediaIdFromRequestUrl(origin), null);
-  assert.equal(publicMediaIdFromOriginRequestUrl(valid), null);
+  assert.equal(publicMediaIdFromOriginRequestUrl(valid, PRODUCTION_SUPABASE_ORIGIN), null);
   for (const value of [
     valid + "?download=1",
     valid + "#fragment",
@@ -67,9 +70,46 @@ test("public media parsers separate the one canonical URL from the private Edge 
     "https://user:pass@media.mypersonas.online/persona/v1/" + PUBLIC_ID,
   ]) assert.equal(publicMediaIdFromRequestUrl(value), null, value);
   for (const value of [origin + "?download=1", origin + "/extra", origin.replace("/public-media/", "/public-media//")]) {
-    assert.equal(publicMediaIdFromOriginRequestUrl(value), null, value);
+    assert.equal(publicMediaIdFromOriginRequestUrl(value, PRODUCTION_SUPABASE_ORIGIN), null, value);
   }
+  assert.equal(publicMediaIdFromOriginRequestUrl(origin, PRODUCTION_SUPABASE_ORIGIN + "/"), null);
+  assert.equal(publicMediaIdFromOriginRequestUrl(origin, "https://evil.example"), null);
   assert.throws(() => publicMediaDeliveryUrl(PUBLIC_ID.toUpperCase()), /Invalid public media id/);
+});
+
+test("reviewed media environment is exact, project-bound, and staging cannot overlap production", async () => {
+  const stagingSupabase = "https://abcdefghijklmnopqrst.supabase.co";
+  const stagingDelivery = "https://media-staging.mypersonas.online";
+  assert.equal(canonicalSupabaseOrigin(stagingSupabase), stagingSupabase);
+  assert.equal(canonicalPublicMediaOrigin(stagingDelivery), stagingDelivery);
+  for (const value of [stagingSupabase + "/", stagingSupabase.toUpperCase(), "http://abcdefghijklmnopqrst.supabase.co", "https://user@abcdefghijklmnopqrst.supabase.co"]) {
+    assert.equal(canonicalSupabaseOrigin(value), null, value);
+  }
+  for (const value of [stagingDelivery + "/", stagingDelivery.toUpperCase(), "https://mypersonas.online", "https://media-staging.evil.example"]) {
+    assert.equal(canonicalPublicMediaOrigin(value), null, value);
+  }
+  const row = {
+    environment_name: "staging",
+    supabase_origin: stagingSupabase,
+    public_media_origin: stagingDelivery,
+    revision: 2,
+    configuration_evidence: "staging-project-bootstrap-2026-08-23",
+    locked_at: "2026-08-23T12:00:00.000Z",
+  };
+  const admin = { rpc: async () => ({ data: [row], error: null }) };
+  const config = await loadMediaEnvironmentConfig(admin, stagingSupabase);
+  assert.equal(config.publicMediaOrigin, stagingDelivery);
+  assert.equal(
+    publicMediaDeliveryUrl(PUBLIC_ID, config.publicMediaOrigin),
+    `${stagingDelivery}${PUBLIC_MEDIA_PATH_PREFIX}${PUBLIC_ID}`,
+  );
+  await assert.rejects(loadMediaEnvironmentConfig(admin, PRODUCTION_SUPABASE_ORIGIN), /unsafe/);
+  await assert.rejects(loadMediaEnvironmentConfig({
+    rpc: async () => ({ data: [{ ...row, public_media_origin: PUBLIC_MEDIA_ORIGIN }], error: null }),
+  }, stagingSupabase), /unsafe|overlaps/);
+  await assert.rejects(loadMediaEnvironmentConfig({
+    rpc: async () => ({ data: [{ ...row, unexpected: "smuggled" }], error: null }),
+  }, stagingSupabase), /unsafe/);
 });
 
 test("Storage response reader enforces the reviewed byte bound while streaming", async () => {
@@ -125,6 +165,11 @@ test("delivery verifies the exact reviewed bytes and emits no-store metadata onl
 test("migration 062 hides correlation and resolves only an exact current review", async () => {
   const sql = await readFile(path.join(root, "MyPersonas.Online_v0/sql-updates/062-opaque-public-media-delivery.sql"), "utf8");
   assert.match(sql, /create table if not exists public\.persona_public_media_handles/);
+  assert.match(sql, /create table if not exists public\.media_environment_config_062/);
+  assert.match(sql, /create or replace function public\.configure_media_environment_service/);
+  assert.match(sql, /create or replace function public\.lock_media_environment_service/);
+  assert.match(sql, /config\.locked_at is not null/);
+  assert.match(sql, /Staging media origins must not overlap production/);
   assert.match(sql, /public_id\s+uuid primary key default gen_random_uuid\(\)/);
   assert.match(sql, /revoke all on public\.persona_public_media_handles[\s\S]*from public,anon,authenticated,service_role/);
   assert.match(sql, /auth\.role\(\) is distinct from 'service_role'/);
@@ -186,12 +231,13 @@ test("proxy never redirects and media intake returns opaque public URL", async (
   assert.match(proxy, /PUBLIC_MEDIA_GATEWAY_PREVIOUS_SECRET/);
   assert.match(proxy, /PUBLIC_MEDIA_GATEWAY_HEADER/);
   assert.match(proxy, /publicMediaIdFromOriginRequestUrl/);
+  assert.match(proxy, /loadMediaEnvironmentConfig\(admin, SUPABASE_URL\)/);
   assert.match(proxy, /return errorResponse\(503, "Media unavailable"\)/);
   assert.match(proxy, /return errorResponse\(404, "Media not found"\)/);
   assert.doesNotMatch(proxy, /status:\s*30[1278]|Location:/);
   assert.match(config, /\[functions\.public-media\]\s*\r?\nverify_jwt = false/);
   assert.match(ingest, /issue_persona_public_media_handle_service/);
-  assert.match(ingest, /publicMediaDeliveryUrl\(String\(issued\.data\)\.toLowerCase\(\)\)/);
+  assert.match(ingest, /publicMediaDeliveryUrl\([\s\S]{0,120}environment\.publicMediaOrigin/);
   const responseShape = ingest.slice(ingest.lastIndexOf("return json({"));
   assert.match(responseShape, /publicUrl/);
   assert.match(responseShape, /assetId/);
@@ -210,7 +256,8 @@ test("proxy never redirects and media intake returns opaque public URL", async (
     assert.match(workflow, new RegExp(`\\b${functionName}\\b`), `opaque deployment stages must include ${functionName}`);
   }
   assert.match(html, /function safePublicMediaUrl/);
-  assert.match(html, /media\[\.\]mypersonas\[\.\]online/);
+  assert.match(html, /PUBLIC_MEDIA_ORIGIN:"https:\/\/media\.mypersonas\.online"/);
+  assert.match(html, /CONFIG_PUBLIC_MEDIA_ORIGIN/);
   assert.match(html, /function safeExternalMediaEmbedUrl/);
   assert.match(html, /function safeExternalNavigationUrl/);
   assert.match(html, /offer\?\.destination_safe===true/);

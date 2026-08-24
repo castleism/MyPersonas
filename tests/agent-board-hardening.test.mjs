@@ -5,7 +5,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (value) => readFile(path.join(root, value), "utf8");
+const read = (value) => readFile(path.join(root, value), "utf8")
+  .then((text) => text.replace(/\r\n?/g, "\n"));
 const [sql, propose, run, aiProxy, config, runtimeSql] = await Promise.all([
   read("MyPersonas.Online_v0/sql-updates/053-agent-board-hardening.sql"),
   read("supabase/functions/agent-board-propose/index.ts"),

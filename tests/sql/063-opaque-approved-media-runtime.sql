@@ -2,6 +2,43 @@
 
 begin;
 
+do $isolated_staging_environment$
+declare v_id constant uuid:='06300000-0000-4000-8000-000000000001';v_url text;
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  perform public.configure_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated approved-media review'
+  );
+  perform public.lock_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated approved-media lock'
+  );
+  v_url:=public.approved_media_delivery_url(v_id);
+  if v_url<>'https://media-staging.mypersonas.online/approved/v1/'||v_id::text
+    or public.approved_media_delivery_id_from_url(v_url) is distinct from v_id then
+    raise exception 'Approved media did not use its staging delivery origin';
+  end if;
+end
+$isolated_staging_environment$;
+
+rollback;
+begin;
+
+do $media_environment$
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  perform public.configure_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable approved-media review'
+  );
+  perform public.lock_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable approved-media lock'
+  );
+end
+$media_environment$;
+
 do $privileges$
 begin
   if has_table_privilege('anon','public.post_approved_media_handles','select')

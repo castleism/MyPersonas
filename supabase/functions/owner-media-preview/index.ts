@@ -7,6 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  loadMediaEnvironmentConfig,
   publicMediaIdFromRequestUrl,
   publicMediaResponseHeaders,
   readExactPublicMediaResponse,
@@ -85,13 +86,19 @@ Deno.serve(async (req: Request) => {
   });
   const authenticated = await admin.auth.getUser(bearer.replace(/^Bearer\s+/i, ""));
   if (authenticated.error || !authenticated.data.user) return errorResponse(401, origin, "Authentication required");
+  let environment;
+  try {
+    environment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return errorResponse(503, origin);
+  }
 
   let body: Record<string, unknown>;
   try { body = await boundedJson(req); } catch { return errorResponse(400, origin, "Invalid request"); }
   const assetId = typeof body.assetId === "string" && UUID.test(body.assetId)
     ? body.assetId.toLowerCase() : null;
   const publicId = typeof body.publicUrl === "string"
-    ? publicMediaIdFromRequestUrl(body.publicUrl) : null;
+    ? publicMediaIdFromRequestUrl(body.publicUrl, environment.publicMediaOrigin) : null;
   if ((assetId === null) === (publicId === null)) return errorResponse(400, origin, "Invalid request");
 
   const resolved = await admin.rpc("resolve_authenticated_media_preview_service", {

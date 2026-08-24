@@ -7,6 +7,9 @@ verification.**
 ## Included
 
 - Forward-only canonical migrations 062/063/064 and byte-identical timestamp mirrors.
+- Private, service-only, review-and-lock project media configuration. Staging
+  cannot reuse either production origin, and Edge Functions compare the record
+  with their exact canonical `SUPABASE_URL` before doing media work.
 - Private opaque-handle registry with service-only issuance, rotation, bounded
   handle backfill, reference cutover, readiness, and bucket finalization.
 - Exact-current publication resolver and no-redirect, no-store, bounded,
@@ -48,7 +51,9 @@ verification.**
 ## Release blockers
 
 1. Verify 061 before 062-064 in an isolated staging project, then run the exact
-   062-064 release sequence there before production.
+   062-064 release sequence there before production. Apply 062, configure and
+   irreversibly lock the staging Supabase/media origins through the service-only
+   RPCs, verify the readback and browser-role denial, then apply 063 and 064.
 2. Run the SQL runtime against the applied schema and exercise real Storage
    bytes; local source tests cannot prove RLS, JWT role, or bucket behavior.
 3. Approve costs/change set, provision ACM + CloudFront/WAF, configure the same

@@ -22,7 +22,7 @@ function handler(event) {
 
   // The distribution hostname is not an alternate public URL. Only the exact
   // reviewed first-party host is canonical.
-  if (host !== "media.mypersonas.online") return mediaGatewayReject(404, "Not Found");
+  if (host !== "${MediaGatewayHostname}") return mediaGatewayReject(404, "Not Found");
   if (request.method !== "GET" && request.method !== "OPTIONS") {
     return mediaGatewayReject(405, "Method Not Allowed");
   }

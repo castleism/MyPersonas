@@ -15,7 +15,11 @@ import {
   readBoundedBytes,
   sha256Hex,
 } from "../_shared/approved-media.ts";
-import { PUBLIC_MEDIA_GATEWAY_HEADER } from "../_shared/public-media.ts";
+import {
+  canonicalSupabaseOrigin,
+  loadMediaEnvironmentConfig,
+  PUBLIC_MEDIA_GATEWAY_HEADER,
+} from "../_shared/public-media.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -54,18 +58,15 @@ function gatewayAuthorized(req: Request) {
 export function approvedMediaIdFromGatewayRequestUrl(
   requestUrl: string,
   supabaseUrl: string,
+  publicMediaOrigin?: string,
 ) {
-  const publicId = approvedMediaDeliveryIdFromUrl(requestUrl);
+  const publicId = publicMediaOrigin
+    ? approvedMediaDeliveryIdFromUrl(requestUrl, publicMediaOrigin)
+    : null;
   if (publicId) return publicId;
-  let base: URL;
-  try {
-    base = new URL(supabaseUrl);
-  } catch {
-    return null;
-  }
-  if (base.protocol !== "https:" || base.username || base.password || base.port ||
-    base.pathname !== "/" || base.search || base.hash) return null;
-  const prefix = `${base.origin}/functions/v1/approved-media/`;
+  const base = canonicalSupabaseOrigin(supabaseUrl);
+  if (!base) return null;
+  const prefix = `${base}/functions/v1/approved-media/`;
   if (!requestUrl.startsWith(prefix)) return null;
   const id = requestUrl.slice(prefix.length);
   if (!V4.test(id) || requestUrl !== prefix + id) return null;
@@ -105,13 +106,23 @@ serve(async (req) => {
   if (req.method !== "GET" && req.method !== "HEAD") return empty(405);
   if (req.headers.has("range")) return empty(416);
   if (!gatewayAuthorized(req)) return empty(404);
-  const publicId = approvedMediaIdFromGatewayRequestUrl(req.url, SUPABASE_URL);
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  let environment;
+  try {
+    environment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return empty(503);
+  }
+  const publicId = approvedMediaIdFromGatewayRequestUrl(
+    req.url,
+    SUPABASE_URL,
+    environment.publicMediaOrigin,
+  );
   if (!publicId) return empty(404);
 
   try {
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
     const resolved = await admin.rpc("resolve_post_approved_media_delivery_service", {
       p_public_id: publicId,
     });

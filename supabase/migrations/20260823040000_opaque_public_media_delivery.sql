@@ -12,6 +12,150 @@ begin;
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- One reviewed environment boundary is shared by SQL and every media Edge
+-- Function. It is private, immutable after locking, and deliberately starts
+-- unlocked so an isolated staging project cannot silently inherit production
+-- delivery or Storage origins from this migration's safe defaults.
+create table if not exists public.media_environment_config_062(
+  singleton boolean primary key default true check(singleton),
+  environment_name text not null default 'production'
+    check(environment_name in ('production','staging')),
+  supabase_origin text not null default 'https://nwsqyuucwzihruszocge.supabase.co'
+    check(supabase_origin ~ '^https://[a-z0-9]{20}[.]supabase[.]co$'),
+  public_media_origin text not null default 'https://media.mypersonas.online'
+    check(public_media_origin ~ '^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$'),
+  revision integer not null default 1 check(revision between 1 and 2147483647),
+  configuration_evidence text not null default 'migration-062 production default pending review'
+    check(char_length(configuration_evidence) between 8 and 500),
+  configured_at timestamptz not null default now(),
+  locked_at timestamptz,
+  lock_evidence text not null default '' check(char_length(lock_evidence)<=500),
+  check(
+    (environment_name='production'
+      and supabase_origin='https://nwsqyuucwzihruszocge.supabase.co'
+      and public_media_origin='https://media.mypersonas.online')
+    or
+    (environment_name='staging'
+      and supabase_origin<>'https://nwsqyuucwzihruszocge.supabase.co'
+      and public_media_origin<>'https://media.mypersonas.online')
+  ),
+  check((locked_at is null and lock_evidence='')
+    or (locked_at is not null and char_length(lock_evidence) between 8 and 500))
+);
+insert into public.media_environment_config_062(singleton) values(true)
+on conflict(singleton) do nothing;
+alter table public.media_environment_config_062 enable row level security;
+revoke all on public.media_environment_config_062 from public,anon,authenticated,service_role;
+comment on table public.media_environment_config_062 is
+  'Private reviewed project binding for opaque media. Runtime functions fail closed until the row is locked; service/browser roles cannot edit it directly.';
+
+create or replace function public.configure_media_environment_service(
+  p_environment_name text,
+  p_supabase_origin text,
+  p_public_media_origin text,
+  p_configuration_evidence text
+)
+returns boolean language plpgsql security definer volatile set search_path='' as $$
+declare v_locked_at timestamptz;
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'Service role required'; end if;
+  if coalesce(p_environment_name,'') not in ('production','staging')
+    or coalesce(p_supabase_origin,'') !~ '^https://[a-z0-9]{20}[.]supabase[.]co$'
+    or coalesce(p_public_media_origin,'') !~ '^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$'
+    or char_length(trim(coalesce(p_configuration_evidence,''))) not between 8 and 500 then
+    raise exception 'Invalid reviewed media environment configuration';
+  end if;
+  if p_environment_name='production' and (
+      p_supabase_origin<>'https://nwsqyuucwzihruszocge.supabase.co'
+      or p_public_media_origin<>'https://media.mypersonas.online') then
+    raise exception 'Production media origins are fixed';
+  end if;
+  if p_environment_name='staging' and (
+      p_supabase_origin='https://nwsqyuucwzihruszocge.supabase.co'
+      or p_public_media_origin='https://media.mypersonas.online') then
+    raise exception 'Staging media origins must not overlap production';
+  end if;
+  lock table public.media_environment_config_062 in exclusive mode;
+  select config.locked_at into v_locked_at
+  from public.media_environment_config_062 config where config.singleton;
+  if v_locked_at is not null then raise exception 'Media environment configuration is locked'; end if;
+  if exists(select 1 from public.persona_public_media_handles limit 1) then
+    raise exception 'Media environment cannot change after handle issuance';
+  end if;
+  update public.media_environment_config_062 set
+    environment_name=p_environment_name,
+    supabase_origin=p_supabase_origin,
+    public_media_origin=p_public_media_origin,
+    revision=revision+1,
+    configuration_evidence=trim(p_configuration_evidence),
+    configured_at=now()
+  where singleton;
+  return true;
+end;
+$$;
+
+create or replace function public.lock_media_environment_service(
+  p_expected_environment_name text,
+  p_expected_supabase_origin text,
+  p_expected_public_media_origin text,
+  p_lock_evidence text
+)
+returns boolean language plpgsql security definer volatile set search_path='' as $$
+declare v_config public.media_environment_config_062%rowtype;
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'Service role required'; end if;
+  if char_length(trim(coalesce(p_lock_evidence,''))) not between 8 and 500 then
+    raise exception 'A bounded lock evidence reference is required';
+  end if;
+  lock table public.media_environment_config_062 in exclusive mode;
+  select * into strict v_config from public.media_environment_config_062 where singleton;
+  if v_config.locked_at is not null then
+    if v_config.environment_name=p_expected_environment_name
+      and v_config.supabase_origin=p_expected_supabase_origin
+      and v_config.public_media_origin=p_expected_public_media_origin then return true; end if;
+    raise exception 'Media environment configuration is already locked to different origins';
+  end if;
+  if v_config.environment_name is distinct from p_expected_environment_name
+    or v_config.supabase_origin is distinct from p_expected_supabase_origin
+    or v_config.public_media_origin is distinct from p_expected_public_media_origin then
+    raise exception 'Media environment lock expectation mismatch';
+  end if;
+  update public.media_environment_config_062 set
+    locked_at=now(),lock_evidence=trim(p_lock_evidence)
+  where singleton;
+  return true;
+end;
+$$;
+
+create or replace function public.media_environment_config_service()
+returns table(
+  environment_name text,
+  supabase_origin text,
+  public_media_origin text,
+  revision integer,
+  configuration_evidence text,
+  locked_at timestamptz
+)
+language plpgsql security definer stable set search_path='' as $$
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'Service role required'; end if;
+  return query select config.environment_name,config.supabase_origin,
+    config.public_media_origin,config.revision,config.configuration_evidence,config.locked_at
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if not found then raise exception 'Media environment configuration is not locked'; end if;
+end;
+$$;
+
+revoke all on function public.configure_media_environment_service(text,text,text,text),
+  public.lock_media_environment_service(text,text,text,text),
+  public.media_environment_config_service()
+  from public,anon,authenticated;
+grant execute on function public.configure_media_environment_service(text,text,text,text),
+  public.lock_media_environment_service(text,text,text,text),
+  public.media_environment_config_service()
+  to service_role;
+
 -- ---------------------------------------------------------------------------
 -- Opaque identity. This table is intentionally unavailable to browser roles:
 -- an opaque id may be public, but its owner/persona/Storage correlation is not.
@@ -172,21 +316,32 @@ create policy "persona media opaque read boundary" on storage.objects
 -- query string, fragment, credential, encoded path, or extra segment is not the
 -- same reviewed reference.
 create or replace function public.public_media_delivery_url(p_public_id uuid)
-returns text language sql immutable set search_path='' as $$
-  select case when p_public_id is null then null else
-    'https://media.mypersonas.online/persona/v1/'||p_public_id::text
-  end
+returns text language plpgsql security definer stable set search_path='' as $$
+declare v_origin text;
+begin
+  if p_public_id is null then return null; end if;
+  select config.public_media_origin into v_origin
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if v_origin is null then raise exception 'Media environment configuration is not locked'; end if;
+  return v_origin||'/persona/v1/'||p_public_id::text;
+end;
 $$;
 
 create or replace function public.public_media_handle_from_url(p_url text)
-returns uuid language plpgsql immutable set search_path='' as $$
-declare v_id text;
+returns uuid language plpgsql security definer stable set search_path='' as $$
+declare v_id text;v_origin text;
 begin
-  if coalesce(p_url,'') !~
-    '^https://media[.]mypersonas[.]online/persona/v1/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+  select config.public_media_origin into v_origin
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if v_origin is null or char_length(coalesce(p_url,''))<>char_length(v_origin)+48
+    or left(p_url,char_length(v_origin)+12)<>v_origin||'/persona/v1/'
+    or substring(p_url from char_length(v_origin)+13) !~
+      '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
     return null;
   end if;
-  v_id:=substring(p_url from '/persona/v1/([0-9a-f-]{36})$');
+  v_id:=substring(p_url from char_length(v_origin)+13);
   return v_id::uuid;
 exception when others then
   return null;
@@ -197,13 +352,18 @@ $$;
 -- its private Supabase Edge origin. Only public_media_handle_from_url() may
 -- accept a value; this broader helper makes malformed/encoded forms fail closed.
 create or replace function public.is_public_media_delivery_reference_062(p_url text)
-returns boolean language plpgsql immutable set search_path='' as $$
+returns boolean language plpgsql security definer stable set search_path='' as $$
 declare v_text text:=lower(coalesce(p_url,''));v_hex text;v_loops integer:=0;
+  v_public_host text;v_supabase_host text;
 begin
+  select substring(lower(config.public_media_origin) from '^https://(.+)$'),
+    substring(lower(config.supabase_origin) from '^https://(.+)$')
+  into v_public_host,v_supabase_host
+  from public.media_environment_config_062 config where config.singleton;
   if v_text='' then return false; end if;
   if char_length(v_text)>8192 then
-    return position('media.mypersonas.online' in v_text)>0
-      or position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0;
+    return (coalesce(v_public_host,'')<>'' and position(v_public_host in v_text)>0)
+      or (coalesce(v_supabase_host,'')<>'' and position(v_supabase_host in v_text)>0);
   end if;
   loop
     v_hex:=substring(v_text from '%([0-9a-f]{2})');
@@ -212,18 +372,24 @@ begin
     v_loops:=v_loops+1;
   end loop;
   v_text:=replace(v_text,E'\\','/');
-  return position('media.mypersonas.online' in v_text)>0
+  return (coalesce(v_public_host,'')<>'' and position(v_public_host in v_text)>0)
     or (
-      position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0
+      coalesce(v_supabase_host,'')<>'' and position(v_supabase_host in v_text)>0
       and (
         position('/functions/v1/public-media/' in v_text)>0
         or position('/functions/v1/approved-media/' in v_text)>0
       )
     );
 exception when others then
-  return position('media.mypersonas.online' in lower(coalesce(p_url,'')))>0
-    or position('/functions/v1/public-media/' in lower(coalesce(p_url,'')))>0
-    or position('/functions/v1/approved-media/' in lower(coalesce(p_url,'')))>0;
+  return (
+      position('.mypersonas.online' in lower(coalesce(p_url,'')))>0
+      and (position('/persona/v1/' in lower(coalesce(p_url,'')))>0
+        or position('/approved/v1/' in lower(coalesce(p_url,'')))>0)
+    ) or (
+      position('.supabase.co' in lower(coalesce(p_url,'')))>0
+      and (position('/functions/v1/public-media/' in lower(coalesce(p_url,'')))>0
+        or position('/functions/v1/approved-media/' in lower(coalesce(p_url,'')))>0)
+    );
 end;
 $$;
 
@@ -236,12 +402,14 @@ revoke all on function public.public_media_delivery_url(uuid),
 -- signed/authenticated endpoints and percent-encoded separators. This is a
 -- classifier, not a URL normalizer: ambiguity fails closed.
 create or replace function public.is_persona_media_storage_reference_062(p_url text)
-returns boolean language plpgsql immutable set search_path='' as $$
-declare v_text text:=lower(coalesce(p_url,''));v_hex text;v_loops integer:=0;
+returns boolean language plpgsql security definer stable set search_path='' as $$
+declare v_text text:=lower(coalesce(p_url,''));v_hex text;v_loops integer:=0;v_host text;
 begin
+  select substring(lower(config.supabase_origin) from '^https://(.+)$') into v_host
+  from public.media_environment_config_062 config where config.singleton;
   if v_text='' then return false; end if;
   if char_length(v_text)>8192 then
-    return position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0;
+    return coalesce(v_host,'')<>'' and position(v_host in v_text)>0;
   end if;
   loop
     v_hex:=substring(v_text from '%([0-9a-f]{2})');
@@ -251,11 +419,10 @@ begin
     v_loops:=v_loops+1;
   end loop;
   v_text:=replace(v_text,E'\\','/');
-  return position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0
+  return coalesce(v_host,'')<>'' and position(v_host in v_text)>0
     and position('/storage/v1/' in v_text)>0;
 exception when others then
-  return position('nwsqyuucwzihruszocge.supabase.co' in lower(coalesce(p_url,'')))>0
-    and position('/storage' in lower(coalesce(p_url,'')))>0;
+  return position('/storage/v1/' in lower(coalesce(p_url,'')))>0;
 end;
 $$;
 revoke all on function public.is_persona_media_storage_reference_062(text)
@@ -265,12 +432,14 @@ revoke all on function public.is_persona_media_storage_reference_062(text)
 -- objects cannot be rebound by URL alone because ownership, bytes, hash, and
 -- reviewed persona/slot must be independently verified before import.
 create or replace function public.is_legacy_media_bucket_reference_062(p_url text)
-returns boolean language plpgsql immutable set search_path='' as $$
-declare v_text text:=lower(coalesce(p_url,''));v_hex text;v_loops integer:=0;
+returns boolean language plpgsql security definer stable set search_path='' as $$
+declare v_text text:=lower(coalesce(p_url,''));v_hex text;v_loops integer:=0;v_host text;
 begin
+  select substring(lower(config.supabase_origin) from '^https://(.+)$') into v_host
+  from public.media_environment_config_062 config where config.singleton;
   if v_text='' then return false; end if;
   if char_length(v_text)>8192 then
-    return position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0
+    return coalesce(v_host,'')<>'' and position(v_host in v_text)>0
       and position('/media/' in v_text)>0;
   end if;
   loop
@@ -280,10 +449,10 @@ begin
     v_loops:=v_loops+1;
   end loop;
   v_text:=replace(v_text,E'\\','/');
-  return position('nwsqyuucwzihruszocge.supabase.co' in v_text)>0
+  return coalesce(v_host,'')<>'' and position(v_host in v_text)>0
     and v_text~'/storage/v1/(object|render/image)/(public/|sign/|authenticated/)?media(/|$)';
 exception when others then
-  return position('nwsqyuucwzihruszocge.supabase.co' in lower(coalesce(p_url,'')))>0
+  return position('/storage/v1/' in lower(coalesce(p_url,'')))>0
     and position('/media/' in lower(coalesce(p_url,'')))>0;
 end;
 $$;
@@ -296,7 +465,7 @@ revoke all on function public.is_legacy_media_bucket_reference_062(text)
 create or replace function public.is_public_media_reference_url_062(
   p_url text,p_allow_empty boolean default false
 )
-returns boolean language sql immutable set search_path='' as $$
+returns boolean language sql security definer stable set search_path='' as $$
   select public.is_safe_credential_free_https_url(p_url,p_allow_empty)
     and not public.is_persona_media_storage_reference_062(p_url)
     and (
@@ -311,7 +480,7 @@ $$;
 create or replace function public.is_external_reference_url_062(
   p_url text,p_allow_empty boolean default false
 )
-returns boolean language sql immutable set search_path='' as $$
+returns boolean language sql security definer stable set search_path='' as $$
   select public.is_safe_credential_free_https_url(p_url,p_allow_empty)
     and not public.is_persona_media_storage_reference_062(p_url)
     and not public.is_public_media_delivery_reference_062(p_url)
@@ -427,7 +596,7 @@ create trigger guard_affiliate_external_reference_062 before insert or update
 create or replace function public.persona_media_asset_canonical_eligible_062(
   p_asset public.persona_media_assets
 )
-returns boolean language sql immutable set search_path='' as $$
+returns boolean language sql security definer stable set search_path='' as $$
   select p_asset.status='active' and p_asset.declaration_source<>'legacy'
     and p_asset.content_sha256~'^[0-9a-f]{64}$'
     and p_asset.provenance_sha256~'^[0-9a-f]{64}$'
@@ -440,8 +609,11 @@ returns boolean language sql immutable set search_path='' as $$
       ||lower(p_asset.persona_id::text)||'/(?:[a-z0-9_-]+/){1,6}'
       ||p_asset.content_sha256||'[.](png|jpg|webp|gif|mp4|webm)$'
     )
-    and p_asset.public_url='https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/persona-media/'
-      ||p_asset.storage_path
+    and p_asset.public_url=(
+      select config.supabase_origin||'/storage/v1/object/public/persona-media/'||p_asset.storage_path
+      from public.media_environment_config_062 config
+      where config.singleton and config.locked_at is not null
+    )
 $$;
 revoke all on function public.persona_media_asset_canonical_eligible_062(public.persona_media_assets)
   from public,anon,authenticated;
@@ -546,6 +718,8 @@ begin
     asset.byte_size,asset.content_sha256
   from public.persona_media_assets asset
   join public.personas persona on persona.id=asset.persona_id and persona.owner=asset.owner
+  join public.media_environment_config_062 config
+    on config.singleton and config.locked_at is not null
   where asset.id=p_asset_id and asset.owner=p_owner and asset.status='active'
     and asset.declaration_source<>'legacy'
     and asset.byte_size between 1 and 15728640
@@ -559,7 +733,7 @@ begin
       ||lower(asset.persona_id::text)||'/(?:[a-z0-9_-]+/){1,6}'
       ||asset.content_sha256||'[.](png|jpg|webp|gif|mp4|webm)$'
     )
-    and asset.public_url='https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/persona-media/'
+    and asset.public_url=config.supabase_origin||'/storage/v1/object/public/persona-media/'
       ||asset.storage_path
   limit 1;
 end;

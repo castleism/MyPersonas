@@ -85,21 +85,32 @@ revoke all on public.post_approved_media_release_controls_063
 grant select,update on public.post_approved_media_release_controls_063 to service_role;
 
 create or replace function public.approved_media_delivery_url(p_public_id uuid)
-returns text language sql immutable set search_path='' as $$
-  select case when p_public_id is null then null else
-    'https://media.mypersonas.online/approved/v1/'||lower(p_public_id::text)
-  end
+returns text language plpgsql security definer stable set search_path='' as $$
+declare v_origin text;
+begin
+  if p_public_id is null then return null; end if;
+  select config.public_media_origin into v_origin
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if v_origin is null then raise exception 'Media environment configuration is not locked'; end if;
+  return v_origin||'/approved/v1/'||lower(p_public_id::text);
+end;
 $$;
 
 create or replace function public.approved_media_delivery_id_from_url(p_url text)
-returns uuid language plpgsql immutable set search_path='' as $$
-declare v_id text;
+returns uuid language plpgsql security definer stable set search_path='' as $$
+declare v_id text;v_origin text;
 begin
-  if coalesce(p_url,'')!~
-    '^https://media[.]mypersonas[.]online/approved/v1/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+  select config.public_media_origin into v_origin
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if v_origin is null or char_length(coalesce(p_url,''))<>char_length(v_origin)+49
+    or left(p_url,char_length(v_origin)+13)<>v_origin||'/approved/v1/'
+    or substring(p_url from char_length(v_origin)+14) !~
+      '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
     return null;
   end if;
-  v_id:=substring(p_url from '/approved/v1/([0-9a-f-]{36})$');
+  v_id:=substring(p_url from char_length(v_origin)+14);
   return v_id::uuid;
 exception when others then
   return null;

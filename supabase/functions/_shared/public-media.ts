@@ -2,9 +2,11 @@ export const MAX_PUBLIC_MEDIA_BYTES = 15 * 1024 * 1024;
 
 export const PUBLIC_MEDIA_ORIGIN = "https://media.mypersonas.online";
 export const PUBLIC_MEDIA_PATH_PREFIX = "/persona/v1/";
-export const PUBLIC_MEDIA_EDGE_ORIGIN = "https://nwsqyuucwzihruszocge.supabase.co";
+export const PRODUCTION_SUPABASE_ORIGIN = "https://nwsqyuucwzihruszocge.supabase.co";
 export const PUBLIC_MEDIA_EDGE_PATH_PREFIX = "/functions/v1/public-media/";
 export const PUBLIC_MEDIA_GATEWAY_HEADER = "x-mypersonas-media-gateway";
+const SUPABASE_ORIGIN = /^https:\/\/[a-z0-9]{20}[.]supabase[.]co$/;
+const DELIVERY_ORIGIN = /^https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$/;
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const STORAGE_PATH = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/published\/provenance\/(none|assisted|generated|unknown)\/(uploaded|generated)\/(?:[a-z0-9_-]{1,64}\/){2,7}[0-9a-f]{64}\.(png|jpg|webp|gif|mp4|webm)$/;
@@ -24,6 +26,99 @@ export type PublicMediaResolution = Readonly<{
   byte_size: number;
   content_sha256: string;
 }>;
+
+export type MediaEnvironmentConfig = Readonly<{
+  environmentName: "production" | "staging";
+  supabaseOrigin: string;
+  publicMediaOrigin: string;
+  revision: number;
+  configurationEvidence: string;
+  lockedAt: string;
+}>;
+
+export type MediaEnvironmentRpc = {
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<{ data: unknown; error: { message?: string } | null }>;
+};
+
+/** Accept only the canonical hosted Supabase project-origin spelling. */
+export function canonicalSupabaseOrigin(raw: string): string | null {
+  if (!SUPABASE_ORIGIN.test(raw)) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.origin === raw && !parsed.username && !parsed.password &&
+        !parsed.port && parsed.pathname === "/" && !parsed.search && !parsed.hash
+      ? raw
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Accept only an exact, HTTPS MyPersonas media subdomain with no URL suffix. */
+export function canonicalPublicMediaOrigin(raw: string): string | null {
+  if (!DELIVERY_ORIGIN.test(raw)) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.origin === raw && !parsed.username && !parsed.password &&
+        !parsed.port && parsed.pathname === "/" && !parsed.search && !parsed.hash
+      ? raw
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the reviewed, locked project media boundary through its service-only
+ * RPC and bind it to this function's canonical SUPABASE_URL. A copied service
+ * key or a staging function pointed at production therefore fails closed.
+ */
+export async function loadMediaEnvironmentConfig(
+  admin: MediaEnvironmentRpc,
+  supabaseUrl: string,
+): Promise<MediaEnvironmentConfig> {
+  const currentOrigin = canonicalSupabaseOrigin(supabaseUrl);
+  if (!currentOrigin) throw new Error("SUPABASE_URL is not a canonical hosted project origin");
+  const result = await admin.rpc("media_environment_config_service", {});
+  const raw = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (result.error || !raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Media environment configuration is unavailable");
+  }
+  const row = raw as Record<string, unknown>;
+  const keys = Object.keys(row).sort().join(",");
+  if (keys !== "configuration_evidence,environment_name,locked_at,public_media_origin,revision,supabase_origin" ||
+      (row.environment_name !== "production" && row.environment_name !== "staging") ||
+      typeof row.supabase_origin !== "string" ||
+      canonicalSupabaseOrigin(row.supabase_origin) !== row.supabase_origin ||
+      row.supabase_origin !== currentOrigin ||
+      typeof row.public_media_origin !== "string" ||
+      canonicalPublicMediaOrigin(row.public_media_origin) !== row.public_media_origin ||
+      !Number.isSafeInteger(row.revision) || Number(row.revision) < 1 ||
+      typeof row.configuration_evidence !== "string" ||
+      row.configuration_evidence.length < 8 || row.configuration_evidence.length > 500 ||
+      typeof row.locked_at !== "string" || !Number.isFinite(Date.parse(row.locked_at))) {
+    throw new Error("Media environment configuration is unsafe");
+  }
+  if (row.environment_name === "production" &&
+      (row.supabase_origin !== PRODUCTION_SUPABASE_ORIGIN || row.public_media_origin !== PUBLIC_MEDIA_ORIGIN)) {
+    throw new Error("Production media environment does not match the production boundary");
+  }
+  if (row.environment_name === "staging" &&
+      (row.supabase_origin === PRODUCTION_SUPABASE_ORIGIN || row.public_media_origin === PUBLIC_MEDIA_ORIGIN)) {
+    throw new Error("Staging media environment overlaps the production boundary");
+  }
+  return Object.freeze({
+    environmentName: row.environment_name,
+    supabaseOrigin: row.supabase_origin,
+    publicMediaOrigin: row.public_media_origin,
+    revision: Number(row.revision),
+    configurationEvidence: row.configuration_evidence,
+    lockedAt: row.locked_at,
+  });
+}
 
 function publicMediaIdFromExactUrl(
   raw: string,
@@ -50,18 +145,31 @@ function publicMediaIdFromExactUrl(
 }
 
 /** Parse the only URL that may be persisted in a public content field. */
-export function publicMediaIdFromRequestUrl(raw: string): string | null {
-  return publicMediaIdFromExactUrl(raw, PUBLIC_MEDIA_ORIGIN, PUBLIC_MEDIA_PATH_PREFIX);
+export function publicMediaIdFromRequestUrl(
+  raw: string,
+  publicMediaOrigin = PUBLIC_MEDIA_ORIGIN,
+): string | null {
+  const origin = canonicalPublicMediaOrigin(publicMediaOrigin);
+  return origin ? publicMediaIdFromExactUrl(raw, origin, PUBLIC_MEDIA_PATH_PREFIX) : null;
 }
 
 /** Parse the rewritten request received from the secret-gated CloudFront origin. */
-export function publicMediaIdFromOriginRequestUrl(raw: string): string | null {
-  return publicMediaIdFromExactUrl(raw, PUBLIC_MEDIA_EDGE_ORIGIN, PUBLIC_MEDIA_EDGE_PATH_PREFIX);
+export function publicMediaIdFromOriginRequestUrl(
+  raw: string,
+  supabaseUrl: string,
+): string | null {
+  const origin = canonicalSupabaseOrigin(supabaseUrl);
+  return origin ? publicMediaIdFromExactUrl(raw, origin, PUBLIC_MEDIA_EDGE_PATH_PREFIX) : null;
 }
 
-export function publicMediaDeliveryUrl(publicId: string): string {
+export function publicMediaDeliveryUrl(
+  publicId: string,
+  publicMediaOrigin = PUBLIC_MEDIA_ORIGIN,
+): string {
   if (!UUID_V4.test(publicId)) throw new Error("Invalid public media id");
-  return `${PUBLIC_MEDIA_ORIGIN}${PUBLIC_MEDIA_PATH_PREFIX}${publicId}`;
+  const origin = canonicalPublicMediaOrigin(publicMediaOrigin);
+  if (!origin) throw new Error("Invalid public media origin");
+  return `${origin}${PUBLIC_MEDIA_PATH_PREFIX}${publicId}`;
 }
 
 export async function readExactPublicMediaResponse(

@@ -139,7 +139,11 @@ test("migration 064 is service-only, idempotent, owner-scoped, and exact-host on
   assert.match(sql, /alter table public\.legacy_media_references enable row level security/);
   assert.match(sql, /revoke all on public\.legacy_media_sources,[\s\S]*from public,anon,authenticated,service_role/);
   assert.match(sql, /grant select,insert,update,delete on public\.legacy_media_sources,[\s\S]*to service_role/);
-  assert.match(sql, /https:\/\/nwsqyuucwzihruszocge\.supabase\.co\/storage\/v1\/object\/public\/media\//);
+  assert.match(
+    sql,
+    /select config\.supabase_origin\|\|'\/storage\/v1\/object\/public\/media\/' into v_prefix[\s\S]*where config\.singleton and config\.locked_at is not null/,
+  );
+  assert.doesNotMatch(sql, /https:\/\/[a-z0-9]{20}\.supabase\.co/);
   assert.doesNotMatch(sql, /render\/image\/public\/media|object\/sign\/media|object\/authenticated\/media/);
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /on conflict\(owner,storage_path_sha256\) do update/);

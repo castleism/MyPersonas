@@ -34,6 +34,7 @@ import {
   stageApprovedPersonaMediaAsset,
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
+import { loadMediaEnvironmentConfig } from "../_shared/public-media.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -88,7 +89,11 @@ const DRAFT_COLUMNS = [
   "publish_instagram_business_id",
 ].join(",");
 
-function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): ApprovedMedia {
+function approvedMediaFor(
+  draft: Draft,
+  target: "facebook" | "instagram",
+  publicMediaOrigin: string,
+): ApprovedMedia {
   return target === "facebook"
     ? {
       sha256: draft.approved_fb_media_sha256,
@@ -98,7 +103,7 @@ function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): Appro
       url: draft.approved_fb_media_url,
       deliveryId: draft.approved_fb_delivery_id || "",
       deliveryUrl: draft.approved_fb_delivery_id
-        ? approvedMediaDeliveryUrl(draft.approved_fb_delivery_id)
+        ? approvedMediaDeliveryUrl(draft.approved_fb_delivery_id, publicMediaOrigin)
         : "",
     }
     : {
@@ -109,7 +114,7 @@ function approvedMediaFor(draft: Draft, target: "facebook" | "instagram"): Appro
       url: draft.approved_ig_media_url,
       deliveryId: draft.approved_ig_delivery_id || "",
       deliveryUrl: draft.approved_ig_delivery_id
-        ? approvedMediaDeliveryUrl(draft.approved_ig_delivery_id)
+        ? approvedMediaDeliveryUrl(draft.approved_ig_delivery_id, publicMediaOrigin)
         : "",
     };
 }
@@ -188,11 +193,12 @@ async function requireOwnerPublishingUnpaused(owner: string) {
 async function ensureImmutableAttemptMedia(
   draft: Draft,
   targets: string[],
+  publicMediaOrigin: string,
 ): Promise<Draft> {
   const patch: Record<string, unknown> = {};
   for (const target of targets) {
     if (target !== "facebook" && target !== "instagram") continue;
-    let media = approvedMediaFor(draft, target);
+    let media = approvedMediaFor(draft, target, publicMediaOrigin);
     const hasSnapshot = hasApprovedMediaSnapshot(media);
     const providerId = target === "facebook" ? draft.fb_post_id : draft.ig_media_id;
     if (!hasSnapshot) {
@@ -216,7 +222,7 @@ async function ensureImmutableAttemptMedia(
           admin, SUPABASE_URL, source, draft.owner,
         );
     }
-    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner);
+    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner, publicMediaOrigin);
     const prefix = target === "facebook" ? "approved_fb_media" : "approved_ig_media";
     patch[`${prefix}_sha256`] = media.sha256;
     patch[`${prefix}_mime`] = media.mime;
@@ -238,8 +244,8 @@ async function ensureImmutableAttemptMedia(
   const persisted = saved.data as unknown as Draft;
   for (const target of targets) {
     if (target !== "facebook" && target !== "instagram") continue;
-    const media = approvedMediaFor(persisted, target);
-    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner);
+    const media = approvedMediaFor(persisted, target, publicMediaOrigin);
+    await verifyApprovedMedia(admin, SUPABASE_URL, media, draft.owner, publicMediaOrigin);
     const rowUrl = target === "facebook"
       ? persisted.fb_image_url
       : persisted.ig_image_url;
@@ -289,6 +295,12 @@ async function handlePublishDraft(
 ) {
   const draftId = String(body.draftId || "");
   if (!SAFE_UUID.test(draftId)) return json({ error: "A valid draftId is required." }, 400, origin);
+  let mediaEnvironment;
+  try {
+    mediaEnvironment = await loadMediaEnvironmentConfig(admin, SUPABASE_URL);
+  } catch {
+    return json({ error: "Secure media delivery is unavailable." }, 503, origin);
+  }
 
   // The global owner stop applies to interactive publishing too. Check once
   // before taking the row and again after the atomic claim to close the race.
@@ -364,7 +376,11 @@ async function handlePublishDraft(
   // with an existing snapshot verifies and reuses it, ignoring mutable source
   // URLs. The platform URL columns are pinned to the canonical snapshot too.
   try {
-    draft = await ensureImmutableAttemptMedia(draft, targets);
+    draft = await ensureImmutableAttemptMedia(
+      draft,
+      targets,
+      mediaEnvironment.publicMediaOrigin,
+    );
   } catch (error) {
     validationErrors.push((error as Error).message);
     const finished = await finishClaim(
@@ -449,7 +465,11 @@ async function handlePublishDraft(
       const result = await publishFacebook(
         ctx.asset.facebook_page_id,
         ctx.pageToken,
-        approvedMediaProviderUrl(approvedMediaFor(draft, "facebook")),
+        approvedMediaProviderUrl(approvedMediaFor(
+          draft,
+          "facebook",
+          mediaEnvironment.publicMediaOrigin,
+        )),
         draft.fb_caption || "",
         () => requireOwnerPublishingUnpaused(userId),
       );
@@ -482,7 +502,11 @@ async function handlePublishDraft(
         const result = await publishInstagram(
           ctx.asset.instagram_business_id,
           ctx.pageToken,
-          approvedMediaProviderUrl(approvedMediaFor(draft, "instagram")),
+          approvedMediaProviderUrl(approvedMediaFor(
+            draft,
+            "instagram",
+            mediaEnvironment.publicMediaOrigin,
+          )),
           draft.ig_caption || "",
           () => requireOwnerPublishingUnpaused(userId),
         );

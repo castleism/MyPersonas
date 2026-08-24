@@ -17,8 +17,9 @@ async function sources() {
   return { code: code.replace(/\r\n/g, "\n"), template: template.replace(/\r\n/g, "\n"), runbook };
 }
 
-function loadHandler(code) {
-  return vm.runInNewContext(`${code}\nhandler;`, Object.create(null), { timeout: 1_000 });
+function loadHandler(code, hostname = "media.mypersonas.online") {
+  const configured = code.replaceAll("${MediaGatewayHostname}", hostname);
+  return vm.runInNewContext(`${configured}\nhandler;`, Object.create(null), { timeout: 1_000 });
 }
 
 function request(uri, overrides = {}) {
@@ -60,11 +61,18 @@ test("CloudFront Function rewrites only the exact canonical persona and approved
     request(`/functions/v1/public-media/${VALID_ID}`),
     request(`/functions/v1/approved-media/${VALID_ID}`),
   ]) assert.equal(handler({ request: candidate }).statusCode, 404, candidate.uri);
+
+  const stagingHost = "media-staging.mypersonas.online";
+  const stagingHandler = loadHandler(code, stagingHost);
+  assert.equal(stagingHandler({ request: request(`/persona/v1/${VALID_ID}`, {
+    headers: { host: { value: stagingHost } },
+  }) }).uri, `/functions/v1/public-media/${VALID_ID}`);
+  assert.equal(stagingHandler({ request: request(`/persona/v1/${VALID_ID}`) }).statusCode, 404);
 });
 
 test("review template embeds the reviewed router and has fail-closed cost and secret gates", async () => {
   const { code, template, runbook } = await sources();
-  const block = template.match(/      FunctionCode: \|\n([\s\S]*?)\n  NoCachePolicy:/);
+  const block = template.match(/      FunctionCode: !Sub \|\n([\s\S]*?)\n  NoCachePolicy:/);
   assert.ok(block, "embedded CloudFront Function block was not found");
   const embedded = block[1].split("\n").map((line) => line.replace(/^ {8}/, "")).join("\n").trimEnd();
   assert.equal(embedded, code.trimEnd(), "standalone and embedded CloudFront Functions diverged");
@@ -74,11 +82,14 @@ test("review template embeds the reviewed router and has fail-closed cost and se
   assert.match(template, /AcmCertificateArnUsEast1:[\s\S]*arn:aws:acm:us-east-1/);
   const parametersStart = template.indexOf("\nParameters:\n");
   const secretStart = template.indexOf("  MediaGatewaySecret:", parametersStart);
-  const secretBlock = template.slice(secretStart, template.indexOf("  ResourceNamePrefix:", secretStart));
+  const secretBlock = template.slice(secretStart, template.indexOf("  MediaGatewayHostname:", secretStart));
   assert.match(secretBlock, /MediaGatewaySecret:\n\s+Type: String\n\s+NoEcho: true/);
   assert.doesNotMatch(secretBlock, /\n\s+Default:/);
   assert.match(template, /ResourceNamePrefix:[\s\S]*MaxLength: 32/);
-  assert.match(template, /DomainName: nwsqyuucwzihruszocge\.supabase\.co/);
+  assert.match(template, /MediaGatewayHostname:[\s\S]*Default: media\.mypersonas\.online/);
+  assert.match(template, /SupabaseOriginHostname:[\s\S]*Default: nwsqyuucwzihruszocge\.supabase\.co/);
+  assert.match(template, /DomainName: !Ref SupabaseOriginHostname/);
+  assert.match(template, /SearchString: !Ref MediaGatewayHostname/);
   assert.match(template, /HeaderName: X-MyPersonas-Media-Gateway\n\s+HeaderValue: !Ref MediaGatewaySecret/);
   assert.match(template, /DefaultTTL: 0[\s\S]*MaxTTL: 0[\s\S]*MinTTL: 0/);
   assert.match(template, /QueryStringBehavior: none/);

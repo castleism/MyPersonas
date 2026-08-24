@@ -24,6 +24,17 @@ owner id, persona id, content hash, filename, or storage prefix. The private
 `persona_public_media_handles` correlation table is unavailable to `anon` and
 `authenticated` roles.
 
+Migration 062 also creates one private `media_environment_config_062` row. SQL
+URL helpers and every media-producing/consuming Edge Function require the row
+to be reviewed and locked. The migration ships the production values
+`https://nwsqyuucwzihruszocge.supabase.co` and
+`https://media.mypersonas.online` as **unlocked defaults**, not as permission to
+use them. Staging must replace both values with its own exact Supabase project
+origin and its own `*.mypersonas.online` media origin. A staging record is
+rejected if either value overlaps production. Once locked, it cannot be edited
+through the service API; a mismatch between the record and the function's exact
+`SUPABASE_URL` disables media operations.
+
 CloudFront/WAF accepts only the exact branded host and path, rejects viewer query
 strings and alternate hostnames, strips any viewer-supplied gateway header, and
 rewrites the path to the Supabase Edge origin. CloudFront adds a configured
@@ -96,8 +107,18 @@ Do not split this sequence across an unattended production window.
 1. Back up the database and Storage metadata. Record current published persona
    counts, raw owner-path reference counts, bucket visibility, and migration
    ledger hashes.
-2. Verify reviewed migration 061, then apply canonical migrations 062, 063, and
-   064 (and their timestamped release mirrors) in that order in isolated staging.
+2. Verify reviewed migration 061, then apply canonical migration 062 (or its
+   byte-identical timestamp mirror) in isolated staging. Before any handle is
+   issued, call `configure_media_environment_service` with:
+   `staging`, the exact staging `https://<20-char-ref>.supabase.co` origin, the
+   separately routed staging media origin (for example
+   `https://media-staging.mypersonas.online`), and a bounded ticket/change-set
+   evidence reference. Call `lock_media_environment_service` with those exact
+   three expected values plus independent lock evidence. Read back
+   `media_environment_config_service`; an anonymous or authenticated call must
+   be denied. Then apply 063 and 064 in order. Production uses the same two-step
+   configure-and-lock call with the fixed production defaults. Do not copy a
+   production database after this lock and use it as staging.
 3. Obtain separate owner approval for the filled AWS cost worksheet, `us-east-1`
    ACM certificate, CloudFormation change set, secret configuration, and Wix DNS
    records described in `../infrastructure/aws/media-gateway/README.md`. Do not
@@ -108,6 +129,11 @@ Do not split this sequence across an unattended production window.
    `legacy-media-remediation`, `compose-post`, `approve-post-draft`, `meta-post`,
    `run-post-queue`, `delete-account`, and `erase-content`. Do not deploy a
    producer yet.
+   The staging gateway origin must be that staging project's exact Supabase
+   hostname, never the production hostname. The staging frontend must set all
+   three matching public values in `CONFIG`: `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`, and `PUBLIC_MEDIA_ORIGIN`. The anon key is public; the
+   service key and configuration evidence remain server-side.
 5. Verify direct Edge calls fail closed and the branded endpoint passes exact
    host/path/query/TLS/WAF checks. Only after explicit DNS-cutover approval,
    deploy the matching Pages frontend and complete live signed-in owner/viewer,
@@ -143,6 +169,11 @@ Do not split this sequence across an unattended production window.
 
 The resolver and proxy fail closed. A function outage produces missing media,
 not a direct Storage fallback. Do not add such a fallback.
+
+An unlocked, malformed, or cross-project environment record is also a deliberate
+fail-closed outage. Roll back functions/frontend if needed, but do not unlock or
+rewrite the row in place. Correcting a locked environment requires a separately
+reviewed forward migration so the original evidence remains auditable.
 
 Before bucket finalization, code rollback can restore the previous frontend while
 the service cutover is paused. After finalization, raw public URLs intentionally

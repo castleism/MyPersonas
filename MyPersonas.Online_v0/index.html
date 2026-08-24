@@ -31,7 +31,9 @@
 <link rel="stylesheet" href="./platform-governance.css?v=20260822-1">
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
 <link rel="stylesheet" href="./ai-content-provenance.css?v=20260823-2">
+<link rel="stylesheet" href="./profile-image-crop.css?v=20260823-1">
 <script src="./pwa.js" defer></script>
+<script src="./profile-image-crop.js?v=20260823-1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#f0f2f5;--panel:#fff;--border:#dddfe2;--text:#1c1e21;--dim:#65676b;--accent:#1877f2;--accent2:#166fe5;--red:#e41e3f;--green:#42b72a}
@@ -330,6 +332,16 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   body.persona-view-mode header>nav>button[data-persona-nav]:not([hidden]),body.persona-view-mode header>nav>#primaryHomeBtn{display:inline-block!important}
   body.persona-view-mode header>nav::-webkit-scrollbar{display:none}
   body.persona-view-mode header>nav>#authBtn{margin-left:auto}
+  main{width:100%;min-width:0;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .matrix-head{align-items:flex-start!important}
+  .matrix-actions{width:100%;min-width:0;flex-wrap:wrap}
+  .matrix-actions>.btn{flex:1 1 140px;min-width:0}
+  .pgrid{width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}
+  .pcard{min-width:0}
+  .matrix-models .t8pick{min-width:0;flex-wrap:wrap}
+  .matrix-models .t8pick>div{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .matrix-models .t8pick>span[style*="margin-left:auto"]{width:100%;min-width:0;margin-left:0!important;flex-wrap:wrap}
+  .matrix-models .muted{overflow-wrap:anywhere}
 }
 </style>
 </head>
@@ -453,6 +465,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
 const CONFIG={
   SUPABASE_URL:"https://nwsqyuucwzihruszocge.supabase.co",
   SUPABASE_ANON_KEY:"sb_publishable_vN6BdSvBKf_yTJt0eeK20w_afKz1Df2",
+  PUBLIC_MEDIA_ORIGIN:"https://media.mypersonas.online",
   TURNSTILE_SITE_KEY:""
 };
 // ============================================================================
@@ -590,10 +603,13 @@ function parsedHttpUrl(raw){
   try{const u=new URL(String(raw||"").trim());if(!["http:","https:"].includes(u.protocol)||u.username||u.password)return null;return u}catch(e){return null}
 }
 function safeHttpUrl(raw){const u=parsedHttpUrl(raw);return u?u.href:""}
-const PUBLIC_MEDIA_V1=/^https:\/\/media[.]mypersonas[.]online\/persona\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+function canonicalConfiguredOrigin(raw,pattern){const supplied=String(raw||"");if(!pattern.test(supplied))return"";try{const u=new URL(supplied);return u.origin===supplied&&!u.username&&!u.password&&!u.port&&u.pathname==="/"&&!u.search&&!u.hash?supplied:""}catch(e){return""}}
+const CONFIG_SUPABASE_ORIGIN=canonicalConfiguredOrigin(CONFIG.SUPABASE_URL,/^https:\/\/[a-z0-9]{20}[.]supabase[.]co$/);
+const CONFIG_PUBLIC_MEDIA_ORIGIN=canonicalConfiguredOrigin(CONFIG.PUBLIC_MEDIA_ORIGIN,/^https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$/);
+const PUBLIC_MEDIA_V1=CONFIG_PUBLIC_MEDIA_ORIGIN?new RegExp("^"+CONFIG_PUBLIC_MEDIA_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"/persona/v1/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"):/a^/;
 function decodedMediaReference(raw){const supplied=String(raw||"").trim();let u;try{u=new URL(supplied)}catch(e){return null}let text=(supplied+" "+u.pathname+" "+u.search).toLowerCase();for(let i=0;i<2;i++){try{text=decodeURIComponent(text)}catch(e){break}}return{url:u,text:text.replace(/\\/g,"/")}}
-function isFirstPartyPersonaMediaReference(raw){const parsed=decodedMediaReference(raw);return !!parsed&&parsed.url.hostname.toLowerCase()==="nwsqyuucwzihruszocge.supabase.co"&&parsed.text.includes("/storage/v1/")}
-function isPrivateMediaDeliveryReference(raw){const parsed=decodedMediaReference(raw);if(!parsed)return false;const host=parsed.url.hostname.toLowerCase();return host==="media.mypersonas.online"||host==="nwsqyuucwzihruszocge.supabase.co"&&(parsed.text.includes("/functions/v1/public-media/")||parsed.text.includes("/functions/v1/approved-media/"))}
+function isFirstPartyPersonaMediaReference(raw){const parsed=decodedMediaReference(raw);if(!parsed||!parsed.text.includes("/storage/v1/"))return false;const host=parsed.url.hostname.toLowerCase(),configured=CONFIG_SUPABASE_ORIGIN.slice(8);return !!configured&&host===configured||host.endsWith(".supabase.co")}
+function isPrivateMediaDeliveryReference(raw){const parsed=decodedMediaReference(raw);if(!parsed)return false;const host=parsed.url.hostname.toLowerCase(),delivery=CONFIG_PUBLIC_MEDIA_ORIGIN.slice(8),edge=CONFIG_SUPABASE_ORIGIN.slice(8),publicPath=parsed.text.includes("/persona/v1/")||parsed.text.includes("/approved/v1/"),edgePath=parsed.text.includes("/functions/v1/public-media/")||parsed.text.includes("/functions/v1/approved-media/");return publicPath&&(host===delivery||host.endsWith(".mypersonas.online"))||edgePath&&(host===edge||host.endsWith(".supabase.co"))}
 function safePublicMediaUrl(raw){
   const supplied=String(raw||"").trim(),url=safeHttpUrl(supplied);if(!url)return"";
   if(PUBLIC_MEDIA_V1.test(supplied)&&url===supplied)return supplied;
@@ -1160,6 +1176,7 @@ function isHidden(personaId){return hasPersonaVisibilityRule(personaId)}
 
 // ---------- router ----------
 async function route(){
+  if(window.MyPersonasProfileCrop)window.MyPersonasProfileCrop.cancel();
   if(document.getElementById("personaAssetPreview"))closePersonaAssetPreview();
   if(document.getElementById("legacyMediaPreview"))closeLegacyMediaPreview();
   if(document.getElementById("pageBuilderOv"))closePageBuilder(false);
@@ -1211,8 +1228,28 @@ async function route(){
 }
 
 // ---------- sign in ----------
+let authTurnstileWidget=null;
+const authEmailButtonIds=["authPasswordSignin","authPasswordSignup","authMagicLink"];
+function setAuthEmailControlsEnabled(enabled){authEmailButtonIds.forEach(id=>{const button=document.getElementById(id);if(button)button.disabled=!enabled})}
+function destroyAuthCaptcha(){if(window.turnstile&&authTurnstileWidget!==null){try{window.turnstile.remove(authTurnstileWidget)}catch(_){}}authTurnstileWidget=null}
+function resetAuthCaptcha(){const box=document.getElementById("authCaptcha"),status=document.getElementById("authCaptchaStatus");if(box)box.dataset.captchaToken="";setAuthEmailControlsEnabled(false);if(window.turnstile&&authTurnstileWidget!==null){try{window.turnstile.reset(authTurnstileWidget)}catch(_){}}if(status)status.textContent="Complete the security check to use email sign-in."}
+function consumeAuthCaptchaToken(){
+  const box=document.getElementById("authCaptcha"),status=document.getElementById("authCaptchaStatus"),token=String(box?.dataset.captchaToken||"").trim();
+  if(!CONFIG.TURNSTILE_SITE_KEY){toast("Email sign-in verification is not configured yet");return""}
+  if(token.length<10||token.length>4096){if(status)status.textContent="Complete the security check first.";toast("Complete the security check first");return""}
+  box.dataset.captchaToken="";setAuthEmailControlsEnabled(false);if(status)status.textContent="Checking verification…";return token;
+}
+async function renderAuthCaptcha(){
+  const box=document.getElementById("authCaptcha"),status=document.getElementById("authCaptchaStatus");if(!box||!status)return;setAuthEmailControlsEnabled(false);
+  if(!CONFIG.TURNSTILE_SITE_KEY){status.textContent="Email sign-in is temporarily unavailable while its security check is configured. Google sign-in remains available.";return}
+  try{
+    const turnstile=await loadTurnstileScript();if(!document.getElementById("authCaptcha")||box!==document.getElementById("authCaptcha"))return;
+    authTurnstileWidget=turnstile.render(box,{sitekey:CONFIG.TURNSTILE_SITE_KEY,action:"account_auth",callback:token=>{const current=document.getElementById("authCaptcha");if(!current||current!==box)return;current.dataset.captchaToken=String(token||"");setAuthEmailControlsEnabled(true);status.textContent="Security check complete."},"expired-callback":()=>resetAuthCaptcha(),"timeout-callback":()=>resetAuthCaptcha(),"error-callback":()=>{resetAuthCaptcha();status.textContent="The security check could not load. Try again later."}});
+  }catch(error){status.textContent=error?.message||"The security check could not load. Try again later."}
+}
 function renderSignin(){
   if(session){go("owner");return}
+  destroyAuthCaptcha();
   app.innerHTML=`<div class="card authbox">
     <h3 class="center">Welcome to AliaSpaces</h3>
     <p class="muted center">One account, many personas. Your identity stays private — pages never show who owns them.</p>
@@ -1223,12 +1260,14 @@ function renderSignin(){
     <label style="margin-top:8px">Password</label>
     <input id="authPass" type="password" placeholder="8+ characters" autocomplete="current-password" onkeydown="if(event.key==='Enter')passwordSignin()">
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn" style="flex:1" onclick="passwordSignin()">Sign in</button>
-      <button class="btn sec" style="flex:1" onclick="passwordSignup()">Create account</button>
+      <button id="authPasswordSignin" class="btn" style="flex:1" onclick="passwordSignin()" disabled>Sign in</button>
+      <button id="authPasswordSignup" class="btn sec" style="flex:1" onclick="passwordSignup()" disabled>Create account</button>
     </div>
-    <button class="btn sec" style="width:100%;margin-top:10px" onclick="magicLink()">Or email me a magic link (no password)</button>
+    <button id="authMagicLink" class="btn sec" style="width:100%;margin-top:10px" onclick="magicLink()" disabled>Or email me a magic link (no password)</button>
+    <div id="authCaptcha" style="margin-top:12px" aria-label="Email sign-in security check"></div>
+    <p id="authCaptchaStatus" class="muted" role="status">Loading the security check…</p>
     <p class="muted" style="margin-top:12px">Your email is used only to sign in. It is never shown on any page, post, or persona.</p>
-  </div>`;
+  </div>`;renderAuthCaptcha();
 }
 async function googleSignin(){
   const{error}=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}});
@@ -1237,22 +1276,21 @@ async function googleSignin(){
 async function magicLink(){
   const email=document.getElementById("mlEmail").value.trim();
   if(!email){toast("Enter your email");return}
-  const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-  toast(error?error.message:"Check your email for the link!");
+  const captchaToken=consumeAuthCaptchaToken();if(!captchaToken)return;
+  try{const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,captchaToken}});toast(error?error.message:"Check your email for the link!")}catch(error){toast(error?.message||"The magic link could not be sent")}finally{resetAuthCaptcha()}
 }
 async function passwordSignin(){
   const email=(document.getElementById("mlEmail").value||"").trim(),password=document.getElementById("authPass").value||"";
   if(!email||!password){toast("Enter your email and password");return}
-  const{error}=await sb.auth.signInWithPassword({email,password});
-  if(error)toast(error.message);
+  const captchaToken=consumeAuthCaptchaToken();if(!captchaToken)return;
+  try{const{error}=await sb.auth.signInWithPassword({email,password,options:{captchaToken}});if(error)toast(error.message)}catch(error){toast(error?.message||"Sign in could not be completed")}finally{resetAuthCaptcha()}
 }
 async function passwordSignup(){
   const email=(document.getElementById("mlEmail").value||"").trim(),password=document.getElementById("authPass").value||"";
   if(!email||!password){toast("Enter an email and a password");return}
   if(password.length<8){toast("Password must be at least 8 characters");return}
-  const{data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
-  if(error){toast(error.message);return}
-  toast(data&&data.session?"Account created — you're in!":"Account created — check your email to confirm, then sign in.");
+  const captchaToken=consumeAuthCaptchaToken();if(!captchaToken)return;
+  try{const{data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname,captchaToken}});if(error){toast(error.message);return}toast(data&&data.session?"Account created — you're in!":"Account created — check your email to confirm, then sign in.")}catch(error){toast(error?.message||"The account could not be created")}finally{resetAuthCaptcha()}
 }
 function handleGmailReturn(){
   const u=new URL(location.href),result=u.searchParams.get("gmail");
@@ -2128,7 +2166,7 @@ function renderStudio(){
     ${myBlocks.map(b=>`<span class="chip">${b.kind==="block"?"blocked":"muted"} · ${esc(b.blocked_persona.slice(0,8))}…
     <button class="btn danger sm" onclick="removeBlock('${b.id}')">✕</button></span>`).join("")}
     <p class="muted" style="margin-top:6px">Removing lets that persona appear and interact again.</p></div>`:"";
-  const beHtml=`<div class="card"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
+  const beHtml=`<div class="card matrix-models"><h3>${ico("chip")}AI Models (linked to your main account)</h3>
     <p class="muted">Link a hosted OpenAI-compatible, Anthropic, or Azure OpenAI text model, then assign it per persona and content slot. Your key is sent once, encrypted in Supabase Vault, and never loaded back into the browser. Local device models and voice-only providers are not eligible for hosted agents.</p>
     <div class="autocallout" style="margin-top:10px"><b>An API key is a credential, not a personality setting.</b><br>Voice quality comes from the persona card, the chosen model, and repeatable evaluation. Current OpenAI starting points: <b>GPT-5.6 Terra</b> for balanced owner/persona chat, <b>GPT-5.6 Luna</b> for high-volume fan chat after it passes voice and boundary tests, and <b>GPT-5.6 Sol</b> for premium canon or profile synthesis. Model catalogs change, so recheck provider availability before switching.</div>
     ${myBackends.map(b=>{const agentReady=backendAgentReady(b),scheduleReady=backendAutomationReady(b,"schedule"),fanReady=backendAutomationReady(b,"fan"),mailReady=backendMailReady(b),builtIn=backendBuiltInAutomation(b),readyCount=[scheduleReady,fanReady,mailReady].filter(Boolean).length,verified=backendVerifiedThisSession.has(b.id),configured=readyCount?`${readyCount}/3 surfaces configured`:agentReady?"owner chat configured":"needs setup",status=agentReady?`${configured} · ${verified?"tested this session":"provider test not recorded"}`:configured;return `<div class="t8pick"><div><b>${esc(b.name)}</b><span class="muted">${esc(b.model||"model id needed")} · ${esc(b.base_url)}</span><span class="pill ${verified?"connected":"attention"}">${esc(status)}</span>${(b.extra&&b.extra.is_default)?'<span class="pill connected">★ default</span>':''}${!builtIn&&agentReady?`<span class="muted">Custom hosts stay blocked by the server until each matching allowlist secret is configured.</span>`:""}</div>
@@ -2146,9 +2184,9 @@ function renderStudio(){
     <div id="nbExtra"></div>
     <div id="nbOAuth" style="margin-top:6px"><button class="btn sm sec" onclick="connectOpenRouter()">Connect with OpenRouter (OAuth)</button> <span class="muted">or paste a key above</span></div>
     <button class="btn sm" style="margin-top:10px" onclick="addBackend()">+ Save model</button></div>`;
-  app.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  app.innerHTML=`<div class="matrix-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h3 class="secthead" style="margin:0">Matrix</h3>
-    <div style="display:flex;gap:8px">
+    <div class="matrix-actions" style="display:flex;gap:8px">
       <button class="btn sec" onclick="openHQ()">HQ Assistant</button>
       <button class="btn" onclick="go('edit/new')">+ New Persona</button></div></div>
   ${reqHtml}
@@ -2833,7 +2871,7 @@ async function renderEdit(id,epoch=++renderEpoch){
     <div id="advWrap" style="${(p.purpose||p.voice||p.topics)?"":"display:none"}">
     <hr>
     <h3>${ico("image")}Page looks</h3>
-    <p class="muted">Previews show the complete image without cropping. Every upload requires an AI-use declaration; site-generated images are marked automatically.</p>
+    <p class="muted">Previews show the complete saved image. Choosing a file opens a placement window with avatar, banner, background, and feed-safe previews before anything uploads. Every upload requires an AI-use declaration; site-generated images are marked automatically.</p>
     <div class="lookgrid">
     ${[["avatar_url","Profile image"],["banner_url","Banner (wide)"],["bg_url","Page background"],["feed_img_url","Feed header"]].map(([k,lbl])=>`
       <div class="looktile">
@@ -2841,7 +2879,7 @@ async function renderEdit(id,epoch=++renderEpoch){
         <div class="lookprev" id="prev_${k}" data-owner-persona-id="${esc(targetId)}">${personaLookPreviewHtml(p[k],lbl,targetId,personaProfileMediaAssetId(p,k))}</div>
         <input type="hidden" id="e_${k}" value="${esc(p[k]||"")}" data-media-asset-id="${esc(personaProfileMediaAssetId(p,k))}">
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-          <button class="btn sec sm" aria-label="Choose ${esc(lbl)} file" onclick="uploadTo('e_${k}')">Choose file</button>
+          <button class="btn sec sm" aria-label="Choose ${esc(lbl)} file" title="Choose a file and place its crop" onclick="uploadTo('e_${k}')">Choose &amp; crop</button>
           <button class="btn sec sm" aria-label="Generate ${esc(lbl)}" onclick="openSD('${k}')">Generate</button>
           <button class="btn danger sm" aria-label="Clear ${esc(lbl)}" onclick="setPrev('${k}','')">Clear</button>
         </div>
@@ -3693,18 +3731,37 @@ async function extendSession(){
 }
 
 // ---------- secure uploads + AI-use declaration ----------
+const mediaUploadGenerations=new Map();
+function mediaUploadStillCurrent(inputId,generation,ownerId,personaId,epoch,target){
+  return mediaUploadGenerations.get(inputId)===generation&&
+    String(session?.user?.id||"")===ownerId&&
+    String(uploadPersonaId(inputId)||"")===personaId&&
+    renderEpoch===epoch&&document.getElementById(inputId)===target;
+}
 function uploadTo(inputId){
   if(!session){toast("Sign in first");return}
-  const profileSlot=inputId.startsWith("e_"),f=document.createElement("input");f.type="file";f.accept=profileSlot?"image/png,image/jpeg,image/webp,image/gif":"image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
+  const profileSlot=inputId.startsWith("e_"),ownerId=String(session.user?.id||""),personaId=String(uploadPersonaId(inputId)||""),epoch=renderEpoch,targetAtOpen=document.getElementById(inputId),generation=(mediaUploadGenerations.get(inputId)||0)+1;mediaUploadGenerations.set(inputId,generation);
+  if(!targetAtOpen||!PUBLIC_PERSONA_UUID.test(personaId)){toast("Save or select the persona before uploading media");return}
+  const stillCurrent=()=>mediaUploadStillCurrent(inputId,generation,ownerId,personaId,epoch,targetAtOpen);
+  const f=document.createElement("input");f.type="file";f.accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";if(profileSlot)f.accept="image/png,image/jpeg,image/webp";
   f.onchange=async()=>{
-    const source=f.files[0];if(!source)return;const personaId=uploadPersonaId(inputId);if(!PUBLIC_PERSONA_UUID.test(String(personaId||""))){toast("Save or select the persona before uploading media");return}
-    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt||profileSlot&&!image){toast(profileSlot?"Page Look fields currently accept PNG, JPEG, WebP, or GIF images only":"Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
+    const source=f.files[0];if(!source||!stillCurrent())return;
+    const initialMime=String(source.type||"").trim().toLowerCase(),initialExt=publicPersonaMediaExtension(initialMime),image=PUBLIC_PERSONA_IMAGE_TYPES.has(initialMime);if(!initialExt||profileSlot&&!PUBLIC_PERSONA_RASTER_TYPES.has(initialMime)){toast(profileSlot?"Profile images accept PNG, JPEG, or WebP so the crop stays a static image":"Use PNG, JPEG, WebP, GIF, MP4, or WebM media");return}const max=image?10:15;if(source.size>max*1024*1024){toast(`Max ${max} MB — host bigger files elsewhere and paste the URL`);return}
+    let prepared=source;
+    if(profileSlot){
+      try{if(!window.MyPersonasProfileCrop)throw new Error("The crop tool did not load — refresh and try again");prepared=await window.MyPersonasProfileCrop.open({file:source,slot:inputId.slice(2)})}catch(error){toast(error.message||String(error));return}
+      if(!prepared)return;
+      if(!stillCurrent()){toast("The persona editor changed before the crop finished — choose the image again");return}
+    }
     const aiUse=await MyPersonasAiProvenance.askAiUse({filename:source.name});if(!aiUse)return;
+    if(!stillCurrent()){toast("The persona editor changed before the upload started — choose the image again");return}
     toast(MyPersonasAiProvenance.requiresVisibleMark(aiUse)?"Sending the source to secure server-side watermarking…":"Registering declared source bytes…");
     try{
-      if(MyPersonasAiProvenance.requiresVisibleMark(aiUse)&&source.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
-      const sourceSha256=await MyPersonasAiProvenance.sha256Hex(source);
-      const uploaded=await uploadImmutablePersonaMedia(source,session?.user?.id,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=safePublicMediaUrl(uploaded.publicUrl),assetId=String(uploaded.assetId||"");if(!pub||!PUBLIC_PERSONA_UUID.test(assetId))throw new Error("Secure media intake did not return a canonical opaque asset reference");
+      if(MyPersonasAiProvenance.requiresVisibleMark(aiUse)&&prepared.size>5*1024*1024)throw new Error("AI-used static images must be no larger than 5 MB for secure watermarking");
+      const sourceSha256=await MyPersonasAiProvenance.sha256Hex(prepared);if(!stillCurrent())throw new Error("The persona editor changed before the upload started — choose the image again");
+      const uploaded=await uploadImmutablePersonaMedia(prepared,ownerId,uploadPurpose(inputId),{personaId,aiUse,origin:"uploaded",sourceSha256,rendition:uploadRendition(inputId)}),pub=safePublicMediaUrl(uploaded.publicUrl),assetId=String(uploaded.assetId||"");
+      if(!pub||!PUBLIC_PERSONA_UUID.test(assetId))throw new Error("Secure media intake did not return a canonical opaque asset reference");
+      if(!stillCurrent())throw new Error("The image uploaded safely, but this editor changed before it could be applied — choose it again");
       const target=document.getElementById(inputId);target.value=pub;target.dataset.mediaAssetId=assetId;
       if(inputId.startsWith("e_"))setPrevDisplay(inputId.slice(2),pub,assetId);
       toast(`${MyPersonasAiProvenance.declarationLabel(aiUse)} saved${MyPersonasAiProvenance.requiresVisibleMark(aiUse)?" · watermark applied":""} ✓`);

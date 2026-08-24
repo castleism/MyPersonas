@@ -29,12 +29,14 @@ end;
 $$;
 
 create or replace function public.legacy_media_exact_path_064(p_url text)
-returns text language plpgsql immutable set search_path='' as $$
+returns text language plpgsql security definer stable set search_path='' as $$
 declare
-  v_prefix constant text:=
-    'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/media/';
-  v_path text;v_owner uuid;
+  v_prefix text;v_path text;v_owner uuid;
 begin
+  select config.supabase_origin||'/storage/v1/object/public/media/' into v_prefix
+  from public.media_environment_config_062 config
+  where config.singleton and config.locked_at is not null;
+  if v_prefix is null then return null; end if;
   if coalesce(p_url,'')='' or char_length(p_url)>2048
      or left(p_url,char_length(v_prefix))<>v_prefix then
     return null;

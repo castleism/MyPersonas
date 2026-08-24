@@ -13,7 +13,7 @@ const deletion = await readFile(new URL(
 const html = await readFile(new URL(
   "../MyPersonas.Online_v0/index.html",
   import.meta.url,
-), "utf8");
+), "utf8").then((value) => value.replace(/\r\n?/g, "\n"));
 const postApproval = await readFile(new URL(
   "../supabase/functions/approve-post-draft/index.ts",
   import.meta.url,

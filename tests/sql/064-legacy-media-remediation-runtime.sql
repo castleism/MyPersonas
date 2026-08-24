@@ -2,6 +2,47 @@
 
 begin;
 
+do $isolated_staging_environment$
+declare v_owner constant uuid:='06400000-0000-4000-8000-000000000001';
+  v_path text:=lower(v_owner::text)||'/legacy/image.png';
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  perform public.configure_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated legacy-media review'
+  );
+  perform public.lock_media_environment_service(
+    'staging','https://abcdefghijklmnopqrst.supabase.co',
+    'https://media-staging.mypersonas.online','isolated legacy-media lock'
+  );
+  if public.legacy_media_exact_path_064(
+      'https://abcdefghijklmnopqrst.supabase.co/storage/v1/object/public/media/'||v_path
+    ) is distinct from v_path
+    or public.legacy_media_exact_path_064(
+      'https://nwsqyuucwzihruszocge.supabase.co/storage/v1/object/public/media/'||v_path
+    ) is not null then
+    raise exception 'Legacy intake did not use only its staging Storage origin';
+  end if;
+end
+$isolated_staging_environment$;
+
+rollback;
+begin;
+
+do $media_environment$
+begin
+  perform set_config('request.jwt.claim.role','service_role',true);
+  perform public.configure_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable legacy-media review'
+  );
+  perform public.lock_media_environment_service(
+    'production','https://nwsqyuucwzihruszocge.supabase.co',
+    'https://media.mypersonas.online','disposable legacy-media lock'
+  );
+end
+$media_environment$;
+
 do $privileges$
 begin
   if has_table_privilege('anon','public.legacy_media_sources','select')
