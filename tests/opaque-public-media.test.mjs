@@ -210,7 +210,7 @@ test("migration 062 hides correlation and resolves only an exact current review"
 });
 
 test("proxy never redirects and media intake returns opaque public URL", async () => {
-  const [proxy, ownerPreview, ingest, gemini, config, html, workflow] = await Promise.all([
+  const [proxy, ownerPreview, ingest, gemini, config, html, workflow, deployScript] = await Promise.all([
     readFile(path.join(root, "supabase/functions/public-media/index.ts"), "utf8"),
     readFile(path.join(root, "supabase/functions/owner-media-preview/index.ts"), "utf8"),
     readFile(path.join(root, "supabase/functions/media-ingest/index.ts"), "utf8"),
@@ -218,7 +218,9 @@ test("proxy never redirects and media intake returns opaque public URL", async (
     readFile(path.join(root, "supabase/config.toml"), "utf8"),
     readFile(path.join(root, "MyPersonas.Online_v0/index.html"), "utf8"),
     readFile(path.join(root, ".github/workflows/supabase-deploy.yml"), "utf8"),
+    readFile(path.join(root, "scripts/deploy-supabase-functions.sh"), "utf8"),
   ]);
+  const deploymentContract = `${workflow}\n${deployScript}`;
   assert.match(proxy, /resolve_public_media_service/);
   assert.match(proxy, /verifyResolvedPublicMedia/);
   assert.match(proxy, /readExactPublicMediaResponse/);
@@ -253,7 +255,7 @@ test("proxy never redirects and media intake returns opaque public URL", async (
   assert.match(html, /element\.isConnected/);
   assert.match(html, /data-persona-viewer-media/);
   for (const functionName of ["public-media", "owner-media-preview", "compose-post", "approve-post-draft", "meta-post", "run-post-queue", "gemini-image", "media-ingest"]) {
-    assert.match(workflow, new RegExp(`\\b${functionName}\\b`), `opaque deployment stages must include ${functionName}`);
+    assert.match(deploymentContract, new RegExp(`\\b${functionName}\\b`), `opaque deployment stages must include ${functionName}`);
   }
   assert.match(html, /function safePublicMediaUrl/);
   assert.match(html, /PUBLIC_MEDIA_ORIGIN:"https:\/\/media\.mypersonas\.online"/);

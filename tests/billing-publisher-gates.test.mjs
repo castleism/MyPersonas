@@ -20,14 +20,14 @@ test("scheduled Meta publishing fails closed before credentials and provider wri
     "expected initial, credential, and last-moment provider entitlement checks",
   );
 
-  const initialGate = postQueue.indexOf(
-    "const initialEntitlement = await accountBillingAccess(admin, d.owner)",
+  const initialGate = postQueue.search(
+    /const initialEntitlement = await accountBillingAccess\(\s*admin,\s*d\.owner,?\s*\)/,
   );
   const automationReads = postQueue.indexOf("const [pause, persona]");
   assert.ok(initialGate > 0 && initialGate < automationReads);
 
-  const credentialGate = postQueue.indexOf(
-    "const credentialEntitlement = await accountBillingAccess(admin, d.owner)",
+  const credentialGate = postQueue.search(
+    /const credentialEntitlement = await accountBillingAccess\(\s*admin,\s*d\.owner,?\s*\)/,
   );
   const credentialRead = postQueue.indexOf(
     "ctx = await resolvePageContext(admin, d.owner, d.facebook_ledger_id)",

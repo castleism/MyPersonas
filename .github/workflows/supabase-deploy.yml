@@ -1,26 +1,23 @@
 name: Deploy Supabase Edge Functions
 
-# Owner-triggered deployment for Edge Functions. This deliberately does not run
-# on push because several functions have hard schema dependencies. The installed
-# Supabase GitHub App has previously auto-applied timestamped migrations after a
-# push to main, before CI may finish. That provider integration must be disabled
-# or replaced with a reviewed protected-environment workflow before any
-# migration-bearing commit reaches main. verify_jwt comes from supabase/config.toml.
+# Owner-triggered deployment only. The installed Supabase GitHub App has
+# previously auto-applied main-branch migrations before CI completed. Disable or
+# replace that provider integration before any migration-bearing commit reaches
+# main. This workflow deploys functions only; it never applies migrations.
 #
-# REQUIRED protected-environment secrets:
-#   supabase-staging: STAGING_SUPABASE_ACCESS_TOKEN and
+# Required protected-environment secrets:
+#   supabase-staging: STAGING_SUPABASE_ACCESS_TOKEN,
 #                     STAGING_SUPABASE_PROJECT_REF
-#   production:      PRODUCTION_SUPABASE_ACCESS_TOKEN
-# Production project ref is read from supabase/config.toml. The Stripe test
-# boundary requires a different, explicitly supplied staging project ref.
-#
-# This workflow does not itself apply migrations; it only ships function code.
-# Read back the auto-applied production ledger before entering the confirmation.
+#   production:       PRODUCTION_SUPABASE_ACCESS_TOKEN,
+#                     PRODUCTION_SUPABASE_PROJECT_REF
+# Never provide either access token as a repository- or organization-level
+# fallback. Each target has a separate job so a staging dispatch cannot evaluate
+# or inherit the production credential.
 on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Enter the exact reviewed confirmation required by the selected scope."
+        description: "Enter the exact reviewed confirmation required by the selected target and scope"
         required: true
         type: string
       release_scope:
@@ -30,12 +27,23 @@ on:
         type: choice
         options:
           - opaque-media-foundation
+          - opaque-media-intake-pilot
           - opaque-media-producers
           - billing-test-boundary
           - billing-entitlement-consumers
-      staging_project_ref:
-        description: "Required only for billing-test-boundary; must exactly match the protected supabase-staging environment secret"
-        required: false
+          - public-intake
+          - operations-maintenance
+      deployment_target:
+        description: "Deploy to the separately protected staging or production environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      project_ref_confirmation:
+        description: "Enter the exact 20-character project ref for the selected protected environment"
+        required: true
         type: string
 
 permissions:
@@ -46,111 +54,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy functions
+  deploy-staging:
+    name: Deploy functions to protected staging
+    if: ${{ inputs.deployment_target == 'staging' }}
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.release_scope == 'billing-test-boundary' && 'supabase-staging' || 'production' }}
+      name: supabase-staging
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ inputs.release_scope == 'billing-test-boundary' && secrets.STAGING_SUPABASE_ACCESS_TOKEN || secrets.PRODUCTION_SUPABASE_ACCESS_TOKEN }}
+      DEPLOYMENT_TARGET: staging
+      RELEASE_SCOPE: ${{ inputs.release_scope }}
+      RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+      PROJECT_REF_CONFIRMATION: ${{ inputs.project_ref_confirmation }}
+      APPROVED_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.STAGING_SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Require reviewed database release evidence
-        env:
-          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
-          RELEASE_SCOPE: ${{ inputs.release_scope }}
-        run: |
-          case "${RELEASE_SCOPE}" in
-            opaque-media-foundation)
-              test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-062-064-GATEWAY-VERIFIED+BILLING-068-SHADOW-VERIFIED" || {
-                echo "Deployment blocked: read back migrations 062 through 064 and billing migration 068 in shadow mode, then verify the protected media gateway and matching origin secret."
-                exit 1
-              }
-              ;;
-            opaque-media-producers)
-              test "${RELEASE_CONFIRMATION}" = "OPAQUE-FRONTEND-VERIFIED+BILLING-068-SHADOW-VERIFIED" || {
-                echo "Deployment blocked: verify the opaque-media frontend live and signed in and read back billing migration 068 in shadow mode before opaque media producers."
-                exit 1
-              }
-              ;;
-            billing-test-boundary)
-              test "${RELEASE_CONFIRMATION}" = "BILLING-068-TESTMODE-VERIFIED" || {
-                echo "Deployment blocked: read back migration 068 and verify the test-only Stripe secrets and Price bindings before deploying the complete staging boundary."
-                exit 1
-              }
-              ;;
-            billing-entitlement-consumers)
-              test "${RELEASE_CONFIRMATION}" = "BILLING-068-SHADOW-VERIFIED" || {
-                echo "Deployment blocked: read back migration 068 with enforcement disabled and verify every AI entitlement consumer in shadow mode."
-                exit 1
-              }
-              ;;
-            *)
-              echo "Deployment blocked: unreviewed release scope."
-              exit 1
-              ;;
-          esac
-          test -n "${SUPABASE_ACCESS_TOKEN}" || {
-            echo "Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured."
-            exit 1
-          }
-
       - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.115.0
+      - name: Validate evidence and deploy the exact staging function set
+        run: bash ./scripts/deploy-supabase-functions.sh
 
-      - name: Read project ref from config.toml
-        id: cfg
-        env:
-          RELEASE_SCOPE: ${{ inputs.release_scope }}
-          BILLING_STAGING_PROJECT_REF: ${{ inputs.staging_project_ref }}
-          APPROVED_BILLING_STAGING_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
-        run: |
-          production_ref=$(grep -E '^project_id' supabase/config.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          ref="${production_ref}"
-          if [ "${RELEASE_SCOPE}" = "billing-test-boundary" ]; then
-            echo "${APPROVED_BILLING_STAGING_PROJECT_REF}" | grep -Eq '^[a-z0-9]{20}$' || {
-              echo "Deployment blocked: an administrator must pin the exact staging ref in the protected supabase-staging environment secret."
-              exit 1
-            }
-            test "${BILLING_STAGING_PROJECT_REF}" = "${APPROVED_BILLING_STAGING_PROJECT_REF}" || {
-              echo "Deployment blocked: the supplied staging ref does not exactly match the protected supabase-staging environment secret."
-              exit 1
-            }
-            test "${APPROVED_BILLING_STAGING_PROJECT_REF}" != "${production_ref}" || {
-              echo "Deployment blocked: Stripe test billing may not be deployed to the configured production project."
-              exit 1
-            }
-            ref="${APPROVED_BILLING_STAGING_PROJECT_REF}"
-          fi
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "Selected reviewed project ref: $ref"
-
-      - name: Deploy opaque-media foundation and consumers
-        if: ${{ inputs.release_scope == 'opaque-media-foundation' }}
-        run: |
-          for function_name in public-media approved-media owner-media-preview legacy-media-remediation compose-post approve-post-draft meta-post run-post-queue delete-account erase-content; do
-            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
-          done
-
-      - name: Deploy opaque-media producers after frontend verification
-        if: ${{ inputs.release_scope == 'opaque-media-producers' }}
-        run: |
-          for function_name in gemini-image media-ingest; do
-            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
-          done
-
-      - name: Deploy complete test-mode billing boundary after database readback
-        if: ${{ inputs.release_scope == 'billing-test-boundary' }}
-        run: |
-          for function_name in billing-create-checkout billing-create-portal billing-admin-refund-duplicate stripe-webhook billing-reconcile ai-proxy research-brief-run gemini-image agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account; do
-            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
-          done
-
-      - name: Deploy billing entitlement consumers in shadow mode
-        if: ${{ inputs.release_scope == 'billing-entitlement-consumers' }}
-        run: |
-          for function_name in ai-proxy research-brief-run gemini-image agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account; do
-            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
-          done
+  deploy-production:
+    name: Deploy functions to protected production
+    if: ${{ inputs.deployment_target == 'production' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    env:
+      DEPLOYMENT_TARGET: production
+      RELEASE_SCOPE: ${{ inputs.release_scope }}
+      RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+      PROJECT_REF_CONFIRMATION: ${{ inputs.project_ref_confirmation }}
+      APPROVED_PROJECT_REF: ${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.PRODUCTION_SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.115.0
+      - name: Validate evidence and deploy the exact production function set
+        run: bash ./scripts/deploy-supabase-functions.sh

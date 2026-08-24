@@ -5,13 +5,15 @@ import test from "node:test";
 import vm from "node:vm";
 
 const root=path.resolve(import.meta.dirname,"..");
-const[html,source,css,pagesWorkflow,functionsWorkflow]=await Promise.all([
+const[html,source,css,pagesWorkflow,functionsWorkflow,functionsDeployScript]=await Promise.all([
   readFile(path.join(root,"MyPersonas.Online_v0/index.html"),"utf8"),
   readFile(path.join(root,"MyPersonas.Online_v0/agent-board.js"),"utf8"),
   readFile(path.join(root,"MyPersonas.Online_v0/agent-board.css"),"utf8"),
   readFile(path.join(root,".github/workflows/pages.yml"),"utf8"),
   readFile(path.join(root,".github/workflows/supabase-deploy.yml"),"utf8"),
+  readFile(path.join(root,"scripts/deploy-supabase-functions.sh"),"utf8"),
 ]);
+const functionsDeploymentContract=functionsWorkflow+"\n"+functionsDeployScript;
 
 test("agent board is reachable from desktop, mobile, sidebar, and router",()=>{
   assert.match(html,/agent-board\.css\?v=20260822-2/);
@@ -29,10 +31,11 @@ test("database-dependent production workflows require an explicit reviewed relea
   assert.doesNotMatch(pagesWorkflow,/\n\s+push:/);
   assert.doesNotMatch(functionsWorkflow,/\n\s+push:/);
   assert.match(pagesWorkflow,/OPAQUE-FOUNDATION-VERIFIED/);
-  assert.match(functionsWorkflow,/MIGRATIONS-062-064-GATEWAY-VERIFIED/);
-  assert.match(functionsWorkflow,/public-media approved-media owner-media-preview legacy-media-remediation/);
-  assert.match(functionsWorkflow,/OPAQUE-FRONTEND-VERIFIED/);
-  assert.match(functionsWorkflow,/Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured/);
+  assert.match(functionsDeploymentContract,/MIGRATIONS-062-064-GATEWAY-VERIFIED/);
+  assert.match(functionsDeploymentContract,/public-media approved-media owner-media-preview legacy-media-remediation/);
+  assert.match(functionsDeploymentContract,/OPAQUE-FRONTEND-VERIFIED/);
+  assert.match(functionsDeployScript,/for name in DEPLOYMENT_TARGET RELEASE_SCOPE RELEASE_CONFIRMATION[\s\S]*SUPABASE_ACCESS_TOKEN/);
+  assert.match(functionsDeployScript,/Deployment blocked: required protected value/);
 });
 
 test("owner board uses bounded RPCs, explicit AAL2 gates, and hard budget controls",()=>{

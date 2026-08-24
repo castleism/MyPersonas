@@ -7,7 +7,7 @@ const root=path.resolve(import.meta.dirname,"..");
 const read=relative=>readFile(path.join(root,relative),"utf8");
 const[
   migration,index,shared,billingShared,checkout,mailboxShared,aiProxy,research,gemini,agentBoard,
-  fanChat,runTasks,runMailboxJobs,webhook,deleteAccount,deployWorkflow,
+  fanChat,runTasks,runMailboxJobs,webhook,deleteAccount,deployWorkflow,deployScript,
   refundAdmin,
 ]=await Promise.all([
   read("supabase/migrations/20260823100000_account_subscription_entitlements.sql"),
@@ -26,8 +26,10 @@ const[
   read("supabase/functions/stripe-webhook/index.ts"),
   read("supabase/functions/delete-account/index.ts"),
   read(".github/workflows/supabase-deploy.yml"),
+  read("scripts/deploy-supabase-functions.sh"),
   read("supabase/functions/billing-admin-refund-duplicate/index.ts"),
 ]);
+const deployContract=deployWorkflow+"\n"+deployScript;
 
 test("migration defaults to shadow mode and preserves the exact price ladder",()=>{
   assert.match(migration,/enforcement_enabled boolean not null default false/);
@@ -485,23 +487,41 @@ test("full account erasure holds one closure token through begin, confirm, and c
 });
 
 test("billing deployment keeps test Checkout off the configured production project",()=>{
-  assert.match(deployWorkflow,/staging_project_ref:/);
-  assert.match(deployWorkflow,/BILLING-068-TESTMODE-VERIFIED/);
-  assert.match(deployWorkflow,/BILLING-068-SHADOW-VERIFIED/);
-  assert.match(deployWorkflow,/MIGRATIONS-062-064-GATEWAY-VERIFIED\+BILLING-068-SHADOW-VERIFIED/);
-  assert.match(deployWorkflow,/OPAQUE-FRONTEND-VERIFIED\+BILLING-068-SHADOW-VERIFIED/);
-  assert.match(deployWorkflow,/\^\[a-z0-9\]\{20\}\$/);
-  assert.match(deployWorkflow,/name: \$\{\{ inputs\.release_scope == 'billing-test-boundary' && 'supabase-staging' \|\| 'production' \}\}/);
+  assert.match(deployWorkflow,/deployment_target:/);
+  assert.match(deployWorkflow,/project_ref_confirmation:/);
+  assert.match(deployScript,/BILLING-068-TESTMODE-VERIFIED/);
+  assert.match(deployScript,/BILLING-068-SHADOW-VERIFIED/);
+  assert.match(deployScript,/STAGING-BILLING-068-SHADOW-VERIFIED/);
+  assert.match(deployScript,/STAGING-062-064\+068-SHADOW\+069\+GATEWAY-VERIFIED/);
+  assert.match(deployScript,/STAGING-OPAQUE-FOUNDATION\+FRONTEND-SHELL\+INTAKE-PILOT-APPROVED/);
+  assert.match(deployScript,/MIGRATIONS-062-064-GATEWAY-VERIFIED\+BILLING-068-SHADOW-VERIFIED/);
+  assert.match(deployScript,/OPAQUE-FRONTEND-VERIFIED\+BILLING-068-SHADOW-VERIFIED/);
+  assert.match(deployScript,/\^\[a-z0-9\]\{20\}\$/);
+  assert.match(deployWorkflow,/name: supabase-staging/);
+  assert.match(deployWorkflow,/name: production/);
   assert.match(deployWorkflow,/STAGING_SUPABASE_ACCESS_TOKEN/);
   assert.match(deployWorkflow,/PRODUCTION_SUPABASE_ACCESS_TOKEN/);
   assert.doesNotMatch(deployWorkflow,/secrets\.SUPABASE_ACCESS_TOKEN/);
-  assert.match(deployWorkflow,/APPROVED_BILLING_STAGING_PROJECT_REF: \$\{\{ secrets\.STAGING_SUPABASE_PROJECT_REF \}\}/);
+  assert.doesNotMatch(deployWorkflow,/\&\&\s*secrets\.[\s\S]*\|\|\s*secrets\./);
+  assert.match(deployWorkflow,/APPROVED_PROJECT_REF: \$\{\{ secrets\.STAGING_SUPABASE_PROJECT_REF \}\}/);
+  assert.match(deployWorkflow,/APPROVED_PROJECT_REF: \$\{\{ secrets\.PRODUCTION_SUPABASE_PROJECT_REF \}\}/);
   assert.match(deployWorkflow,/supabase\/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520/);
   assert.match(deployWorkflow,/version: 2\.115\.0/);
   assert.doesNotMatch(deployWorkflow,/version: latest/);
-  assert.match(deployWorkflow,/test "\$\{BILLING_STAGING_PROJECT_REF\}" = "\$\{APPROVED_BILLING_STAGING_PROJECT_REF\}"/);
-  assert.match(deployWorkflow,/test "\$\{APPROVED_BILLING_STAGING_PROJECT_REF\}" != "\$\{production_ref\}"/);
-  assert.match(deployWorkflow,/if \[ "\$\{RELEASE_SCOPE\}" = "billing-test-boundary" \][\s\S]*ref="\$\{APPROVED_BILLING_STAGING_PROJECT_REF\}"/);
-  assert.match(deployWorkflow,/for function_name in billing-create-checkout billing-create-portal billing-admin-refund-duplicate stripe-webhook billing-reconcile/);
-  assert.match(deployWorkflow,/for function_name in ai-proxy research-brief-run gemini-image agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account/);
+  assert.match(deployScript,/test "\$\{PROJECT_REF_CONFIRMATION\}" = "\$\{APPROVED_PROJECT_REF\}"/);
+  assert.match(deployScript,/test "\$\{APPROVED_PROJECT_REF\}" != "\$\{production_ref\}"/);
+  assert.match(deployScript,/test "\$\{APPROVED_PROJECT_REF\}" = "\$\{production_ref\}"/);
+  assert.match(deployScript,/staging:billing-test-boundary\)/);
+  assert.doesNotMatch(deployScript,/production:billing-test-boundary\)/);
+  assert.match(deployScript,/staging:opaque-media-intake-pilot\)/);
+  assert.doesNotMatch(deployScript,/production:opaque-media-intake-pilot\)/);
+  assert.match(deployScript,/functions=\(billing-create-checkout billing-create-portal billing-admin-refund-duplicate stripe-webhook billing-reconcile/);
+  assert.match(deployScript,/functions=\(ai-proxy research-brief-run agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account\)/);
+  assert.match(deployContract,/operations-maintenance/);
+  assert.match(deployContract,/public-intake/);
+  assert.match(deployScript,/functions=\(request-review\)/);
+  assert.match(deployScript,/PUBLIC-INTAKE\+TURNSTILE\+SMTP\+WAF-VERIFIED/);
+  assert.match(deployScript,/functions=\(run-operations-maintenance\)/);
+  assert.match(deployScript,/functions=\(gemini-image\)/);
+  assert.match(deployScript,/functions=\(gemini-image media-ingest\)/);
 });

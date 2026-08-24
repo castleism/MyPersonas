@@ -228,10 +228,10 @@ test("Pages deployment ships both provenance assets only after opaque foundation
   const workflow = await readFile(path.join(repoRoot, ".github/workflows/pages.yml"), "utf8");
   const artifactStep = workflow.slice(
     workflow.indexOf("- name: Prepare public site artifact"),
-    workflow.indexOf("- uses: actions/upload-pages-artifact@v3"),
+    workflow.indexOf("- uses: actions/upload-pages-artifact@"),
   );
   assert.match(workflow, /release_confirmation:[\s\S]{0,240}OPAQUE-FOUNDATION-VERIFIED/);
-  assert.match(workflow, /migrations 062-064, cleanup preview, the protected gateway, and both opaque-media origins are live and read back/i);
+  assert.match(workflow, /migrations 062-064, cleanup preview, the protected gateway, both opaque-media origins,[\s\S]*operations 069/i);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.css'/);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.js'/);
   assert.ok(artifactStep.indexOf("/ai-content-provenance.css") < artifactStep.indexOf("--exclude '*'"));
@@ -239,16 +239,22 @@ test("Pages deployment ships both provenance assets only after opaque foundation
 });
 
 test("the opaque-media release separates backward-compatible consumers from producers", async () => {
-  const workflow = await readFile(path.join(repoRoot, ".github/workflows/supabase-deploy.yml"), "utf8");
+  const [workflow, deployScript] = await Promise.all([
+    readFile(path.join(repoRoot, ".github/workflows/supabase-deploy.yml"), "utf8"),
+    readFile(path.join(repoRoot, "scripts/deploy-supabase-functions.sh"), "utf8"),
+  ]);
+  const contract = `${workflow}\n${deployScript}`;
   assert.match(workflow, /release_scope:[\s\S]*default: "opaque-media-foundation"/);
-  assert.match(workflow, /if: \$\{\{ inputs\.release_scope == 'opaque-media-foundation' \}\}/);
-  assert.match(workflow, /for function_name in public-media approved-media owner-media-preview legacy-media-remediation compose-post approve-post-draft meta-post run-post-queue delete-account erase-content/);
-  assert.match(workflow, /if: \$\{\{ inputs\.release_scope == 'opaque-media-producers' \}\}/);
-  assert.match(workflow, /for function_name in gemini-image media-ingest/);
-  assert.match(workflow, /MIGRATIONS-062-064-GATEWAY-VERIFIED/);
-  assert.match(workflow, /public-media approved-media owner-media-preview legacy-media-remediation/);
-  assert.match(workflow, /OPAQUE-FRONTEND-VERIFIED/);
-  assert.doesNotMatch(workflow, /inputs\.release_scope == '(?:ai-provenance|all-reviewed)'/);
+  assert.match(deployScript, /staging:opaque-media-foundation\)/);
+  assert.match(deployScript, /production:opaque-media-foundation\)/);
+  assert.match(deployScript, /functions=\(public-media approved-media owner-media-preview legacy-media-remediation compose-post approve-post-draft meta-post run-post-queue delete-account erase-content\)/);
+  assert.match(deployScript, /staging:opaque-media-producers\)/);
+  assert.match(deployScript, /production:opaque-media-producers\)/);
+  assert.match(deployScript, /functions=\(gemini-image media-ingest\)/);
+  assert.match(contract, /MIGRATIONS-062-064-GATEWAY-VERIFIED/);
+  assert.match(contract, /public-media approved-media owner-media-preview legacy-media-remediation/);
+  assert.match(contract, /OPAQUE-FRONTEND-VERIFIED/);
+  assert.doesNotMatch(contract, /inputs\.release_scope == '(?:ai-provenance|all-reviewed)'/);
 
   const pagesWorkflow = await readFile(path.join(repoRoot, ".github", "workflows", "pages.yml"), "utf8");
   assert.match(pagesWorkflow, /OPAQUE-FOUNDATION-VERIFIED/);

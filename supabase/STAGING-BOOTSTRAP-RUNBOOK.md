@@ -268,6 +268,11 @@ SMTP, OAuth state/callbacks, request-review allowed origin, gateway HMAC secret,
 cron secrets, and any provider test credentials. Never reuse production secrets.
 Deploy opaque consumers/foundation before producers in the order documented in
 `MyPersonas.Online_v0/OPAQUE-PUBLIC-MEDIA-DELIVERY.md`.
+For a fresh project, verify the foundation, gateway, and exact noindex frontend
+shell, then use the staging-only `opaque-media-intake-pilot` workflow scope to
+deploy only authenticated `media-ingest`. That narrow pilot supplies disposable
+upload/crop fixtures for the signed-in matrix below. Keep `gemini-image` disabled
+until the complete matrix is green; production has no intake-pilot scope.
 
 Required negative evidence:
 

@@ -140,6 +140,14 @@ create or deploy any external resource.
    three matching public values in `CONFIG`: `SUPABASE_URL`,
    `SUPABASE_ANON_KEY`, and `PUBLIC_MEDIA_ORIGIN`. The anon key is public; the
    service key and configuration evidence remain server-side.
+   A fresh empty staging project needs authenticated intake before upload/crop
+   QA can exist. After this foundation and the exact noindex frontend shell are
+   verified, the staging-only `opaque-media-intake-pilot` workflow scope may
+   deploy **only** `media-ingest`. Use it to create bounded disposable AAL2 test
+   assets and complete the owner/viewer/mobile/two-account matrix. The later
+   staging producer scope deploys `gemini-image` only after that evidence.
+   Production has no intake-pilot scope and retains the reviewed
+   `gemini-image`, then `media-ingest` order after full staging approval.
 5. Verify direct Edge calls fail closed and the branded endpoint passes exact
    host/path/query/TLS/WAF checks. Only after explicit DNS-cutover approval,
    deploy the matching Pages frontend and complete live signed-in owner/viewer,

@@ -50,13 +50,14 @@ test("schema validator accepts through-061 DDL and DML only inside function bodi
 
 test("schema validator rejects data, roles, secrets, psql includes, and 062-plus objects", () => {
   const normalized = normalizePublicSchemaDump(through061Dump);
+  const syntheticStripeSecret = "sk-live-" + "abcdefghijklmnopqrstuv";
   const attacks = [
     "\n-- Name: users; Type: TABLE DATA; Schema: auth\n",
     "\nCOPY auth.users (id) FROM stdin;\nvalue\n\\.\n",
     "\nINSERT INTO public.personas VALUES(null);\n",
     "\nCREATE ROLE attacker LOGIN PASSWORD 'not-for-files';\n",
     "\nSELECT 'postgresql://postgres:password@db.example.test/postgres';\n",
-    "\nSELECT 'sk-live-abcdefghijklmnopqrstuv';\n",
+    `\nSELECT '${syntheticStripeSecret}';\n`,
     "\n\\include /tmp/unreviewed.sql\n",
     "\nCREATE TABLE public.media_environment_config_062(singleton boolean);\n",
   ];
@@ -198,7 +199,8 @@ test("generated Pages artifact is allowlisted, noindex, CNAME-free, and staging-
     assert.equal(manifest.file_count, files.length);
     const expectedFiles = new Set([
       "index.html", "owner-app.css", "owner-app.js", "persona-view.css", "persona-view.js",
-      "platform-governance.css", "platform-governance.js", "ai-content-provenance.css", "ai-content-provenance.js",
+      "platform-governance.css", "platform-governance.js", "billing.css", "billing.js",
+      "ai-content-provenance.css", "ai-content-provenance.js",
       "profile-image-crop.css", "profile-image-crop.js", "agent-board.css", "agent-board.js",
       "manifest.webmanifest", "service-worker.js", "pwa.js", "offline.html", ".nojekyll", "robots.txt",
       "privacy.html", "terms.html", "data-deletion.html", "provider-setup.html", "_headers",
@@ -209,6 +211,13 @@ test("generated Pages artifact is allowlisted, noindex, CNAME-free, and staging-
       "brand/app-icon/icon-192.png", "brand/app-icon/icon-512.png", "brand/app-icon/icon-maskable-512.png",
     ]);
     assert.deepEqual(new Set(files.map(({ path: relative }) => relative)), expectedFiles);
+    const packagedPaths = new Set(files.map(({ path: relative }) => relative));
+    const localRuntimeReferences = [...index.matchAll(/(?:src|href)="\.\/([^"?#]+)(?:[?#][^"]*)?"/g)]
+      .map((match) => match[1]);
+    assert.ok(localRuntimeReferences.length > 0);
+    for (const relative of localRuntimeReferences) {
+      assert.ok(packagedPaths.has(relative), `index runtime reference is missing from staging artifact: ${relative}`);
+    }
     assert.ok(files.every((entry) => !/(^|\/)(?:\.git|\.github|tests|sql-updates)(\/|$)|\.md$|\.zip$|(^|\/)CNAME$|sitemap\.xml$/i.test(entry.path)));
     const textEntry = /(?:\.html|\.js|\.css|\.json|\.webmanifest|\.svg|\.txt|_headers)$/i;
     const productionMarker = /nwsqyuucwzihruszocge|sb_publishable_vN6BdSvBKf_yTJt0eeK20w_afKz1Df2|https:\/\/media\.mypersonas\.online|https:\/\/mypersonas\.online/;
@@ -288,7 +297,8 @@ test("validator CLI writes only a rule-level report for an unsafe snapshot", asy
   try {
     const input = path.join(temp, "unsafe.sql");
     const report = path.join(temp, "report.json");
-    await writeFile(input, normalizePublicSchemaDump(through061Dump) + "\nSELECT 'whsec_abcdefghijklmnopqrstu';\n", "utf8");
+    const syntheticWebhookSecret = "whsec_" + "abcdefghijklmnopqrstu";
+    await writeFile(input, normalizePublicSchemaDump(through061Dump) + `\nSELECT '${syntheticWebhookSecret}';\n`, "utf8");
     assert.throws(() => execFileSync(process.execPath, [
       path.join(root, "scripts/staging-bootstrap/validate-schema-snapshot.mjs"),
       "--input", input,
@@ -299,7 +309,7 @@ test("validator CLI writes only a rule-level report for an unsafe snapshot", asy
     const parsed = JSON.parse(await readFile(report, "utf8"));
     assert.equal(parsed.ok, false);
     assert.match(parsed.errors.join(" "), /webhook secret/i);
-    assert.doesNotMatch(JSON.stringify(parsed), /whsec_abcdefghijklmnopqrstu/);
+    assert.equal(JSON.stringify(parsed).includes(syntheticWebhookSecret), false);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
-          deno-version: v2.x
+          deno-version: v2.9.5
       - name: Type-check every edge function entrypoint
         run: |
           set -e
@@ -38,7 +38,7 @@ jobs:
           failed=0
           for fn in supabase/functions/*/index.ts; do
             echo "::group::deno check $fn"
-            deno check "$fn" || failed=1
+            deno check --frozen "$fn" || failed=1
             echo "::endgroup::"
           done
           exit $failed
@@ -47,19 +47,32 @@ jobs:
     name: Billing migration runtime contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Apply migration 068 in disposable PostgreSQL
         shell: pwsh
         run: ./scripts/test-account-subscription-sql.ps1
+
+  release-sql-runtime:
+    name: Opaque media and operations migration runtime contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Apply migrations 062 through 064 and 069 in disposable PostgreSQL
+        shell: pwsh
+        run: |
+          ./scripts/test-opaque-public-media-sql.ps1
+          ./scripts/test-opaque-approved-media-sql.ps1
+          ./scripts/test-legacy-media-remediation-sql.ps1
+          ./scripts/test-operational-alert-inbox-sql.ps1
 
   secret-scan:
     name: Repository credential scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
       - name: Reject committed private credentials
