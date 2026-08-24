@@ -72,7 +72,7 @@ function completedEvidence(source, matrixValue) {
 test("matrix inventories every required billing, race, operations, and privacy area", async () => {
   const value = await matrix();
   assert.equal(value.schemaVersion, 1);
-  assert.ok(value.cases.length >= 60);
+  assert.ok(value.cases.length >= 70);
   assert.equal(new Set(value.cases.map((entry) => entry.id)).size, value.cases.length);
   const supabaseConfig = await readFile(supabaseConfigPath, "utf8");
   assert.match(supabaseConfig, new RegExp(`^project_id = "${value.productionProjectRef}"`, "m"));
@@ -104,6 +104,13 @@ test("matrix inventories every required billing, race, operations, and privacy a
     "full refund",
     "partial refund",
     "Dispute creation, update, and closure",
+    "Bounded duplicate-refund review listing",
+    "AAL1 and technician duplicate-refund denial",
+    "AAL2 exact duplicate-refund approval",
+    "Duplicate-refund lost-response idempotent retry",
+    "Signed duplicate-refund webhook success",
+    "Signed duplicate-refund webhook failure",
+    "Signed pending-refund reconciliation",
     "Unknown Customer",
     "Completed but initially unreconciled Checkout",
     "Duplicate renewable subscription remediation",

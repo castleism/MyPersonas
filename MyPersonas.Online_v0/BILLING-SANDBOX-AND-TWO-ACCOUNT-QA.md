@@ -16,7 +16,7 @@ and a staging frontend paired with production credentials.
 ## What the harness proves
 
 `tests/fixtures/billing-sandbox-lifecycle-matrix.json` is the release inventory.
-It currently contains 63 required cases covering configuration, all three plans,
+It currently contains 70 required cases covering configuration, all three plans,
 payment failures, webhook order/replay, refunds/disputes, races, developer grants,
 entitlements, mobile sessions, unrelated-account privacy, deletion, retention,
 reconciliation, backup, and key rotation.
@@ -208,11 +208,16 @@ Run cases in this order so later evidence depends on known-good foundations:
    cancellation, past-due and recovery.
 3. `HOOK-*` — duplicate, digest conflict, old/out-of-order, invalid signature,
    unsupported event, and retry exhaustion.
-4. `FIN-*` — approve a canonically proven duplicate using only its opaque
-   remediation UUID and an AAL2 global-admin session; verify the exact discounted
-   and tax-inclusive net amount returns to the original payment method, then
-   exercise pending, timeout recovery, failed/ambiguous, unrelated refund,
-   dispute, ownership fallback and exact AAL2 reconciliation. Generic
+4. `FIN-*` — first prove the bounded refund-review list exposes only an opaque
+   remediation UUID, masked email, workflow state, exact amount/currency, and
+   timestamps. Prove that technicians and AAL1 administrators cannot list or
+   approve cases. Then approve a canonically proven duplicate using the exact
+   typed amount/currency, a substantive reason, explicit acknowledgement, and an
+   AAL2 global-admin session. Verify the exact discounted and tax-inclusive net
+   amount returns to the original payment method; exercise lost-response
+   idempotent retry; and reconcile signed success, pending, failed, ambiguous,
+   stale, and replayed webhooks. Also cover unrelated refunds, disputes,
+   ownership fallback, and exact AAL2 hold reconciliation. Generic
    reconciliation never means that MyPersonas issued a refund or resolved a
    dispute.
 5. `RACE-*`, `TRIAL-*`, `DEV-*` — one fault at a time in disposable fixtures.
