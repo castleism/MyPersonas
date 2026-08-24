@@ -94,6 +94,8 @@
       <h3>Sign-in and private account information</h3>
       <ul>
         <li>Your sign-in email, Supabase user identifier, account display name, authentication state, and security factors managed by Supabase Auth.</li>
+        <li>Membership state, plan interval, trial and paid-period timestamps, cancellation state, developer-access records, reduced invoice status, and private Stripe object identifiers. MyPersonas does not receive or store card or bank-account numbers.</li>
+        <li>For one-trial-per-email abuse prevention, a versioned keyed HMAC fingerprint of the normalized verified email is retained in a private ledger. The raw email is not copied into that trial ledger. During a controlled key rotation, the current, previous, and any still-retained older key generations are checked, and a matching old-key record is rewritten under the current key.</li>
         <li>Optional details you choose to save, such as name, pronouns, date of birth, gender, country, city or region, phone number, time zone, personality notes, and astrology birth details.</li>
         <li>Preferences such as content filters, hidden topics, and automation safety settings.</li>
       </ul>
@@ -130,6 +132,7 @@
         <li>Run mailbox reports and carry out only the exact mailbox actions you approve.</li>
         <li>Send selected prompts and context to the AI provider you configure or select.</li>
         <li>Investigate problem reports, protect the service, and enforce safety boundaries.</li>
+        <li>Create and reconcile a Stripe-hosted membership, prevent duplicate trials and subscriptions, apply account access, support cancellation and recovery, and investigate payment disputes or billing drift.</li>
       </ul>
     </section>
 
@@ -166,6 +169,7 @@
       <p>Data can be transmitted to:</p>
       <ul>
         <li><strong>Supabase</strong> for sign-in, database, storage, encrypted Vault secrets, and Edge Functions.</li>
+        <li><strong>Stripe</strong> for hosted Checkout and billing-portal pages, payment-method handling, subscription lifecycle, fraud controls, tax display when configured, receipts, disputes, and payouts. Stripe receives the verified billing email and an account-bound opaque identifier; MyPersonas receives reduced billing status and Stripe object identifiers, not card or bank details.</li>
         <li><strong>The provider you connect</strong>, such as Google/Gmail, X, or Meta, to authorize, verify, discover eligible assets, read, modify, refresh, or revoke within the scopes shown on its consent screen.</li>
         <li><strong>The AI provider you select</strong> for a requested model operation.</li>
         <li><strong>Open-Meteo geocoding</strong> when you press “Find place”; the entered place name is sent to obtain coordinates and a time zone.</li>
@@ -190,6 +194,7 @@
       <h2>10. Retention and deletion</h2>
       <p>Owner content and operational records generally remain until you remove them, clear the relevant history, remove the connected account, or use the content-erasure control. A saved fan-chat transcript remains in the private owner inbox until deletion. A fan who turns off conversation saving uses a private session: message content is temporarily stored so the AI and an optionally live owner can respond, deleted when the chat closes successfully, and automatically expires after 30 minutes without activity. Content-free safety, quota, and delivery audit receipts may remain without the message text. Short-lived authorization, scan, lease, and action-preview records expire according to their task. Gmail scan checkpoints are bounded to seven days, action previews to 24 hours, and the current Gmail undo window to no more than 28 days.</p>
       <p>Deleting all content removes owned personas, private Backup roster assignments, pages, posts, albums, media, account inventory and connections, drafts, schedules, linked models and encrypted credentials, automation/chat history, display name, preferences, and owner problem reports. Deleting either persona in one Backup pair removes the private assignment but does not delete the other persona. The in-app content-erasure control intentionally retains your Supabase sign-in record.</p>
+      <p>After full account closure, MyPersonas retains reduced terminal subscription and deleted-Customer records and a consumed-trial fingerprint for up to seven years for accounting, tax, chargeback, fraud prevention, and late financial-event handling. Abandoned or expired Checkout reservations are eligible for deletion after 90 days. Ordinary processed webhook, resolved reconciliation-alert, and access-transition evidence is eligible after 400 days unless it is still required by a retained financial record or unresolved review. A UUID-only closure tombstone remains so a late financial event cannot recreate access. Successful deletion removes reserved trial records, free developer-grant text/events, and owned content. Full deletion is fail-closed while a subscription can still charge, a financial review is open, a Checkout is unresolved, or the exact Stripe Customer has not been canonically deleted; content-only erasure remains available. Stripe can retain transaction records under its own legal obligations.</p>
       <p>For complete steps, provider revocation links, and sign-in deletion instructions, see the <a href="data-deletion.html">Data Deletion Guide</a>.</p>
     </section>
 
@@ -226,7 +231,7 @@
 
   <footer>
     <div class="bar">
-      <p>MyPersonas / AliaSpaces · Effective July 28, 2026</p>
+      <p>MyPersonas / AliaSpaces · Effective August 23, 2026</p>
       <p><a href="index.html">Home</a> · <a href="terms.html">Terms</a> · <a href="data-deletion.html">Data deletion</a></p>
     </div>
   </footer>

@@ -6,8 +6,12 @@ name: Deploy Supabase Edge Functions
 # main, before CI may finish; therefore migration-bearing commits must be fully
 # release-ready before they are pushed. verify_jwt comes from supabase/config.toml.
 #
-# REQUIRED repo secret: SUPABASE_ACCESS_TOKEN  (Account → Access Tokens)
-# Project ref is read from supabase/config.toml (project_id).
+# REQUIRED protected-environment secrets:
+#   billing-staging: BILLING_STAGING_SUPABASE_ACCESS_TOKEN and
+#                    BILLING_STAGING_PROJECT_REF
+#   production:      PRODUCTION_SUPABASE_ACCESS_TOKEN
+# Production project ref is read from supabase/config.toml. The Stripe test
+# boundary requires a different, explicitly supplied staging project ref.
 #
 # This workflow does not itself apply migrations; it only ships function code.
 # Read back the auto-applied production ledger before entering the confirmation.
@@ -15,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Foundation: MIGRATIONS-062-064-GATEWAY-VERIFIED. Producers: OPAQUE-FRONTEND-VERIFIED."
+        description: "Enter the exact reviewed confirmation required by the selected scope."
         required: true
         type: string
       release_scope:
@@ -26,6 +30,12 @@ on:
         options:
           - opaque-media-foundation
           - opaque-media-producers
+          - billing-test-boundary
+          - billing-entitlement-consumers
+      billing_staging_project_ref:
+        description: "Required only for billing-test-boundary; must exactly match the protected billing-staging environment secret"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -38,8 +48,10 @@ jobs:
   deploy:
     name: Deploy functions
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.release_scope == 'billing-test-boundary' && 'billing-staging' || 'production' }}
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_ACCESS_TOKEN: ${{ inputs.release_scope == 'billing-test-boundary' && secrets.BILLING_STAGING_SUPABASE_ACCESS_TOKEN || secrets.PRODUCTION_SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,14 +62,26 @@ jobs:
         run: |
           case "${RELEASE_SCOPE}" in
             opaque-media-foundation)
-              test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-062-064-GATEWAY-VERIFIED" || {
-                echo "Deployment blocked: read back migrations 062 through 064, then verify the protected media gateway and matching origin secret."
+              test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-062-064-GATEWAY-VERIFIED+BILLING-068-SHADOW-VERIFIED" || {
+                echo "Deployment blocked: read back migrations 062 through 064 and billing migration 068 in shadow mode, then verify the protected media gateway and matching origin secret."
                 exit 1
               }
               ;;
             opaque-media-producers)
-              test "${RELEASE_CONFIRMATION}" = "OPAQUE-FRONTEND-VERIFIED" || {
-                echo "Deployment blocked: verify the opaque-media frontend live and signed in before opaque media producers."
+              test "${RELEASE_CONFIRMATION}" = "OPAQUE-FRONTEND-VERIFIED+BILLING-068-SHADOW-VERIFIED" || {
+                echo "Deployment blocked: verify the opaque-media frontend live and signed in and read back billing migration 068 in shadow mode before opaque media producers."
+                exit 1
+              }
+              ;;
+            billing-test-boundary)
+              test "${RELEASE_CONFIRMATION}" = "BILLING-068-TESTMODE-VERIFIED" || {
+                echo "Deployment blocked: read back migration 068 and verify the test-only Stripe secrets and Price bindings before deploying the complete staging boundary."
+                exit 1
+              }
+              ;;
+            billing-entitlement-consumers)
+              test "${RELEASE_CONFIRMATION}" = "BILLING-068-SHADOW-VERIFIED" || {
+                echo "Deployment blocked: read back migration 068 with enforcement disabled and verify every AI entitlement consumer in shadow mode."
                 exit 1
               }
               ;;
@@ -71,16 +95,36 @@ jobs:
             exit 1
           }
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
-          version: latest
+          version: 2.115.0
 
       - name: Read project ref from config.toml
         id: cfg
+        env:
+          RELEASE_SCOPE: ${{ inputs.release_scope }}
+          BILLING_STAGING_PROJECT_REF: ${{ inputs.billing_staging_project_ref }}
+          APPROVED_BILLING_STAGING_PROJECT_REF: ${{ secrets.BILLING_STAGING_PROJECT_REF }}
         run: |
-          ref=$(grep -E '^project_id' supabase/config.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          production_ref=$(grep -E '^project_id' supabase/config.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          ref="${production_ref}"
+          if [ "${RELEASE_SCOPE}" = "billing-test-boundary" ]; then
+            echo "${APPROVED_BILLING_STAGING_PROJECT_REF}" | grep -Eq '^[a-z0-9]{20}$' || {
+              echo "Deployment blocked: an administrator must pin the exact staging ref in the protected billing-staging environment secret."
+              exit 1
+            }
+            test "${BILLING_STAGING_PROJECT_REF}" = "${APPROVED_BILLING_STAGING_PROJECT_REF}" || {
+              echo "Deployment blocked: the supplied staging ref does not exactly match the protected billing-staging environment secret."
+              exit 1
+            }
+            test "${APPROVED_BILLING_STAGING_PROJECT_REF}" != "${production_ref}" || {
+              echo "Deployment blocked: Stripe test billing may not be deployed to the configured production project."
+              exit 1
+            }
+            ref="${APPROVED_BILLING_STAGING_PROJECT_REF}"
+          fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "Project ref: $ref"
+          echo "Selected reviewed project ref: $ref"
 
       - name: Deploy opaque-media foundation and consumers
         if: ${{ inputs.release_scope == 'opaque-media-foundation' }}
@@ -93,5 +137,19 @@ jobs:
         if: ${{ inputs.release_scope == 'opaque-media-producers' }}
         run: |
           for function_name in gemini-image media-ingest; do
+            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
+          done
+
+      - name: Deploy complete test-mode billing boundary after database readback
+        if: ${{ inputs.release_scope == 'billing-test-boundary' }}
+        run: |
+          for function_name in billing-create-checkout billing-create-portal billing-admin-refund-duplicate stripe-webhook billing-reconcile ai-proxy research-brief-run gemini-image agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account; do
+            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
+          done
+
+      - name: Deploy billing entitlement consumers in shadow mode
+        if: ${{ inputs.release_scope == 'billing-entitlement-consumers' }}
+        run: |
+          for function_name in ai-proxy research-brief-run gemini-image agent-board-run fan-chat run-tasks run-mailbox-jobs run-post-queue run-publish-queue delete-account; do
             supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
           done

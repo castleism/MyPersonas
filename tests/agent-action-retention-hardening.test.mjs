@@ -47,6 +47,12 @@ function functionBody(name) {
   return migration.slice(start, end + 3);
 }
 
+function sectionBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  return start >= 0 && end > start ? source.slice(start, end) : "";
+}
+
 test("055 is additive, transactional, and keeps recent evidence fail-closed", () => {
   assert.match(migration, /^-- 055-agent-action-retention-hardening\.sql/m);
   assert.match(migration, /\nbegin;[\s\S]*\ncommit;\s*$/);
@@ -232,10 +238,23 @@ test("owner and service erasure cannot be blocked by a full audit log", () => {
 });
 
 test("retained usage receipt is owner-exported but never restored", () => {
-  const exportLoader = html.match(/async function loadGovernanceExportSections[\s\S]*?\n}\nasync function loadFanSessionRows/)?.[0] || "";
-  const xlsx = html.match(/async function downloadDataXlsx\(\)[\s\S]*?\nfunction restoreFromFile/)?.[0] || "";
-  const restore = html.match(/async function restoreImport\(data\)[\s\S]*?\n}\nfunction/)?.[0] || "";
+  const exportLoader = sectionBetween(
+    html,
+    "async function loadGovernanceExportSections",
+    "async function loadFanSessionRows",
+  );
+  const xlsx = sectionBetween(
+    html,
+    "async function downloadDataXlsx()",
+    "function restoreFromFile",
+  );
+  const restore = sectionBetween(
+    html,
+    "async function restoreImport(data)",
+    "// ---------- first-persona onboarding walkthrough ----------",
+  );
   assert.match(exportLoader, /\["agent_action_storage_usage","\*","updated_at"\]/);
   assert.match(xlsx, /add\("Agent Audit Usage",g\.agent_action_storage_usage\)/);
+  assert.ok(restore, "restore import implementation was not found");
   assert.doesNotMatch(restore, /agent_action_storage_usage/);
 });

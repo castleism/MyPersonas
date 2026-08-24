@@ -27,6 +27,14 @@ import {
   approvedMediaProviderUrl,
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
+import {
+  accountBillingAccess,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
+  type DeniedBillingAccess,
+  publisherBillingDisposition,
+} from "../_shared/publisher-entitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -86,6 +94,27 @@ type Draft = {
   publish_facebook_page_id: string;
   publish_instagram_business_id: string;
 };
+
+class BillingPublishBlockedError extends Error {
+  readonly entitlement: DeniedBillingAccess;
+
+  constructor(entitlement: DeniedBillingAccess) {
+    super(billingAccessMessage(entitlement));
+    this.name = "BillingPublishBlockedError";
+    this.entitlement = entitlement;
+  }
+}
+
+function billingHaltCode(entitlement: DeniedBillingAccess) {
+  return entitlement.unavailable
+    ? "billing_verification_unavailable"
+    : "billing_membership_inactive";
+}
+
+async function assertBillingPublishAccess(owner: string) {
+  const entitlement = await accountBillingAccess(admin, owner);
+  if (!entitlement.allowed) throw new BillingPublishBlockedError(entitlement);
+}
 
 async function expectedHash(d: Draft) {
   return await admin.rpc("post_draft_hash", {
@@ -229,6 +258,46 @@ async function noteReconciliation(
   return !result.error && !!result.data;
 }
 
+async function haltClaimForBilling(
+  d: Draft,
+  entitlement: DeniedBillingAccess,
+  phase: "initial" | "credential" | "provider",
+) {
+  const code = billingHaltCode(entitlement);
+  const message = billingAccessMessage(entitlement);
+  if (publisherBillingDisposition(entitlement, false) === "defer") {
+    const restored = await transitionClaim(d, {
+      status: "scheduled",
+      last_error: message,
+      publish_claimed_at: null,
+    });
+    return {
+      id: d.id,
+      status: restored ? "deferred" : "publishing",
+      code,
+      ...(!restored ? { reconciliationRequired: true } : {}),
+      error: message,
+    };
+  }
+
+  // A verified inactive account is terminal for this scheduled occurrence.
+  // Requiring a fresh owner schedule after access returns avoids publishing a
+  // stale backlog in a burst.
+  const failed = await finalizeClaim(d, "failed", message, {
+    phase: "billing",
+    billingPhase: phase,
+    code,
+    errors: [message],
+  });
+  return {
+    id: d.id,
+    status: failed ? "failed" : "publishing",
+    code,
+    ...(!failed ? { reconciliationRequired: true } : {}),
+    error: message,
+  };
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!CRON_SECRET || req.headers.get("X-Cron-Secret") !== CRON_SECRET) {
@@ -241,6 +310,12 @@ serve(async (req) => {
   const results: unknown[] = [];
   for (const d of (due || []) as Draft[]) {
     try {
+      const initialEntitlement = await accountBillingAccess(admin, d.owner);
+      if (!initialEntitlement.allowed) {
+        results.push(await haltClaimForBilling(d, initialEntitlement, "initial"));
+        continue;
+      }
+
       const [pause, persona] = await Promise.all([
         ownerPauseState(d.owner),
         admin.from("personas").select("id").eq("id", d.persona_id)
@@ -316,9 +391,19 @@ serve(async (req) => {
       let reconciliationRequired = false;
       const needsMeta = (targets.includes("facebook") && !d.fb_post_id) ||
         (targets.includes("instagram") && !d.ig_media_id);
-      const ctx = needsMeta && d.facebook_ledger_id
-        ? await resolvePageContext(admin, d.owner, d.facebook_ledger_id)
-        : null;
+      let ctx: Awaited<ReturnType<typeof resolvePageContext>> | null = null;
+      if (needsMeta && d.facebook_ledger_id) {
+        // resolvePageContext decrypts the grant and obtains a fresh Page token,
+        // so recheck immediately before reading any provider credential.
+        const credentialEntitlement = await accountBillingAccess(admin, d.owner);
+        if (!credentialEntitlement.allowed) {
+          results.push(
+            await haltClaimForBilling(d, credentialEntitlement, "credential"),
+          );
+          continue;
+        }
+        ctx = await resolvePageContext(admin, d.owner, d.facebook_ledger_id);
+      }
       if (needsMeta && !d.facebook_ledger_id) errs.push("meta: no target Facebook page");
       else if (ctx && !ctx.ok) errs.push("meta: " + ctx.error);
       else if (ctx?.ok) {
@@ -373,6 +458,7 @@ serve(async (req) => {
               ctx.pageToken,
               img,
               d.fb_caption || "",
+              () => assertBillingPublishAccess(d.owner),
             );
             const saved = await rememberProviderResult(d, "fb_post_id", r.postId);
             if (saved.saved) {
@@ -384,6 +470,14 @@ serve(async (req) => {
               errs.push(`facebook: provider accepted ${r.postId}, but its result was not saved`);
             }
           } catch (e) {
+            if (e instanceof BillingPublishBlockedError) {
+              // The callback runs immediately before the single Facebook POST,
+              // so a billing error here proves no provider mutation occurred.
+              results.push(
+                await haltClaimForBilling(d, e.entitlement, "provider"),
+              );
+              continue;
+            }
             if (providerOutcomeIsUncertain(e)) {
               safeToContinue = false;
               reconciliationRequired = true;
@@ -411,12 +505,17 @@ serve(async (req) => {
             const img = approvedMediaProviderUrl(approvedMediaFor(d, "instagram"));
             if (!img) errs.push("instagram: no image");
             else {
+              let instagramMutationChecks = 0;
               try {
                 const r = await publishInstagram(
                   String(ctx.asset.instagram_business_id),
                   ctx.pageToken,
                   img,
                   d.ig_caption || "",
+                  async () => {
+                    await assertBillingPublishAccess(d.owner);
+                    instagramMutationChecks += 1;
+                  },
                 );
                 const saved = await rememberProviderResult(d, "ig_media_id", r.mediaId);
                 if (saved.saved) {
@@ -427,6 +526,24 @@ serve(async (req) => {
                   errs.push(`instagram: provider accepted ${r.mediaId}, but its result was not saved`);
                 }
               } catch (e) {
+                if (e instanceof BillingPublishBlockedError) {
+                  const billingDisposition = publisherBillingDisposition(
+                    e.entitlement,
+                    instagramMutationChecks > 0,
+                  );
+                  if (billingDisposition === "reconcile") {
+                    // The first Instagram container write completed while
+                    // access was active, but the second publish write was
+                    // stopped. Keep the claim non-retryable until that partial
+                    // provider state is reconciled.
+                    reconciliationRequired = true;
+                  } else {
+                    results.push(
+                      await haltClaimForBilling(d, e.entitlement, "provider"),
+                    );
+                    continue;
+                  }
+                }
                 if (providerOutcomeIsUncertain(e)) reconciliationRequired = true;
                 errs.push("instagram: " + (e as Error).message);
               }

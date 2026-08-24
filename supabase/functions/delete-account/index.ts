@@ -6,6 +6,15 @@ import {
   createClient,
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  assertCanonicalStripeCustomerBinding,
+  assertDeletedStripeCustomer,
+  assertTerminalCustomerSubscriptions,
+  billingCustomerCleanupCandidate,
+  loadBillingCustomerCleanupConfig,
+  stripeApiJson,
+  StripeBoundaryError,
+} from "../_shared/billing.ts";
 
 const ALLOWED = new Set([
   "https://aliaspaces.com",
@@ -27,6 +36,8 @@ const X_NO_PROVIDER_GRANT_ERROR_CODES = new Set([
 const META_MANUAL_REVOCATION_URL =
   "https://www.facebook.com/settings?tab=business_tools";
 const META_OWNER_ERASURE_TTL_SECONDS = 3600;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REDDIT_USER_AGENT =
   "web:online.mypersonas:v0.5 (MyPersonas account erasure)";
 const META_GRAPH_API_VERSION = /^v[0-9]+\.[0-9]+$/.test(
@@ -64,6 +75,98 @@ async function checked(
 ) {
   const { error } = await operation;
   if (error) throw new Error(`${label}: ${error.message}`);
+}
+
+async function deleteRetainedStripeCustomer(
+  admin: SupabaseClient,
+  accountId: string,
+  closureToken: string,
+) {
+  const candidateResult = await admin.rpc(
+    "billing_customer_cleanup_candidate",
+    {
+      p_account_id: accountId,
+      p_closure_token: closureToken,
+    },
+  );
+  if (candidateResult.error) {
+    throw new Error("billing customer cleanup preflight failed");
+  }
+  const candidate = billingCustomerCleanupCandidate(candidateResult.data);
+  if (!candidate.required || !candidate.customerId) return;
+  const config = loadBillingCustomerCleanupConfig((name) => Deno.env.get(name));
+  const customerPath = `/v1/customers/${
+    encodeURIComponent(candidate.customerId)
+  }`;
+  let customer = await stripeApiJson(config.stripeSecretKey, customerPath);
+  let providerDeleted = false;
+  try {
+    assertDeletedStripeCustomer(customer, candidate.customerId);
+    providerDeleted = true;
+  } catch (error) {
+    if (!(error instanceof StripeBoundaryError)) throw error;
+    assertCanonicalStripeCustomerBinding(
+      customer,
+      candidate.customerId,
+      accountId,
+    );
+  }
+  if (!providerDeleted) {
+    const query = new URLSearchParams({
+      customer: candidate.customerId,
+      status: "all",
+      limit: "100",
+    });
+    const subscriptions = await stripeApiJson(
+      config.stripeSecretKey,
+      `/v1/subscriptions?${query.toString()}`,
+    );
+    assertTerminalCustomerSubscriptions(
+      subscriptions,
+      candidate.customerId,
+      accountId,
+    );
+    try {
+      customer = await stripeApiJson(config.stripeSecretKey, customerPath, {
+        method: "DELETE",
+        idempotencyKey: `mypersonas-customer-delete:${accountId}`,
+      });
+    } catch (error) {
+      if (!(error instanceof StripeBoundaryError) || !error.retryable) {
+        throw error;
+      }
+      const afterUnknownResult = await stripeApiJson(
+        config.stripeSecretKey,
+        customerPath,
+      );
+      try {
+        assertDeletedStripeCustomer(afterUnknownResult, candidate.customerId);
+        customer = afterUnknownResult;
+      } catch (verificationError) {
+        if (!(verificationError instanceof StripeBoundaryError)) {
+          throw verificationError;
+        }
+        assertCanonicalStripeCustomerBinding(
+          afterUnknownResult,
+          candidate.customerId,
+          accountId,
+        );
+        customer = await stripeApiJson(config.stripeSecretKey, customerPath, {
+          method: "DELETE",
+          idempotencyKey: `mypersonas-customer-delete:${accountId}`,
+        });
+      }
+    }
+    assertDeletedStripeCustomer(customer, candidate.customerId);
+  }
+  const confirmed = await admin.rpc("billing_confirm_customer_deleted", {
+    p_account_id: accountId,
+    p_closure_token: closureToken,
+    p_customer_id: candidate.customerId,
+  });
+  if (confirmed.error || confirmed.data !== true) {
+    throw new Error("billing customer cleanup confirmation failed");
+  }
 }
 
 async function renewMetaOwnerErasure(
@@ -300,9 +403,11 @@ async function listStorageFiles(
       if (!entry.name) continue;
       const path = `${prefix}/${entry.name}`;
       if (entry.id || entry.metadata) files.push(path);
-      else files.push(
-        ...await listStorageFiles(admin, bucket, path, visited),
-      );
+      else {
+        files.push(
+          ...await listStorageFiles(admin, bucket, path, visited),
+        );
+      }
     }
     if (entries.length < 1000) break;
     offset += entries.length;
@@ -339,10 +444,14 @@ async function revokeApprovedMediaDelivery(
     "revoke_post_approved_media_owner_service",
     { p_owner: uid },
   );
-  if (revoked.error || !Number.isSafeInteger(Number(revoked.data)) ||
-    Number(revoked.data) < 0) {
+  if (
+    revoked.error || !Number.isSafeInteger(Number(revoked.data)) ||
+    Number(revoked.data) < 0
+  ) {
     throw new Error(
-      `approved-media delivery revocation: ${revoked.error?.message || "invalid verification result"}`,
+      `approved-media delivery revocation: ${
+        revoked.error?.message || "invalid verification result"
+      }`,
     );
   }
   const remaining = await admin.from("post_approved_media_handles")
@@ -350,7 +459,9 @@ async function revokeApprovedMediaDelivery(
     .eq("owner", uid).eq("state", "active");
   if (remaining.error || remaining.count !== 0) {
     throw new Error(
-      `approved-media delivery revocation verification: ${remaining.error?.message || "active handles remain"}`,
+      `approved-media delivery revocation verification: ${
+        remaining.error?.message || "active handles remain"
+      }`,
     );
   }
 }
@@ -1710,6 +1821,43 @@ export function createErasureHandler(
       return json({ error: "invalid session" }, 401);
     }
     const uid = userData.user.id;
+    if (!options.contentOnly && body.keepAccount !== true) {
+      const { data: billingGuardData, error: billingGuardError } = await admin
+        .rpc(
+          "billing_account_deletion_guard",
+          { p_account_id: uid },
+        );
+      const billingGuard =
+        billingGuardData && typeof billingGuardData === "object"
+          ? billingGuardData as { allowed?: unknown; code?: unknown }
+          : null;
+      if (billingGuardError || typeof billingGuard?.allowed !== "boolean") {
+        return json({
+          error:
+            "Billing cancellation could not be verified. No account erasure work was started.",
+          billingVerificationUnavailable: true,
+        }, 503);
+      }
+      if (
+        !billingGuard.allowed &&
+        billingGuard.code !== "billing_account_closure_in_progress" &&
+        billingGuard.code !== "billing_customer_cleanup_required"
+      ) {
+        const billingState = typeof billingGuard.code === "string"
+          ? billingGuard.code
+          : "billing_not_terminal";
+        const customerCleanupRequired =
+          billingState === "billing_customer_cleanup_required";
+        return json({
+          error: customerCleanupRequired
+            ? "Billing customer data must be safely deleted or retained under the approved financial-retention policy before full account erasure. No account erasure work was started; content-only erasure remains available."
+            : "Cancel the membership and wait for its terminal billing status before deleting this account. Content-only erasure remains available while the sign-in account is retained.",
+          billingCancellationRequired: true,
+          billingCustomerCleanupRequired: customerCleanupRequired,
+          billingState,
+        }, 409);
+      }
+    }
     const acknowledgedExternalRevocations = new Set<string>();
     if (Array.isArray(body.externalRevocationsAcknowledged)) {
       for (const provider of body.externalRevocationsAcknowledged) {
@@ -1804,7 +1952,96 @@ export function createErasureHandler(
         }, 500);
       }
 
+      let billingClosureToken = "";
+      if (body.keepAccount !== true) {
+        const requestedClosureToken = crypto.randomUUID();
+        const { data: closureData, error: closureError } = await admin.rpc(
+          "billing_begin_account_closure",
+          { p_account_id: uid, p_closure_token: requestedClosureToken },
+        );
+        const closure = closureData && typeof closureData === "object"
+          ? closureData as {
+            allowed?: unknown;
+            code?: unknown;
+            closure_token?: unknown;
+          }
+          : null;
+        const returnedToken = typeof closure?.closure_token === "string"
+          ? closure.closure_token
+          : "";
+        if (
+          closureError || typeof closure?.allowed !== "boolean" ||
+          (closure.allowed && !UUID_RE.test(returnedToken))
+        ) {
+          return await withMetaOwnerErasureRelease(
+            admin,
+            uid,
+            metaOwnerErasureLeaseId,
+            async () =>
+              json({
+                error:
+                  "A fail-closed billing erasure lock could not be established. No account erasure work was started.",
+                billingVerificationUnavailable: true,
+              }, 503),
+          );
+        }
+        if (!closure.allowed) {
+          return await withMetaOwnerErasureRelease(
+            admin,
+            uid,
+            metaOwnerErasureLeaseId,
+            async () =>
+              json({
+                error:
+                  "Billing changed while account erasure was starting. Resolve the billing state and retry; no account erasure work was started.",
+                billingCancellationRequired: true,
+                billingState: typeof closure.code === "string"
+                  ? closure.code
+                  : "billing_not_terminal",
+              }, 409),
+          );
+        }
+        billingClosureToken = returnedToken;
+        try {
+          await deleteRetainedStripeCustomer(
+            admin,
+            uid,
+            billingClosureToken,
+          );
+        } catch {
+          return await withMetaOwnerErasureRelease(
+            admin,
+            uid,
+            metaOwnerErasureLeaseId,
+            async () =>
+              json({
+                error:
+                  "Stripe Customer cleanup could not be canonically completed. No owned content or sign-in data was erased; retry after the billing provider is available.",
+                billingCustomerCleanupRequired: true,
+                billingVerificationUnavailable: true,
+              }, 503),
+          );
+        }
+      }
+
       const eraseClaimedOwner = async () => {
+        if (body.keepAccount !== true) {
+          const { data: confirmed, error: confirmError } = await admin.rpc(
+            "billing_confirm_account_closure",
+            { p_account_id: uid, p_closure_token: billingClosureToken },
+          );
+          if (confirmError || confirmed !== true) {
+            await withMetaOwnerErasureRelease(
+              admin,
+              uid,
+              metaOwnerErasureLeaseId,
+              async () => undefined,
+            );
+            throw new Error(
+              "billing changed before irreversible erasure; no provider or owned-data erasure was started",
+            );
+          }
+        }
         const personaIds = await listOwnedPersonaIds(admin, uid);
         await renewMetaOwnerErasure(
           admin,
@@ -1940,7 +2177,31 @@ export function createErasureHandler(
               deleteUserError.message,
           }, 500);
         }
-        return json({ deleted: true, accountDeleted: true });
+        const { data: closureCompleted, error: closureCompleteError } =
+          await admin.rpc(
+            "billing_complete_account_closure",
+            { p_account_id: uid, p_closure_token: billingClosureToken },
+          );
+        if (closureCompleteError || closureCompleted !== true) {
+          const { data: alertRecorded, error: alertError } = await admin.rpc(
+            "billing_mark_account_closure_reconciliation_required",
+            { p_account_id: uid, p_closure_token: billingClosureToken },
+          );
+          return json({
+            deleted: true,
+            accountDeleted: true,
+            billingClosureFinalized: false,
+            billingOperatorAlertRecorded: !alertError && alertRecorded === true,
+            warning:
+              "The sign-in account was deleted, but its fail-closed billing tombstone still requires an operator reconciliation check.",
+          }, 202);
+        }
+        return json({
+          deleted: true,
+          accountDeleted: true,
+          billingClosureFinalized: true,
+          billingTombstoneRetained: true,
+        });
       };
 
       return body.keepAccount === true

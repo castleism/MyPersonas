@@ -108,6 +108,29 @@ verify_jwt = true
 [functions.legacy-media-remediation]
 verify_jwt = true
 
+# Test-mode billing browser entrypoints also validate the gateway JWT with
+# auth.getUser, require a confirmed email, and accept only the configured app
+# origin. Stripe ids, prices, return URLs, and credentials remain server-side.
+[functions.billing-create-checkout]
+verify_jwt = true
+
+[functions.billing-create-portal]
+verify_jwt = true
+
+[functions.billing-admin-refund-duplicate]
+verify_jwt = true
+
+# Stripe signs the exact raw body, so this public endpoint performs its own
+# timestamped HMAC verification before any JSON parsing or service-role RPC.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Service-only reconciliation uses a separate high-entropy header secret,
+# verifies the exact canonical snapshot, and records only a bounded operations
+# result/alert. It never repairs money or entitlement state.
+[functions.billing-reconcile]
+verify_jwt = false
+
 [functions.agent-board-propose]
 verify_jwt = true
 

@@ -21,6 +21,7 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/062-opaque-public-media-delivery.sql","supabase/migrations/20260823040000_opaque_public_media_delivery.sql"],
   ["MyPersonas.Online_v0/sql-updates/063-opaque-approved-media-delivery.sql","supabase/migrations/20260823050000_opaque_approved_media_delivery.sql"],
   ["MyPersonas.Online_v0/sql-updates/064-legacy-media-remediation.sql","supabase/migrations/20260823060000_legacy_media_remediation.sql"],
+  ["MyPersonas.Online_v0/sql-updates/068-account-subscription-entitlements.sql","supabase/migrations/20260823100000_account_subscription_entitlements.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

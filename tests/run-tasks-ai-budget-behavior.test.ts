@@ -181,6 +181,35 @@ Deno.test("known pre-fetch failure releases the reservation with zero usage", as
   }], "pre-fetch failure must finalize once with known zero usage");
 });
 
+Deno.test("pre-fetch entitlement cancellation releases the reservation explicitly", async () => {
+  const finalizations: Record<string, unknown>[] = [];
+  const rpc: AutomationBudgetRpc = async (name, args) => {
+    if (name === "claim_ai_backend_budget") {
+      return { data: [{ allowed: true, lease_id: LEASE }], error: null };
+    }
+    finalizations.push(args);
+    return { data: true, error: null };
+  };
+  const original = Object.assign(new Error("membership changed"), {
+    budgetOutcome: "cancelled",
+    budgetActualTokens: 0,
+    budgetOutcomeCode: "billing_required",
+  });
+  await expectReject(
+    () => runWithAutomationBudget(options(rpc, async () => {
+      throw original;
+    })),
+    (error) => assert(error === original, "cancellation reason must survive"),
+  );
+  assertEquals(finalizations, [{
+    p_lease_id: LEASE,
+    p_outcome: "cancelled",
+    p_actual_tokens: 0,
+    p_provider_usage_reported: true,
+    p_outcome_code: "billing_required",
+  }], "pre-fetch cancellation must release the exact reservation");
+});
+
 Deno.test("possibly issued fetch keeps ambiguous usage reserved", async () => {
   const finalizations: Record<string, unknown>[] = [];
   const rpc: AutomationBudgetRpc = async (name, args) => {

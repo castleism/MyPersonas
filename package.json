@@ -8,6 +8,11 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:persona-view-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-persona-view-sql.ps1",
     "test:ai-provenance-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-ai-content-provenance-sql.ps1",
+    "test:billing-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-account-subscription-sql.ps1",
+    "test:billing-matrix": "node --test tests/billing-sandbox-matrix.test.mjs",
+    "billing:matrix": "node scripts/billing-sandbox-matrix.mjs",
+    "billing:test-clock": "node scripts/billing-test-clock-fixture.mjs",
+    "test:secrets": "node scripts/check-committed-secrets.mjs",
     "akiko:build-drafts": "node scripts/build-akiko-local-draft-pack.mjs",
     "akiko:validate": "node scripts/validate-akiko-launch-pack.mjs"
   }

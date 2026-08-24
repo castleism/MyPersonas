@@ -1,4 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  accountBillingAccess,
+  type AccountEntitlementResult,
+} from "./account-entitlement.ts";
+import {
+  AutomationBudgetClaimError,
+  AutomationBudgetFinalizationError,
+  conservativeAutomationBudgetReservation,
+  reportedProviderTokens,
+  runWithAutomationBudget,
+} from "../run-tasks/budget.ts";
 
 export const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 export const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -117,6 +128,48 @@ export type BackendRow = {
   model?: string | null;
   extra?: Record<string, unknown> | null;
 };
+
+export class MailboxAiBudgetFatalError extends Error {
+  code: string;
+
+  constructor(code: string) {
+    super("Mailbox AI budget or membership enforcement requires reconciliation.");
+    this.name = "MailboxAiBudgetFatalError";
+    this.code = code;
+  }
+}
+
+class MailboxBillingEntitlementError extends Error {
+  budgetOutcome = "cancelled";
+  budgetActualTokens = 0;
+  budgetOutcomeCode: string;
+
+  constructor(entitlement: AccountEntitlementResult) {
+    super("Mailbox AI membership changed before the provider request.");
+    this.name = "MailboxBillingEntitlementError";
+    this.budgetOutcomeCode = entitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_membership_inactive";
+  }
+}
+
+class MailboxProviderError extends Error {
+  budgetOutcome: "provider_error" | "request_failed";
+  budgetActualTokens: number | null;
+  budgetOutcomeCode: string;
+
+  constructor(
+    budgetOutcome: "provider_error" | "request_failed",
+    budgetActualTokens: number | null,
+    budgetOutcomeCode: string,
+  ) {
+    super("Mailbox AI provider classification failed.");
+    this.name = "MailboxProviderError";
+    this.budgetOutcome = budgetOutcome;
+    this.budgetActualTokens = budgetActualTokens;
+    this.budgetOutcomeCode = budgetOutcomeCode;
+  }
+}
 
 export function cors(origin: string) {
   return {
@@ -818,6 +871,8 @@ export async function mailboxAiClassify(
   if (!inputs.length || inputs.length > 12) {
     return new Map<string, FindingCategory>();
   }
+  const initialEntitlement = await accountBillingAccess(admin, owner);
+  if (!initialEntitlement.allowed) return new Map<string, FindingCategory>();
   const endpoint = mailboxAiEndpoint(backend);
   const model = safeText(backend.model, 200);
   if (!endpoint || !model) return new Map<string, FindingCategory>();
@@ -870,51 +925,115 @@ export async function mailboxAiClassify(
       temperature: 0,
     };
   }
-  let response: Response;
+  const bodyText = JSON.stringify(body);
   try {
-    response = await fetch(endpoint.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      redirect: "error",
-      signal: AbortSignal.timeout(20_000),
+    return await runWithAutomationBudget({
+      rpc: async (name, args) => {
+        const result = await admin.rpc(name, args);
+        return {
+          data: result.data,
+          error: result.error
+            ? { code: result.error.code, message: result.error.message }
+            : null,
+        };
+      },
+      owner,
+      backendId: backend.id,
+      reservedTokens: conservativeAutomationBudgetReservation(bodyText, 400),
+      requestKey: crypto.randomUUID(),
+      providerCall: async (markFetchIssued) => {
+        const providerEntitlement = await accountBillingAccess(admin, owner);
+        if (!providerEntitlement.allowed) {
+          throw new MailboxBillingEntitlementError(providerEntitlement);
+        }
+        let response: Response;
+        try {
+          markFetchIssued();
+          response = await fetch(endpoint.url, {
+            method: "POST",
+            headers,
+            body: bodyText,
+            redirect: "error",
+            signal: AbortSignal.timeout(20_000),
+          });
+        } catch (error) {
+          const timedOut = error instanceof DOMException &&
+            error.name === "TimeoutError";
+          throw new MailboxProviderError(
+            "request_failed",
+            null,
+            timedOut ? "provider_timeout" : "provider_request_failed",
+          );
+        }
+        let payload: Record<string, unknown>;
+        try {
+          payload = await readBoundedJson(response, 256_000);
+        } catch {
+          throw new MailboxProviderError(
+            "provider_error",
+            null,
+            "provider_response_invalid",
+          );
+        }
+        const actualTokens = reportedProviderTokens(payload);
+        if (!response.ok) {
+          throw new MailboxProviderError(
+            "provider_error",
+            actualTokens,
+            "provider_http_error",
+          );
+        }
+        let content = "";
+        if (endpoint.kind === "anthropic") {
+          const blocks = Array.isArray(payload.content)
+            ? payload.content as Record<string, unknown>[]
+            : [];
+          content = blocks.filter((block) =>
+            block.type === "text" && typeof block.text === "string"
+          ).map((block) => block.text as string).join("");
+        } else {
+          const choices = Array.isArray(payload.choices)
+            ? payload.choices as Record<string, unknown>[]
+            : [];
+          content = safeText(asRecord(choices[0]?.message).content, 20_000);
+        }
+        let decoded: Record<string, unknown>;
+        try {
+          const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+          decoded = asRecord(JSON.parse(fenced || content));
+        } catch {
+          throw new MailboxProviderError(
+            "provider_error",
+            actualTokens,
+            "provider_response_invalid",
+          );
+        }
+        const validKeys = new Set(records.map((record) => record.key));
+        const output = new Map<string, FindingCategory>();
+        for (const [key, value] of Object.entries(decoded)) {
+          if (
+            validKeys.has(key) &&
+            FINDING_CATEGORIES.includes(value as FindingCategory)
+          ) output.set(key, value as FindingCategory);
+        }
+        return { value: output, actualTokens };
+      },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AutomationBudgetFinalizationError) {
+      throw new MailboxAiBudgetFatalError("budget_reconciliation_required");
+    }
+    if (error instanceof AutomationBudgetClaimError) {
+      if (error.retryable) {
+        throw new MailboxAiBudgetFatalError("budget_claim_unavailable");
+      }
+      return new Map<string, FindingCategory>();
+    }
+    if (error instanceof MailboxBillingEntitlementError) {
+      throw new MailboxAiBudgetFatalError(error.budgetOutcomeCode);
+    }
+    // A provider failure with successfully finalized accounting uses the
+    // deterministic rules as the existing safe fallback.
     return new Map();
   }
-  const payload: Record<string, unknown> = await readBoundedJson(
-    response,
-    256_000,
-  ).catch(() => ({}));
-  if (!response.ok) return new Map();
-  let content = "";
-  if (endpoint.kind === "anthropic") {
-    const blocks = Array.isArray(payload.content)
-      ? payload.content as Record<string, unknown>[]
-      : [];
-    content = blocks.filter((block) =>
-      block.type === "text" && typeof block.text === "string"
-    ).map((block) => block.text as string).join("");
-  } else {
-    const choices = Array.isArray(payload.choices)
-      ? payload.choices as Record<string, unknown>[]
-      : [];
-    content = safeText(asRecord(choices[0]?.message).content, 20_000);
-  }
-  let decoded: Record<string, unknown>;
-  try {
-    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-    decoded = asRecord(JSON.parse(fenced || content));
-  } catch {
-    return new Map();
-  }
-  const validKeys = new Set(records.map((record) => record.key));
-  const output = new Map<string, FindingCategory>();
-  for (const [key, value] of Object.entries(decoded)) {
-    if (
-      validKeys.has(key) &&
-      FINDING_CATEGORIES.includes(value as FindingCategory)
-    ) output.set(key, value as FindingCategory);
-  }
-  return output;
 }
