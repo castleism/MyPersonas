@@ -316,9 +316,9 @@ function billingAdminRefundReviewsHtml(){
     <label for="billingRefundConfirmation_${index}">Type the exact amount and currency: <code>${billingEsc(confirmation)}</code></label><input id="billingRefundConfirmation_${index}" autocomplete="off" inputmode="decimal" maxlength="32" spellcheck="false" value="${billingEsc(draft.confirmation||"")}" aria-describedby="${helpId}" oninput="billingAdminCaptureRefundDraft(${index})">
     <label for="billingRefundReason_${index}">Required approval or retry reason</label><textarea id="billingRefundReason_${index}" minlength="10" maxlength="1000" placeholder="Explain the evidence reviewed and why this exact duplicate should be refunded or safely resumed." oninput="billingAdminCaptureRefundDraft(${index})">${billingEsc(draft.reason||"")}</textarea>
     <label class="billing-admin-ack" for="billingRefundAck_${index}"><input id="billingRefundAck_${index}" type="checkbox" ${draft.acknowledged?"checked":""} onchange="billingAdminCaptureRefundDraft(${index})"> <span>I explicitly approve this exact duplicate refund to the original payment method and understand that a pending or ambiguous provider response requires reconciliation.</span></label>
-    <div class="billing-refund-actions"><button class="btn danger" type="button" onclick="billingAdminApproveRefund(${index})" ${admin.refundsLoading||admin.refundActionBusy?"disabled":""}>${busy?"Submitting exact refund…":review.state==="provider_canceled"?"Approve exact duplicate refund":"Safely retry server reconciliation"}</button></div>`:'<div class="billing-callout billing-error" role="status"><b>Manual reconciliation required.</b> This review cannot be resubmitted from the approval control until its provider evidence is resolved.</div>'}
+    <div class="billing-refund-actions"><button class="btn danger" id="billingRefundAction_${index}" type="button" onclick="billingAdminApproveRefund(${index})" ${admin.refundsLoading||admin.refundActionBusy?"disabled":""}>${busy?"Submitting exact refund…":review.state==="provider_canceled"?"Approve exact duplicate refund":"Safely retry server reconciliation"}</button></div>`:'<div class="billing-callout billing-error" role="status"><b>Manual reconciliation required.</b> This review cannot be resubmitted from the approval control until its provider evidence is resolved.</div>'}
   </article>`}).join("")}</div>`;
-  return `<section class="billing-admin-refunds" aria-live="polite" aria-busy="${admin.refundsLoading||!!admin.refundActionBusy?"true":"false"}"><div class="billing-admin-refunds-heading"><div><span class="billing-kicker">Safe RPC summaries · up to ${BILLING_ADMIN_REFUND_LIMIT}</span><h4>Duplicate-subscription refund reviews</h4></div><button class="btn sec sm" type="button" onclick="billingAdminLoadRefundReviews()" ${admin.refundsLoading||!!admin.refundActionBusy?"disabled":""}>${admin.refundsLoading?"Loading…":"Refresh reviews with MFA"}</button></div><p class="muted">The list contains only an opaque internal review ID, masked email, workflow status, exact amount/currency, and timestamps. Card data, provider customer/subscription/invoice/charge/refund identifiers, raw events, and secrets are never requested or rendered.</p>${admin.refundMessage?`<div class="billing-callout billing-good" role="status">${billingEsc(admin.refundMessage)}</div>`:""}${body}</section>`;
+  return `<section class="billing-admin-refunds" id="billingAdminRefundReviews" tabindex="-1" aria-live="polite" aria-busy="${admin.refundsLoading||!!admin.refundActionBusy?"true":"false"}"><div class="billing-admin-refunds-heading"><div><span class="billing-kicker">Safe RPC summaries · up to ${BILLING_ADMIN_REFUND_LIMIT}</span><h4>Duplicate-subscription refund reviews</h4></div><button class="btn sec sm" id="billingRefundRefresh" type="button" onclick="billingAdminLoadRefundReviews()" ${admin.refundsLoading||!!admin.refundActionBusy?"disabled":""}>${admin.refundsLoading?"Loading…":"Refresh reviews with MFA"}</button></div><p class="muted">The list contains only an opaque internal review ID, masked email, workflow status, exact amount/currency, and timestamps. Card data, provider customer/subscription/invoice/charge/refund identifiers, raw events, and secrets are never requested or rendered.</p>${admin.refundMessage?`<div class="billing-callout billing-good" role="status">${billingEsc(admin.refundMessage)}</div>`:""}${body}</section>`;
 }
 function billingFinancialEventLabel(value){return String(value||"").split(/[._]/).filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(" ")||"Financial event"}
 function billingAdminGrantBlocked(account){return !!account&&["trialing","active","past_due","unpaid","paused","incomplete"].includes(account.subscriptionStatus)&&!account.cancelAtPeriodEnd}
@@ -356,8 +356,14 @@ function billingAdminPanelHtml(){
     ${admin.error?`<div class="billing-callout billing-error" role="alert">${billingEsc(admin.error)}</div>`:""}${admin.message?`<div class="billing-callout billing-good" role="status">${billingEsc(admin.message)}</div>`:""}${resultHtml}
   </section>`;
 }
-function billingPaintAdmin(){const root=typeof document!=="undefined"?document.getElementById("billingAdminRoot"):null;if(root)root.outerHTML=billingAdminPanelHtml()}
-async function billingAdminLoadRefundReviews(alreadySteppedUp=false){
+function billingPaintAdmin(preferredFocusId=""){
+  const root=typeof document!=="undefined"?document.getElementById("billingAdminRoot"):null;if(!root)return;
+  const active=typeof document.activeElement==="object"&&document.activeElement&&typeof root.contains==="function"&&root.contains(document.activeElement)?String(document.activeElement.id||""):"",focusId=preferredFocusId||active;
+  root.outerHTML=billingAdminPanelHtml();
+  const target=focusId?document.getElementById(focusId):null;
+  if(target&&typeof target.focus==="function"){try{target.focus({preventScroll:true})}catch(_error){target.focus()}}
+}
+async function billingAdminLoadRefundReviews(alreadySteppedUp=false,focusAfterLoad=""){
   const owner=billingOwnerId();if(!owner||!billingPlatformQueueRoute()||billingState.admin.refundsLoading||billingState.admin.refundActionBusy)return;
   const generation=++billingState.admin.refundRequestGeneration,authGeneration=billingAuthGeneration();
   if(!alreadySteppedUp){
@@ -365,39 +371,39 @@ async function billingAdminLoadRefundReviews(alreadySteppedUp=false){
     if(!billingAdminRefundCurrent(owner,generation,authGeneration))return;
     if(!steppedUp){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="Two-factor verification is required before refund reviews can be loaded.";billingPaintAdmin();return}
   }
-  billingState.admin.refundsLoading=true;billingState.admin.refundsError="";billingPaintAdmin();
+  billingState.admin.refundsLoading=true;billingState.admin.refundsError="";billingPaintAdmin("billingAdminRefundReviews");
   let response;
   try{response=await sb.rpc("billing_admin_duplicate_refund_reviews",{p_limit:BILLING_ADMIN_REFUND_LIMIT})}catch(_error){response={data:null,error:{message:"request failed"}}}
   if(!billingAdminRefundCurrent(owner,generation,authGeneration)){if(billingAdminRefundSameAccountRequest(owner,generation,authGeneration))billingState.admin.refundsLoading=false;return}
   billingState.admin.refundsLoading=false;
   if(response?.error){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="Duplicate-refund summaries could not be verified. No approval control is available.";billingPaintAdmin();return}
   try{billingState.admin.refunds=billingNormalizeRefundReviews(response?.data);billingState.admin.refundsLoaded=true;billingState.admin.refundsError=""}catch(_error){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="The refund-review query returned an invalid safe summary. No approval control is available."}
-  billingPaintAdmin();
+  billingPaintAdmin(focusAfterLoad||"billingAdminRefundReviews");
 }
 async function billingAdminApproveRefund(index){
   const owner=billingOwnerId(),review=Number.isInteger(index)?billingState.admin.refunds[index]:null;
   if(!owner||!review||!billingPlatformQueueRoute()||!BILLING_REFUND_ACTIONABLE_STATES.has(review.state)||billingState.admin.refundsLoading||billingState.admin.refundActionBusy)return;
   const draft=billingAdminCaptureRefundDraft(index),expected=billingRefundConfirmation(review);
-  if(!draft||draft.confirmation!==expected){billingState.admin.refundsError=`Type the exact amount and currency ${expected} before approving this refund.`;billingPaintAdmin();return}
-  if(draft.reason.length<10||draft.reason.length>1000){billingState.admin.refundsError="Enter a specific duplicate-refund approval reason between 10 and 1000 characters.";billingPaintAdmin();return}
-  if(!draft.acknowledged){billingState.admin.refundsError="Explicitly acknowledge this exact original-method refund before continuing.";billingPaintAdmin();return}
+  if(!draft||draft.confirmation!==expected){billingState.admin.refundsError=`Type the exact amount and currency ${expected} before approving this refund.`;billingPaintAdmin(`billingRefundConfirmation_${index}`);return}
+  if(draft.reason.length<10||draft.reason.length>1000){billingState.admin.refundsError="Enter a specific duplicate-refund approval reason between 10 and 1000 characters.";billingPaintAdmin(`billingRefundReason_${index}`);return}
+  if(!draft.acknowledged){billingState.admin.refundsError="Explicitly acknowledge this exact original-method refund before continuing.";billingPaintAdmin(`billingRefundAck_${index}`);return}
   const selectionGeneration=billingState.admin.refundRequestGeneration,authGeneration=billingAuthGeneration(),reviewId=review.reviewId;
   const steppedUp=typeof requireAal2ForSensitiveAction==="function"&&await requireAal2ForSensitiveAction("approve and execute this exact duplicate-subscription refund");
   if(!billingAdminRefundCurrent(owner,selectionGeneration,authGeneration,reviewId))return;
-  if(!steppedUp){billingState.admin.refundsError="Two-factor verification is required before a duplicate refund can be approved.";billingPaintAdmin();return}
+  if(!steppedUp){billingState.admin.refundsError="Two-factor verification is required before a duplicate refund can be approved.";billingPaintAdmin(`billingRefundAction_${index}`);return}
   const warning=`Approve ${expected} for ${review.maskedEmail} under opaque review ${reviewId}? The server will verify the canceled duplicate and original payment method again before any refund is attempted.`;
   if(typeof confirm==="function"&&!confirm(warning))return;
   billingState.admin.refundActionBusy=reviewId;billingState.admin.refundsError="";billingState.admin.refundMessage="";
-  const generation=++billingState.admin.refundRequestGeneration;billingPaintAdmin();
+  const generation=++billingState.admin.refundRequestGeneration;billingPaintAdmin("billingAdminRefundReviews");
   let response;
   try{response=await sb.functions.invoke("billing-admin-refund-duplicate",{body:{remediationId:reviewId,reason:draft.reason}})}catch(_error){response={data:null,error:{message:"request failed"}}}
   if(!billingAdminRefundCurrent(owner,generation,authGeneration,reviewId)){if(billingAdminRefundSameAccountRequest(owner,generation,authGeneration))billingState.admin.refundActionBusy="";return}
   billingState.admin.refundActionBusy="";
   const raw=response?.data,state=String(raw?.state||""),amount=raw?.amount,currency=String(raw?.currency||"").toLowerCase();
-  if(response?.error||!raw||!["refunded","provider_pending"].includes(state)||!Number.isSafeInteger(amount)||amount!==review.amountMinor||currency!==review.currency){billingState.admin.refundsError="The exact duplicate refund was not confirmed by the server. Do not assume money moved; refresh the review before any retry.";billingPaintAdmin();return}
+  if(response?.error||!raw||!["refunded","provider_pending"].includes(state)||!Number.isSafeInteger(amount)||amount!==review.amountMinor||currency!==review.currency){billingState.admin.refundsError="The exact duplicate refund was not confirmed by the server. Do not assume money moved; refresh the review before any retry.";billingPaintAdmin(`billingRefundAction_${index}`);return}
   delete billingState.admin.refundDrafts[reviewId];
   billingState.admin.refundMessage=state==="refunded"?`${expected} was independently confirmed refunded by the server.`:`${expected} is pending at the provider. Signed webhook reconciliation is still required before completion is assumed.`;
-  await billingAdminLoadRefundReviews(true);
+  await billingAdminLoadRefundReviews(true,"billingAdminRefundReviews");
 }
 async function billingAdminLookup(event,quiet=false){
   event?.preventDefault?.();
