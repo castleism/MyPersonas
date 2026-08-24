@@ -60,6 +60,18 @@
       event_category:"dispute",
       opened_at:"2026-08-23T12:00:00Z"
     }],billingState.admin.result.accountId);
+    billingState.admin.refunds=billingNormalizeRefundReviews([{
+      remediation_id:"33333333-3333-4333-8333-333333333333",
+      masked_email:"r***@example.com",
+      state:"provider_canceled",
+      amount_minor:5000,
+      currency:"usd",
+      refund_status:"",
+      approved_at:null,
+      created_at:"2026-08-23T11:00:00Z",
+      updated_at:"2026-08-23T12:30:00Z"
+    }]);
+    billingState.admin.refundsLoaded=true;
     billingPaintAdmin();
   </script>
 </body>
