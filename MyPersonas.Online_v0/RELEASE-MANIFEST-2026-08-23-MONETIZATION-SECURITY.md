@@ -3,8 +3,8 @@
 Status: **validated local release candidate; not pushed, applied, deployed, or
 provider-configured.** The working branch is
 `release/monetization-security-integration`. The runtime code validated in this
-manifest ends at `1cef6a0`; the commit that adds this handoff is documentation
-only.
+manifest ends at `173e365`; the later commit that refreshes this validation
+record is documentation only.
 
 The current remote `main` observed during this release remains
 `569f0029c0ddd95b7fcf09e497a1b2d629b09591`. A fresh response from
@@ -40,9 +40,10 @@ publication, or paid cloud resource was created or changed.
 
 The final local validation performed after integration was:
 
-- 448 of 448 Node tests passed;
-- credential scan passed for 691 tracked and untracked candidate files without
-  printing matched values;
+- 459 of 459 Node tests passed;
+- credential scan passed for 694 tracked and untracked candidate files plus the
+  complete reachable Git history (more than 1,200 blobs) without printing raw
+  matches or filenames;
 - frontend JavaScript and the production inline-script extraction parsed;
 - Deno 2.9.5 `check --frozen` passed for all 39 Edge Function entrypoints;
 - all six disposable PostgreSQL 16 harnesses exited zero: opaque public 062,
