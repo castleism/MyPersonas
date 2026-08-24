@@ -51,12 +51,13 @@ test("schema validator accepts through-061 DDL and DML only inside function bodi
 test("schema validator rejects data, roles, secrets, psql includes, and 062-plus objects", () => {
   const normalized = normalizePublicSchemaDump(through061Dump);
   const syntheticStripeSecret = "sk-live-" + "abcdefghijklmnopqrstuv";
+  const syntheticDatabaseUrl = "postgresql://postgres:" + "password@db.example.test/postgres";
   const attacks = [
     "\n-- Name: users; Type: TABLE DATA; Schema: auth\n",
     "\nCOPY auth.users (id) FROM stdin;\nvalue\n\\.\n",
     "\nINSERT INTO public.personas VALUES(null);\n",
     "\nCREATE ROLE attacker LOGIN PASSWORD 'not-for-files';\n",
-    "\nSELECT 'postgresql://postgres:password@db.example.test/postgres';\n",
+    `\nSELECT '${syntheticDatabaseUrl}';\n`,
     `\nSELECT '${syntheticStripeSecret}';\n`,
     "\n\\include /tmp/unreviewed.sql\n",
     "\nCREATE TABLE public.media_environment_config_062(singleton boolean);\n",
