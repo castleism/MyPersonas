@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "matrixVersion": "2026-08-23.1",
+  "matrixVersion": "2026-08-23.2",
   "title": "MyPersonas Stripe sandbox and signed-in privacy release matrix",
   "productionProjectRef": "nwsqyuucwzihruszocge",
   "requiredActorAliases": [
@@ -314,6 +314,83 @@
       "actions": ["Try reconciliation as an ordinary user, technician, AAL1 global admin, then AAL2 global admin using the internal hold UUID and a substantive reason."],
       "expected": ["Only AAL2 global admin succeeds; the audit records the exact hold and reason without claiming to issue a refund or close a dispute."],
       "evidence": ["denial summary", "redacted audit readback"]
+    },
+    {
+      "id": "FIN-008",
+      "area": "financial-review",
+      "mode": "two-account-browser",
+      "title": "Bounded duplicate-refund review listing",
+      "actors": ["global-admin"],
+      "devices": ["desktop", "ios-mobile", "android-mobile"],
+      "actions": ["With an AAL2 global-administrator session, load the duplicate-subscription refund queue and inspect the rendered state, DOM, network response, browser cache, and screenshots."],
+      "expected": ["Each row contains only an opaque internal review UUID, masked email, workflow status, exact amount/currency, and timestamps; no provider identifier, raw event, full email, account UUID, card data, or secret is requested, retained, rendered, cached, or logged."],
+      "evidence": ["redacted safe-summary field inventory", "desktop and mobile queue screenshots"]
+    },
+    {
+      "id": "FIN-009",
+      "area": "financial-review",
+      "mode": "two-account-browser",
+      "title": "AAL1 and technician duplicate-refund denial",
+      "actors": ["technician", "global-admin"],
+      "devices": ["desktop", "ios-mobile", "android-mobile"],
+      "actions": ["Attempt queue listing and approval as a technician at AAL2 and as a global administrator at AAL1, including copied route, direct RPC, and Edge Function requests."],
+      "expected": ["The technician receives no refund-review UI or data and cannot execute the Edge boundary; the AAL1 global administrator is denied before any summary or provider action is returned."],
+      "evidence": ["role and assurance denial table", "redacted network status summary"]
+    },
+    {
+      "id": "FIN-010",
+      "area": "financial-review",
+      "mode": "operator",
+      "title": "AAL2 exact duplicate-refund approval",
+      "actors": ["global-admin"],
+      "devices": ["desktop", "ios-mobile", "android-mobile"],
+      "actions": ["Verify the masked account and opaque review UUID, type the exact amount and currency, enter a 10-1000 character reason, acknowledge the original-method refund, confirm the final dialog, and submit through the authenticated refund Edge Function."],
+      "expected": ["Only the opaque remediation UUID and reason leave the browser; the server independently resolves and refetches every provider object and exact tax-inclusive amount before attempting the original-method refund."],
+      "evidence": ["redacted approval-control checklist", "request-field summary", "audit event summary"]
+    },
+    {
+      "id": "FIN-011",
+      "area": "financial-review",
+      "mode": "operator",
+      "title": "Duplicate-refund lost-response idempotent retry",
+      "actors": ["global-admin"],
+      "devices": ["desktop"],
+      "actions": ["Interrupt the first exact refund response after the provider may have accepted it, reload the bounded queue, repeat the exact confirmation, and safely retry the same opaque remediation through the server boundary."],
+      "expected": ["The stable server idempotency key and canonical refund lookup recover at most one logical full refund; no second refund is created and the browser never submits a provider identifier or amount."],
+      "evidence": ["redacted request timeline", "single-refund count summary", "remediation state transitions"]
+    },
+    {
+      "id": "FIN-012",
+      "area": "financial-review",
+      "mode": "operator",
+      "title": "Signed duplicate-refund webhook success",
+      "actors": ["owner-a", "global-admin"],
+      "devices": ["desktop"],
+      "actions": ["After approval, deliver the canonically linked signed refund.created or refund.updated success event through the staging Stripe endpoint, including one valid replay."],
+      "expected": ["Signature, account, Customer, charge, payment-intent, opaque remediation, amount, currency, reason, and provider state all match before the remediation becomes provider-refunded; the review alert resolves once and no generic financial hold opens."],
+      "evidence": ["redacted signed-event disposition", "remediation and alert readback", "replay result"]
+    },
+    {
+      "id": "FIN-013",
+      "area": "financial-review",
+      "mode": "operator",
+      "title": "Signed duplicate-refund webhook failure",
+      "actors": ["owner-a", "global-admin"],
+      "devices": ["desktop"],
+      "actions": ["Deliver a canonically linked signed refund.failed event and separately exercise mismatched amount, currency, reason, ownership, or opaque-remediation evidence in isolated staging fixtures."],
+      "expected": ["A failed canonical refund or ambiguous evidence returns the case to manual review, keeps completion unclaimed, disables automatic retry where required, preserves the audit trail, and never changes an unrelated account."],
+      "evidence": ["redacted failure disposition", "manual-review alert", "two-account entitlement readback"]
+    },
+    {
+      "id": "FIN-014",
+      "area": "financial-review",
+      "mode": "operator",
+      "title": "Signed pending-refund reconciliation",
+      "actors": ["owner-a", "global-admin"],
+      "devices": ["desktop", "ios-mobile", "android-mobile"],
+      "actions": ["Leave an approved exact refund provider-pending, verify the queue shows the bounded pending state, deliver signed pending and terminal updates in order and out of order, then refresh the queue and operational alert inbox."],
+      "expected": ["Pending is never described as completed; signed canonical terminal success reconciles once, stale or mismatched events cannot regress or clear it, and terminal failure remains an explicit manual-review case."],
+      "evidence": ["redacted webhook timeline", "queue state screenshots", "alert reconciliation summary"]
     },
     {
       "id": "RACE-001",

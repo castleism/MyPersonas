@@ -239,6 +239,11 @@ The governance panel uses these bounded database RPCs:
   performs the AAL2 global-admin approval and persists the durable provider
   intent. The authenticated `billing-admin-refund-duplicate` Edge Function is
   the only approved execution path; do not call Stripe directly from a browser.
+  The governance UI requires the operator to type the exact displayed
+  amount/currency, enter a 10–1000 character reason, acknowledge the
+  original-method refund, and confirm once more. Only the opaque remediation ID
+  and reason enter the authenticated Edge request; amount and provider objects
+  remain server-authoritative.
 - `billing_admin_reconcile_financial_hold(p_hold_id uuid, p_reason text)` closes
   only the exact internal hold UUID, requires a 10-1000 character reason, and writes both
   the private access transition and public platform-security audit. It never

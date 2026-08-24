@@ -276,6 +276,75 @@ test("admin lookup and developer changes use narrow RPCs, AAL2, reasons, and saf
   assert.equal(vm.runInContext("billingState.admin.result.accessAllowed",context),false);
 });
 
+test("global-admin refund reviews use bounded safe summaries and the AAL2 Edge execution boundary",async()=>{
+  const reviewId="77777777-7777-4777-8777-777777777777",reason="Canonical provider evidence confirms this accidental duplicate should return to the original payment method.",elements=new Map(),aal2=[],confirmations=[];
+  const review={remediation_id:reviewId,masked_email:"o***@example.com",state:"provider_canceled",amount_minor:2000,currency:"usd",refund_status:null,approved_at:null,created_at:"2026-08-23T10:00:00Z",updated_at:"2026-08-23T10:05:00Z",stripe_customer_id:"cus_must_never_render",stripe_subscription_id:"sub_must_never_render",stripe_invoice_id:"in_must_never_render",stripe_charge_id:"ch_must_never_render",stripe_refund_id:"re_must_never_render",raw_payload:"card data must never render"};
+  let reviewLoads=0;
+  const{context,rpcCalls,functionCalls}=billingContext({href:"https://mypersonas.online/#/platform-queue",elements,confirm:message=>{confirmations.push(message);return true},rpc(name,args){
+    if(name==="billing_admin_duplicate_refund_reviews")return Promise.resolve({data:reviewLoads++?[ ]:[review],error:null});
+    throw new Error(`unexpected RPC ${name}`);
+  },invoke(name,args){
+    if(name==="billing-admin-refund-duplicate")return Promise.resolve({data:{state:"refunded",amount:2000,currency:"usd",provider_id:"re_must_never_render"},error:null});
+    throw new Error(`unexpected function ${name}`);
+  }});
+  context.requireAal2ForSensitiveAction=async action=>{aal2.push(action);return true};
+
+  await vm.runInContext("billingAdminLoadRefundReviews()",context);
+  assert.deepEqual(jsonRealm(rpcCalls),[{name:"billing_admin_duplicate_refund_reviews",args:{p_limit:100}}]);
+  let rendered=vm.runInContext("billingAdminPanelHtml()",context);
+  for(const visible of[reviewId,"o***@example.com","20.00 USD","Provider Canceled","Created","Updated"])assert.match(rendered,new RegExp(visible.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"));
+  for(const secret of["cus_must_never_render","sub_must_never_render","in_must_never_render","ch_must_never_render","re_must_never_render","card data must never render"])assert.doesNotMatch(rendered,new RegExp(secret));
+  const retained=vm.runInContext("JSON.stringify(billingState.admin.refunds)",context);
+  for(const secret of["cus_must_never_render","sub_must_never_render","in_must_never_render","ch_must_never_render","re_must_never_render","card data must never render"])assert.doesNotMatch(retained,new RegExp(secret));
+
+  elements.set("billingRefundConfirmation_0",{value:"20 USD"});
+  elements.set("billingRefundReason_0",{value:reason});
+  elements.set("billingRefundAck_0",{checked:true});
+  await vm.runInContext("billingAdminApproveRefund(0)",context);
+  assert.equal(functionCalls.length,0);
+  assert.equal(aal2.length,1);
+  assert.match(vm.runInContext("billingState.admin.refundsError",context),/Type the exact amount and currency 20\.00 USD/);
+  elements.get("billingRefundConfirmation_0").value="20.00 USD";
+  await vm.runInContext("billingAdminApproveRefund(0)",context);
+  assert.match(aal2[0],/view duplicate-subscription refund reviews/);
+  assert.match(aal2[1],/approve and execute this exact duplicate-subscription refund/);
+  assert.equal(confirmations.length,1);
+  assert.match(confirmations[0],/20\.00 USD/);
+  assert.match(confirmations[0],new RegExp(reviewId));
+  assert.deepEqual(jsonRealm(functionCalls),[{name:"billing-admin-refund-duplicate",args:{body:{remediationId:reviewId,reason}}}]);
+  assert.deepEqual(rpcCalls.map(call=>call.name),["billing_admin_duplicate_refund_reviews","billing_admin_duplicate_refund_reviews"]);
+  assert.match(vm.runInContext("billingState.admin.refundMessage",context),/independently confirmed refunded/);
+  assert.equal(vm.runInContext("billingState.admin.refunds.length",context),0);
+});
+
+test("refund listing and approval fail closed at AAL1 before RPC or Edge execution",async()=>{
+  const reviewId="77777777-7777-4777-8777-777777777777",elements=new Map([
+    ["billingRefundConfirmation_0",{value:"20.00 USD"}],
+    ["billingRefundReason_0",{value:"A sufficiently specific duplicate refund review reason."}],
+    ["billingRefundAck_0",{checked:true}],
+  ]),{context,rpcCalls,functionCalls}=billingContext({href:"https://mypersonas.online/#/platform-queue",elements,rpc:()=>Promise.reject(new Error("AAL1 must not read")),invoke:()=>Promise.reject(new Error("AAL1 must not execute"))});
+  context.requireAal2ForSensitiveAction=async()=>false;
+  await vm.runInContext("billingAdminLoadRefundReviews()",context);
+  assert.deepEqual(rpcCalls,[]);
+  assert.match(vm.runInContext("billingState.admin.refundsError",context),/Two-factor verification is required/);
+  vm.runInContext(`billingState.admin.refunds=billingNormalizeRefundReviews([{remediation_id:"${reviewId}",masked_email:"o***@example.com",state:"provider_canceled",amount_minor:2000,currency:"usd",created_at:"2026-08-23T10:00:00Z",updated_at:"2026-08-23T10:05:00Z"}]);billingState.admin.refundsLoaded=true;billingState.admin.refundsError=""`,context);
+  await vm.runInContext("billingAdminApproveRefund(0)",context);
+  assert.deepEqual(functionCalls,[]);
+  assert.match(vm.runInContext("billingState.admin.refundsError",context),/Two-factor verification is required/);
+});
+
+test("stale account or route responses cannot populate or complete refund review state",async()=>{
+  const pending=deferred(),elements=new Map(),{context,rpcCalls}=billingContext({href:"https://mypersonas.online/#/platform-queue",elements,rpc:name=>name==="billing_admin_duplicate_refund_reviews"?pending.promise:Promise.reject(new Error("unexpected RPC"))});
+  vm.runInContext("globalThis.refundLoad=billingAdminLoadRefundReviews()",context);
+  for(let index=0;index<4&&!rpcCalls.length;index++)await Promise.resolve();
+  assert.equal(rpcCalls.length,1);
+  vm.runInContext('session={user:{id:"00000000-0000-4000-8000-0000000000bb"}};authLoadGeneration++;billingResetOwnerState();window.location.href="https://mypersonas.online/#/studio"',context);
+  pending.resolve({data:[{remediation_id:"77777777-7777-4777-8777-777777777777",masked_email:"o***@example.com",state:"provider_canceled",amount_minor:2000,currency:"usd",created_at:"2026-08-23T10:00:00Z",updated_at:"2026-08-23T10:05:00Z"}],error:null});
+  await context.refundLoad;
+  assert.equal(vm.runInContext("billingState.admin.refunds.length",context),0);
+  assert.equal(vm.runInContext("billingState.admin.refundsLoaded",context),false);
+});
+
 test("financial holds load only after exact account lookup and reconcile by internal hold UUID with AAL2, reason, confirmation, and refresh",async()=>{
   assert.match(billingMigration,/returns table\(\s*hold_id uuid,account_id uuid,masked_email text,event_category text,/);
   assert.match(source,/raw\?\.event_category/);
@@ -367,7 +436,7 @@ async function renderQueueForRole(role){
     esc:value=>String(value??""),safeBgStyle:()=>"",renderSignin(){},setMeta(){},toast(){},go(){},document:{getElementById:()=>null},requireAal2ForSensitiveAction:async()=>true,confirm:()=>true,prompt:()=>"",navigator:{clipboard:{writeText:async()=>{}}},window:{open(){}},
   });
   vm.runInContext(governance,context,{filename:"platform-governance.js"});
-  context.billingAdminPanelHtml=()=>'<section id="developer-access-panel">Developer access control</section>';
+  context.billingAdminPanelHtml=()=>'<section id="developer-access-panel">Developer access and duplicate-refund controls</section>';
   await context.renderPlatformQueue();
   return context.app.innerHTML;
 }
@@ -376,6 +445,8 @@ test("developer access panel renders for global administrators but not technicia
   assert.match(governance,/isGlobalAdmin&&typeof billingAdminPanelHtml/);
   assert.match(await renderQueueForRole("global_administrator"),/developer-access-panel/);
   assert.doesNotMatch(await renderQueueForRole("technician"),/developer-access-panel/);
+  assert.match(await renderQueueForRole("global_administrator"),/duplicate-refund controls/);
+  assert.doesNotMatch(await renderQueueForRole("technician"),/duplicate-refund controls/);
 });
 
 test("renewable subscriptions block the developer grant control until period-end cancellation",()=>{
@@ -404,15 +475,20 @@ test("billing controls provide mobile, keyboard, contrast, and touch-size afford
   assert.match(source,/role="alert"/);
   assert.match(source,/aria-busy=/);
   assert.match(source,/aria-labelledby="billingHoldTitle_/);
-  assert.match(css,/\.billing-hold-actions button\{min-height:44px\}/);
+  assert.match(source,/aria-labelledby="\$\{titleId\}"/);
+  assert.match(css,/\.billing-hold-actions button[^\{]*\{min-height:44px\}/);
   assert.match(css,/\.billing-admin-hold-heading/);
+  assert.match(css,/\.billing-admin-refund/);
+  assert.match(css,/\.billing-refund-actions button/);
 });
 
 test("billing client has no direct table mutation and never sends processor identifiers",()=>{
   assert.doesNotMatch(source,/\.from\s*\(/);
   assert.doesNotMatch(source,/body:\{[^}]*\b(?:amount|price|customer|subscription|return_url|returnUrl)\b/);
-  for(const rpc of["my_billing_status","billing_admin_lookup_account","billing_admin_financial_holds","billing_admin_reconcile_financial_hold","billing_admin_grant_developer","billing_admin_revoke_developer"])assert.match(source,new RegExp(`sb\\.rpc\\(["']${rpc}["']`));
+  for(const rpc of["my_billing_status","billing_admin_lookup_account","billing_admin_financial_holds","billing_admin_duplicate_refund_reviews","billing_admin_reconcile_financial_hold","billing_admin_grant_developer","billing_admin_revoke_developer"])assert.match(source,new RegExp(`sb\\.rpc\\(["']${rpc}["']`));
   assert.match(source,/billing_admin_financial_holds",\{p_account_id:accountId,p_limit:BILLING_ADMIN_HOLD_LIMIT\}/);
+  assert.match(source,/sb\.functions\.invoke\("billing-admin-refund-duplicate",\{body:\{remediationId:reviewId,reason:draft\.reason\}\}\)/);
+  assert.doesNotMatch(source,/sb\.rpc\(["']billing_admin_approve_duplicate_refund/);
   assert.doesNotMatch(source,/stripe_(?:customer|subscription|invoice)_id|source_event_id|provider_object_id|raw_payload|payment_method|card_number/);
   assert.match(source,/billing-create-checkout/);
   assert.match(source,/billing-create-portal/);

@@ -11,11 +11,14 @@ const BILLING_PORTAL_HOSTS=new Set(["billing.stripe.com"]);
 const BILLING_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BILLING_EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BILLING_ADMIN_HOLD_LIMIT=25;
+const BILLING_ADMIN_REFUND_LIMIT=100;
+const BILLING_REFUND_STATES=new Set(["provider_canceled","refund_pending","provider_refund_pending","refund_review_required"]);
+const BILLING_REFUND_ACTIONABLE_STATES=new Set(["provider_canceled","refund_pending","provider_refund_pending"]);
 
 const billingState={
   ownerId:"",requestGeneration:0,loaded:false,loading:false,status:null,error:"",
   checkoutBusy:"",portalBusy:false,returnState:"",returnHandled:false,
-  admin:{query:"",result:null,loading:false,error:"",requestGeneration:0,actionBusy:false,message:"",draftReason:"",draftExpiry:"",draftAck:false,holds:[],holdsLoading:false,holdsError:"",holdActionBusy:"",holdDraftReasons:{}}
+  admin:{query:"",result:null,loading:false,error:"",requestGeneration:0,actionBusy:false,message:"",draftReason:"",draftExpiry:"",draftAck:false,holds:[],holdsLoading:false,holdsError:"",holdActionBusy:"",holdDraftReasons:{},refunds:[],refundsLoaded:false,refundsLoading:false,refundsError:"",refundMessage:"",refundRequestGeneration:0,refundActionBusy:"",refundDrafts:{}}
 };
 
 (function billingCaptureHostedReturn(){
@@ -91,7 +94,7 @@ function billingResetOwnerState(){
   billingState.requestGeneration++;
   billingState.ownerId="";billingState.loaded=false;billingState.loading=false;billingState.status=null;billingState.error="";
   billingState.checkoutBusy="";billingState.portalBusy=false;
-  billingState.admin.requestGeneration++;billingState.admin.query="";billingState.admin.result=null;billingState.admin.loading=false;billingState.admin.error="";billingState.admin.actionBusy=false;billingState.admin.message="";billingState.admin.draftReason="";billingState.admin.draftExpiry="";billingState.admin.draftAck=false;billingState.admin.holds=[];billingState.admin.holdsLoading=false;billingState.admin.holdsError="";billingState.admin.holdActionBusy="";billingState.admin.holdDraftReasons={};
+  billingState.admin.requestGeneration++;billingState.admin.refundRequestGeneration++;billingState.admin.query="";billingState.admin.result=null;billingState.admin.loading=false;billingState.admin.error="";billingState.admin.actionBusy=false;billingState.admin.message="";billingState.admin.draftReason="";billingState.admin.draftExpiry="";billingState.admin.draftAck=false;billingState.admin.holds=[];billingState.admin.holdsLoading=false;billingState.admin.holdsError="";billingState.admin.holdActionBusy="";billingState.admin.holdDraftReasons={};billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsLoading=false;billingState.admin.refundsError="";billingState.admin.refundMessage="";billingState.admin.refundActionBusy="";billingState.admin.refundDrafts={};
   billingPaintAccount();billingPaintAdmin();
 }
 function billingNavigationBusy(){return !!billingState.checkoutBusy||billingState.portalBusy}
@@ -269,6 +272,54 @@ function billingNormalizeFinancialHolds(data,accountId){
     return Object.freeze({holdId,eventType,providerObjectType,openedAt});
   }));
 }
+function billingNormalizeRefundReviews(data){
+  if(!Array.isArray(data))throw new Error("invalid refund review summaries");
+  const seen=new Set();
+  return Object.freeze(data.slice(0,BILLING_ADMIN_REFUND_LIMIT).map(raw=>{
+    const reviewId=String(raw?.remediation_id||"").toLowerCase(),maskedEmail=String(raw?.masked_email||"").trim(),state=String(raw?.state||"").toLowerCase(),currency=String(raw?.currency||"").toLowerCase(),refundStatus=String(raw?.refund_status||"").toLowerCase(),amountMinor=Number(raw?.amount_minor),approvedAt=billingDate(raw?.approved_at),createdAt=billingDate(raw?.created_at),updatedAt=billingDate(raw?.updated_at);
+    if(!raw||typeof raw!=="object"||!BILLING_UUID.test(reviewId)||seen.has(reviewId)||!BILLING_REFUND_STATES.has(state)||!Number.isSafeInteger(amountMinor)||amountMinor<1||amountMinor>1000000000000||!/^[a-z]{3}$/.test(currency)||!createdAt||!updatedAt||maskedEmail.length>320||/[\u0000-\u001f\u007f]/.test(maskedEmail)||(maskedEmail&&maskedEmail!=="***"&&!/^[^@\s]\*{3}@[^@\s]+$/u.test(maskedEmail))||(refundStatus&&!/^[a-z][a-z0-9_]{0,48}$/.test(refundStatus)))throw new Error("invalid refund review summary");
+    seen.add(reviewId);
+    return Object.freeze({reviewId,maskedEmail:maskedEmail||"Unavailable",state,amountMinor,currency,refundStatus,approvedAt,createdAt,updatedAt});
+  }));
+}
+function billingRefundConfirmation(review){return `${(review.amountMinor/100).toFixed(2)} ${review.currency.toUpperCase()}`}
+function billingRefundDisplayAmount(review){
+  try{return new Intl.NumberFormat(undefined,{style:"currency",currency:review.currency.toUpperCase()}).format(review.amountMinor/100)}catch(_error){return billingRefundConfirmation(review)}
+}
+function billingPlatformQueueRoute(){
+  try{return new URL(window.location.href).hash.replace(/^#\/?/,"").split(/[/?]/)[0]==="platform-queue"}catch(_error){return false}
+}
+function billingAdminRefundSameAccountRequest(owner,generation,authGeneration){return !!owner&&billingOwnerId()===owner&&billingState.admin.refundRequestGeneration===generation&&billingAuthGeneration()===authGeneration}
+function billingAdminRefundCurrent(owner,generation,authGeneration,reviewId=""){
+  return billingAdminRefundSameAccountRequest(owner,generation,authGeneration)&&billingPlatformQueueRoute()&&(!reviewId||billingState.admin.refunds.some(review=>review.reviewId===reviewId));
+}
+function billingAdminCaptureRefundDraft(index){
+  const review=Number.isInteger(index)?billingState.admin.refunds[index]:null;if(!review)return null;
+  const draft={
+    confirmation:String(document.getElementById(`billingRefundConfirmation_${index}`)?.value||"").trim().slice(0,33),
+    reason:String(document.getElementById(`billingRefundReason_${index}`)?.value||"").trim().slice(0,1001),
+    acknowledged:!!document.getElementById(`billingRefundAck_${index}`)?.checked
+  };
+  billingState.admin.refundDrafts[review.reviewId]=draft;return draft;
+}
+function billingAdminRefundReviewsHtml(){
+  const admin=billingState.admin;
+  let body="";
+  if(admin.refundsLoading)body='<div class="billing-callout billing-neutral" role="status">Loading bounded duplicate-refund summaries for this administrator session…</div>';
+  else if(admin.refundsError)body=`<div class="billing-callout billing-error" role="alert">${billingEsc(admin.refundsError)}</div>`;
+  else if(!admin.refundsLoaded)body='<div class="empty">Refund reviews have not been loaded. Use the MFA-protected refresh control.</div>';
+  else if(!admin.refunds.length)body='<div class="billing-callout billing-good" role="status"><b>No duplicate-subscription refund reviews are currently pending.</b></div>';
+  else body=`<div class="billing-admin-refund-list">${admin.refunds.map((review,index)=>{const draft=admin.refundDrafts[review.reviewId]||{},actionable=BILLING_REFUND_ACTIONABLE_STATES.has(review.state),busy=admin.refundActionBusy===review.reviewId,confirmation=billingRefundConfirmation(review),titleId=`billingRefundTitle_${index}`,helpId=`billingRefundHelp_${index}`;return`<article class="billing-admin-refund" aria-labelledby="${titleId}">
+    <div class="billing-admin-refund-heading"><div><span class="billing-kicker">Duplicate-subscription refund review</span><h4 id="${titleId}">${billingEsc(billingRefundDisplayAmount(review))} ${billingEsc(review.currency.toUpperCase())}</h4></div><span class="billing-refund-state">${billingEsc(billingLabel(review.state))}</span></div>
+    <dl class="billing-facts"><div><dt>Opaque review ID</dt><dd><code>${billingEsc(review.reviewId)}</code></dd></div><div><dt>Account</dt><dd>${billingEsc(review.maskedEmail)}</dd></div><div><dt>Exact amount</dt><dd>${billingEsc(confirmation)}</dd></div><div><dt>Workflow state</dt><dd>${billingEsc(billingLabel(review.state))}</dd></div>${review.refundStatus?`<div><dt>Refund status</dt><dd>${billingEsc(billingLabel(review.refundStatus))}</dd></div>`:""}<div><dt>Created</dt><dd>${billingEsc(billingDisplayDate(review.createdAt))}</dd></div>${review.approvedAt?`<div><dt>Approved</dt><dd>${billingEsc(billingDisplayDate(review.approvedAt))}</dd></div>`:""}<div><dt>Updated</dt><dd>${billingEsc(billingDisplayDate(review.updatedAt))}</dd></div></dl>
+    ${actionable?`<div class="billing-callout billing-warn" id="${helpId}"><b>This action can move money.</b> Verify the masked account, opaque review ID, and exact tax-inclusive amount. MyPersonas resolves every provider identifier and the original payment method only on the server.</div>
+    <label for="billingRefundConfirmation_${index}">Type the exact amount and currency: <code>${billingEsc(confirmation)}</code></label><input id="billingRefundConfirmation_${index}" autocomplete="off" inputmode="decimal" maxlength="32" spellcheck="false" value="${billingEsc(draft.confirmation||"")}" aria-describedby="${helpId}" oninput="billingAdminCaptureRefundDraft(${index})">
+    <label for="billingRefundReason_${index}">Required approval or retry reason</label><textarea id="billingRefundReason_${index}" minlength="10" maxlength="1000" placeholder="Explain the evidence reviewed and why this exact duplicate should be refunded or safely resumed." oninput="billingAdminCaptureRefundDraft(${index})">${billingEsc(draft.reason||"")}</textarea>
+    <label class="billing-admin-ack" for="billingRefundAck_${index}"><input id="billingRefundAck_${index}" type="checkbox" ${draft.acknowledged?"checked":""} onchange="billingAdminCaptureRefundDraft(${index})"> <span>I explicitly approve this exact duplicate refund to the original payment method and understand that a pending or ambiguous provider response requires reconciliation.</span></label>
+    <div class="billing-refund-actions"><button class="btn danger" type="button" onclick="billingAdminApproveRefund(${index})" ${admin.refundsLoading||admin.refundActionBusy?"disabled":""}>${busy?"Submitting exact refund…":review.state==="provider_canceled"?"Approve exact duplicate refund":"Safely retry server reconciliation"}</button></div>`:'<div class="billing-callout billing-error" role="status"><b>Manual reconciliation required.</b> This review cannot be resubmitted from the approval control until its provider evidence is resolved.</div>'}
+  </article>`}).join("")}</div>`;
+  return `<section class="billing-admin-refunds" aria-live="polite" aria-busy="${admin.refundsLoading||!!admin.refundActionBusy?"true":"false"}"><div class="billing-admin-refunds-heading"><div><span class="billing-kicker">Safe RPC summaries · up to ${BILLING_ADMIN_REFUND_LIMIT}</span><h4>Duplicate-subscription refund reviews</h4></div><button class="btn sec sm" type="button" onclick="billingAdminLoadRefundReviews()" ${admin.refundsLoading||!!admin.refundActionBusy?"disabled":""}>${admin.refundsLoading?"Loading…":"Refresh reviews with MFA"}</button></div><p class="muted">The list contains only an opaque internal review ID, masked email, workflow status, exact amount/currency, and timestamps. Card data, provider customer/subscription/invoice/charge/refund identifiers, raw events, and secrets are never requested or rendered.</p>${admin.refundMessage?`<div class="billing-callout billing-good" role="status">${billingEsc(admin.refundMessage)}</div>`:""}${body}</section>`;
+}
 function billingFinancialEventLabel(value){return String(value||"").split(/[._]/).filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(" ")||"Financial event"}
 function billingAdminGrantBlocked(account){return !!account&&["trialing","active","past_due","unpaid","paused","incomplete"].includes(account.subscriptionStatus)&&!account.cancelAtPeriodEnd}
 function billingAdminCurrent(owner,generation,authGeneration,accountId=""){return !!owner&&billingOwnerId()===owner&&billingState.admin.requestGeneration===generation&&billingAuthGeneration()===authGeneration&&(!accountId||billingState.admin.result?.accountId===accountId)}
@@ -297,13 +348,57 @@ function billingAdminPanelHtml(){
     <div class="billing-admin-actions"><button class="btn" type="button" onclick="billingAdminGrantDeveloper()" ${controlsBusy||admin.holdsError||grantBlocked?"disabled":""}>Grant developer access</button><button class="btn danger" type="button" onclick="billingAdminRevokeDeveloper()" ${controlsBusy||admin.holdsError?"disabled":""}>Revoke developer access</button></div>
     <section class="billing-admin-holds" aria-live="polite" aria-busy="${admin.holdsLoading?"true":"false"}"><div class="billing-admin-holds-heading"><div><span class="billing-kicker">Bounded safe summaries · up to ${BILLING_ADMIN_HOLD_LIMIT}</span><h4>Open financial holds</h4></div></div><p class="muted">Only the event category and opening time are shown. Raw webhooks, card data, provider/customer/subscription/invoice identifiers, and secrets are never rendered here.</p>${billingAdminFinancialHoldsHtml()}</section>
   </div>`:"";
-  return `<section class="gov-card gov-wide billing-admin-panel" id="billingAdminRoot"><div class="billing-heading"><div><span class="billing-kicker">Global administrator only · AAL2 required</span><h3>Developer access</h3></div></div>
+  return `<section class="gov-card gov-wide billing-admin-panel" id="billingAdminRoot"><div class="billing-heading"><div><span class="billing-kicker">Global administrator only · AAL2 required</span><h3>Billing administration</h3></div></div>
+    ${billingAdminRefundReviewsHtml()}
+    <div class="billing-admin-section-heading"><span class="billing-kicker">Exact account lookup</span><h4>Developer access and financial holds</h4></div>
     <p class="muted">Look up one account by its exact verified email or exact account UUID. Results expose only a masked email and safe membership summary—never Stripe customer, subscription, or payment identifiers.</p>
     <form class="billing-admin-search" onsubmit="billingAdminLookup(event)"><label for="billingAdminQuery">Exact verified email or exact account UUID</label><div><input id="billingAdminQuery" autocomplete="off" spellcheck="false" value="${billingEsc(admin.query)}" placeholder="person@example.com or UUID"><button class="btn sec" type="submit" ${controlsBusy?"disabled":""}>${admin.loading?"Looking up…":"Look up account"}</button></div></form>
     ${admin.error?`<div class="billing-callout billing-error" role="alert">${billingEsc(admin.error)}</div>`:""}${admin.message?`<div class="billing-callout billing-good" role="status">${billingEsc(admin.message)}</div>`:""}${resultHtml}
   </section>`;
 }
 function billingPaintAdmin(){const root=typeof document!=="undefined"?document.getElementById("billingAdminRoot"):null;if(root)root.outerHTML=billingAdminPanelHtml()}
+async function billingAdminLoadRefundReviews(alreadySteppedUp=false){
+  const owner=billingOwnerId();if(!owner||!billingPlatformQueueRoute()||billingState.admin.refundsLoading||billingState.admin.refundActionBusy)return;
+  const generation=++billingState.admin.refundRequestGeneration,authGeneration=billingAuthGeneration();
+  if(!alreadySteppedUp){
+    const steppedUp=typeof requireAal2ForSensitiveAction==="function"&&await requireAal2ForSensitiveAction("view duplicate-subscription refund reviews");
+    if(!billingAdminRefundCurrent(owner,generation,authGeneration))return;
+    if(!steppedUp){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="Two-factor verification is required before refund reviews can be loaded.";billingPaintAdmin();return}
+  }
+  billingState.admin.refundsLoading=true;billingState.admin.refundsError="";billingPaintAdmin();
+  let response;
+  try{response=await sb.rpc("billing_admin_duplicate_refund_reviews",{p_limit:BILLING_ADMIN_REFUND_LIMIT})}catch(_error){response={data:null,error:{message:"request failed"}}}
+  if(!billingAdminRefundCurrent(owner,generation,authGeneration)){if(billingAdminRefundSameAccountRequest(owner,generation,authGeneration))billingState.admin.refundsLoading=false;return}
+  billingState.admin.refundsLoading=false;
+  if(response?.error){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="Duplicate-refund summaries could not be verified. No approval control is available.";billingPaintAdmin();return}
+  try{billingState.admin.refunds=billingNormalizeRefundReviews(response?.data);billingState.admin.refundsLoaded=true;billingState.admin.refundsError=""}catch(_error){billingState.admin.refunds=[];billingState.admin.refundsLoaded=false;billingState.admin.refundsError="The refund-review query returned an invalid safe summary. No approval control is available."}
+  billingPaintAdmin();
+}
+async function billingAdminApproveRefund(index){
+  const owner=billingOwnerId(),review=Number.isInteger(index)?billingState.admin.refunds[index]:null;
+  if(!owner||!review||!billingPlatformQueueRoute()||!BILLING_REFUND_ACTIONABLE_STATES.has(review.state)||billingState.admin.refundsLoading||billingState.admin.refundActionBusy)return;
+  const draft=billingAdminCaptureRefundDraft(index),expected=billingRefundConfirmation(review);
+  if(!draft||draft.confirmation!==expected){billingState.admin.refundsError=`Type the exact amount and currency ${expected} before approving this refund.`;billingPaintAdmin();return}
+  if(draft.reason.length<10||draft.reason.length>1000){billingState.admin.refundsError="Enter a specific duplicate-refund approval reason between 10 and 1000 characters.";billingPaintAdmin();return}
+  if(!draft.acknowledged){billingState.admin.refundsError="Explicitly acknowledge this exact original-method refund before continuing.";billingPaintAdmin();return}
+  const selectionGeneration=billingState.admin.refundRequestGeneration,authGeneration=billingAuthGeneration(),reviewId=review.reviewId;
+  const steppedUp=typeof requireAal2ForSensitiveAction==="function"&&await requireAal2ForSensitiveAction("approve and execute this exact duplicate-subscription refund");
+  if(!billingAdminRefundCurrent(owner,selectionGeneration,authGeneration,reviewId))return;
+  if(!steppedUp){billingState.admin.refundsError="Two-factor verification is required before a duplicate refund can be approved.";billingPaintAdmin();return}
+  const warning=`Approve ${expected} for ${review.maskedEmail} under opaque review ${reviewId}? The server will verify the canceled duplicate and original payment method again before any refund is attempted.`;
+  if(typeof confirm==="function"&&!confirm(warning))return;
+  billingState.admin.refundActionBusy=reviewId;billingState.admin.refundsError="";billingState.admin.refundMessage="";
+  const generation=++billingState.admin.refundRequestGeneration;billingPaintAdmin();
+  let response;
+  try{response=await sb.functions.invoke("billing-admin-refund-duplicate",{body:{remediationId:reviewId,reason:draft.reason}})}catch(_error){response={data:null,error:{message:"request failed"}}}
+  if(!billingAdminRefundCurrent(owner,generation,authGeneration,reviewId)){if(billingAdminRefundSameAccountRequest(owner,generation,authGeneration))billingState.admin.refundActionBusy="";return}
+  billingState.admin.refundActionBusy="";
+  const raw=response?.data,state=String(raw?.state||""),amount=raw?.amount,currency=String(raw?.currency||"").toLowerCase();
+  if(response?.error||!raw||!["refunded","provider_pending"].includes(state)||!Number.isSafeInteger(amount)||amount!==review.amountMinor||currency!==review.currency){billingState.admin.refundsError="The exact duplicate refund was not confirmed by the server. Do not assume money moved; refresh the review before any retry.";billingPaintAdmin();return}
+  delete billingState.admin.refundDrafts[reviewId];
+  billingState.admin.refundMessage=state==="refunded"?`${expected} was independently confirmed refunded by the server.`:`${expected} is pending at the provider. Signed webhook reconciliation is still required before completion is assumed.`;
+  await billingAdminLoadRefundReviews(true);
+}
 async function billingAdminLookup(event,quiet=false){
   event?.preventDefault?.();
   const owner=billingOwnerId(),input=typeof document!=="undefined"?document.getElementById("billingAdminQuery"):null;
