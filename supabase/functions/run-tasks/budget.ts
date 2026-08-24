@@ -47,6 +47,35 @@ function safeActualTokens(value: unknown) {
     : null;
 }
 
+export function conservativeAutomationBudgetReservation(
+  providerBodyText: string,
+  maxOutputTokens: number,
+) {
+  if (
+    !Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 0 ||
+    maxOutputTokens > MAX_RESERVED_TOKENS
+  ) return MAX_RESERVED_TOKENS;
+  const inputCeiling = new TextEncoder().encode(providerBodyText).byteLength;
+  return Math.min(
+    MAX_RESERVED_TOKENS,
+    Math.max(1, inputCeiling + maxOutputTokens),
+  );
+}
+
+export function reportedProviderTokens(payload: unknown) {
+  const usage = asRecord(asRecord(payload).usage);
+  const total = safeActualTokens(usage.total_tokens);
+  if (total !== null) return total;
+  const prompt = safeActualTokens(
+    usage.prompt_tokens ?? usage.input_tokens,
+  );
+  const completion = safeActualTokens(
+    usage.completion_tokens ?? usage.output_tokens,
+  );
+  if (prompt === null || completion === null) return null;
+  return safeActualTokens(prompt + completion);
+}
+
 export class AutomationBudgetClaimError extends Error {
   code: string;
   retryable: boolean;
@@ -133,7 +162,7 @@ export async function runWithAutomationBudget<T>(options: {
 
   let finalizationStarted = false;
   const finalizeOnce = async (
-    outcome: "completed" | "provider_error" | "request_failed",
+    outcome: "completed" | "provider_error" | "request_failed" | "cancelled",
     actualTokens: number | null,
     outcomeCode: string,
   ) => {
@@ -166,12 +195,22 @@ export async function runWithAutomationBudget<T>(options: {
       : 0;
     const requestedOutcome = metadata.budgetOutcome === "provider_error"
       ? "provider_error"
+      : metadata.budgetOutcome === "cancelled"
+      ? "cancelled"
       : "request_failed";
+    // Cancellation is only a known-zero outcome before the network boundary.
+    // Once a fetch may have been issued, preserve the reservation unless the
+    // provider reports exact usage.
+    const finalOutcome = fetchIssued
+      ? requestedOutcome === "cancelled" ? "request_failed" : requestedOutcome
+      : requestedOutcome === "cancelled" ? "cancelled" : "request_failed";
     const finalized = await finalizeOnce(
-      fetchIssued ? requestedOutcome : "request_failed",
+      finalOutcome,
       actualTokens,
       fetchIssued
         ? safeCode(metadata.budgetOutcomeCode, "provider_request_failed")
+        : requestedOutcome === "cancelled"
+        ? safeCode(metadata.budgetOutcomeCode, "provider_request_cancelled")
         : "provider_request_not_started",
     );
     if (!finalized) {

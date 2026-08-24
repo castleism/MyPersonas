@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type OPAQUE-FOUNDATION-VERIFIED after migrations 062-064, cleanup preview, the protected gateway, and both opaque-media origins are live and read back"
+        description: "Type OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED after migrations 062-064, cleanup preview, the protected gateway, and both opaque-media origins are live and read back; billing migration 068 (enforcement and Checkout off) and billing consumers must also be live and read back"
         required: true
         type: string
 
@@ -33,8 +33,8 @@ jobs:
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
-          test "${RELEASE_CONFIRMATION}" = "OPAQUE-FOUNDATION-VERIFIED" || {
-            echo "Release blocked: verify migrations 062-064, cleanup preview, the protected gateway, and the foundation functions before deploying this frontend."
+          test "${RELEASE_CONFIRMATION}" = "OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED" || {
+            echo "Release blocked: verify migrations 062-064, billing migration 068 in shadow mode, cleanup preview, the protected gateway, billing consumers, and the foundation functions before deploying this frontend."
             exit 1
           }
       - name: Prepare public site artifact
@@ -49,6 +49,8 @@ jobs:
             --include '/persona-view.js' \
             --include '/platform-governance.css' \
             --include '/platform-governance.js' \
+            --include '/billing.css' \
+            --include '/billing.js' \
             --include '/ai-content-provenance.css' \
             --include '/ai-content-provenance.js' \
             --include '/profile-image-crop.css' \

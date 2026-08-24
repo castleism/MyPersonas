@@ -60,6 +60,6 @@ test("research execution resolves the endpoint before its provider fetch", async
     "utf8",
   );
   const validation = source.indexOf("resolveAiProviderEndpoint({");
-  const fetch = source.indexOf("fetch(endpoint.url");
+  const fetch = source.indexOf("fetch(request.endpoint.url");
   assert.ok(validation >= 0 && fetch > validation);
 });

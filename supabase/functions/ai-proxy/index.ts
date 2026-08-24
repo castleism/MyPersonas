@@ -6,6 +6,11 @@
 // Deploy: supabase functions deploy ai-proxy
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  accountBillingAccess,
+  billingAccessHttpStatus,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -1554,6 +1559,19 @@ async function handleRequest(req: Request) {
     // owner-scoped backend query below is the authorization boundary.
   }
 
+  const initialEntitlement = await accountBillingAccess(admin, owner);
+  if (!initialEntitlement.allowed) {
+    const code = initialEntitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_required";
+    if (context) await auditDenied(owner, context, mode, code);
+    return responseJson(
+      { error: billingAccessMessage(initialEntitlement), code },
+      billingAccessHttpStatus(initialEntitlement),
+      origin,
+    );
+  }
+
   if (!approvedInput) {
     backendId = typeof payload.backendId === "string"
       ? payload.backendId.trim()
@@ -1866,6 +1884,30 @@ async function handleRequest(req: Request) {
     }
     budgetLeaseId = claimedLease;
     auditDetail.budget_lease_enforced = Boolean(budgetLeaseId);
+    const providerEntitlement = await accountBillingAccess(admin, owner);
+    if (!providerEntitlement.allowed) {
+      const code = providerEntitlement.unavailable
+        ? "billing_verification_unavailable"
+        : "billing_required";
+      const budgetFinalized = await finalizeBudgetOnce("cancelled", 0, code);
+      if (auditId) {
+        await finishAudit(auditId, owner, "ai.call.denied", "denied", {
+          ...auditDetail,
+          code,
+          budget_finalized: budgetFinalized,
+        });
+      } else await auditDenied(owner, context, mode, code);
+      return responseJson(
+        {
+          error: budgetFinalized
+            ? billingAccessMessage(providerEntitlement)
+            : "Membership changed and budget cleanup could not be verified; no provider request was sent",
+          code: budgetFinalized ? code : "budget_finalize_failed",
+        },
+        budgetFinalized ? billingAccessHttpStatus(providerEntitlement) : 503,
+        origin,
+      );
+    }
     if (automatedRunId) {
       const providerStart = await admin.rpc(
         "mark_agent_board_provider_started_service",
@@ -1902,6 +1944,37 @@ async function handleRequest(req: Request) {
       }
       providerStartRecorded = true;
       auditDetail.provider_start_recorded = true;
+
+      // The provider-start RPC is itself an awaited database boundary. Recheck
+      // membership after it returns so a cancellation committed while that
+      // marker was being recorded cannot proceed to the network request. The
+      // marker remains deliberately conservative for crash reconciliation;
+      // the budget lease proves this path finalized with known-zero usage.
+      const postMarkerEntitlement = await accountBillingAccess(admin, owner);
+      if (!postMarkerEntitlement.allowed) {
+        const code = postMarkerEntitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required";
+        const budgetFinalized = await finalizeBudgetOnce("cancelled", 0, code);
+        if (auditId) {
+          await finishAudit(auditId, owner, "ai.call.denied", "denied", {
+            ...auditDetail,
+            code,
+            provider_fetch_issued: false,
+            budget_finalized: budgetFinalized,
+          });
+        }
+        return responseJson(
+          {
+            error: budgetFinalized
+              ? billingAccessMessage(postMarkerEntitlement)
+              : "Membership changed and budget cleanup could not be verified; no provider request was sent",
+            code: budgetFinalized ? code : "budget_finalize_failed",
+          },
+          budgetFinalized ? billingAccessHttpStatus(postMarkerEntitlement) : 503,
+          origin,
+        );
+      }
     }
     const providerController = new AbortController();
     providerTimeout = setTimeout(

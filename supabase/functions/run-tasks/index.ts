@@ -6,6 +6,7 @@
 // Deploy: supabase functions deploy run-tasks --no-verify-jwt
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { accountBillingAccess } from "../_shared/account-entitlement.ts";
 import {
   AutomationBudgetClaimError,
   AutomationBudgetFinalizationError,
@@ -16,6 +17,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const MAX_TASK_CANDIDATES_PER_RUN = 8;
+const SUSPENDED_ADVANCE_BATCH_SIZE = 100;
 const MAX_TASKS_PROCESSED_PER_RUN = 2;
 const RUN_WALL_CLOCK_BUDGET_MS = 80_000;
 const MIN_TASK_START_BUDGET_MS = 45_000;
@@ -166,6 +168,17 @@ class ProviderCallError extends Error {
     this.budgetOutcome = budgetOutcome;
     this.budgetActualTokens = budgetActualTokens;
     this.budgetOutcomeCode = budgetOutcomeCode;
+  }
+}
+
+class BillingEntitlementError extends Error {
+  unavailable: boolean;
+  constructor(unavailable: boolean) {
+    super(unavailable
+      ? "Membership verification is unavailable; no provider request was sent."
+      : "Account membership is inactive; no provider request was sent.");
+    this.name = "BillingEntitlementError";
+    this.unavailable = unavailable;
   }
 }
 
@@ -1086,6 +1099,25 @@ function reservationBlock(reservation: GenerationReservation) {
 }
 
 async function runTask(task: TaskRow, now: Date, leaseToken: string) {
+  const initialEntitlement = await accountBillingAccess(admin, task.owner);
+  if (!initialEntitlement.allowed) {
+    return initialEntitlement.unavailable
+      ? await finishRetry(
+        task,
+        null,
+        leaseToken,
+        "retry_billing_verification",
+        "Membership verification is unavailable; no provider request was sent.",
+        300,
+      )
+      : await finishBlocked(
+        task,
+        null,
+        leaseToken,
+        "paused_billing",
+        "Account membership is inactive; scheduled generation was skipped.",
+      );
+  }
   const [settingsResult, bindingResult] = await Promise.all([
     admin.from("agent_owner_settings").select(
       "automation_paused,default_timezone,daily_draft_limit,quiet_hours_start,quiet_hours_end",
@@ -1613,6 +1645,10 @@ async function runTask(task: TaskRow, now: Date, leaseToken: string) {
       // an idempotent claim retry; a different task/run cannot share the key.
       requestKey: generationAuditId,
       providerCall: async (markFetchIssued) => {
+        const providerEntitlement = await accountBillingAccess(admin, task.owner);
+        if (!providerEntitlement.allowed) {
+          throw new BillingEntitlementError(providerEntitlement.unavailable);
+        }
         const result = await callProvider(
           endpoint,
           providerRequest,
@@ -1644,6 +1680,51 @@ async function runTask(task: TaskRow, now: Date, leaseToken: string) {
       );
     }
   } catch (error) {
+    if (error instanceof BillingEntitlementError) {
+      const code = error.unavailable
+        ? "billing_verification_unavailable"
+        : "paused_billing";
+      const auditFinished = await finishGenerationAudit(
+        generationAuditId,
+        task,
+        binding,
+        "ai.call.denied",
+        "denied",
+        {
+          provider: endpoint.kind,
+          backend_id: backend.id,
+          code,
+          budget_reserved_tokens: budgetReservedTokens,
+          budget_request_key: generationAuditId,
+          provider_fetch_issued: false,
+        },
+      );
+      if (!auditFinished) {
+        return await finishBlocked(
+          task,
+          binding,
+          leaseToken,
+          "audit_reconciliation_required",
+          "The membership denial could not be attached to its exact audit lifecycle; no provider request was sent.",
+        );
+      }
+      return error.unavailable
+        ? await finishRetry(
+          task,
+          binding,
+          leaseToken,
+          "retry_billing_verification",
+          error.message,
+          300,
+        )
+        : await finishBlocked(
+          task,
+          binding,
+          leaseToken,
+          "paused_billing",
+          error.message,
+        );
+    }
     if (error instanceof AutomationBudgetClaimError) {
       const auditFinished = await finishGenerationAudit(
         generationAuditId,
@@ -1883,6 +1964,17 @@ serve(async (req) => {
   const startedAt = new Date();
   const deadline = startedAt.getTime() + RUN_WALL_CLOCK_BUDGET_MS;
   const dueAt = startedAt.toISOString();
+  const { data: pausedBilling, error: pausedBillingError } = await admin.rpc(
+    "advance_suspended_ai_generation_tasks",
+    { p_due_at: dueAt, p_limit: SUSPENDED_ADVANCE_BATCH_SIZE },
+  );
+  if (
+    pausedBillingError || typeof pausedBilling !== "number" ||
+    !Number.isSafeInteger(pausedBilling) || pausedBilling < 0 ||
+    pausedBilling > SUSPENDED_ADVANCE_BATCH_SIZE
+  ) {
+    return json({ error: "Suspended task schedules could not be advanced." }, 500);
+  }
   const { data: tasks, error } = await admin.rpc("due_ai_generation_tasks", {
     p_due_at: dueAt,
     p_limit: MAX_TASK_CANDIDATES_PER_RUN,
@@ -1922,6 +2014,7 @@ serve(async (req) => {
     processed: results.length,
     drafted,
     results,
+    pausedBilling,
     budgetExhausted,
     startedAt: dueAt,
     finishedAt: new Date().toISOString(),

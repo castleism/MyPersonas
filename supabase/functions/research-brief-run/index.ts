@@ -2,7 +2,23 @@
 // Generates owner-review material only. It never approves, schedules, or publishes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { resolveAiProviderEndpoint } from "../_shared/ai-provider-endpoint.ts";
+import {
+  type AiProviderEndpoint,
+  resolveAiProviderEndpoint,
+} from "../_shared/ai-provider-endpoint.ts";
+import {
+  accountBillingAccess,
+  type AccountEntitlementResult,
+  billingAccessHttpStatus,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
+  AutomationBudgetClaimError,
+  AutomationBudgetFinalizationError,
+  conservativeAutomationBudgetReservation,
+  reportedProviderTokens,
+  runWithAutomationBudget,
+} from "../run-tasks/budget.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -31,6 +47,50 @@ type BackendRow = {
   api_key: string | null;
   extra: Record<string, unknown> | null;
 };
+
+type PreparedProviderRequest = {
+  endpoint: AiProviderEndpoint;
+  headers: Record<string, string>;
+  bodyText: string;
+};
+
+class ResearchBillingEntitlementError extends Error {
+  entitlement: AccountEntitlementResult;
+  budgetOutcome = "cancelled";
+  budgetActualTokens = 0;
+  budgetOutcomeCode: string;
+
+  constructor(entitlement: AccountEntitlementResult) {
+    super(billingAccessMessage(entitlement));
+    this.name = "ResearchBillingEntitlementError";
+    this.entitlement = entitlement;
+    this.budgetOutcomeCode = entitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_required";
+  }
+}
+
+class ResearchProviderError extends Error {
+  budgetOutcome: "provider_error" | "request_failed";
+  budgetActualTokens: number | null;
+  budgetOutcomeCode: string;
+  httpStatus: number;
+
+  constructor(
+    message: string,
+    budgetOutcome: "provider_error" | "request_failed",
+    budgetActualTokens: number | null,
+    budgetOutcomeCode: string,
+    httpStatus = 502,
+  ) {
+    super(message);
+    this.name = "ResearchProviderError";
+    this.budgetOutcome = budgetOutcome;
+    this.budgetActualTokens = budgetActualTokens;
+    this.budgetOutcomeCode = budgetOutcomeCode;
+    this.httpStatus = httpStatus;
+  }
+}
 
 function cors(origin: string) {
   return {
@@ -85,12 +145,12 @@ async function resolveApiKey(backend: BackendRow, owner: string) {
   return "";
 }
 
-async function providerText(
+function prepareProviderRequest(
   backend: BackendRow,
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-) {
+): PreparedProviderRequest {
   const endpoint = resolveAiProviderEndpoint({
     provider: backend.provider,
     baseUrl: backend.base_url,
@@ -100,56 +160,108 @@ async function providerText(
   const model = safeText(backend.model, 300);
   if (!model && endpoint.kind !== "azure") throw new Error("The selected model id is missing");
 
+  const anthropic = endpoint.kind === "anthropic";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (anthropic) {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  } else if (endpoint.kind === "azure") headers["api-key"] = apiKey;
+  else headers.Authorization = `Bearer ${apiKey}`;
+
+  const body = anthropic
+    ? {
+      model,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      temperature: 0.2,
+      max_tokens: 4_000,
+    }
+    : {
+      ...(endpoint.kind === "azure" ? {} : { model }),
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 4_000,
+    };
+  return { endpoint, headers, bodyText: JSON.stringify(body) };
+}
+
+async function providerText(
+  request: PreparedProviderRequest,
+  markFetchIssued: () => void,
+) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  let response: Response;
   try {
-    const anthropic = endpoint.kind === "anthropic";
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (anthropic) {
-      headers["x-api-key"] = apiKey;
-      headers["anthropic-version"] = "2023-06-01";
-    } else if (endpoint.kind === "azure") headers["api-key"] = apiKey;
-    else headers.Authorization = `Bearer ${apiKey}`;
-
-    const body = anthropic
-      ? {
-        model,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        temperature: 0.2,
-        max_tokens: 4_000,
-      }
-      : {
-        ...(endpoint.kind === "azure" ? {} : { model }),
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2,
-        max_tokens: 4_000,
-      };
-    const response = await fetch(endpoint.url, {
+    markFetchIssued();
+    response = await fetch(request.endpoint.url, {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
+      headers: request.headers,
+      body: request.bodyText,
       signal: controller.signal,
     });
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
+    throw new ResearchProviderError(
+      timedOut
+        ? "The model request timed out"
+        : "The model provider could not be reached",
+      "request_failed",
+      null,
+      timedOut ? "provider_timeout" : "provider_request_failed",
+      503,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+  try {
     const declared = Number(response.headers.get("Content-Length") || "0");
     if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
-      throw new Error("The model response was too large");
+      throw new ResearchProviderError(
+        "The model response was too large",
+        "provider_error",
+        null,
+        "provider_response_too_large",
+      );
     }
     const raw = await response.text();
     if (new TextEncoder().encode(raw).byteLength > MAX_RESPONSE_BYTES) {
-      throw new Error("The model response was too large");
+      throw new ResearchProviderError(
+        "The model response was too large",
+        "provider_error",
+        null,
+        "provider_response_too_large",
+      );
     }
-    if (!response.ok) throw new Error(`Model request failed (HTTP ${response.status})`);
-    let payload: Record<string, unknown>;
+    let payload: Record<string, unknown> | null = null;
     try {
       payload = JSON.parse(raw) as Record<string, unknown>;
     } catch {
-      throw new Error("The model returned an invalid response envelope");
+      // The provider may have returned a non-JSON error. It is still a
+      // definitive provider response, but exact token usage is unavailable.
     }
-    const content = anthropic
+    const actualTokens = reportedProviderTokens(payload);
+    if (!response.ok) {
+      throw new ResearchProviderError(
+        `Model request failed (HTTP ${response.status})`,
+        "provider_error",
+        actualTokens,
+        "provider_http_error",
+        response.status === 429 ? 429 : 502,
+      );
+    }
+    if (!payload) {
+      throw new ResearchProviderError(
+        "The model returned an invalid response envelope",
+        "provider_error",
+        null,
+        "provider_response_invalid",
+      );
+    }
+    const content = request.endpoint.kind === "anthropic"
       ? (Array.isArray(payload.content)
         ? payload.content.map((part) =>
           part && typeof part === "object" && "text" in part
@@ -162,10 +274,23 @@ async function providerText(
           ?.message?.content,
         MAX_RESPONSE_BYTES,
       );
-    if (!content) throw new Error("The model returned no assistant text");
-    return content;
-  } finally {
-    clearTimeout(timer);
+    if (!content) {
+      throw new ResearchProviderError(
+        "The model returned no assistant text",
+        "provider_error",
+        actualTokens,
+        "provider_empty_response",
+      );
+    }
+    return { value: content, actualTokens };
+  } catch (error) {
+    if (error instanceof ResearchProviderError) throw error;
+    throw new ResearchProviderError(
+      "The model response could not be read",
+      "provider_error",
+      null,
+      "provider_response_unreadable",
+    );
   }
 }
 
@@ -267,6 +392,19 @@ Deno.serve(async (req) => {
   if (!UUID_RE.test(personaId) || (requestedBackendId && !UUID_RE.test(requestedBackendId))) {
     return json({ error: "A valid persona and model route are required" }, 400, origin);
   }
+  const initialEntitlement = await accountBillingAccess(admin, owner);
+  if (!initialEntitlement.allowed) {
+    return json(
+      {
+        error: billingAccessMessage(initialEntitlement),
+        code: initialEntitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required",
+      },
+      billingAccessHttpStatus(initialEntitlement),
+      origin,
+    );
+  }
 
   try {
     const { data: persona, error: personaError } = await admin.from("personas")
@@ -308,12 +446,37 @@ Deno.serve(async (req) => {
 
     const apiKey = await resolveApiKey(backend as BackendRow, owner);
     if (!apiKey) return json({ error: "The selected model credential is unavailable" }, 409, origin);
-    const responseText = await providerText(
+    const providerRequest = prepareProviderRequest(
       backend as BackendRow,
       apiKey,
       systemPrompt(maxFindings),
       userPrompt(persona, plan, safeText(settings.research_depth, 20) || "standard"),
     );
+    const responseText = await runWithAutomationBudget({
+      rpc: async (name, args) => {
+        const result = await admin.rpc(name, args);
+        return {
+          data: result.data,
+          error: result.error
+            ? { code: result.error.code, message: result.error.message }
+            : null,
+        };
+      },
+      owner,
+      backendId,
+      reservedTokens: conservativeAutomationBudgetReservation(
+        providerRequest.bodyText,
+        4_000,
+      ),
+      requestKey: crypto.randomUUID(),
+      providerCall: async (markFetchIssued) => {
+        const providerEntitlement = await accountBillingAccess(admin, owner);
+        if (!providerEntitlement.allowed) {
+          throw new ResearchBillingEntitlementError(providerEntitlement);
+        }
+        return await providerText(providerRequest, markFetchIssued);
+      },
+    });
     const parsed = extractObject(responseText);
     const findings = normalizeFindings(parsed.findings, maxFindings);
     if (!findings.length) throw new Error("The model returned no usable findings");
@@ -323,6 +486,17 @@ Deno.serve(async (req) => {
     const executiveSummary = safeText(parsed.executive_summary, 6_000);
     const sources = [...new Set(findings.flatMap((finding) => finding.source_urls))]
       .map((url) => ({ url, verification: "owner_review_required" }));
+    const persistenceEntitlement = await accountBillingAccess(admin, owner);
+    if (!persistenceEntitlement.allowed) {
+      return json({
+        error: persistenceEntitlement.unavailable
+          ? "Membership verification became unavailable; the generated brief was not saved"
+          : "Membership became inactive; the generated brief was not saved",
+        code: persistenceEntitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required",
+      }, billingAccessHttpStatus(persistenceEntitlement), origin);
+    }
     const { data: briefId, error: saveError } = await admin.rpc("save_research_brief", {
       p_persona_id: personaId,
       p_brief_date: briefDate,
@@ -342,6 +516,38 @@ Deno.serve(async (req) => {
       verification_required: findings.some((finding) => finding.needs_verification),
     }, 200, origin);
   } catch (error) {
+    if (error instanceof ResearchBillingEntitlementError) {
+      return json({
+        error: error.message,
+        code: error.budgetOutcomeCode,
+      }, billingAccessHttpStatus(error.entitlement), origin);
+    }
+    if (error instanceof AutomationBudgetClaimError) {
+      const limited = error.code.includes("limit") ||
+        error.code.includes("concurrency");
+      return json({
+        error: error.retryable
+          ? "AI budget enforcement is unavailable; no model request was sent"
+          : limited
+          ? "The research model reached its owner-configured budget ceiling"
+          : "Research automation requires an enabled AI budget policy",
+        code: error.code,
+      }, error.retryable ? 503 : limited ? 429 : 409, origin);
+    }
+    if (error instanceof AutomationBudgetFinalizationError) {
+      return json({
+        error: error.providerIssued
+          ? "The model reply was withheld because AI budget accounting requires reconciliation"
+          : "AI budget accounting could not release the unused reservation",
+        code: "budget_reconciliation_required",
+      }, 503, origin);
+    }
+    if (error instanceof ResearchProviderError) {
+      return json({
+        error: error.message,
+        code: error.budgetOutcomeCode,
+      }, error.httpStatus, origin);
+    }
     const message = error instanceof Error ? error.message : "Research briefing failed";
     return json({ error: message }, 500, origin);
   }

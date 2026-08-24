@@ -7,6 +7,11 @@
 // Deploy: supabase functions deploy run-mailbox-jobs --no-verify-jwt
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
+  accountBillingAccess,
+  type AccountEntitlementResult,
+} from "../_shared/account-entitlement.ts";
+import { runMailboxProviderBoundary } from "../_shared/mailbox-provider-boundary.ts";
+import {
   admin,
   asRecord,
   canModifyMailbox,
@@ -21,6 +26,7 @@ import {
   integerInRange,
   isUuid,
   labelNameForCategory,
+  MailboxAiBudgetFatalError,
   mailboxAiClassify,
   MailboxOperation,
   normalizeGmailMessage,
@@ -263,6 +269,27 @@ async function enqueueDueScans() {
         updated_at: nowIso(),
       }).eq("ledger_id", setting.ledger_id).eq("owner", setting.owner);
       continue;
+    }
+    if (setting.classifier_mode === "ai") {
+      const entitlement = await accountBillingAccess(admin, setting.owner);
+      if (!entitlement.allowed) {
+        await admin.from("mailbox_settings").update({
+          next_scan_at: entitlement.unavailable
+            ? isoAfter(60 * 60 * 1_000)
+            : nextScanAt,
+          updated_at: nowIso(),
+        }).eq("ledger_id", setting.ledger_id).eq("owner", setting.owner);
+        await audit(
+          setting.owner,
+          setting.ledger_id,
+          "scan.schedule_skipped_billing",
+          entitlement.unavailable ? "failed" : "info",
+          entitlement.unavailable
+            ? "Membership verification was unavailable; no AI inbox scan was queued."
+            : "This scheduled AI inbox scan was skipped because membership is inactive.",
+        );
+        continue;
+      }
     }
     const context = await ownedMailboxContext(setting.ledger_id, setting.owner);
     if (!context || !canReadMailbox(context)) {
@@ -528,6 +555,33 @@ async function failScan(
   );
 }
 
+async function failScanForBilling(
+  run: ScanRun,
+  entitlement: AccountEntitlementResult,
+  phase: "initial" | "credential" | "listing" | "metadata" | "persistence",
+) {
+  const detail = phase === "initial"
+    ? "No Gmail credential, metadata, or AI provider was contacted."
+    : phase === "credential"
+    ? "No Gmail credential was resolved or refreshed."
+    : phase === "listing"
+    ? "No Gmail message listing or metadata request followed the membership check."
+    : phase === "metadata"
+    ? "No additional Gmail metadata batch was requested, and no findings from this Gmail page were saved."
+    : "No findings from this Gmail page were saved.";
+  await failScan(
+    run,
+    entitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_membership_inactive",
+    `${
+      entitlement.unavailable
+        ? "Membership verification became unavailable."
+        : "Membership became inactive."
+    } ${detail}`,
+  );
+}
+
 async function processOneScan(startedAt: number) {
   const candidateId = await nextRunnableId("next_runnable_mailbox_scan_id");
   if (!candidateId) return false;
@@ -545,6 +599,14 @@ async function processOneScan(startedAt: number) {
   if (!lease.claimed) return false;
   try {
     if (Date.now() - startedAt > RUN_BUDGET_MS - 20_000) return false;
+    const snapshot = settingsSnapshot(run.settings_snapshot);
+    if (snapshot.classifierMode === "ai") {
+      const initialEntitlement = await accountBillingAccess(admin, run.owner);
+      if (!initialEntitlement.allowed) {
+        await failScanForBilling(run, initialEntitlement, "initial");
+        return true;
+      }
+    }
     const context = await ownedMailboxContext(run.ledger_id, run.owner);
     if (!context || !canReadMailbox(context)) {
       await failScan(
@@ -577,7 +639,6 @@ async function processOneScan(startedAt: number) {
       await failScan(run, "scan_expired", "Scan checkpoint expired.");
       return true;
     }
-    const snapshot = settingsSnapshot(run.settings_snapshot);
     const processedBefore = integerInRange(
       state.processed_count,
       0,
@@ -591,7 +652,17 @@ async function processOneScan(startedAt: number) {
     }
     let accessToken: string;
     try {
-      accessToken = await gmailAccessToken(context);
+      const tokenBoundary = await runMailboxProviderBoundary(
+        admin,
+        run.owner,
+        snapshot.classifierMode === "ai",
+        () => gmailAccessToken(context),
+      );
+      if (!tokenBoundary.allowed) {
+        await failScanForBilling(run, tokenBoundary, "credential");
+        return true;
+      }
+      accessToken = tokenBoundary.value;
     } catch (tokenError) {
       await failScan(
         run,
@@ -612,10 +683,21 @@ async function processOneScan(startedAt: number) {
     }
     let page: Record<string, unknown>;
     try {
-      page = await gmailRequest(
-        accessToken,
-        `/gmail/v1/users/me/messages?${params.toString()}`,
+      const listingBoundary = await runMailboxProviderBoundary(
+        admin,
+        run.owner,
+        snapshot.classifierMode === "ai",
+        () =>
+          gmailRequest(
+            accessToken,
+            `/gmail/v1/users/me/messages?${params.toString()}`,
+          ),
       );
+      if (!listingBoundary.allowed) {
+        await failScanForBilling(run, listingBoundary, "listing");
+        return true;
+      }
+      page = listingBoundary.value;
     } catch (gmailError) {
       await failScan(
         run,
@@ -637,11 +719,22 @@ async function processOneScan(startedAt: number) {
         // has either been read or confirmed deleted.
         return true;
       }
-      const batch = await Promise.allSettled(
-        candidates.slice(index, index + 5).map((id) =>
-          gmailMetadata(accessToken, id)
-        ),
+      const metadataBoundary = await runMailboxProviderBoundary(
+        admin,
+        run.owner,
+        snapshot.classifierMode === "ai",
+        () =>
+          Promise.allSettled(
+            candidates.slice(index, index + 5).map((id) =>
+              gmailMetadata(accessToken, id)
+            ),
+          ),
       );
+      if (!metadataBoundary.allowed) {
+        await failScanForBilling(run, metadataBoundary, "metadata");
+        return true;
+      }
+      const batch = metadataBoundary.value;
       for (const result of batch) {
         inspectedCandidates++;
         if (result.status === "fulfilled") {
@@ -695,7 +788,22 @@ async function processOneScan(startedAt: number) {
             subject: normalized[index].subject,
             snippet: normalized[index].snippet,
           }));
-          const ai = await mailboxAiClassify(backend, run.owner, inputs);
+          let ai: Map<string, FindingCategory>;
+          try {
+            ai = await mailboxAiClassify(backend, run.owner, inputs);
+          } catch (error) {
+            if (!(error instanceof MailboxAiBudgetFatalError)) throw error;
+            await failScan(
+              run,
+              error.code,
+              error.code === "budget_reconciliation_required"
+                ? "AI classification may have reached the provider, but budget accounting could not be reconciled. No findings from this Gmail page were saved."
+                : error.code === "budget_claim_unavailable"
+                ? "AI budget enforcement was unavailable, so no provider request was sent and no findings from this Gmail page were saved."
+                : "Membership changed before AI classification. No provider request or findings persistence continued.",
+            );
+            return true;
+          }
           aiUsed = ai.size;
           aiFallback = Math.max(0, ambiguous.length - aiUsed);
           ambiguous.forEach(({ index }, keyIndex) => {
@@ -725,6 +833,16 @@ async function processOneScan(startedAt: number) {
         } else {
           aiFallback = ambiguous.length;
         }
+      }
+    }
+    if (snapshot.classifierMode === "ai") {
+      const persistenceEntitlement = await accountBillingAccess(
+        admin,
+        run.owner,
+      );
+      if (!persistenceEntitlement.allowed) {
+        await failScanForBilling(run, persistenceEntitlement, "persistence");
+        return true;
       }
     }
     let saved = 0;

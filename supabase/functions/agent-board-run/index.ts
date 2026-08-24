@@ -3,6 +3,11 @@
 // one-use capability is passed service-to-service to ai-proxy; neither browser
 // input nor mutable persona/model records can replace the approved snapshot.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  accountBillingAccess,
+  billingAccessHttpStatus,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -241,6 +246,20 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Exact request, approval hash, and idempotency key are required" }, 400, origin);
   }
 
+  const entitlement = await accountBillingAccess(admin, userData.user.id);
+  if (!entitlement.allowed) {
+    return json(
+      {
+        error: billingAccessMessage(entitlement),
+        code: entitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required",
+      },
+      billingAccessHttpStatus(entitlement),
+      origin,
+    );
+  }
+
   const reconciled = await admin.rpc("reconcile_expired_agent_board_runs_service", {
     p_owner: userData.user.id,
   });
@@ -386,6 +405,46 @@ Deno.serve(async (req: Request) => {
       code,
       pre_provider: false,
     }, 502, origin);
+  }
+
+  const persistenceEntitlement = await accountBillingAccess(
+    admin,
+    userData.user.id,
+  );
+  if (!persistenceEntitlement.allowed) {
+    const code = persistenceEntitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_required";
+    const stoppedMessage = persistenceEntitlement.unavailable
+      ? "Membership verification became unavailable; the provider result was not saved."
+      : "Membership became inactive; the provider result was not saved.";
+    const completion = await finish(
+      requestId,
+      runId,
+      "failed",
+      "",
+      { billing_stopped: true, code },
+      stoppedMessage,
+    );
+    if (completion.error) {
+      return json({
+        error: "The withheld provider result could not be reconciled",
+        code: "billing_result_reconciliation_required",
+        request_id: requestId,
+        run_id: runId,
+      }, 503, origin);
+    }
+    return json({
+      success: false,
+      executed: 1,
+      request_id: requestId,
+      run_id: runId,
+      status: "failed",
+      request_status: "failed",
+      error: stoppedMessage,
+      code,
+      result_withheld: true,
+    }, billingAccessHttpStatus(persistenceEntitlement), origin);
   }
 
   const resultText = bounded(parsed.content, 100_000);

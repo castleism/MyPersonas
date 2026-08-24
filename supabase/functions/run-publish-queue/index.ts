@@ -5,6 +5,14 @@
 // Deploy: supabase functions deploy run-publish-queue --no-verify-jwt
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  accountBillingAccess,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
+  type DeniedBillingAccess,
+  publisherBillingDisposition,
+} from "../_shared/publisher-entitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -76,6 +84,12 @@ type DestinationResult =
     account: AccountRow | null;
     target: DestinationRow;
   };
+
+function billingHaltCode(entitlement: DeniedBillingAccess) {
+  return entitlement.unavailable
+    ? "billing_verification_unavailable"
+    : "billing_membership_inactive";
+}
 
 function normalizedDestination(value: unknown) {
   const raw = typeof value === "string" && value.trim()
@@ -218,6 +232,48 @@ function transitionFailure(
   };
 }
 
+async function haltDraftForBilling(
+  draft: DraftRow,
+  entitlement: DeniedBillingAccess,
+  bindingId = "",
+) {
+  const code = billingHaltCode(entitlement);
+  const message = billingAccessMessage(entitlement);
+  const disposition = publisherBillingDisposition(entitlement, false);
+  if (bindingId) {
+    return disposition === "defer"
+      ? await deferDraft(draft, bindingId, code, message)
+      : await blockDraft(draft, bindingId, code, message);
+  }
+
+  const transition = await transitionQueuedDraft(
+    draft,
+    disposition === "defer"
+      ? {
+        publish_error: message,
+        publish_next_attempt_at: new Date(Date.now() + RETRY_DELAY_MS)
+          .toISOString(),
+      }
+      : {
+        // A verified inactive membership is terminal for this occurrence. The
+        // owner must intentionally requeue it after access returns, preventing
+        // a stale backlog from publishing in a burst.
+        publish_state: "blocked",
+        publish_next_attempt_at: null,
+        publish_error: message,
+      },
+  );
+  if (!transition.changed) {
+    return transitionFailure(draft, code, message, transition);
+  }
+  return {
+    draftId: draft.id,
+    status: disposition === "defer" ? "deferred" : "blocked",
+    code,
+    message,
+  };
+}
+
 async function blockDraft(
   draft: DraftRow,
   bindingId: string,
@@ -321,6 +377,12 @@ async function destinationFor(
 }
 
 async function publishNative(draft: DraftRow, bindingId: string) {
+  // Keep the server-verified entitlement check directly beside the atomic
+  // native-feed mutation. Any verification failure is fail-closed.
+  const entitlement = await accountBillingAccess(admin, draft.owner);
+  if (!entitlement.allowed) {
+    return await haltDraftForBilling(draft, entitlement, bindingId);
+  }
   const { data, error } = await admin.rpc("publish_native_agent_draft", {
     p_draft_id: draft.id,
     p_owner: draft.owner,
@@ -362,6 +424,13 @@ async function publishNative(draft: DraftRow, bindingId: string) {
 }
 
 async function processDraft(draft: DraftRow, now: Date) {
+  // The due-list RPC is read-only. Stop before loading the automation graph so
+  // an inactive account cannot progress toward a native/provider write.
+  const initialEntitlement = await accountBillingAccess(admin, draft.owner);
+  if (!initialEntitlement.allowed) {
+    return await haltDraftForBilling(draft, initialEntitlement);
+  }
+
   const [personaResult, settingsResult, bindingResult] = await Promise.all([
     admin.from("personas").select("id").eq("id", draft.persona_id).eq(
       "owner",

@@ -10,6 +10,11 @@ import {
 } from "../_shared/public-media.ts";
 import { requireAal2 } from "../_shared/aal2.ts";
 import {
+  accountBillingAccess,
+  billingAccessHttpStatus,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
   GEMINI_IMAGE_MODEL,
   geminiGenerateContentUrl,
   isGoogleImageProvider,
@@ -228,6 +233,19 @@ serve(async (req: Request) => {
   if (!["avatar_url", "banner_url", "bg_url", "feed_img_url"].includes(target)) {
     return json({ error: "A supported persona image target is required" }, 400, origin);
   }
+  const initialEntitlement = await accountBillingAccess(admin, guard.user.id);
+  if (!initialEntitlement.allowed) {
+    return json(
+      {
+        error: billingAccessMessage(initialEntitlement),
+        code: initialEntitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required",
+      },
+      billingAccessHttpStatus(initialEntitlement),
+      origin,
+    );
+  }
 
   if (body.provider !== undefined && !isGoogleImageProvider(body.provider)) {
     return json(
@@ -316,6 +334,24 @@ serve(async (req: Request) => {
     });
     return !result.error && result.data === true;
   };
+
+  const providerEntitlement = await accountBillingAccess(admin, guard.user.id);
+  if (!providerEntitlement.allowed) {
+    const code = providerEntitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_required";
+    const finalized = await finalizeBudget("request_failed", 0, code);
+    return json(
+      {
+        error: finalized
+          ? billingAccessMessage(providerEntitlement)
+          : "Membership changed and budget cleanup could not be verified; no provider request was sent",
+        code: finalized ? code : "budget_finalize_failed",
+      },
+      finalized ? billingAccessHttpStatus(providerEntitlement) : 503,
+      origin,
+    );
+  }
 
   let providerResponse: Response;
   try {

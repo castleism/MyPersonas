@@ -43,6 +43,28 @@ jobs:
           done
           exit $failed
 
+  billing-sql-runtime:
+    name: Billing migration runtime contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migration 068 in disposable PostgreSQL
+        shell: pwsh
+        run: ./scripts/test-account-subscription-sql.ps1
+
+  secret-scan:
+    name: Repository credential scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Reject committed private credentials
+        run: node scripts/check-committed-secrets.mjs
+
   frontend-syntax:
     name: Frontend script syntax
     runs-on: ubuntu-latest

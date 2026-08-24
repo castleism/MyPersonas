@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MyPersonas billing visual fixture</title>
+  <link rel="stylesheet" href="../../MyPersonas.Online_v0/billing.css">
+  <style>
+    :root{--text:#172033;--dim:#5c6678;--border:#d9dee8;--panel:#fff}
+    *{box-sizing:border-box}
+    body{margin:0;background:#eef1f6;color:var(--text);font:15px/1.45 system-ui,sans-serif}
+    main{width:min(1120px,calc(100% - 32px));margin:24px auto;padding:22px;border:1px solid var(--border);border-radius:14px;background:var(--panel);box-shadow:0 8px 30px rgba(20,30,50,.08)}
+    .btn{min-height:44px;padding:10px 14px;border:1px solid #155eef;border-radius:8px;background:#155eef;color:#fff;font:inherit;font-weight:750;cursor:pointer}
+    .btn.sec{border-color:#aab4c4;background:#fff;color:var(--text)}
+    .btn:disabled{cursor:not-allowed;opacity:.55}
+    a{color:#174ea6}
+  </style>
+</head>
+<body>
+  <main aria-label="Suspended account membership preview">
+    <div id="billingAccountRoot"></div>
+  </main>
+  <main aria-label="Global administrator financial-hold preview">
+    <div id="billingAdminRoot"></div>
+  </main>
+  <script>
+    var session={user:{id:"00000000-0000-4000-8000-000000000001"}};
+    var authLoadGeneration=1;
+    var toast=function(){};
+    var sb={rpc:async function(){return{error:{message:"visual fixture"}}},functions:{invoke:async function(){return{error:{message:"visual fixture"}}}}};
+  </script>
+  <script src="../../MyPersonas.Online_v0/billing.js"></script>
+  <script>
+    billingState.ownerId=session.user.id;
+    billingState.loaded=true;
+    billingState.status=billingNormalizeStatus({
+      enforcement_enabled:true,
+      checkout_enabled:true,
+      access_allowed:false,
+      state:"subscription_required",
+      source:"none",
+      trial_eligible:true,
+      subscription_status:"",
+      updated_at:"2026-08-23T12:00:00Z"
+    });
+    billingPaintAccount();
+    billingState.admin.query="held@example.com";
+    billingState.admin.result=billingNormalizeAdminAccount({
+      account_id:"11111111-1111-4111-8111-111111111111",
+      display_name:"Held test account",
+      masked_email:"h***@example.com",
+      state:"financial_review_hold",
+      source:"none",
+      access_allowed:false
+    });
+    billingState.admin.holds=billingNormalizeFinancialHolds([{
+      hold_id:"22222222-2222-4222-8222-222222222222",
+      account_id:"11111111-1111-4111-8111-111111111111",
+      event_type:"charge.dispute.created",
+      event_category:"dispute",
+      opened_at:"2026-08-23T12:00:00Z"
+    }],billingState.admin.result.accountId);
+    billingPaintAdmin();
+  </script>
+</body>
+</html>

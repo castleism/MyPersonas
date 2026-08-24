@@ -28,6 +28,14 @@ import {
   verifyApprovedMedia,
 } from "../_shared/approved-media.ts";
 import { loadMediaEnvironmentConfig } from "../_shared/public-media.ts";
+import {
+  accountBillingAccess,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
+  type DeniedBillingAccess,
+  publisherBillingDisposition,
+} from "../_shared/publisher-entitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -42,7 +50,10 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -87,6 +98,27 @@ type Draft = {
   publish_facebook_page_id: string;
   publish_instagram_business_id: string;
 };
+
+class BillingPublishBlockedError extends Error {
+  readonly entitlement: DeniedBillingAccess;
+
+  constructor(entitlement: DeniedBillingAccess) {
+    super(billingAccessMessage(entitlement));
+    this.name = "BillingPublishBlockedError";
+    this.entitlement = entitlement;
+  }
+}
+
+function billingHaltCode(entitlement: DeniedBillingAccess) {
+  return entitlement.unavailable
+    ? "billing_verification_unavailable"
+    : "billing_membership_inactive";
+}
+
+async function assertBillingPublishAccess(owner: string) {
+  const entitlement = await accountBillingAccess(admin, owner);
+  if (!entitlement.allowed) throw new BillingPublishBlockedError(entitlement);
+}
 
 async function expectedHash(d: Draft) {
   return await admin.rpc("post_draft_hash", {
@@ -150,7 +182,10 @@ function approvedMediaFor(
 
 async function instagramPostsInWindow(d: Draft) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  return await admin.from("post_drafts").select("id", { count: "exact", head: true })
+  return await admin.from("post_drafts").select("id", {
+    count: "exact",
+    head: true,
+  })
     .eq("owner", d.owner)
     .eq("publish_instagram_business_id", d.publish_instagram_business_id)
     .not("ig_media_id", "is", null)
@@ -162,7 +197,9 @@ async function rememberProviderResult(
   field: "fb_post_id" | "ig_media_id",
   value: string,
 ) {
-  const publishedField = field === "fb_post_id" ? "fb_published_at" : "ig_published_at";
+  const publishedField = field === "fb_post_id"
+    ? "fb_published_at"
+    : "ig_published_at";
   const { data, error } = await admin.from("post_drafts")
     .update({
       [field]: value,
@@ -234,6 +271,46 @@ async function noteReconciliation(
   return !result.error && !!result.data;
 }
 
+async function haltClaimForBilling(
+  d: Draft,
+  entitlement: DeniedBillingAccess,
+  phase: "initial" | "credential" | "provider",
+) {
+  const code = billingHaltCode(entitlement);
+  const message = billingAccessMessage(entitlement);
+  if (publisherBillingDisposition(entitlement, false) === "defer") {
+    const restored = await transitionClaim(d, {
+      status: "scheduled",
+      last_error: message,
+      publish_claimed_at: null,
+    });
+    return {
+      id: d.id,
+      status: restored ? "deferred" : "publishing",
+      code,
+      ...(!restored ? { reconciliationRequired: true } : {}),
+      error: message,
+    };
+  }
+
+  // A verified inactive account is terminal for this scheduled occurrence.
+  // Requiring a fresh owner schedule after access returns avoids publishing a
+  // stale backlog in a burst.
+  const failed = await finalizeClaim(d, "failed", message, {
+    phase: "billing",
+    billingPhase: phase,
+    code,
+    errors: [message],
+  });
+  return {
+    id: d.id,
+    status: failed ? "failed" : "publishing",
+    code,
+    ...(!failed ? { reconciliationRequired: true } : {}),
+    error: message,
+  };
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!CRON_SECRET || req.headers.get("X-Cron-Secret") !== CRON_SECRET) {
@@ -246,12 +323,22 @@ serve(async (req) => {
     return json({ error: "Secure media delivery is unavailable" }, 503);
   }
 
-  const { data: due, error } = await admin.rpc("claim_due_post_drafts", { p_limit: BATCH });
+  const { data: due, error } = await admin.rpc("claim_due_post_drafts", {
+    p_limit: BATCH,
+  });
   if (error) return json({ error: error.message }, 500);
 
   const results: unknown[] = [];
   for (const d of (due || []) as Draft[]) {
     try {
+      const initialEntitlement = await accountBillingAccess(admin, d.owner);
+      if (!initialEntitlement.allowed) {
+        results.push(
+          await haltClaimForBilling(d, initialEntitlement, "initial"),
+        );
+        continue;
+      }
+
       const [pause, persona] = await Promise.all([
         ownerPauseState(d.owner),
         admin.from("personas").select("id").eq("id", d.persona_id)
@@ -262,21 +349,34 @@ serve(async (req) => {
           ? "Owner automation is paused."
           : "Owner automation settings became unavailable.";
         const restored = await transitionClaim(d, {
-          status: "scheduled", last_error: message, publish_claimed_at: null,
+          status: "scheduled",
+          last_error: message,
+          publish_claimed_at: null,
         });
-        results.push({ id: d.id, status: restored ? "deferred" : "publishing",
-          ...(!restored ? { reconciliationRequired: true } : {}), error: message });
+        results.push({
+          id: d.id,
+          status: restored ? "deferred" : "publishing",
+          ...(!restored ? { reconciliationRequired: true } : {}),
+          error: message,
+        });
         continue;
       }
-      if (persona.error || !persona.data || isRestrictedMetaPersona(d.persona_id)) {
+      if (
+        persona.error || !persona.data || isRestrictedMetaPersona(d.persona_id)
+      ) {
         const message = persona.data
           ? "This adult cannabis persona is not eligible for Meta publishing."
           : "The draft persona is missing or not owned.";
         const failed = await finalizeClaim(d, "failed", message, {
-          phase: "persona_policy", errors: [message],
+          phase: "persona_policy",
+          errors: [message],
         });
-        results.push({ id: d.id, status: failed ? "failed" : "publishing",
-          ...(!failed ? { reconciliationRequired: true } : {}), error: message });
+        results.push({
+          id: d.id,
+          status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}),
+          error: message,
+        });
         continue;
       }
 
@@ -284,25 +384,41 @@ serve(async (req) => {
       const errs: string[] = [];
       let approvalPhase = "approval";
       if (!targets.length) errs.push("draft: no publish targets");
-      if (targets.some((target) => !["facebook", "instagram"].includes(target))) {
-        errs.push("draft: scheduled publishing is Meta-only; X or an unknown target is present");
+      if (
+        targets.some((target) => !["facebook", "instagram"].includes(target))
+      ) {
+        errs.push(
+          "draft: scheduled publishing is Meta-only; X or an unknown target is present",
+        );
       }
-      if (!d.approved_at || d.approved_by !== d.owner || !d.approved_content_hash) {
+      if (
+        !d.approved_at || d.approved_by !== d.owner || !d.approved_content_hash
+      ) {
         errs.push("approval: exact owner approval is missing");
       } else {
         const hash = await expectedHash(d);
         if (hash.error || hash.data !== d.approved_content_hash) {
-          errs.push("approval: content, target, image, destination, or schedule changed after approval");
+          errs.push(
+            "approval: content, target, image, destination, or schedule changed after approval",
+          );
         }
       }
       if (!errs.length) {
         for (const target of targets) {
           if (target !== "facebook" && target !== "instagram") continue;
-          const media = approvedMediaFor(d, target, mediaEnvironment.publicMediaOrigin);
-          const rowUrl = target === "facebook" ? d.fb_image_url : d.ig_image_url;
+          const media = approvedMediaFor(
+            d,
+            target,
+            mediaEnvironment.publicMediaOrigin,
+          );
+          const rowUrl = target === "facebook"
+            ? d.fb_image_url
+            : d.ig_image_url;
           if (!media.url || rowUrl !== media.url) {
             approvalPhase = "approved_media";
-            errs.push(`${target}: immutable approved-media URL is missing or changed`);
+            errs.push(
+              `${target}: immutable approved-media URL is missing or changed`,
+            );
             continue;
           }
           try {
@@ -321,10 +437,16 @@ serve(async (req) => {
       }
       if (errs.length) {
         const failed = await finalizeClaim(d, "failed", errs.join(" | "), {
-          phase: approvalPhase, targets, errors: errs,
+          phase: approvalPhase,
+          targets,
+          errors: errs,
         });
-        results.push({ id: d.id, status: failed ? "failed" : "publishing",
-          ...(!failed ? { reconciliationRequired: true } : {}), error: errs.join(" | ") });
+        results.push({
+          id: d.id,
+          status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}),
+          error: errs.join(" | "),
+        });
         continue;
       }
 
@@ -333,35 +455,68 @@ serve(async (req) => {
       let reconciliationRequired = false;
       const needsMeta = (targets.includes("facebook") && !d.fb_post_id) ||
         (targets.includes("instagram") && !d.ig_media_id);
-      const ctx = needsMeta && d.facebook_ledger_id
-        ? await resolvePageContext(admin, d.owner, d.facebook_ledger_id)
-        : null;
-      if (needsMeta && !d.facebook_ledger_id) errs.push("meta: no target Facebook page");
-      else if (ctx && !ctx.ok) errs.push("meta: " + ctx.error);
-      else if (ctx?.ok) {
-        if (String(ctx.asset.facebook_page_id) !== d.approved_facebook_page_id) {
-          errs.push("approval: the paired Facebook Page changed after approval");
+      let ctx: Awaited<ReturnType<typeof resolvePageContext>> | null = null;
+      if (needsMeta && d.facebook_ledger_id) {
+        // resolvePageContext decrypts the grant and obtains a fresh Page token,
+        // so recheck immediately before reading any provider credential.
+        const credentialEntitlement = await accountBillingAccess(
+          admin,
+          d.owner,
+        );
+        if (!credentialEntitlement.allowed) {
+          results.push(
+            await haltClaimForBilling(d, credentialEntitlement, "credential"),
+          );
+          continue;
         }
-        if (targets.includes("instagram") &&
-          String(ctx.asset.instagram_business_id || "") !== d.approved_instagram_business_id) {
-          errs.push("approval: the paired Instagram account changed after approval");
+        ctx = await resolvePageContext(admin, d.owner, d.facebook_ledger_id);
+      }
+      if (needsMeta && !d.facebook_ledger_id) {
+        errs.push("meta: no target Facebook page");
+      } else if (ctx && !ctx.ok) errs.push("meta: " + ctx.error);
+      else if (ctx?.ok) {
+        if (
+          String(ctx.asset.facebook_page_id) !== d.approved_facebook_page_id
+        ) {
+          errs.push(
+            "approval: the paired Facebook Page changed after approval",
+          );
+        }
+        if (
+          targets.includes("instagram") &&
+          String(ctx.asset.instagram_business_id || "") !==
+            d.approved_instagram_business_id
+        ) {
+          errs.push(
+            "approval: the paired Instagram account changed after approval",
+          );
         }
       }
 
       if (errs.length) {
         const failed = await finalizeClaim(d, "failed", errs.join(" | "), {
-          phase: "destination", targets, errors: errs,
+          phase: "destination",
+          targets,
+          errors: errs,
         });
-        results.push({ id: d.id, status: failed ? "failed" : "publishing",
-          ...(!failed ? { reconciliationRequired: true } : {}), error: errs.join(" | ") });
+        results.push({
+          id: d.id,
+          status: failed ? "failed" : "publishing",
+          ...(!failed ? { reconciliationRequired: true } : {}),
+          error: errs.join(" | "),
+        });
         continue;
       }
 
       if (d.publish_facebook_page_id || d.publish_instagram_business_id) {
-        if (d.publish_facebook_page_id !== d.approved_facebook_page_id ||
-          d.publish_instagram_business_id !== d.approved_instagram_business_id) {
+        if (
+          d.publish_facebook_page_id !== d.approved_facebook_page_id ||
+          d.publish_instagram_business_id !== d.approved_instagram_business_id
+        ) {
           reconciliationRequired = true;
-          errs.push("publish attempt destination snapshot does not match the approval");
+          errs.push(
+            "publish attempt destination snapshot does not match the approval",
+          );
         }
       } else {
         const snap = await admin.from("post_drafts").update({
@@ -369,7 +524,10 @@ serve(async (req) => {
           publish_instagram_business_id: d.approved_instagram_business_id,
           updated_at: new Date().toISOString(),
         }).eq("id", d.id).eq("owner", d.owner).eq("status", "publishing")
-          .eq("publish_facebook_page_id", "").eq("publish_instagram_business_id", "")
+          .eq("publish_facebook_page_id", "").eq(
+            "publish_instagram_business_id",
+            "",
+          )
           .select("id").maybeSingle();
         if (snap.error || !snap.data) {
           reconciliationRequired = true;
@@ -380,7 +538,10 @@ serve(async (req) => {
         }
       }
 
-      if (!reconciliationRequired && targets.includes("facebook") && !d.fb_post_id && ctx?.ok) {
+      if (
+        !reconciliationRequired && targets.includes("facebook") &&
+        !d.fb_post_id && ctx?.ok
+      ) {
         const img = approvedMediaProviderUrl(approvedMediaFor(
           d,
           "facebook",
@@ -394,17 +555,32 @@ serve(async (req) => {
               ctx.pageToken,
               img,
               d.fb_caption || "",
+              () => assertBillingPublishAccess(d.owner),
             );
-            const saved = await rememberProviderResult(d, "fb_post_id", r.postId);
+            const saved = await rememberProviderResult(
+              d,
+              "fb_post_id",
+              r.postId,
+            );
             if (saved.saved) {
               upd.fb_post_id = r.postId;
               d.fb_post_id = r.postId;
             } else {
               safeToContinue = false;
               reconciliationRequired = true;
-              errs.push(`facebook: provider accepted ${r.postId}, but its result was not saved`);
+              errs.push(
+                `facebook: provider accepted ${r.postId}, but its result was not saved`,
+              );
             }
           } catch (e) {
+            if (e instanceof BillingPublishBlockedError) {
+              // The callback runs immediately before the single Facebook POST,
+              // so a billing error here proves no provider mutation occurred.
+              results.push(
+                await haltClaimForBilling(d, e.entitlement, "provider"),
+              );
+              continue;
+            }
             if (providerOutcomeIsUncertain(e)) {
               safeToContinue = false;
               reconciliationRequired = true;
@@ -414,21 +590,28 @@ serve(async (req) => {
         }
       }
 
-      if (!reconciliationRequired && safeToContinue && targets.includes("instagram") && !d.ig_media_id && ctx?.ok) {
+      if (
+        !reconciliationRequired && safeToContinue &&
+        targets.includes("instagram") && !d.ig_media_id && ctx?.ok
+      ) {
         const pauseBeforeInstagram = await ownerPauseState(d.owner);
         if (!pauseBeforeInstagram.available || pauseBeforeInstagram.paused) {
-          errs.push(pauseBeforeInstagram.paused
-            ? "instagram: owner automation paused after the Facebook step"
-            : "instagram: owner automation settings became unavailable");
+          errs.push(
+            pauseBeforeInstagram.paused
+              ? "instagram: owner automation paused after the Facebook step"
+              : "instagram: owner automation settings became unavailable",
+          );
         } else if (!ctx.asset.instagram_business_id) {
           errs.push("instagram: no linked professional account");
         } else {
           // This local counter is an advisory guard only; activation still
           // requires an atomic provider-account reservation and reconciliation.
           const recent = await instagramPostsInWindow(d);
-          if (recent.error) errs.push("instagram: could not verify the rolling publish guard");
-          else if ((recent.count || 0) >= IG_ROLLING_LIMIT) errs.push("instagram: rolling 24-hour safety guard reached");
-          else {
+          if (recent.error) {
+            errs.push("instagram: could not verify the rolling publish guard");
+          } else if ((recent.count || 0) >= IG_ROLLING_LIMIT) {
+            errs.push("instagram: rolling 24-hour safety guard reached");
+          } else {
             const img = approvedMediaProviderUrl(approvedMediaFor(
               d,
               "instagram",
@@ -436,23 +619,54 @@ serve(async (req) => {
             ));
             if (!img) errs.push("instagram: no image");
             else {
+              let instagramMutationChecks = 0;
               try {
                 const r = await publishInstagram(
                   String(ctx.asset.instagram_business_id),
                   ctx.pageToken,
                   img,
                   d.ig_caption || "",
+                  async () => {
+                    await assertBillingPublishAccess(d.owner);
+                    instagramMutationChecks += 1;
+                  },
                 );
-                const saved = await rememberProviderResult(d, "ig_media_id", r.mediaId);
+                const saved = await rememberProviderResult(
+                  d,
+                  "ig_media_id",
+                  r.mediaId,
+                );
                 if (saved.saved) {
                   upd.ig_media_id = r.mediaId;
                   d.ig_media_id = r.mediaId;
                 } else {
                   reconciliationRequired = true;
-                  errs.push(`instagram: provider accepted ${r.mediaId}, but its result was not saved`);
+                  errs.push(
+                    `instagram: provider accepted ${r.mediaId}, but its result was not saved`,
+                  );
                 }
               } catch (e) {
-                if (providerOutcomeIsUncertain(e)) reconciliationRequired = true;
+                if (e instanceof BillingPublishBlockedError) {
+                  const billingDisposition = publisherBillingDisposition(
+                    e.entitlement,
+                    instagramMutationChecks > 0,
+                  );
+                  if (billingDisposition === "reconcile") {
+                    // The first Instagram container write completed while
+                    // access was active, but the second publish write was
+                    // stopped. Keep the claim non-retryable until that partial
+                    // provider state is reconciled.
+                    reconciliationRequired = true;
+                  } else {
+                    results.push(
+                      await haltClaimForBilling(d, e.entitlement, "provider"),
+                    );
+                    continue;
+                  }
+                }
+                if (providerOutcomeIsUncertain(e)) {
+                  reconciliationRequired = true;
+                }
                 errs.push("instagram: " + (e as Error).message);
               }
             }
@@ -465,19 +679,32 @@ serve(async (req) => {
         const noted = await noteReconciliation(
           d,
           `Reconciliation required before retry. ${note}`,
-          { targets, ...upd, errors: errs, facebookPageId: d.publish_facebook_page_id,
-            instagramBusinessId: d.publish_instagram_business_id },
+          {
+            targets,
+            ...upd,
+            errors: errs,
+            facebookPageId: d.publish_facebook_page_id,
+            instagramBusinessId: d.publish_instagram_business_id,
+          },
         );
         results.push({
-          id: d.id, status: "publishing", reconciliationRequired: true, ...upd,
-          error: noted ? note : `${note} | reconciliation audit could not be saved`,
+          id: d.id,
+          status: "publishing",
+          reconciliationRequired: true,
+          ...upd,
+          error: noted
+            ? note
+            : `${note} | reconciliation audit could not be saved`,
         });
         continue;
       }
 
       const status = errs.length ? "failed" : "posted";
       const finalized = await finalizeClaim(d, status, note, {
-        targets, ...upd, errors: errs, facebookPageId: d.publish_facebook_page_id,
+        targets,
+        ...upd,
+        errors: errs,
+        facebookPageId: d.publish_facebook_page_id,
         instagramBusinessId: d.publish_instagram_business_id,
       });
       if (!finalized) {
@@ -492,11 +719,20 @@ serve(async (req) => {
       }
       results.push({ id: d.id, status, ...upd, note: note || undefined });
     } catch (error) {
-      const note = `Reconciliation required after an unexpected worker error: ${(error as Error).message}`;
-      const noted = await noteReconciliation(d, note, { phase: "unexpected", error: (error as Error).message });
+      const note = `Reconciliation required after an unexpected worker error: ${
+        (error as Error).message
+      }`;
+      const noted = await noteReconciliation(d, note, {
+        phase: "unexpected",
+        error: (error as Error).message,
+      });
       results.push({
-        id: d.id, status: "publishing", reconciliationRequired: true,
-        error: noted ? note : `${note} | reconciliation audit could not be saved`,
+        id: d.id,
+        status: "publishing",
+        reconciliationRequired: true,
+        error: noted
+          ? note
+          : `${note} | reconciliation audit could not be saved`,
       });
     }
   }

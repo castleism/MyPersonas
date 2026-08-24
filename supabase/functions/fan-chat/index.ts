@@ -7,6 +7,18 @@
 // FAN_CHAT_HOURLY_LIMIT.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  accountBillingAccess,
+  type AccountEntitlementResult,
+  billingAccessMessage,
+} from "../_shared/account-entitlement.ts";
+import {
+  AutomationBudgetClaimError,
+  AutomationBudgetFinalizationError,
+  conservativeAutomationBudgetReservation,
+  reportedProviderTokens,
+  runWithAutomationBudget,
+} from "../run-tasks/budget.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -169,6 +181,47 @@ type Backend = {
   extra: Record<string, unknown> | null;
   created_at: string;
 };
+
+type PreparedBackendCall = {
+  endpoint: NonNullable<ReturnType<typeof providerEndpoint>>;
+  headers: Record<string, string>;
+  bodyText: string;
+};
+
+class FanChatBillingEntitlementError extends Error {
+  entitlement: AccountEntitlementResult;
+  budgetOutcome = "cancelled";
+  budgetActualTokens = 0;
+  budgetOutcomeCode: string;
+
+  constructor(entitlement: AccountEntitlementResult) {
+    super(billingAccessMessage(entitlement));
+    this.name = "FanChatBillingEntitlementError";
+    this.entitlement = entitlement;
+    this.budgetOutcomeCode = entitlement.unavailable
+      ? "billing_verification_unavailable"
+      : "billing_required";
+  }
+}
+
+class FanChatProviderError extends Error {
+  budgetOutcome: "provider_error" | "request_failed";
+  budgetActualTokens: number | null;
+  budgetOutcomeCode: string;
+
+  constructor(
+    message: string,
+    budgetOutcome: "provider_error" | "request_failed",
+    budgetActualTokens: number | null,
+    budgetOutcomeCode: string,
+  ) {
+    super(message);
+    this.name = "FanChatProviderError";
+    this.budgetOutcome = budgetOutcome;
+    this.budgetActualTokens = budgetActualTokens;
+    this.budgetOutcomeCode = budgetOutcomeCode;
+  }
+}
 
 type Eligibility = {
   persona: Persona;
@@ -691,13 +744,30 @@ function providerEndpoint(backend: Backend) {
   return { url, isAnthropic, isAzure };
 }
 
-async function chooseBackend(owner: string, preferredId: string | null) {
-  const { data, error } = await admin.from("ai_backends")
-    .select("id,owner,base_url,api_key,model,provider,extra,created_at")
-    .eq("owner", owner)
-    .order("created_at", { ascending: true });
+async function chooseBackend(
+  owner: string,
+  preferredId: string | null,
+  resolveCredential: boolean,
+) {
+  // Keep both projections literal so supabase-js can infer their row shapes.
+  // The public status path must not select the credential column at all.
+  const { data, error } = resolveCredential
+    ? await admin.from("ai_backends")
+      .select("id,owner,base_url,api_key,model,provider,extra,created_at")
+      .eq("owner", owner)
+      .order("created_at", { ascending: true })
+    : await admin.from("ai_backends")
+      .select("id,owner,base_url,model,provider,extra,created_at")
+      .eq("owner", owner)
+      .order("created_at", { ascending: true });
   if (error) return null;
-  const rows = (data || []) as Backend[];
+  const rows: Backend[] = (data || []).map((row) => ({
+    ...row,
+    api_key: "api_key" in row &&
+        (typeof row.api_key === "string" || row.api_key === null)
+      ? row.api_key
+      : null,
+  }));
   const candidates = preferredId
     ? rows.filter((row) => row.id === preferredId)
     : rows;
@@ -705,6 +775,7 @@ async function chooseBackend(owner: string, preferredId: string | null) {
     if (!providerEndpoint(candidate) || !clampText(candidate.model, 300)) {
       continue;
     }
+    if (!resolveCredential) return { ...candidate, api_key: null };
 
     // Keep the legacy field usable while the migration and function deploy in
     // either order. After migration 011 clears it, resolve the credential only
@@ -727,6 +798,7 @@ async function chooseBackend(owner: string, preferredId: string | null) {
 
 async function loadEligibility(
   personaId: string,
+  resolveCredential = true,
 ): Promise<Eligibility | EligibilityFailure> {
   const { data: publicationCurrent, error: publicationError } = await admin.rpc(
     "persona_publication_is_current",
@@ -784,7 +856,23 @@ async function loadEligibility(
     return { status: 409, reason: "fan_chat_disabled" };
   }
 
-  const backend = await chooseBackend(persona.owner, persona.ai_backend);
+  if (resolveCredential) {
+    const entitlement = await accountBillingAccess(admin, persona.owner);
+    if (!entitlement.allowed) {
+      return {
+        status: entitlement.unavailable ? 503 : 402,
+        reason: entitlement.unavailable
+          ? "billing_verification_unavailable"
+          : "billing_required",
+      };
+    }
+  }
+
+  const backend = await chooseBackend(
+    persona.owner,
+    persona.ai_backend,
+    resolveCredential,
+  );
   return {
     persona,
     binding,
@@ -1112,11 +1200,11 @@ async function sessionHistory(sessionId: string, context: Eligibility) {
   return selected.reverse();
 }
 
-async function callBackend(
+async function prepareBackendCall(
   backend: Backend,
   system: string,
   messages: { role: "user" | "assistant"; content: string }[],
-) {
+): Promise<PreparedBackendCall> {
   const endpoint = providerEndpoint(backend);
   if (
     !endpoint || endpoint.url.protocol !== "https:" ||
@@ -1151,18 +1239,56 @@ async function callBackend(
     };
   }
 
-  const response = await fetch(endpoint.url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-    redirect: "error",
-  });
-  const result = await readBoundedProviderJson(response);
-  if (!response.ok) throw new Error("provider request failed");
+  return { endpoint, headers, bodyText: JSON.stringify(body) };
+}
+
+async function callBackend(
+  request: PreparedBackendCall,
+  markFetchIssued: () => void,
+) {
+  let response: Response;
+  try {
+    markFetchIssued();
+    response = await fetch(request.endpoint.url, {
+      method: "POST",
+      headers: request.headers,
+      body: request.bodyText,
+      signal: AbortSignal.timeout(30_000),
+      redirect: "error",
+    });
+  } catch (error) {
+    const timedOut = error instanceof DOMException &&
+      error.name === "TimeoutError";
+    throw new FanChatProviderError(
+      "provider request failed",
+      "request_failed",
+      null,
+      timedOut ? "provider_timeout" : "provider_request_failed",
+    );
+  }
+  let result: Record<string, unknown>;
+  try {
+    result = await readBoundedProviderJson(response);
+  } catch {
+    throw new FanChatProviderError(
+      "provider response invalid",
+      "provider_error",
+      null,
+      "provider_response_invalid",
+    );
+  }
+  const actualTokens = reportedProviderTokens(result);
+  if (!response.ok) {
+    throw new FanChatProviderError(
+      "provider request failed",
+      "provider_error",
+      actualTokens,
+      "provider_http_error",
+    );
+  }
 
   let content = "";
-  if (endpoint.isAnthropic) {
+  if (request.endpoint.isAnthropic) {
     const blocks = Array.isArray(result.content)
       ? result.content as Record<string, unknown>[]
       : [];
@@ -1182,8 +1308,15 @@ async function callBackend(
       : "";
   }
   content = clampText(content, MAX_OUTPUT_CHARS);
-  if (!content) throw new Error("empty provider response");
-  return content;
+  if (!content) {
+    throw new FanChatProviderError(
+      "empty provider response",
+      "provider_error",
+      actualTokens,
+      "provider_empty_response",
+    );
+  }
+  return { value: content, actualTokens };
 }
 
 serve(async (req) => {
@@ -1249,7 +1382,9 @@ serve(async (req) => {
     }
 
     if (action === "status") {
-      const eligibility = await loadEligibility(personaId);
+      // Availability does not need a provider secret. Avoid decrypting or even
+      // selecting a credential for a public status probe.
+      const eligibility = await loadEligibility(personaId, false);
       if (isEligibilityFailure(eligibility) || !eligibility.backend) {
         return json(origin, {
           available: false,
@@ -1487,12 +1622,51 @@ serve(async (req) => {
     let reply: string;
     try {
       if (!eligibility.backend) throw new Error("model unavailable");
-      reply = await callBackend(
+      const providerRequest = await prepareBackendCall(
         eligibility.backend,
         systemPrompt(eligibility),
         history,
       );
-    } catch {
+      reply = await runWithAutomationBudget({
+        rpc: async (name, args) => {
+          const result = await admin.rpc(name, args);
+          return {
+            data: result.data,
+            error: result.error
+              ? { code: result.error.code, message: result.error.message }
+              : null,
+          };
+        },
+        owner: eligibility.persona.owner,
+        backendId: eligibility.backend.id,
+        reservedTokens: conservativeAutomationBudgetReservation(
+          providerRequest.bodyText,
+          MAX_OUTPUT_TOKENS,
+        ),
+        // The response token is unique to the already-reserved fan message and
+        // is stable if the budget claim response is lost and retried.
+        requestKey: responseToken,
+        providerCall: async (markFetchIssued) => {
+          const providerEntitlement = await accountBillingAccess(
+            admin,
+            eligibility.persona.owner,
+          );
+          if (!providerEntitlement.allowed) {
+            throw new FanChatBillingEntitlementError(providerEntitlement);
+          }
+          return await callBackend(providerRequest, markFetchIssued);
+        },
+      });
+    } catch (error) {
+      const failureCode = error instanceof FanChatBillingEntitlementError
+        ? error.budgetOutcomeCode
+        : error instanceof AutomationBudgetClaimError
+        ? error.code
+        : error instanceof AutomationBudgetFinalizationError
+        ? "budget_reconciliation_required"
+        : error instanceof FanChatProviderError
+        ? error.budgetOutcomeCode
+        : "model_unavailable";
       const fallback =
         "I cannot reply right now. Your message is saved for the owner to review.";
       if (
@@ -1502,7 +1676,7 @@ serve(async (req) => {
           responseToken,
           fallback,
           "model_error",
-          ["model_unavailable"],
+          [failureCode],
         )
       ) {
         return json(origin, {
@@ -1511,11 +1685,55 @@ serve(async (req) => {
         }, 503);
       }
       return json(origin, {
-        error: "AI reply is temporarily unavailable",
+        error: error instanceof FanChatBillingEntitlementError
+          ? error.message
+          : error instanceof AutomationBudgetClaimError && !error.retryable
+          ? "This fan-chat model is unavailable under its owner-configured AI budget policy"
+          : error instanceof AutomationBudgetFinalizationError
+          ? "The AI reply was withheld because budget accounting requires reconciliation"
+          : "AI reply is temporarily unavailable",
+        code: failureCode,
         reply: fallback,
         disclosure: FIXED_AI_DISCLOSURE,
         humanHandoff: true,
       }, 503);
+    }
+
+    const persistenceEntitlement = await accountBillingAccess(
+      admin,
+      eligibility.persona.owner,
+    );
+    if (!persistenceEntitlement.allowed) {
+      const failureCode = persistenceEntitlement.unavailable
+        ? "billing_verification_unavailable"
+        : "billing_required";
+      const fallback =
+        "I cannot reply right now. Your message is saved for the owner to review.";
+      if (
+        !await completeFanChatReply(
+          eligibility,
+          sessionId,
+          responseToken,
+          fallback,
+          "model_error",
+          [failureCode],
+        )
+      ) {
+        return json(origin, {
+          error: "The generated reply was withheld, but the safe handoff reply could not be saved",
+          code: failureCode,
+          disclosure: FIXED_AI_DISCLOSURE,
+        }, 503);
+      }
+      return json(origin, {
+        error: persistenceEntitlement.unavailable
+          ? "Membership verification became unavailable; the generated reply was not saved"
+          : "Membership became inactive; the generated reply was not saved",
+        code: failureCode,
+        reply: fallback,
+        disclosure: FIXED_AI_DISCLOSURE,
+        humanHandoff: true,
+      }, persistenceEntitlement.unavailable ? 503 : 402);
     }
 
     const outputSafetyCategories = generatedReplySafetyCategories(
