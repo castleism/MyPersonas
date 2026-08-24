@@ -33,6 +33,7 @@
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
 <link rel="stylesheet" href="./ai-content-provenance.css?v=20260823-2">
 <link rel="stylesheet" href="./profile-image-crop.css?v=20260823-1">
+<link rel="stylesheet" href="./persona-library.css?v=20260823-1">
 <script src="./pwa.js" defer></script>
 <script src="./profile-image-crop.js?v=20260823-1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.min.js" integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89RtO9MtPxP/r5" crossorigin="anonymous"></script>
@@ -398,6 +399,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
         <button onclick="siteGo('review')">Publication review</button>
         <button onclick="siteGo('persona-settings')">Persona settings</button>
         <button onclick="siteGo('business-settings')">Business profiles</button>
+        <button onclick="closeSiteMenu();openPersonaSourceLibrary()">Persona source library</button>
         <button onclick="siteGo('legacy-media')">Legacy media cleanup</button>
         <button onclick="siteGo('agent-board')">Agent board</button>
         <button onclick="siteGo('platform-queue')">Admin / technician queue</button>
@@ -430,6 +432,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
       <button type="button" onclick="ownerAppMobileGo('activity')"><span>◷</span><b>Activity</b><small>Persona operations trail</small></button>
       <button type="button" onclick="ownerAppMobileGo('notifications')"><span>◉</span><b>Notifications</b><small id="ownerMobileNoticeSummary">All caught up</small></button>
       <button type="button" onclick="ownerAppMobileGo('agent-board')"><span>⌘</span><b>Agent board</b><small>Review bounded persona collaboration</small></button>
+      <button type="button" onclick="ownerAppToggleMore(false,false);openPersonaSourceLibrary()"><span>▧</span><b>Source library</b><small>Offload private images for a persona</small></button>
       <button type="button" onclick="ownerAppMobileChat()"><span>💬</span><b>Persona chat</b><small>Talk with the selected persona</small></button>
       <button type="button" onclick="ownerAppMobileHQ()"><span>✦</span><b>HQ Assistant</b><small>Coordinate the full roster</small></button>
       <button type="button" onclick="ownerAppMobileAccount()"><span>⚙</span><b>Account</b><small>Models, portals, and settings</small></button>
@@ -462,6 +465,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
 <script src="./billing.js?v=20260823-2"></script>
 <script src="./agent-board.js?v=20260822-4"></script>
 <script src="./ai-content-provenance.js?v=20260823-2"></script>
+<script src="./persona-library.js?v=20260823-1"></script>
 <script>
 // ================= CONFIG — paste your Supabase values here =================
 const CONFIG={
@@ -931,6 +935,9 @@ async function loadGovernanceExportSections(uid,personaIds){
     ["agent_board_settings","*","created_at"],["agent_board_requests","*","created_at"],["agent_board_runs","*","created_at"],["agent_board_decisions","*","created_at"],
     ["agent_action_storage_usage","*","updated_at"],
     ["persona_reposts","*","created_at"],["persona_media_assets","*","created_at"],["post_drafts","*","created_at"],
+    ["persona_source_assets","id,owner,persona_id,intent,storage_mode,mime_type,byte_size,pixel_width,pixel_height,original_filename,title,owner_notes,owner_tags,ai_use,rights_basis,reuse_policy,sensitivity,hosted_analysis_consent,persona_context_enabled,lifecycle_state,publication_state,captured_at,created_at,updated_at","created_at"],
+    ["persona_source_notes","id,asset_id,owner,persona_id,author_kind,note_kind,review_state,body,confidence,analysis_job_id,provider_label,model_label,created_at,updated_at,reviewed_at","created_at"],
+    ["persona_source_analysis_jobs","id,asset_id,owner,persona_id,execution_mode,status,cancel_requested,worker_label,provider_label,model_label,failure_code,auto_publish,created_at,started_at,completed_at,updated_at","created_at"],
     ["persona_revenue_settings","*","created_at"],["affiliate_partners","*","created_at"],["affiliate_products","*","created_at"],["persona_affiliate_offers","*","created_at"],
     ["affiliate_click_events","id,owner,persona_id,offer_id,product_id,source,utm_source,utm_medium,utm_campaign,created_at","created_at"],
     ["persona_review_requests","*","created_at"],["product_review_settings","*","created_at"],
@@ -983,8 +990,9 @@ function resetMineState(){
   if(typeof ownerAppReset==="function")ownerAppReset();
   if(typeof resetGovernanceState==="function")resetGovernanceState();
   if(typeof billingResetOwnerState==="function")billingResetOwnerState();
+  if(typeof sourceLibraryReset==="function")sourceLibraryReset();
 }
-function resetPrivateUiState(){teardownFriendRealtime();pageState={};editId=null;editLinks=[];editInitialLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];pageLayoutReady=true;editPageLayout=null;editInitialPageLayout=null;editPageSnippets=[];pageBuilderBaseline=null;pendingPageBuilderPersonaId="";document.getElementById("personaAssetPreview")?.remove();document.getElementById("pageBuilderOv")?.remove();expandedBackupPersonaIds=new Set();autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};redditOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
+function resetPrivateUiState(){teardownFriendRealtime();if(typeof sourceLibraryReset==="function")sourceLibraryReset();pageState={};editId=null;editLinks=[];editInitialLinks=[];editT8=[];editAlbums=[];t8ResultRows=[];pageLayoutReady=true;editPageLayout=null;editInitialPageLayout=null;editPageSnippets=[];pageBuilderBaseline=null;pendingPageBuilderPersonaId="";document.getElementById("personaAssetPreview")?.remove();document.getElementById("pageBuilderOv")?.remove();expandedBackupPersonaIds=new Set();autoTaskEditId="";autoPersonaId="";ledgerOpenProvider="";ledgerSelectedAccounts=new Map();twitterOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:""};redditOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:""};metaOAuthCapability={loaded:false,configured:false,authenticationEnabled:false,postingEnabled:false,error:"",callbackUrl:"",pendingAuthorizationCleanupRequired:false,pendingAuthorizationExpired:false,pendingAuthorizationManualRevocationRequired:false,pendingAuthorizationProviderRevoked:false,pendingAuthorizationAmbiguousExchange:false,ownershipInvestigationRequired:false,doNotRevokeProvider:false,manualRevocationSafe:false,manualRevocationUrl:""};metaOAuthSelection=null;metaOAuthStarting=false;metaOAuthFinalizing=false;metaOAuthDisconnecting=false;metaOAuthCancelling=false;mailboxRequest++;mailboxState={ledgerId:"",loaded:false,loading:false,error:"",data:null};mailboxView="subscriptions";document.getElementById("mailActionOv")?.remove();document.getElementById("managedAccountOv")?.remove();document.getElementById("metaSelectionOv")?.remove();document.getElementById("eraseProviderWarning")?.remove();mailboxPlanInert.forEach(element=>element.inert=false);mailboxPlanInert=[];mailboxPendingPlan=null;mailboxPlanReturnFocus=null;ownerModalInert.forEach(element=>element.inert=false);ownerModalInert=[];ownerModalReturnFocus=null;if(mailboxPollTimer){clearTimeout(mailboxPollTimer);mailboxPollTimer=null}}
 function mineLoadCurrent(uid,generation,requestId){return generation===authLoadGeneration&&requestId===mineLoadRequest&&(session?.user?.id||null)===uid}
 async function loadMine(expectedUid=session?.user?.id||null,generation=authLoadGeneration){
   const requestId=++mineLoadRequest;
@@ -1150,7 +1158,7 @@ function renderSidebar(){
     rail.innerHTML=personaViewSidebarHtml();return;
   }
   const h=location.hash.replace(/^#\//,""),view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
-  const activePid=["edit","review","persona-settings"].includes(view)?arg:(view==="p"?(myPersonas.find(p=>p.handle===arg)||{}).id:"");
+  const activePid=["edit","review","persona-settings","library"].includes(view)?arg:(view==="p"?(myPersonas.find(p=>p.handle===arg)||{}).id:"");
   const governancePid=activePid||myPersonas[0]?.id||"";
   const nav=(on,dest,icon,label)=>`<button class="railitem ${on?"on":""}" onclick="go('${dest}')">${ico(icon)}<span>${label}</span></button>`;
   rail.innerHTML=`
@@ -1163,6 +1171,7 @@ function renderSidebar(){
       ${governancePid?nav(view==="review",`review/${governancePid}`,"shield","Publication review"):""}
       ${governancePid?nav(view==="persona-settings",`persona-settings/${governancePid}`,"mask","Persona settings"):""}
       ${nav(view==="business-settings","business-settings","crown","Business profiles")}
+      ${governancePid?nav(view==="library",`library/${governancePid}`,"image","Source library"):""}
       ${nav(view==="legacy-media","legacy-media","image","Media cleanup")}
       ${nav(view==="agent-board","agent-board","chip","Agent board")}
       ${nav(view==="platform-queue","platform-queue","shield","Staff queue")}
@@ -1190,6 +1199,7 @@ async function route(){
   document.body.classList.remove("custom-bg");document.body.style.backgroundImage="";
   document.body.classList.toggle("app-bg",!!session);
   const view=h.split("/")[0],arg=decodeURIComponent(h.split("/").slice(1).join("/")||"");
+  if(typeof sourceLibraryRouteChanged==="function")sourceLibraryRouteChanged(view,arg);
   if(typeof personaViewRouteGuard==="function"&&personaViewRouteGuard(view))return;
   if(typeof ownerAppSelectRoutePersona==="function")ownerAppSelectRoutePersona(view,arg);
   document.body.classList.toggle("owner-authenticated",!!session&&privateSessionReady);
@@ -1201,6 +1211,7 @@ async function route(){
   if(view==="review")return renderPublicationReview(arg);
   if(view==="persona-settings")return renderPersonaSettings(arg);
   if(view==="business-settings")return renderBusinessSettings(arg);
+  if(view==="library")return renderPersonaSourceLibrary(arg);
   if(view==="legacy-media")return renderLegacyMediaCleanup();
   if(view==="agent-board")return renderAgentBoard();
   if(view==="platform-queue")return renderPlatformQueue();
@@ -2382,6 +2393,9 @@ async function downloadDataXlsx(){
     add("Agent Audit Usage",g.agent_action_storage_usage);
     add("Reposts",g.persona_reposts);
     add("Media Assets",g.persona_media_assets);
+    add("Private Source Assets",g.persona_source_assets);
+    add("Private Source Notes",g.persona_source_notes);
+    add("Private Source Study Jobs",g.persona_source_analysis_jobs);
     add("Staged Posts",g.post_drafts);
     add("Revenue Settings",g.persona_revenue_settings);
     add("Affiliate Partners",g.affiliate_partners);
@@ -3141,7 +3155,11 @@ async function savePersona(){
   toast(requiresReview?"Saved as draft — review the page before publishing":"Saved");go(requiresReview?"review/"+_pid:"p/"+handle);
 }
 async function deletePersona(){
-  const targetId=editId,uid=session?.user?.id,epoch=renderEpoch;if(!targetId||!confirm("Delete this persona, its page, links and all its posts? This cannot be undone. If it is in a backup pair, the other persona stays and becomes standalone."))return;
+  const targetId=editId,uid=session?.user?.id,epoch=renderEpoch;if(!targetId||!confirm("Delete this persona, its private Source Library, page, links and all its posts? This cannot be undone. If it is in a backup pair, the other persona stays and becomes standalone."))return;
+  if(!await requireAal2ForSensitiveAction("delete this persona and its private source library"))return;
+  if(typeof sourceLibraryDeleteForPersona!=="function"){toast("Persona deletion is blocked until its private Source Library service is available.");return}
+  try{await sourceLibraryDeleteForPersona(targetId)}catch(error){if(error?.name!=="AbortError")toast(error?.message||"The private Source Library could not be deleted. The persona was not removed.");return}
+  if(editId!==targetId||session?.user?.id!==uid||epoch!==renderEpoch)return;
   const{error}=await sb.rpc("delete_owned_persona",{p_persona_id:targetId});if(editId!==targetId||session?.user?.id!==uid||epoch!==renderEpoch)return;if(error){toast(error.message);return}
   await loadMine(uid,authLoadGeneration);if(session?.user?.id===uid)go("studio");
 }

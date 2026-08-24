@@ -58,6 +58,7 @@ $publicFiles = @(
   'platform-governance.css','platform-governance.js','billing.css','billing.js',
   'ai-content-provenance.css','ai-content-provenance.js',
   'profile-image-crop.css','profile-image-crop.js','agent-board.css','agent-board.js',
+  'persona-library.css','persona-library.js',
   'manifest.webmanifest','service-worker.js','pwa.js','offline.html','.nojekyll',
   'robots.txt','privacy.html','terms.html','data-deletion.html','provider-setup.html'
 )

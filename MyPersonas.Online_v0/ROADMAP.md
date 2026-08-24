@@ -41,6 +41,20 @@ Shipped:
   and the current owner's post-login AAL2 challenge are verified. Recovery, other-account
   coverage, and enterprise SSO remain security work. Profiles are private,
   with no public linkage to personas by default (mailbox authorization is a separate connector)
+- [~] Private Persona Source Library is implemented and validated locally, not
+      deployed: a persona-scoped Research / Content later / Unsorted / Archive
+      inbox for PNG, JPEG, and WebP images and screenshots; owner notes/tags;
+      explicit rights, reuse, sensitivity, AI-use, and hosted-analysis consent;
+      full authenticated preview and Save a copy; study queue; suggested-note
+      review; quota/rate/idempotency controls; and storage-first item, persona,
+      and account erasure guarded against in-flight private writes and claimed
+      studies. Managed private Supabase Storage is the default;
+      originals never become publishable media without a separately reviewed,
+      watermarked derivative. Migration 070 and the Edge/UI release require
+      isolated staging, signed-in two-account desktop/mobile isolation, and
+      deletion proof. A real multimodal worker, local watched-folder companion,
+      HEIC/video, resumable large uploads, binary export, source-to-draft
+      promotion, and BYO S3 remain roadmap work. See `PERSONA-SOURCE-LIBRARY.md`.
 - Personas: create/edit, quick-setup wizard (multi-category, merged suggestions),
   AI builder interview, purpose/voice/topics/audience/rules, per-persona AI model
 - [x] Private Backup persona pairing is database/source-complete: one-level owner-only

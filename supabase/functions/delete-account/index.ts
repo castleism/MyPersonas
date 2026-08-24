@@ -468,6 +468,7 @@ async function eraseOwnedStorage(admin: SupabaseClient, uid: string) {
     { bucket: "media", prefix: normalizedOwner },
     { bucket: "persona-media", prefix: normalizedOwner },
     { bucket: "persona-docs", prefix: normalizedOwner },
+    { bucket: "persona-source-library", prefix: normalizedOwner },
     {
       bucket: "post-approved-media",
       prefix: `owners/${normalizedOwner}`,
@@ -484,6 +485,84 @@ async function eraseOwnedStorage(admin: SupabaseClient, uid: string) {
     if (existingBuckets.has(target.bucket)) {
       await eraseStoragePrefix(admin, target);
     }
+  }
+}
+
+type PersonaSourceAccountDeletionGuard = {
+  status: "active" | "metadata_deleted";
+  ownerPrefix: string;
+  activeWrites: number;
+  activeStudies: number;
+  guardToken: string;
+};
+
+async function beginPersonaSourceAccountDeletion(
+  admin: SupabaseClient,
+  uid: string,
+): Promise<PersonaSourceAccountDeletionGuard> {
+  const begun = await admin.rpc(
+    "begin_persona_source_account_deletion_service",
+    { p_owner: uid },
+  );
+  const receipt = begun.data && typeof begun.data === "object" &&
+      !Array.isArray(begun.data)
+    ? begun.data as Record<string, unknown>
+    : null;
+  const status = String(receipt?.status ?? "");
+  const ownerPrefix = String(receipt?.owner_prefix ?? "");
+  const activeWrites = typeof receipt?.active_writes === "number"
+    ? receipt.active_writes
+    : Number.NaN;
+  const activeStudies = typeof receipt?.active_studies === "number"
+    ? receipt.active_studies
+    : Number.NaN;
+  const guardToken = String(receipt?.guard_token ?? "").toLowerCase();
+  const expectedPrefix = `${uid.toLowerCase()}/`;
+  if (
+    begun.error || !receipt ||
+    !["active", "metadata_deleted"].includes(status) ||
+    ownerPrefix !== expectedPrefix ||
+    !Number.isSafeInteger(activeWrites) || activeWrites < 0 ||
+    !Number.isSafeInteger(activeStudies) || activeStudies < 0 ||
+    !UUID_RE.test(guardToken)
+  ) {
+    throw new Error(
+      "PERSONA_SOURCE_GUARD_UNAVAILABLE: private source deletion guard could not be verified",
+    );
+  }
+  if (activeWrites > 0 || activeStudies > 0) {
+    throw new Error(
+      `PERSONA_SOURCE_ACTIVE_WORK:${activeWrites}:${activeStudies}`,
+    );
+  }
+  return {
+    status: status as PersonaSourceAccountDeletionGuard["status"],
+    ownerPrefix,
+    activeWrites,
+    activeStudies,
+    guardToken,
+  };
+}
+
+async function releasePersonaSourceAccountDeletionGuard(
+  admin: SupabaseClient,
+  uid: string,
+  guardToken: string,
+) {
+  const released = await admin.rpc(
+    "release_persona_source_account_deletion_guard_service",
+    { p_owner: uid, p_guard_token: guardToken },
+  );
+  const receipt = released.data && typeof released.data === "object" &&
+      !Array.isArray(released.data)
+    ? released.data as Record<string, unknown>
+    : null;
+  const confirmed = released.data === true || receipt?.released === true ||
+    receipt?.status === "released";
+  if (released.error || !confirmed) {
+    throw new Error(
+      "PERSONA_SOURCE_GUARD_RELEASE: private source deletion guard remains active",
+    );
   }
 }
 
@@ -1585,6 +1664,16 @@ async function eraseOwnedRows(
       p_owner: uid,
     }),
   );
+  // Source Library bytes were removed and verified by eraseOwnedStorage before
+  // this metadata call. Keeping this order prevents a failed provider delete
+  // from becoming an invisible orphan that account erasure falsely reports as
+  // complete.
+  await checked(
+    "private persona source library metadata",
+    admin.rpc("delete_persona_source_library_for_account_service", {
+      p_owner: uid,
+    }),
+  );
   await checked(
     "persona publication reviews",
     admin.from("persona_publication_reviews").delete().eq("owner", uid),
@@ -2021,6 +2110,9 @@ export function createErasureHandler(
       }
 
       const eraseClaimedOwner = async () => {
+        let personaSourceDeletionGuard:
+          | PersonaSourceAccountDeletionGuard
+          | null = null;
         if (body.keepAccount !== true) {
           const { data: confirmed, error: confirmError } = await admin.rpc(
             "billing_confirm_account_closure",
@@ -2094,6 +2186,10 @@ export function createErasureHandler(
         // work fails, retries remain safe and no provider can fetch retained
         // owner-correlating objects during the partial-erasure interval.
         await revokeApprovedMediaDelivery(admin, uid);
+        personaSourceDeletionGuard = await beginPersonaSourceAccountDeletion(
+          admin,
+          uid,
+        );
         await renewMetaOwnerErasure(
           admin,
           uid,
@@ -2122,6 +2218,11 @@ export function createErasureHandler(
               "id",
               uid,
             ),
+          );
+          await releasePersonaSourceAccountDeletionGuard(
+            admin,
+            uid,
+            personaSourceDeletionGuard.guardToken,
           );
           return json({ deleted: true, accountDeleted: false });
         }
@@ -2188,6 +2289,7 @@ export function createErasureHandler(
             accountDeleted: true,
             billingClosureFinalized: false,
             billingOperatorAlertRecorded: !alertError && alertRecorded === true,
+            sourceDeletionTombstoneRetained: true,
             warning:
               "The sign-in account was deleted, but its fail-closed billing tombstone still requires an operator reconciliation check.",
           }, 202);
@@ -2197,6 +2299,7 @@ export function createErasureHandler(
           accountDeleted: true,
           billingClosureFinalized: true,
           billingTombstoneRetained: true,
+          sourceDeletionTombstoneRetained: true,
         });
       };
 
@@ -2210,6 +2313,8 @@ export function createErasureHandler(
         : await eraseClaimedOwner();
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
+      const personaSourceActiveWork =
+        /^PERSONA_SOURCE_ACTIVE_WORK:(\d+):(\d+)/.exec(message);
       if (message.startsWith("META_OWNERSHIP_INVESTIGATION:")) {
         return json({
           error: message.slice("META_OWNERSHIP_INVESTIGATION:".length).trim(),
@@ -2218,6 +2323,42 @@ export function createErasureHandler(
           requiredExternalRevocations: [],
           missingExternalRevocations: [],
         }, 409);
+      }
+      if (personaSourceActiveWork) {
+        const activeWrites = Number(personaSourceActiveWork[1]);
+        const activeStudies = Number(personaSourceActiveWork[2]);
+        return json({
+          error:
+            "Deletion paused before private Source Library storage erasure because uploads or claimed studies were still finishing. New source uploads remain paused and claimed-study cancellation remains pending; retry deletion after both counts reach zero. Provider revocations requested earlier in this attempt may already be complete.",
+          sourceUploadsInProgress: Number.isSafeInteger(activeWrites) &&
+            activeWrites > 0,
+          sourceStudiesInProgress: Number.isSafeInteger(activeStudies) &&
+            activeStudies > 0,
+          activeWrites: Number.isSafeInteger(activeWrites) && activeWrites > 0
+            ? activeWrites
+            : undefined,
+          activeStudies:
+            Number.isSafeInteger(activeStudies) && activeStudies > 0
+              ? activeStudies
+              : undefined,
+          retryable: true,
+        }, 409);
+      }
+      if (message.startsWith("PERSONA_SOURCE_GUARD_UNAVAILABLE:")) {
+        return json({
+          error:
+            "Deletion stopped before private Source Library storage erasure because the upload/deletion guard could not be verified. Provider revocations requested earlier in this attempt may already be complete; retry when the service is available.",
+          sourceDeletionGuardUnavailable: true,
+          retryable: true,
+        }, 503);
+      }
+      if (message.startsWith("PERSONA_SOURCE_GUARD_RELEASE:")) {
+        return json({
+          error:
+            "Content erasure completed, but the private Source Library deletion guard could not be safely released. New source uploads remain paused; retry or request operator review.",
+          sourceDeletionGuardReleaseRequired: true,
+          retryable: true,
+        }, 503);
       }
       return json({
         error: "Deletion stopped and may be partially complete: " +

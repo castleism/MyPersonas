@@ -44,6 +44,11 @@ const MAINTENANCE_TASKS: readonly MaintenanceTask[] = Object.freeze([
     rpc: "billing_run_retention",
     args: Object.freeze({ p_limit: BATCH_LIMIT }),
   }),
+  Object.freeze({
+    name: "persona_source_library_retention",
+    rpc: "purge_persona_source_library_retention_batch_service",
+    args: Object.freeze({ p_limit: BATCH_LIMIT }),
+  }),
 ]);
 
 function response(body: Record<string, unknown>, status = 200) {

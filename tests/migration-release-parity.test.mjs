@@ -23,6 +23,7 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/064-legacy-media-remediation.sql","supabase/migrations/20260823060000_legacy_media_remediation.sql"],
   ["MyPersonas.Online_v0/sql-updates/068-account-subscription-entitlements.sql","supabase/migrations/20260823100000_account_subscription_entitlements.sql"],
   ["MyPersonas.Online_v0/sql-updates/069-operational-alert-inbox.sql","supabase/migrations/20260823110000_operational_alert_inbox.sql"],
+  ["MyPersonas.Online_v0/sql-updates/070-persona-source-library.sql","supabase/migrations/20260823120000_persona_source_library.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

@@ -90,6 +90,12 @@ verify_jwt = true
 verify_jwt = true
 static_files = ["./functions/media-ingest/MyPersonas-AI-Watermark.png"]
 
+# Private owner source intake/preview/download/delete. The function validates
+# the gateway JWT again with auth.getUser, writes only to a private bucket, and
+# never returns Storage paths or creates public-media handles.
+[functions.persona-source-library]
+verify_jwt = true
+
 # Opaque public ids are resolved server-side only after the exact current page
 # review is rechecked. The function proxies bounded hash-verified bytes and never
 # redirects to the owner-correlating private Storage path. It also requires the

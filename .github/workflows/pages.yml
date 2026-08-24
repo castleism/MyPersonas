@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED+OPERATIONS-069-VERIFIED after migrations 062-064, cleanup preview, the protected gateway, both opaque-media origins, billing 068 in shadow mode, billing consumers, operations 069, and the maintenance worker are live and read back"
+        description: "Type OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED+OPERATIONS-069-VERIFIED+SOURCE-LIBRARY-070-VERIFIED after migrations 062-064, cleanup preview, the protected gateway, both opaque-media origins, billing 068 shadow verification, operations 069, Source Library 070, and signed-in isolation checks pass"
         required: true
         type: string
 
@@ -33,8 +33,8 @@ jobs:
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
         run: |
-          test "${RELEASE_CONFIRMATION}" = "OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED+OPERATIONS-069-VERIFIED" || {
-            echo "Release blocked: verify migrations 062-064, billing migration 068 in shadow mode, operations migration 069, cleanup preview, the protected gateway, billing consumers, the maintenance worker, and the foundation functions before deploying this frontend."
+          test "${RELEASE_CONFIRMATION}" = "OPAQUE-FOUNDATION-VERIFIED+BILLING-068-SHADOW-VERIFIED+OPERATIONS-069-VERIFIED+SOURCE-LIBRARY-070-VERIFIED" || {
+            echo "Release blocked: verify migrations 062-064, billing migration 068 in shadow mode, operations migration 069, Source Library migration 070, signed-in cross-account isolation, the private bucket, and all matching functions before deploying this frontend."
             exit 1
           }
       - name: Prepare public site artifact
@@ -55,6 +55,8 @@ jobs:
             --include '/ai-content-provenance.js' \
             --include '/profile-image-crop.css' \
             --include '/profile-image-crop.js' \
+            --include '/persona-library.css' \
+            --include '/persona-library.js' \
             --include '/agent-board.css' \
             --include '/agent-board.js' \
             --include '/assets/***' \

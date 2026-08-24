@@ -3,6 +3,39 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Private Persona Source Library (local release candidate) (2026-08-23)
+
+Status: **implemented and validated locally; migration 070, its private bucket,
+Edge endpoint, worker queue, and matching frontend have not been applied or
+deployed.**
+
+- Added a persona-scoped, owner-private image and screenshot inbox with Research,
+  Content later, Unsorted, and Archive lanes; bulk picker, drag/drop, paste, and
+  mobile camera/photo intake; tags, notes, explicit rights/reuse/sensitivity and
+  AI-use declarations; uncropped previews; Save a copy; and storage-first delete.
+- Added private Storage intake behind an authenticated Edge boundary. The
+  browser receives no raw object path or hash; upload, preview, and download
+  validate bounded PNG/JPEG/WebP bytes and previews are returned `no-store`.
+- Added serialized per-account/persona quota reservations, a guarded
+  `reserved` → `writing` transition immediately before private Storage writes,
+  idempotent duplicate handling, daily rate limits, owner-only metadata/RLS,
+  immutable originals, AAL2 destructive actions, and fail-closed storage-first
+  item, persona, and account erasure that waits for active writes and claimed
+  study cancellation.
+- Added a consented study queue and review states for machine-suggested notes.
+  This does **not** claim a vision model is running: hosted multimodal analysis,
+  local folder watching, source-to-draft promotion, HEIC/video, resumable large
+  uploads, binary export, and bring-your-own storage remain later phases.
+- Chose managed private Supabase Storage as the default cross-device archive,
+  with a later desktop companion for local watched folders/models and a later
+  server-held S3-compatible adapter for advanced users. OPFS is limited to an
+  offline queue/cache, not treated as durable canonical storage.
+- See `PERSONA-SOURCE-LIBRARY.md`. The local gate passed the complete Node suite,
+  a disposable PostgreSQL apply/reapply/runtime harness, syntax checks, secret
+  scanning, migration parity, and rendered desktop/mobile QA. Staging apply,
+  signed-in two-account isolation, storage-erasure proof, and protected release
+  confirmation remain mandatory before production.
+
 ## Opaque reviewed media delivery and legacy preview (local release candidate) (2026-08-23)
 
 Status: **implemented locally; not applied, deployed, backfilled, finalized, or

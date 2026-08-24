@@ -102,6 +102,14 @@ case "${DEPLOYMENT_TARGET}:${RELEASE_SCOPE}" in
     expected_confirmation="OPS-069+CRON-SECRET-VERIFIED"
     functions=(run-operations-maintenance)
     ;;
+  staging:persona-source-library)
+    expected_confirmation="STAGING-070+PRIVATE-BUCKET+TWO-ACCOUNT-QA-APPROVED"
+    functions=(persona-source-library delete-account erase-content run-operations-maintenance)
+    ;;
+  production:persona-source-library)
+    expected_confirmation="STAGING-070+PRIVATE-BUCKET+MOBILE+TWO-ACCOUNT-QA-VERIFIED"
+    functions=(persona-source-library delete-account erase-content run-operations-maintenance)
+    ;;
   *)
     echo "Deployment blocked: unreviewed target and release-scope combination."
     exit 1

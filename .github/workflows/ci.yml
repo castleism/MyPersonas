@@ -65,6 +65,9 @@ jobs:
           ./scripts/test-legacy-media-remediation-sql.ps1
           ./scripts/test-operational-alert-inbox-sql.ps1
           ./scripts/test-staging-billing-ops-release-sql.ps1
+      - name: Apply migration 070 Persona Source Library runtime contract
+        shell: pwsh
+        run: ./scripts/test-persona-source-library-sql.ps1
 
   secret-scan:
     name: Repository credential scan

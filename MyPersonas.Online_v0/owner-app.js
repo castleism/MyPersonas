@@ -237,7 +237,7 @@ function ownerAppPerspectiveSnapshotCurrent(snapshot) {
 function ownerAppSelectRoutePersona(view, arg) {
   if (ownerAppIsPersonaMode()) return "";
   const personaId = view === "edit" ? arg
-    : ["review", "persona-settings"].includes(view) ? arg
+    : ["review", "persona-settings", "library"].includes(view) ? arg
     : view === "p" ? (myPersonas.find((persona) => persona.handle === arg)?.id || "")
       : "";
   if (personaId) ownerAppRememberPersona(personaId);
@@ -360,7 +360,7 @@ function ownerAppMobileNav() {
   nav.querySelectorAll("button[data-view]").forEach((button) => {
     button.classList.toggle("on", button.dataset.view === view || (view === "studio" && button.dataset.view === "owner"));
   });
-  document.getElementById("ownerMobileMoreBtn")?.classList.toggle("on", ["activity", "notifications"].includes(view));
+  document.getElementById("ownerMobileMoreBtn")?.classList.toggle("on", ["activity", "notifications", "library"].includes(view));
   ownerAppUpdateUnread();
   ownerAppSyncChrome();
 }
@@ -582,7 +582,7 @@ function ownerAppRenderHome() {
       <h2>${esc(persona.name)}</h2><p>${esc(persona.tagline || persona.purpose || "Give this persona a clear purpose, voice, and area of focus.")}</p></div>
       <span class="oa-hero-avatar" style="${safeBgStyle(persona.avatar_url)}"></span></div>
       <div class="oa-hero-actions"><button class="oa-action primary" onclick="openPersonaChat('${persona.id}')">Chat with ${esc(persona.name)}</button>
-      <button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
+      <button class="oa-action" onclick="go('library/${persona.id}')">Offload source images</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
     </section>
     <div class="oa-stats"><div class="oa-stat"><b>${newBriefs}</b><span>new briefings</span></div><div class="oa-stat"><b>${review}</b><span>kits to review</span></div><div class="oa-stat ${fanUnread ? "attn" : ""}"><b>${fanUnread}</b><span>unread fan chats</span></div><div class="oa-stat ${attention ? "attn" : ""}"><b>${attention}</b><span>publishing attention</span></div></div>
     <div class="oa-grid">
