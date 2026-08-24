@@ -1,6 +1,6 @@
 # MyPersonas account billing — security and launch runbook
 
-Status: **local feature branch only** (`feature/account-subscriptions`). No Stripe
+Status: **local integration branch only** (`release/monetization-security-integration`). No Stripe
 account, Product, Price, webhook, portal, secret, bank, tax setting, production
 database, deployment, charge, subscription, or entitlement enforcement was
 created or changed by this work.
@@ -55,6 +55,21 @@ Current lifecycle choices:
   developer grant can be added. Every later Checkout boundary rechecks that no
   developer grant or renewable subscription appeared concurrently.
 - revoking developer status never starts or resumes a charge.
+
+Owner policy decisions confirmed August 23, 2026:
+
+- the monthly and yearly price differences are intentional interval discounts;
+  every interval receives the same account features, and coupons/promotion codes
+  remain disabled for the initial release;
+- ordinary cancellation is at period end with no automatic proration; access
+  continues only through the already-paid or trial period unless a failed,
+  unpaid, paused, or otherwise terminal provider state requires earlier
+  suspension; and
+- a canonically proven accidental duplicate charge may be refunded only after an
+  AAL2 global administrator explicitly approves the opaque remediation record.
+  The refund is the exact tax-inclusive net amount collected after intentional
+  discounts and returns to the original payment method. Other refunds remain a
+  documented manual-support decision and must never be inferred from metadata.
 
 When suspended, the account can still sign in, edit private data, recover billing,
 export, and delete data. The MyPersonas directory is unavailable, reviewed persona

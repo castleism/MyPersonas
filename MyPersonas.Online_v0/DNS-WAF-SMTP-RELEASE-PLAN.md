@@ -60,6 +60,29 @@ it is not an application-wide WAF.
 5. Keep the opaque-media origin lock closed until the reviewed gateway and
    origin secret agree exactly.
 
+The production Pages source intentionally retains an empty Turnstile key. The
+protected `github-pages` environment supplies the public
+`PRODUCTION_TURNSTILE_SITE_KEY` variable only while packaging. The release
+script rejects a missing/malformed key, Cloudflare's published test keys, an
+already-mutated source marker, and a staging artifact. It writes only the
+prepared artifact; no public key or secret is committed to source.
+
+After the matching staging or production CAPTCHA and SMTP settings are read
+back, deploy `request-review` through the separate `public-intake` function
+scope. Its exact staging confirmation is
+`STAGING-PUBLIC-INTAKE+TURNSTILE+SMTP-VERIFIED`; production additionally requires
+WAF evidence and uses `PUBLIC-INTAKE+TURNSTILE+SMTP+WAF-VERIFIED`. The scope
+deploys only `request-review` and does not broaden the billing, media, or
+maintenance function sets.
+
+Supabase Auth CAPTCHA is a separate provider-side control. In each project,
+enable Cloudflare Turnstile under Authentication > Bot and Abuse Protection and
+enter the secret directly there. The browser already consumes and resets one
+token per signup, password sign-in, and magic-link request. Read the current Auth
+rate-limit values before changing them; record a redacted before/after, test the
+documented `429` response, and do not enable IP forwarding unless requests are
+actually sent through an approved server proxy using a Supabase secret API key.
+
 ## Transactional email and SMTP
 
 Supabase's built-in mail service is a development aid, not the production mail

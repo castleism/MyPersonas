@@ -94,8 +94,59 @@ Owner/provider actions, not performed by these scripts:
    credential. Do not let the staging environment self-approve or access the
    production database secret.
 
-No workflow is added here. The repository owner must wire these scripts into a
-reviewed workflow whose job declares `environment: supabase-staging`.
+The repository now includes a protected, manually dispatched function-deployment
+workflow whose staging job declares `environment: supabase-staging` and whose
+production job declares `environment: production`. It never applies migrations.
+The database bootstrap remains an operator-run, evidence-producing procedure so
+a generic `db push` cannot replay the repository's incomplete historical chain.
+
+## GitHub protection contract
+
+Before any migration-bearing branch reaches `main`, disable the Supabase GitHub
+App's automatic migration integration. It has previously applied main-branch
+migrations before CI completed. Do not push the release branch until that
+provider-side switch is read back as disabled.
+
+Create `supabase-staging`, `production`, and `github-pages` environments. For
+each environment:
+
+- require a named reviewer other than the person dispatching the job and enable
+  prevention of self-review;
+- disallow administrator bypass for ordinary releases;
+- allow only `release/*` for `supabase-staging`, and only the protected `main`
+  branch for `production` and `github-pages`;
+- keep every token/ref secret environment-scoped, never repository- or
+  organization-scoped; and
+- record the reviewer, dispatch actor, commit, environment, and readback without
+  recording any credential value.
+
+GitHub requires the reviewer to have repository read access. A single GitHub
+account cannot satisfy the no-self-review requirement: add a second trusted
+account/team before activation. Also verify repository visibility and plan
+eligibility; GitHub documents that required reviewers on Free, Pro, and Team are
+limited to public repositories.
+
+The `supabase-staging` environment contains only
+`STAGING_SUPABASE_ACCESS_TOKEN` and `STAGING_SUPABASE_PROJECT_REF` for the
+function workflow. The `production` environment contains only the corresponding
+`PRODUCTION_...` pair. The `github-pages` environment contains the public
+variable `PRODUCTION_TURNSTILE_SITE_KEY`; the Turnstile secret never enters
+GitHub Pages. Database passwords used by this runbook remain in the approved
+secret-bearing runner and are never available to a frontend deployment job.
+
+Protect `main` with a pull-request ruleset that blocks force-pushes and deletion,
+dismisses stale approvals, and requires these exact CI check names:
+
+1. `Unit tests (pure helpers)`
+2. `Deno type-check edge functions`
+3. `Billing migration runtime contract`
+4. `Opaque media and operations migration runtime contracts`
+5. `Repository credential scan`
+6. `Frontend script syntax`
+
+GitHub may not offer a check for selection until it has run once. Run the pinned
+CI workflow on the release branch first, then bind these exact names; do not
+substitute a similarly named or skipped job.
 
 ## Gate 1 — capture and review the through-061 predecessor
 
