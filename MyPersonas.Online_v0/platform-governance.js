@@ -6,7 +6,21 @@ const GOVERNANCE_AI_CHATS=Object.freeze({
   Perplexity:"https://www.perplexity.ai/",
   Kimi:"https://www.kimi.com/"
 });
-function newGovernanceState(){return{personaId:"",readiness:null,review:null,reviewManifest:null,reviewBaseline:null,featureRequests:[],syncSettings:[],friendSettings:null,extensions:[],roles:[],security:null,relationships:[],familyEdges:[],projects:[],businesses:[],revenueSettings:null,affiliateProducts:[],affiliateOffers:[],productReviewSettings:null,productReviewRequests:[],productReviewEvents:[],productReviewEvidence:[],assignedAccounts:[],staffRequests:[],staffExtensions:[],intentionPlan:null,intentionAiExplanation:"",capabilities:{governance:true,organization:true,revenue:true,reviewInbox:true}}}
+const GOVERNANCE_OPERATIONAL_ACTIONS=Object.freeze({
+  review_security_events:"Review the restricted security-event ledger and incident runbook.",
+  notify_locked_accounts:"Review pending account-lock notifications; do not clear them without delivery evidence.",
+  review_product_notification_queue:"Inspect the service-only review-notification worker and delivery evidence.",
+  review_client_error_volume:"Inspect redacted error groups and reproduce before changing production.",
+  run_operations_maintenance:"Verify the maintenance worker and its last successful heartbeat.",
+  review_billing_webhook_pipeline:"Global admin: stop entitlement changes and verify the Stripe webhook pipeline.",
+  reconcile_closed_account_finance:"Global admin: reconcile the closed-account financial event.",
+  review_duplicate_subscription:"Global admin: follow the duplicate-subscription and refund-decision runbook.",
+  review_billing_catalog:"Global admin: verify the configured Stripe Price catalog before resuming billing.",
+  reconcile_financial_hold:"Global admin: use the dedicated AAL2 financial-hold workflow.",
+  run_billing_reconciliation:"Global admin: run read-only Stripe reconciliation and retain its evidence.",
+  review_billing_reconciliation:"Global admin: investigate the restricted billing reconciliation queue."
+});
+function newGovernanceState(){return{personaId:"",readiness:null,review:null,reviewManifest:null,reviewBaseline:null,featureRequests:[],syncSettings:[],friendSettings:null,extensions:[],roles:[],security:null,relationships:[],familyEdges:[],projects:[],businesses:[],revenueSettings:null,affiliateProducts:[],affiliateOffers:[],productReviewSettings:null,productReviewRequests:[],productReviewEvents:[],productReviewEvidence:[],assignedAccounts:[],staffRequests:[],staffExtensions:[],operationalAlerts:[],operationalAlertsError:"",operationalAlertsLoaded:false,intentionPlan:null,intentionAiExplanation:"",capabilities:{governance:true,organization:true,revenue:true,reviewInbox:true}}}
 let governanceState=newGovernanceState();
 function resetGovernanceState(){governanceState=newGovernanceState()}
 
@@ -568,6 +582,37 @@ async function governanceSubmitBusinessReview(businessId){if(!await governanceRe
 async function governancePublishBusiness(businessId){if(!confirm("Publish only the exact reviewed business revision now? No future edit will publish automatically."))return;if(!await governanceRequireSensitive("publish this exact business revision"))return;const{error}=await sb.rpc("publish_business_page",{p_business_id:businessId});if(error){toast(error.message);return}toast("Exact reviewed business revision published");go("business-settings/"+businessId)}
 async function governanceUnpublishBusiness(businessId){if(!confirm("Take this business page offline and return it to an owner-only draft?"))return;if(!await governanceRequireSensitive("unpublish this business page"))return;const{error}=await sb.rpc("unpublish_business_page",{p_business_id:businessId});if(error){toast(error.message);return}toast("Business page unpublished and returned to an owner-only draft");go("business-settings/"+businessId)}
 
+function governanceOperationalAlertError(error){
+  const message=String(error?.message||"").toLowerCase();
+  if(message.includes("two-factor")||message.includes("aal2"))return"aal2_required";
+  if(message.includes("staff role"))return"staff_role_required";
+  if(message.includes("staff_operational_alerts")||message.includes("schema cache"))return"migration_required";
+  return"unavailable";
+}
+function governanceOperationalAlertTime(value){const time=Date.parse(value||"");return Number.isFinite(time)?new Date(time).toLocaleString():"Time unavailable"}
+function governanceOperationalAlertsCard(){
+  const alerts=Array.isArray(governanceState.operationalAlerts)?governanceState.operationalAlerts:[],error=governanceState.operationalAlertsError;
+  let body="";
+  if(error==="aal2_required")body='<div class="gov-note warn"><b>Two-factor verification is required.</b> Verify this staff session before loading aggregate operational alerts.</div>';
+  else if(error==="migration_required")body='<div class="gov-note warn"><b>Operational inbox migration 069 is not available here.</b> No underlying queue was changed.</div>';
+  else if(error)body='<div class="gov-note warn"><b>Operational alerts could not be loaded.</b> Existing security, billing, and notification state remains untouched.</div>';
+  else if(!governanceState.operationalAlertsLoaded)body='<div class="empty">Operational alerts have not been loaded.</div>';
+  else if(!alerts.length)body='<div class="empty">No aggregate operational alerts are currently visible to this role.</div>';
+  else body=`<div class="gov-alert-list">${alerts.map(alert=>{const severity=["warning","high","critical"].includes(alert.severity)?alert.severity:"high",count=Math.max(1,Math.min(Number(alert.occurrence_count)||1,1000000)),action=GOVERNANCE_OPERATIONAL_ACTIONS[alert.safe_action_code]||"Review the restricted operations runbook.";return `<article class="gov-alert ${severity}"><div class="gov-row-head"><div><b>${esc(String(alert.category||"operational alert").replaceAll("_"," "))}</b><div class="muted">${esc(alert.source||"operations")} · ${count.toLocaleString()} occurrence${count===1?"":"s"} · last seen ${esc(governanceOperationalAlertTime(alert.last_seen))}</div></div><span class="gov-alert-severity ${severity}">${esc(severity)}</span></div><p>${esc(action)}</p>${alert.requires_global_admin?'<div class="gov-note stop">Restricted to an AAL2 global administrator.</div>':""}</article>`}).join("")}</div>`;
+  return `<section class="gov-card gov-wide" id="govOperationalAlerts"><div class="gov-row-head"><div><h3>Operational alerts</h3><p class="muted">Read-only, aggregate in-app visibility. This is not automatic incident paging or proof that an email was delivered. Provider identifiers, account identifiers, hashes, raw errors, and free-form billing details are withheld.</p></div><button class="btn sec sm" onclick="governanceRefreshOperationalAlerts()">Refresh with MFA</button></div>${body}</section>`;
+}
+async function governanceRefreshOperationalAlerts(){
+  const owner=session?.user?.id,epoch=renderEpoch;if(!owner)return;
+  if(!await requireAal2ForSensitiveAction("view aggregate operational alerts"))return;
+  if(epoch!==renderEpoch||session?.user?.id!==owner)return;
+  const host=document.getElementById("govOperationalAlerts");if(host)host.setAttribute("aria-busy","true");
+  const result=await governanceRpc("staff_operational_alerts",{p_before_created_at:null,p_before_alert_key:null,p_limit:100});
+  if(epoch!==renderEpoch||session?.user?.id!==owner||location.hash.replace(/^#\//,"").split("/")[0]!=="platform-queue")return;
+  governanceState={...governanceState,operationalAlerts:result.error?[]:(result.data||[]),operationalAlertsError:result.error?governanceOperationalAlertError(result.error):"",operationalAlertsLoaded:!result.error};
+  const current=document.getElementById("govOperationalAlerts");if(current)current.outerHTML=governanceOperationalAlertsCard();
+  toast(result.error?"Operational alerts remain unavailable":"Operational alerts refreshed");
+}
+
 async function renderPlatformQueue(){
   if(!session){renderSignin();return}
   const owner=session.user.id,epoch=renderEpoch;
@@ -577,16 +622,17 @@ async function renderPlatformQueue(){
   if(roles.error){governanceSetupRequired(roles.error.message);return}
   const allowed=(roles.data||[]).some(role=>role.active&&["global_administrator","technician"].includes(role.role_key)&&(!role.expires_at||Date.parse(role.expires_at)>Date.now()));
   if(!allowed){app.innerHTML='<div class="gov-shell"><section class="gov-card"><h2>Staff queue</h2><p class="muted">This account has no active global administrator or technician assignment. Roles can be granted only through a reviewed service/admin operation.</p></section></div>';return}
-  const[requests,extensions]=await Promise.all([
+  const[requests,extensions,operationalAlerts]=await Promise.all([
     governanceMaybe("platform_feature_requests",q=>q.select("*").not("status","in",'(draft,withdrawn)').order("submitted_at",{ascending:true}).limit(500)),
-    governanceMaybe("persona_extension_submissions",q=>q.select("*").in("status",["submitted","reviewing","approved","rejected","quarantined"]).order("submitted_at",{ascending:true}).limit(200))
+    governanceMaybe("persona_extension_submissions",q=>q.select("*").in("status",["submitted","reviewing","approved","rejected","quarantined"]).order("submitted_at",{ascending:true}).limit(200)),
+    governanceRpc("staff_operational_alerts",{p_before_created_at:null,p_before_alert_key:null,p_limit:100})
   ]);
   if(epoch!==renderEpoch||session?.user?.id!==owner)return;
   if(requests.error||extensions.error){governanceSetupRequired((requests.error||extensions.error).message);return}
-  governanceState={...governanceState,staffRequests:requests.data||[],staffExtensions:extensions.data||[]};
+  governanceState={...governanceState,staffRequests:requests.data||[],staffExtensions:extensions.data||[],operationalAlerts:operationalAlerts.error?[]:(operationalAlerts.data||[]),operationalAlertsError:operationalAlerts.error?governanceOperationalAlertError(operationalAlerts.error):"",operationalAlertsLoaded:!operationalAlerts.error};
   const featureCards=(requests.data||[]).map(request=>`<section class="gov-card"><div class="gov-row-head"><div><b>${esc(request.title)}</b><div class="muted">${esc(request.description||"")}</div></div><span class="gov-state ${esc(request.status)}">${esc(request.status)}</span></div><div class="row"><div><label>Status</label><select id="govStaffStatus_${request.id}">${["submitted","triaged","planned","declined","completed"].map(value=>`<option value="${value}" ${value===request.status?"selected":""}>${value}</option>`).join("")}</select></div><div><label>Priority</label><select id="govStaffPriority_${request.id}">${["low","normal","high","urgent"].map(value=>`<option value="${value}" ${value===request.priority?"selected":""}>${value}</option>`).join("")}</select></div></div><label>Staff notes</label><textarea id="govStaffNotes_${request.id}" maxlength="30000">${esc(request.staff_notes||"")}</textarea><button class="btn sec" onclick="governanceStaffSave('${request.id}')">Save staff update</button></section>`).join("");
   const extensionCards=(extensions.data||[]).map(extension=>`<section class="gov-card"><div class="gov-row-head"><div><b>${esc(extension.title)}</b><div class="muted">${esc(extension.source_type)} · permissions: ${esc((extension.requested_permissions||[]).join(", ")||"none")}</div></div><span class="gov-state ${esc(extension.status)}">${esc(extension.status)}</span></div><div class="gov-note warn">Approval records a review decision only. Source remains inert until a separate sandboxed build and release.</div><details><summary>Inspect escaped source</summary><pre class="gov-code">${esc(extension.source_code||"")}</pre></details><label>Review decision</label><select id="govExtensionStatus_${extension.id}" ${["approved","rejected","quarantined"].includes(extension.status)?"disabled":""}>${["reviewing","approved","rejected","quarantined"].map(value=>`<option value="${value}" ${value===extension.status?"selected":""}>${value}</option>`).join("")}</select><label>Review notes</label><textarea id="govExtensionNotes_${extension.id}" maxlength="12000" ${["approved","rejected","quarantined"].includes(extension.status)?"disabled":""}>${esc(extension.review_notes||"")}</textarea>${["submitted","reviewing"].includes(extension.status)?`<button class="btn sec" onclick="governanceStaffSaveExtension('${extension.id}')">Save extension decision</button>`:""}</section>`).join("");
-  app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Account-level maintenance authority · AAL2 required for changes</span><h2>Administrator / technician queue</h2></div></section><h3>Feature requests</h3><div class="gov-list">${featureCards||'<div class="empty">No submitted feature requests.</div>'}</div><h3>Custom extensions</h3><div class="gov-list">${extensionCards||'<div class="empty">No submitted extension source.</div>'}</div></div>`;
+  app.innerHTML=`<div class="gov-shell"><section class="gov-head"><div><span class="muted">Account-level maintenance authority · AAL2 required for sensitive reads and changes</span><h2>Administrator / technician queue</h2></div></section>${governanceOperationalAlertsCard()}<h3>Feature requests</h3><div class="gov-list">${featureCards||'<div class="empty">No submitted feature requests.</div>'}</div><h3>Custom extensions</h3><div class="gov-list">${extensionCards||'<div class="empty">No submitted extension source.</div>'}</div></div>`;
 }
 async function governanceStaffSave(id){const owner=session?.user?.id,epoch=renderEpoch,request=(governanceState.staffRequests||[]).find(row=>row.id===id);if(!owner||!request){toast("Reload the staff queue before saving");return}if(!await requireAal2ForSensitiveAction("change the staff feature queue"))return;if(epoch!==renderEpoch||session?.user?.id!==owner)return;const status=document.getElementById("govStaffStatus_"+id)?.value||"submitted",priority=document.getElementById("govStaffPriority_"+id)?.value||"normal",notes=document.getElementById("govStaffNotes_"+id)?.value||"",assignedTo=/^[0-9a-f-]{36}$/i.test(request.assigned_to||"")?request.assigned_to:null;const{error}=await sb.rpc("staff_update_feature_request",{p_request_id:id,p_status:status,p_priority:priority,p_assigned_to:assignedTo,p_staff_notes:notes});if(epoch!==renderEpoch||session?.user?.id!==owner)return;if(error){toast(error.message);return}toast("Staff queue updated");renderPlatformQueue()}
 async function governanceStaffSaveExtension(id){const owner=session?.user?.id,epoch=renderEpoch;if(!owner)return;if(!await requireAal2ForSensitiveAction("review this extension source"))return;if(epoch!==renderEpoch||session?.user?.id!==owner)return;const status=document.getElementById("govExtensionStatus_"+id)?.value||"reviewing",notes=document.getElementById("govExtensionNotes_"+id)?.value||"";const{error}=await sb.rpc("staff_update_extension_submission",{p_submission_id:id,p_status:status,p_review_notes:notes});if(epoch!==renderEpoch||session?.user?.id!==owner)return;if(error){toast(error.message);return}toast("Extension review recorded; source remains inert");renderPlatformQueue()}

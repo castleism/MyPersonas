@@ -8,6 +8,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:persona-view-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-persona-view-sql.ps1",
     "test:ai-provenance-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-ai-content-provenance-sql.ps1",
+    "test:operational-alerts-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-operational-alert-inbox-sql.ps1",
     "akiko:build-drafts": "node scripts/build-akiko-local-draft-pack.mjs",
     "akiko:validate": "node scripts/validate-akiko-launch-pack.mjs"
   }
