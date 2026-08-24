@@ -345,6 +345,53 @@ test("stale account or route responses cannot populate or complete refund review
   assert.equal(vm.runInContext("billingState.admin.refundsLoaded",context),false);
 });
 
+test("route-only refund list and Edge responses clear transient busy state and permit a safe retry",async()=>{
+  const reviewId="77777777-7777-4777-8777-777777777777",reason="Canonical evidence supports the exact original-method duplicate refund.",listPending=deferred(),edgePending=deferred(),elements=new Map([
+    ["billingRefundConfirmation_0",{value:"20.00 USD"}],
+    ["billingRefundReason_0",{value:reason}],
+    ["billingRefundAck_0",{checked:true}],
+  ]);
+  let listCalls=0,edgeCalls=0;
+  const{context,rpcCalls,functionCalls}=billingContext({href:"https://mypersonas.online/#/platform-queue",elements,rpc(name){
+    if(name!=="billing_admin_duplicate_refund_reviews")throw new Error(`unexpected RPC ${name}`);
+    listCalls++;return listCalls===1?listPending.promise:Promise.resolve({data:[],error:null});
+  },invoke(name){
+    if(name!=="billing-admin-refund-duplicate")throw new Error(`unexpected function ${name}`);
+    edgeCalls++;return edgeCalls===1?edgePending.promise:Promise.resolve({data:{state:"provider_pending",amount:2000,currency:"usd"},error:null});
+  }});
+
+  vm.runInContext("globalThis.routeList=billingAdminLoadRefundReviews()",context);
+  for(let index=0;index<4&&!rpcCalls.length;index++)await Promise.resolve();
+  vm.runInContext('window.location.href="https://mypersonas.online/#/studio"',context);
+  listPending.resolve({data:[],error:null});await context.routeList;
+  assert.equal(vm.runInContext("billingState.admin.refundsLoading",context),false);
+  vm.runInContext('window.location.href="https://mypersonas.online/#/platform-queue"',context);
+  await vm.runInContext("billingAdminLoadRefundReviews()",context);
+  assert.equal(rpcCalls.length,2);
+
+  vm.runInContext(`billingState.admin.refunds=billingNormalizeRefundReviews([{remediation_id:"${reviewId}",masked_email:"o***@example.com",state:"refund_pending",amount_minor:2000,currency:"usd",created_at:"2026-08-23T10:00:00Z",updated_at:"2026-08-23T10:05:00Z"}]);billingState.admin.refundsLoaded=true`,context);
+  vm.runInContext("globalThis.routeAction=billingAdminApproveRefund(0)",context);
+  for(let index=0;index<4&&!functionCalls.length;index++)await Promise.resolve();
+  vm.runInContext('window.location.href="https://mypersonas.online/#/studio"',context);
+  edgePending.resolve({data:{state:"provider_pending",amount:2000,currency:"usd"},error:null});await context.routeAction;
+  assert.equal(vm.runInContext("billingState.admin.refundActionBusy",context),"");
+  assert.equal(vm.runInContext("billingState.admin.refundMessage",context),"");
+  vm.runInContext('window.location.href="https://mypersonas.online/#/platform-queue"',context);
+  await vm.runInContext("billingAdminApproveRefund(0)",context);
+  assert.equal(functionCalls.length,2);
+  assert.match(vm.runInContext("billingState.admin.refundMessage",context),/pending at the provider/);
+});
+
+test("admin repaint restores focus to the exact refund control after validation",()=>{
+  const focused=[],active={id:"billingRefundAction_0"},target={focus:options=>focused.push(options)},rootElement={contains:value=>value===active,outerHTML:""};
+  const{context}=billingContext({href:"https://mypersonas.online/#/platform-queue"});
+  context.document={activeElement:active,getElementById:id=>id==="billingAdminRoot"?rootElement:id==="billingRefundConfirmation_0"?target:null};
+  vm.runInContext('billingPaintAdmin("billingRefundConfirmation_0")',context);
+  assert.equal(focused.length,1);
+  assert.equal(focused[0].preventScroll,true);
+  assert.match(rootElement.outerHTML,/id="billingAdminRefundReviews" tabindex="-1"/);
+});
+
 test("financial holds load only after exact account lookup and reconcile by internal hold UUID with AAL2, reason, confirmation, and refresh",async()=>{
   assert.match(billingMigration,/returns table\(\s*hold_id uuid,account_id uuid,masked_email text,event_category text,/);
   assert.match(source,/raw\?\.event_category/);
