@@ -88,10 +88,91 @@ test("capture/apply scripts have explicit no-data, no-production-target, hash, a
   assert.match(apply, /APPLY-THROUGH-061:/);
   assert.match(apply, /APPLY-062-AND-LOCK:/);
   assert.match(apply, /APPLY-063-064:/);
+  assert.match(apply, /APPLY-068-069:/);
   assert.match(apply, /--dry-run/);
+  assert.match(apply, /supabase-migration-list-before\.log/);
+  assert.match(apply, /supabase-migration-list-after\.log/);
   assert.doesNotMatch(apply, /migration repair|db reset/i);
   assert.match(apply, /065-067 are explicitly excluded/);
   assert.doesNotMatch(apply, /--password|-p[,')]/);
+});
+
+test("billing and operations staging phase is exact, reviewed, shadow-safe, and excludes 065-067", async () => {
+  const [common, apply, preflight, verify, runbook] = await Promise.all([
+    read("scripts/staging-bootstrap/Common.ps1"),
+    read("scripts/staging-bootstrap/Invoke-StagingBootstrap.ps1"),
+    read("scripts/staging-bootstrap/sql/preflight-068-069.sql"),
+    read("scripts/staging-bootstrap/sql/verify-068-069.sql"),
+    read("supabase/STAGING-BOOTSTRAP-RUNBOOK.md"),
+  ]);
+
+  assert.match(common, /Billing068Version = '20260823100000'/);
+  assert.match(common, /Operations069Version = '20260823110000'/);
+  assert.match(common, /StagingProtectedEnvironment = 'supabase-staging'/);
+  assert.match(common, /ValidateSet\('062', '063', '064', '068', '069'\)/);
+  assert.match(common, /068-account-subscription-entitlements\.sql/);
+  assert.match(common, /069-operational-alert-inbox\.sql/);
+
+  assert.match(apply, /'Apply068And069'/);
+  assert.match(apply, /Assert-ProtectedBillingOperationsReleaseContext/);
+  assert.match(apply, /MP_STAGING_PROTECTED_ENVIRONMENT/);
+  assert.match(apply, /MP_STAGING_APPROVED_PROJECT_REF/);
+  assert.match(apply, /GITHUB_REF_PROTECTED/);
+  assert.match(apply, /ReleaseChangeEvidence/);
+  assert.match(apply, /ReleaseReviewEvidence/);
+  assert.match(apply, /preflight-068-069\.sql/);
+  assert.match(apply, /verify-068-069\.sql/);
+  assert.match(apply, /New-SupabasePhaseWorkdir -HighestMigration 69/);
+  assert.match(apply, /applied_migrations = @\('068','069'\)/);
+  assert.match(apply, /billing_enforcement_activated = \$false/);
+  assert.match(apply, /edge_functions_deployed_by_phase = \$false/);
+  assert.match(apply, /external_provider_state_verified = \$false/);
+  assert.doesNotMatch(apply, /--include-all|migration repair|db reset/i);
+
+  for (const version of [
+    "20260823035000", "20260823040000", "20260823050000", "20260823060000",
+  ]) {
+    assert.match(preflight, new RegExp(version));
+  }
+  assert.doesNotMatch(preflight, /20260823100000|20260823110000/);
+  assert.match(preflight, /v_versions<>v_expected_versions/);
+  assert.match(preflight, /verified pre-data 062-064 checkpoint/i);
+  assert.match(preflight, /Migration 068 or 069 objects already exist/i);
+
+  for (const version of [
+    "20260823035000", "20260823040000", "20260823050000", "20260823060000",
+    "20260823100000", "20260823110000",
+  ]) {
+    assert.match(verify, new RegExp(version));
+  }
+  assert.match(verify, /enforcement_enabled/);
+  assert.match(verify, /checkout_enabled/);
+  assert.match(verify, /livemode/);
+  assert.match(verify, /account_weekly[\s\S]*2000/);
+  assert.match(verify, /account_monthly[\s\S]*5000/);
+  assert.match(verify, /account_yearly[\s\S]*33300/);
+  assert.match(verify, /stripe_price_id[\s\S]*null/);
+  assert.match(verify, /Browser roles can access private billing schema objects/);
+  assert.match(verify, /staff_operational_alerts/);
+  assert.match(verify, /run-operations-maintenance/);
+  assert.doesNotMatch(verify, /insert into supabase_migrations|migration repair/i);
+
+  assert.match(runbook, /Gate 5 — reviewed billing and operations schema release/);
+  assert.match(runbook, /068 and 069 only/i);
+  assert.match(runbook, /exact remote ledger/i);
+  assert.match(runbook, /does not bind Stripe Price IDs/i);
+
+  const [runtimeHarness, runtimeSeed] = await Promise.all([
+    read("scripts/test-staging-billing-ops-release-sql.ps1"),
+    read("tests/sql/068-069-staging-release-seed.sql"),
+  ]);
+  assert.match(runtimeHarness, /preflight-068-069\.sql/);
+  assert.match(runtimeHarness, /verify-068-069\.sql/);
+  assert.match(runtimeHarness, /068-account-subscription-entitlements\.sql/);
+  assert.match(runtimeHarness, /069-operational-alert-inbox\.sql/);
+  assert.match(runtimeSeed, /supabase_migrations\.schema_migrations/);
+  assert.match(runtimeSeed, /20260823035000/);
+  assert.doesNotMatch(runtimeHarness, /SUPABASE_ACCESS_TOKEN|supabase db push/i);
 });
 
 test("staging SQL proves freshness, restores only empty platform config, and locks 062 before later verification", async () => {
@@ -280,6 +361,7 @@ test("all PowerShell staging scripts parse without syntax errors", async (t) => 
     "scripts/staging-bootstrap/Export-Through061Schema.ps1",
     "scripts/staging-bootstrap/Invoke-StagingBootstrap.ps1",
     "scripts/staging-bootstrap/New-StagingFrontendArtifact.ps1",
+    "scripts/test-staging-billing-ops-release-sql.ps1",
   ];
   for (const relative of scripts) {
     const full = path.join(root, relative);

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('Preflight','ApplyThrough061','Apply062AndLock','Apply063And064','Verify')]
+  [ValidateSet('Preflight','ApplyThrough061','Apply062AndLock','Apply063And064','Apply068And069','Verify','Verify068And069')]
   [string]$Phase,
   [Parameter(Mandatory = $true)][string]$StagingProjectRef,
   [Parameter(Mandatory = $true)][string]$ConfirmedStagingProjectRef,
@@ -13,6 +13,8 @@ param(
   [Parameter(Mandatory = $true)][string]$EvidenceDirectory,
   [string]$ConfigurationEvidence = '',
   [string]$LockEvidence = '',
+  [string]$ReleaseChangeEvidence = '',
+  [string]$ReleaseReviewEvidence = '',
   [string]$ApprovalToken = '',
   [string]$SupabaseCommand = 'supabase',
   [string]$PsqlCommand = 'psql',
@@ -137,17 +139,23 @@ function New-SupabasePhaseWorkdir {
   Copy-Item -LiteralPath $BaselinePath -Destination (Join-Path $migrations ([IO.Path]::GetFileName($BaselinePath)))
 
   $migrationEvidence = [ordered]@{ baseline = $ExpectedBaselineSha256 }
-  foreach ($number in @('062','063','064')) {
+  $selectedMigrations = @('062','063','064','068','069') | Where-Object { [int]$_ -le $HighestMigration }
+  $expectedFiles = @("$($script:StagingBaselineVersion)_staging_predecessor_through_061.sql")
+  foreach ($number in $selectedMigrations) {
     if ([int]$number -gt $HighestMigration) { continue }
     $pair = Assert-MigrationMirrorParity -Migration $number
     Copy-Item -LiteralPath $pair.Mirror -Destination (Join-Path $migrations ([IO.Path]::GetFileName($pair.Mirror)))
     $migrationEvidence[$number] = $pair.Sha256
+    $expectedFiles += [IO.Path]::GetFileName($pair.Mirror)
   }
 
   $found = @(Get-ChildItem -LiteralPath $migrations -Filter '*.sql' | Sort-Object Name | Select-Object -ExpandProperty Name)
-  $expectedCount = 1 + (@('062','063','064') | Where-Object { [int]$_ -le $HighestMigration }).Count
-  if ($found.Count -ne $expectedCount -or ($found | Where-Object { $_ -match '^202608230[7-9]|_06[5-7]' })) {
-    throw 'Phase workdir contains an unexpected migration; 065-067 are explicitly excluded.'
+  $expectedFiles = @($expectedFiles | Sort-Object)
+  if ($found.Count -ne $expectedFiles.Count -or (Compare-Object -CaseSensitive $found $expectedFiles)) {
+    throw 'Phase workdir is not the exact reviewed migration set; 065-067 are explicitly excluded.'
+  }
+  if ($found | Where-Object { $_ -match '^202608230(?:70000|80000|90000)|_06[5-7](?:-|_)' }) {
+    throw 'Deferred migrations 065-067 must not enter a staging release workdir.'
   }
 
   [IO.File]::WriteAllText(
@@ -168,17 +176,55 @@ function Invoke-SupabasePush {
     '--workdir',$Workdir,'--yes','link','--project-ref',$StagingProjectRef
   ) -OutputPath (Join-Path $runDirectory 'supabase-link.log') -Redact $redact | Out-Null
   Invoke-CapturedCommand -Command $SupabaseCommand -Arguments @(
+    '--workdir',$Workdir,'migration','list','--linked'
+  ) -OutputPath (Join-Path $runDirectory 'supabase-migration-list-before.log') -Redact $redact | Out-Null
+  Invoke-CapturedCommand -Command $SupabaseCommand -Arguments @(
     '--workdir',$Workdir,'--yes','db','push','--linked','--dry-run'
   ) -OutputPath (Join-Path $runDirectory 'supabase-db-push-dry-run.log') -Redact $redact | Out-Null
   Invoke-CapturedCommand -Command $SupabaseCommand -Arguments @(
     '--workdir',$Workdir,'--yes','db','push','--linked'
   ) -OutputPath (Join-Path $runDirectory 'supabase-db-push.log') -Redact $redact | Out-Null
+  Invoke-CapturedCommand -Command $SupabaseCommand -Arguments @(
+    '--workdir',$Workdir,'migration','list','--linked'
+  ) -OutputPath (Join-Path $runDirectory 'supabase-migration-list-after.log') -Redact $redact | Out-Null
 }
 
 function Assert-ApprovalToken {
   param([Parameter(Mandatory = $true)][string]$Expected)
   if ($ApprovalToken -cne $Expected) {
     throw "Protected-environment reviewer token mismatch. Expected exact token: $Expected"
+  }
+}
+
+function Assert-ProtectedBillingOperationsReleaseContext {
+  $environmentName = Get-RequiredEnvironmentValue -Name 'MP_STAGING_PROTECTED_ENVIRONMENT'
+  $approvedProjectRef = Get-RequiredEnvironmentValue -Name 'MP_STAGING_APPROVED_PROJECT_REF'
+  if ($environmentName -cne $script:StagingProtectedEnvironment) {
+    throw "Billing/operations staging apply requires the exact protected environment $($script:StagingProtectedEnvironment)."
+  }
+  if ($approvedProjectRef -cne $StagingProjectRef) {
+    throw 'Protected-environment project ref does not exactly match the requested staging target.'
+  }
+  Assert-BoundedEvidence -Value $ReleaseChangeEvidence -Name 'ReleaseChangeEvidence'
+  Assert-BoundedEvidence -Value $ReleaseReviewEvidence -Name 'ReleaseReviewEvidence'
+  if ($ReleaseChangeEvidence -ceq $ReleaseReviewEvidence) {
+    throw 'Change and independent review evidence must be different references.'
+  }
+
+  $githubActions = [Environment]::GetEnvironmentVariable('GITHUB_ACTIONS','Process')
+  if ($githubActions -ceq 'true') {
+    $protectedRef = [Environment]::GetEnvironmentVariable('GITHUB_REF_PROTECTED','Process')
+    if ($protectedRef -cne 'true') {
+      throw 'GitHub Actions staging apply requires a protected release ref in addition to the protected environment.'
+    }
+  }
+
+  return [ordered]@{
+    environment = $environmentName
+    approved_project_ref = $approvedProjectRef
+    change_evidence = $ReleaseChangeEvidence
+    independent_review_evidence = $ReleaseReviewEvidence
+    github_ref_protected = if ($githubActions -ceq 'true') { $true } else { $null }
   }
 }
 
@@ -227,9 +273,28 @@ try {
       Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-063-064.sql') -OutputName '063-064-readback.json'
       $after = Export-StagingSchemaEvidence -Name 'after-063-064'
     }
+    'Apply068And069' {
+      Assert-BaselineInputs
+      $protectedReleaseContext = Assert-ProtectedBillingOperationsReleaseContext
+      $billingPair = Assert-MigrationMirrorParity -Migration '068'
+      $operationsPair = Assert-MigrationMirrorParity -Migration '069'
+      Assert-ApprovalToken -Expected "APPLY-068-069:${StagingProjectRef}:$($billingPair.Sha256.Substring(0,12)):$($operationsPair.Sha256.Substring(0,12))"
+      Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-063-064.sql') -OutputName 'pre-068-069-opaque-readback.json'
+      Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'preflight-068-069.sql') -OutputName 'pre-068-069-release-readback.json'
+      $before = Export-StagingSchemaEvidence -Name 'before-068-069'
+      $workdir = New-SupabasePhaseWorkdir -HighestMigration 69
+      Invoke-SupabasePush -Workdir $workdir
+      Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-068-069.sql') -OutputName '068-069-readback.json'
+      $after = Export-StagingSchemaEvidence -Name 'after-068-069'
+    }
     'Verify' {
       Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-063-064.sql') -OutputName '063-064-readback.json'
       $after = Export-StagingSchemaEvidence -Name 'verified-063-064'
+    }
+    'Verify068And069' {
+      Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-063-064.sql') -OutputName '063-064-readback.json'
+      Invoke-PsqlEvidence -SqlPath (Join-Path $sqlDirectory 'verify-068-069.sql') -OutputName '068-069-readback.json'
+      $after = Export-StagingSchemaEvidence -Name 'verified-068-069'
     }
   }
 
@@ -243,7 +308,17 @@ try {
     baseline_sha256 = $ExpectedBaselineSha256
     production_target_rejected = $true
     automatic_rollback_attempted = $false
+    deferred_migrations_065_067_excluded = $true
     evidence_directory = $runDirectory
+  }
+  if (Get-Variable protectedReleaseContext -ErrorAction SilentlyContinue) {
+    $record.protected_release_context = $protectedReleaseContext
+    $record.applied_migrations = @('068','069')
+    $record.billing_enforcement_activated = $false
+    $record.checkout_activated = $false
+    $record.edge_functions_deployed_by_phase = $false
+    $record.provider_scheduling_changed_by_phase = $false
+    $record.external_provider_state_verified = $false
   }
   if (Get-Variable before -ErrorAction SilentlyContinue) { $record.before_schema_sha256 = $before.Sha256 }
   if (Get-Variable after -ErrorAction SilentlyContinue) { $record.after_schema_sha256 = $after.Sha256 }

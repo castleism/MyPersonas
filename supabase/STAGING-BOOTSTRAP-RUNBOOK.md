@@ -200,6 +200,88 @@ remote ledger makes only 063 and 064 pending. Readback verifies:
 
 This is schema readiness, not a passed runtime/privacy release.
 
+## Gate 5 — reviewed billing and operations schema release (068 and 069 only)
+
+Do not enter this gate until Gate 4 evidence is green and the protected runner
+can read back the exact isolated staging ledger. The release intentionally skips
+deferred local work 065–067. Those versions are neither prerequisites nor
+approved migrations, and the generated workdir rejects them by filename and by
+remote-ledger state.
+
+The apply must run inside GitHub environment `supabase-staging`, with required
+reviewers and a protected `release/*` ref. Configure these protected values:
+
+- `MP_STAGING_PROTECTED_ENVIRONMENT=supabase-staging`;
+- `MP_STAGING_APPROVED_PROJECT_REF=<exact 20-character staging ref>`;
+- `SUPABASE_ACCESS_TOKEN` scoped to the staging project; and
+- `SUPABASE_DB_PASSWORD` for that same project.
+
+The environment name is a fail-closed script assertion, not proof that GitHub
+review protection exists. Retain the GitHub deployment approval, protected-ref
+evidence, environment configuration, and distinct change/reviewer references
+outside the generated database evidence. Use a reviewer other than the runner
+where staffing permits; a single-owner exception must be documented and must
+not be described as separation of duties. Production credentials must not be
+available to this environment.
+
+First calculate and independently review the canonical/timestamp-mirror hashes
+for migrations 068 and 069. The exact approval token is:
+
+```text
+APPLY-068-069:<staging-ref>:<first-12-lowercase-068-hash>:<first-12-lowercase-069-hash>
+```
+
+Then run the reviewed phase with distinct bounded evidence references:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/staging-bootstrap/Invoke-StagingBootstrap.ps1 `
+  -Phase Apply068And069 `
+  -StagingProjectRef '<20-char-staging-ref>' `
+  -ConfirmedStagingProjectRef '<same-ref>' `
+  -DatabaseHost '<exact-direct-or-session-pooler-host>' `
+  -DatabaseUser 'postgres.<same-ref>' `
+  -BaselinePath '<reviewed-staging-predecessor.sql>' `
+  -ExpectedBaselineSha256 '<64-lowercase-hex-baseline-hash>' `
+  -ReleaseChangeEvidence 'change:MP-STAGING-068-069' `
+  -ReleaseReviewEvidence 'review:independent-review-record' `
+  -ApprovalToken '<exact-token-above>' `
+  -EvidenceDirectory staging-bootstrap-evidence/staging-run
+```
+
+Before any write, the phase requires all of the following:
+
+- three-way exact project-ref agreement between the request, typed
+  confirmation, and protected environment value;
+- the production ref rejected by the shared staging guard;
+- exact remote ledger `20260823035000`, 062, 063, and 064—nothing else;
+- locked 062 origins and complete 063/064 objects;
+- no Auth users, Storage objects, Vault secrets, billing objects, or operations
+  inbox object;
+- byte-identical canonical/timestamp mirrors for 062–064 and 068–069; and
+- an exact workdir containing only the staging baseline, 062–064, 068, and 069.
+
+The recorded pre-push migration list and dry run must show only 068 and 069 as
+pending. The phase then applies through the normal migration path, never
+`migration repair`, reads the ledger and schema back, and captures before/after
+normalized schema hashes. The post-readback requires:
+
+- exact ledger baseline + 062–064 + 068 + 069, with 065–067 absent;
+- billing enforcement, checkout, and live mode all false;
+- exactly the reviewed $20/week, $50/month, and $333/year unbound test catalog;
+- zero customers, trial claims, Checkout reservations, subscriptions, webhook
+  events, financial holds, duplicate remediations, or reconciliation alerts;
+- private billing tables inaccessible to browser roles and reviewed RPC grants;
+- the 069 AAL2 staff inbox and bounded service maintenance functions installed;
+- no operations-maintenance provider schedule; and
+- the locked staging media environment unchanged.
+
+This gate installs schema only. It does not bind Stripe Price IDs, set secrets,
+deploy Edge Functions, enable Checkout/enforcement, create test users, schedule
+maintenance, send alerts, or affect production. Run `-Phase Verify068And069`
+for another read-only pre-data schema check; it keeps the same exact
+non-production ref confirmation and readbacks. After test users or media exist,
+use the runtime/privacy evidence harnesses instead of this zero-data verifier.
+
 ## Matching staging frontend artifact
 
 Repository `index.html` deliberately remains the production source and currently
@@ -334,6 +416,13 @@ bucket public as a recovery shortcut.
 - [ ] Through-061 readback and zero data/secret counts green.
 - [ ] 062 pair hash green; exact staging origins configured and locked.
 - [ ] 063/064 pair hashes green; 065–067 absent; final schema readback green.
+- [ ] Protected `supabase-staging` approval and protected `release/*` ref
+      evidence retained; typed and environment-pinned refs match exactly.
+- [ ] 068/069 mirror hashes and approval token independently reviewed; dry run
+      lists only 068 and 069 pending.
+- [ ] 068/069 readback green in shadow/test-safe state; 065–067 absent, no
+      provider bindings, Edge Function deployment, schedules, customers, or
+      billing events.
 - [ ] Exact Pages artifact generated for one allowed host; Access enabled.
 - [ ] Public file-manifest paths/hashes match exactly; no CNAME/sitemap/archive,
       production marker, evidence file, or production desktop download is in
