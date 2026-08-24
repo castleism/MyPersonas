@@ -104,6 +104,12 @@ operation that can make the bucket public again.
 
 Do not split this sequence across an unattended production window.
 
+For a new isolated Supabase project, use the guarded schema-only predecessor,
+protected apply phases, exact staging frontend artifact, and rollback-evidence
+procedure in `../supabase/STAGING-BOOTSTRAP-RUNBOOK.md`. That runbook deliberately
+excludes production data/secrets and migrations 065–067; it does not itself
+create or deploy any external resource.
+
 1. Back up the database and Storage metadata. Record current published persona
    counts, raw owner-path reference counts, bucket visibility, and migration
    ledger hashes.
