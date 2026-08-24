@@ -57,13 +57,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Apply migrations 062 through 064 and 069 in disposable PostgreSQL
+      - name: Apply migrations 062 through 064 and the staged 068 through 069 release in disposable PostgreSQL
         shell: pwsh
         run: |
           ./scripts/test-opaque-public-media-sql.ps1
           ./scripts/test-opaque-approved-media-sql.ps1
           ./scripts/test-legacy-media-remediation-sql.ps1
           ./scripts/test-operational-alert-inbox-sql.ps1
+          ./scripts/test-staging-billing-ops-release-sql.ps1
 
   secret-scan:
     name: Repository credential scan

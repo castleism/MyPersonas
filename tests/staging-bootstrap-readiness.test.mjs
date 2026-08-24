@@ -176,6 +176,26 @@ test("billing and operations staging phase is exact, reviewed, shadow-safe, and 
   assert.doesNotMatch(runtimeHarness, /SUPABASE_ACCESS_TOKEN|supabase db push/i);
 });
 
+test("required release SQL CI check runs the combined staged billing and operations contract", async () => {
+  const ci = await read(".github/workflows/ci.yml");
+  const jobStart = ci.indexOf("  release-sql-runtime:");
+  const jobEnd = ci.indexOf("\n  secret-scan:", jobStart);
+  assert.notEqual(jobStart, -1, "release-sql-runtime job is missing");
+  assert.notEqual(jobEnd, -1, "release-sql-runtime job boundary is missing");
+  const releaseJob = ci.slice(jobStart, jobEnd);
+
+  assert.match(releaseJob, /name: Opaque media and operations migration runtime contracts/);
+  for (const script of [
+    "test-opaque-public-media-sql.ps1",
+    "test-opaque-approved-media-sql.ps1",
+    "test-legacy-media-remediation-sql.ps1",
+    "test-operational-alert-inbox-sql.ps1",
+    "test-staging-billing-ops-release-sql.ps1",
+  ]) {
+    assert.match(releaseJob, new RegExp(`\\./scripts/${script.replaceAll(".", "\\.")}`));
+  }
+});
+
 test("staging SQL proves freshness, restores only empty platform config, and locks 062 before later verification", async () => {
   const [preflight, config, configureLock, verify062, verify064] = await Promise.all([
     read("scripts/staging-bootstrap/sql/00-preflight-fresh-staging.sql"),
