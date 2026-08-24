@@ -14,6 +14,7 @@
     "billing:test-clock": "node scripts/billing-test-clock-fixture.mjs",
     "test:secrets": "node scripts/check-committed-secrets.mjs",
     "test:operational-alerts-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-operational-alert-inbox-sql.ps1",
+    "test:staging-billing-ops-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-staging-billing-ops-release-sql.ps1",
     "akiko:build-drafts": "node scripts/build-akiko-local-draft-pack.mjs",
     "akiko:validate": "node scripts/validate-akiko-launch-pack.mjs"
   }

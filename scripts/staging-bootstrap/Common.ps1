@@ -11,6 +11,9 @@ $script:StagingBaselineVersion = '20260823035000'
 $script:Opaque062Version = '20260823040000'
 $script:Opaque063Version = '20260823050000'
 $script:Opaque064Version = '20260823060000'
+$script:Billing068Version = '20260823100000'
+$script:Operations069Version = '20260823110000'
+$script:StagingProtectedEnvironment = 'supabase-staging'
 
 function Get-MyPersonasRepositoryRoot {
   return (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -198,12 +201,14 @@ function Assert-ExpectedHash {
 }
 
 function Assert-MigrationMirrorParity {
-  param([Parameter(Mandatory = $true)][ValidateSet('062', '063', '064')][string]$Migration)
+  param([Parameter(Mandatory = $true)][ValidateSet('062', '063', '064', '068', '069')][string]$Migration)
   $root = Get-MyPersonasRepositoryRoot
   $pairs = @{
     '062' = @('MyPersonas.Online_v0\sql-updates\062-opaque-public-media-delivery.sql', 'supabase\migrations\20260823040000_opaque_public_media_delivery.sql')
     '063' = @('MyPersonas.Online_v0\sql-updates\063-opaque-approved-media-delivery.sql', 'supabase\migrations\20260823050000_opaque_approved_media_delivery.sql')
     '064' = @('MyPersonas.Online_v0\sql-updates\064-legacy-media-remediation.sql', 'supabase\migrations\20260823060000_legacy_media_remediation.sql')
+    '068' = @('MyPersonas.Online_v0\sql-updates\068-account-subscription-entitlements.sql', 'supabase\migrations\20260823100000_account_subscription_entitlements.sql')
+    '069' = @('MyPersonas.Online_v0\sql-updates\069-operational-alert-inbox.sql', 'supabase\migrations\20260823110000_operational_alert_inbox.sql')
   }
   $canonical = Join-Path $root $pairs[$Migration][0]
   $mirror = Join-Path $root $pairs[$Migration][1]
