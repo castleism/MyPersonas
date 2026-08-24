@@ -74,6 +74,12 @@ verify_jwt = false
 [functions.run-mailbox-jobs]
 verify_jwt = false
 
+# Bounded retention worker. It authenticates one exact X-Cron-Secret against
+# the existing CRON_SECRET and writes only fixed-name/count heartbeat metadata.
+# This configuration does not create or activate an external schedule.
+[functions.run-operations-maintenance]
+verify_jwt = false
+
 [functions.sitemap]
 verify_jwt = false
 

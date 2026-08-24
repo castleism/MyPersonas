@@ -25,6 +25,12 @@
 .gov-account label{margin:0}.gov-source{min-height:180px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;tab-size:2}
 .gov-secret{border:1px dashed #d99100;background:#fff8e8;border-radius:9px;padding:10px;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .gov-code{max-height:28rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--border);border-radius:9px;padding:10px;background:#111;color:#f6f6f6;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem}
+.gov-alert-list{display:grid;gap:10px;margin-top:12px}
+.gov-alert{border:1px solid var(--border);border-left:4px solid #d99100;border-radius:10px;padding:12px;background:#fffaf0}
+.gov-alert.critical{border-left-color:var(--red);background:#fff0f3}
+.gov-alert p{margin:8px 0 0}
+.gov-alert-severity{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;background:#f0b84b;color:#2d1b00;font-weight:800;text-transform:uppercase;font-size:.72rem;letter-spacing:.04em}
+.gov-alert-severity.critical{background:var(--red);color:#fff}
 .gov-family-tree{display:grid;gap:6px}.gov-relation{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border)}
 .gov-relation:last-child{border-bottom:0}
 .gov-security-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.gov-security-stat{background:#f7f9fc;border:1px solid var(--border);border-radius:9px;padding:9px}.gov-security-stat b{display:block;font-size:18px}
