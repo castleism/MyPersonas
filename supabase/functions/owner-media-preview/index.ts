@@ -6,6 +6,7 @@
 // returns hash-verified bytes directly; it never returns a signed/raw URL.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   loadMediaEnvironmentConfig,
   publicMediaIdFromRequestUrl,
@@ -18,12 +19,7 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 
 function cors(origin: string): Record<string, string> {
   return origin && ORIGINS.has(origin) ? {

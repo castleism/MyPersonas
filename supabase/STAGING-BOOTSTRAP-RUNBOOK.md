@@ -85,6 +85,14 @@ Owner/provider actions, not performed by these scripts:
    `https://mypersonas-staging.pages.dev`. The optional later custom origin is
    exactly `https://staging.mypersonas.online`. No wildcard `*.pages.dev` origin
    is accepted.
+   Before deploying any browser-facing Edge Function, set
+   `MYPERSONAS_DEPLOYMENT_ENVIRONMENT=staging` and set
+   `MYPERSONAS_STAGING_PROJECT_REF` to this separate project's exact
+   20-character ref. Supabase injects `SUPABASE_URL`; the function boundary
+   requires that URL to equal `https://<that-ref>.supabase.co` and then trusts
+   only the two exact reviewed staging origins above. It never trusts a wildcard,
+   an operator-supplied free-form origin, or a production origin. Missing,
+   malformed, or crossover configuration fails closed during function startup.
 4. Put the Pages staging host behind Cloudflare Access. Authorize only named
    testers. Confirm the Access callback itself does not leak a Supabase session.
 5. Reserve `https://media-staging.mypersonas.online` for the staging media
@@ -396,9 +404,16 @@ protected gateway and 062–064 consumer readback pass.
 
 ## Function and provider gates after schema readiness
 
-In a separately reviewed release, configure staging-only values for CAPTCHA,
+In a separately reviewed release, configure staging-only values for
+`MYPERSONAS_DEPLOYMENT_ENVIRONMENT=staging`,
+`MYPERSONAS_STAGING_PROJECT_REF=<the exact protected staging ref>`, CAPTCHA,
 SMTP, OAuth state/callbacks, request-review allowed origin, gateway HMAC secret,
 cron secrets, and any provider test credentials. Never reuse production secrets.
+Confirm injected `SUPABASE_URL` is exactly
+`https://<MYPERSONAS_STAGING_PROJECT_REF>.supabase.co`, then prove preflights and
+requests from both reviewed staging origins succeed while production, wildcard,
+`null`, missing, and other origins fail for every browser-facing function in the
+selected deploy scope. A project-ref or environment crossover must fail closed.
 Deploy opaque consumers/foundation before producers in the order documented in
 `MyPersonas.Online_v0/OPAQUE-PUBLIC-MEDIA-DELIVERY.md`.
 For a fresh project, verify the foundation, gateway, and exact noindex frontend
@@ -479,6 +494,10 @@ bucket public as a recovery shortcut.
       production marker, evidence file, or production desktop download is in
       the upload directory.
 - [ ] Noindex/robots/headers, staging web-manifest URLs, and PWA teardown verified.
+- [ ] `MYPERSONAS_DEPLOYMENT_ENVIRONMENT=staging`, the exact
+      `MYPERSONAS_STAGING_PROJECT_REF`, and injected `SUPABASE_URL` agree;
+      both reviewed staging-origin preflights pass and production/wildcard/null/
+      missing/other-origin probes fail for every browser-facing deployed function.
 - [ ] Exact CORS/OAuth/Turnstile/gateway provider configuration approved.
 - [ ] Consumer functions/gateway green before any producer.
 - [ ] Signed-in mobile and unrelated two-account privacy matrix green.

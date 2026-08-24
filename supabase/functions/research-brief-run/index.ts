@@ -2,6 +2,7 @@
 // Generates owner-review material only. It never approves, schedules, or publishes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   type AiProviderEndpoint,
   resolveAiProviderEndpoint,
@@ -26,12 +27,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const ALLOWED_ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 const MAX_REQUEST_CHARS = 16_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
 const PROVIDER_TIMEOUT_MS = 60_000;

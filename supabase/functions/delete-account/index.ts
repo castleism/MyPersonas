@@ -15,13 +15,9 @@ import {
   stripeApiJson,
   StripeBoundaryError,
 } from "../_shared/billing.ts";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 
-const ALLOWED = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED = loadAppOrigins((name) => Deno.env.get(name));
 const X_LOCAL_RESET_ERROR_CODES = new Set([
   "twitter_already_connected",
   "shared_grant_cleanup_failed",

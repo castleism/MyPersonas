@@ -113,6 +113,20 @@ test "${RELEASE_CONFIRMATION}" = "${expected_confirmation}" || {
   exit 1
 }
 
+# Bind browser-facing modules to the exact protected target before deployment.
+# SUPABASE_URL is injected by Supabase and is independently checked at module
+# startup. A staging ref is never written to production; production must not
+# contain a stale MYPERSONAS_STAGING_PROJECT_REF or legacy free-form origin
+# secret, as either condition intentionally leaves the browser functions down.
+origin_boundary_secrets=(
+  "MYPERSONAS_DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_TARGET}"
+)
+if test "${DEPLOYMENT_TARGET}" = "staging"; then
+  origin_boundary_secrets+=("MYPERSONAS_STAGING_PROJECT_REF=${APPROVED_PROJECT_REF}")
+fi
+supabase secrets set "${origin_boundary_secrets[@]}" \
+  --project-ref "${APPROVED_PROJECT_REF}"
+
 suffix="${APPROVED_PROJECT_REF: -6}"
 echo "Selected reviewed ${DEPLOYMENT_TARGET} project ending in ${suffix}."
 for function_name in "${functions[@]}"; do

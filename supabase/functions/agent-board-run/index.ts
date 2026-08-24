@@ -3,6 +3,7 @@
 // one-use capability is passed service-to-service to ai-proxy; neither browser
 // input nor mutable persona/model records can replace the approved snapshot.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   accountBillingAccess,
   billingAccessHttpStatus,
@@ -12,12 +13,7 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MAX_REQUEST_BYTES = 4_096;
-const ALLOWED_ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });

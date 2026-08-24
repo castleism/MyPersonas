@@ -17,6 +17,7 @@ import {
   stageApprovedPersonaMediaAsset,
 } from "../_shared/approved-media.ts";
 import { requireAal2 } from "../_shared/aal2.ts";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,12 +27,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 
 function json(body: unknown, status = 200, origin = "") {
   return new Response(body === null ? null : JSON.stringify(body), {

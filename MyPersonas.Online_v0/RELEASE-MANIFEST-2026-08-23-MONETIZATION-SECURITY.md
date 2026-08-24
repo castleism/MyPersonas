@@ -103,7 +103,14 @@ Before any migration-bearing branch can reach `main`:
    foundation, staging intake pilot, producers, billing test boundary,
    entitlement consumers, public intake, and operations maintenance. Each scope
    has a distinct exact confirmation string; do not use a broad all-functions
-   deployment.
+   deployment. Before the first browser-facing scope, set
+   `MYPERSONAS_DEPLOYMENT_ENVIRONMENT=staging` and
+   `MYPERSONAS_STAGING_PROJECT_REF` to the exact protected staging ref. Injected
+   `SUPABASE_URL` must equal `https://<that-ref>.supabase.co`; otherwise the
+   shared boundary fails closed. Retain evidence that only
+   `https://mypersonas-staging.pages.dev` and
+   `https://staging.mypersonas.online` pass, while production, wildcard, `null`,
+   missing, and other origins are denied.
 7. Configure Turnstile, Supabase Auth rate limits, custom SMTP, and redacted
    alert delivery in staging. Prove token replay/hostname failures, bounded 429
    responses, mail alignment/bounces, heartbeat staleness and retention batches.

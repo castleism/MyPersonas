@@ -9,6 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   loadMediaEnvironmentConfig,
   publicMediaDeliveryUrl,
@@ -48,12 +49,7 @@ const SOCIAL_CROPS = Object.freeze({
   instagram: Object.freeze({ width: 1080, height: 1080 }),
   x: Object.freeze({ width: 1080, height: 1350 }),
 });
-const ALLOWED_ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },

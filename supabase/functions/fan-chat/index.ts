@@ -3,10 +3,11 @@
 // Deploy without gateway JWT verification because visitors are not signed in:
 //   supabase functions deploy fan-chat --no-verify-jwt
 // Required secret: FAN_CHAT_SALT (at least 32 characters, generated randomly).
-// Optional secrets: FAN_CHAT_ALLOWED_ORIGINS, FAN_CHAT_AI_HOSTS,
-// FAN_CHAT_HOURLY_LIMIT.
+// Optional secrets: FAN_CHAT_AI_HOSTS, FAN_CHAT_HOURLY_LIMIT. Browser origins
+// come only from the shared environment/project-bound policy.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   accountBillingAccess,
   type AccountEntitlementResult,
@@ -35,18 +36,7 @@ const MAX_OUTPUT_CHARS = 4_000;
 const MAX_OUTPUT_TOKENS = 500;
 const MAX_PROVIDER_RESPONSE_BYTES = 1_000_000;
 
-const DEFAULT_ORIGINS = [
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-];
-const ALLOWED_ORIGINS = new Set(
-  [
-    ...DEFAULT_ORIGINS,
-    ...(Deno.env.get("FAN_CHAT_ALLOWED_ORIGINS") || "").split(","),
-  ].map((value) => value.trim().replace(/\/$/, "")).filter(Boolean),
-);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 
 async function readBoundedText(
   source: Request | Response,

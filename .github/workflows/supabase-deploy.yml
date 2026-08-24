@@ -12,7 +12,9 @@ name: Deploy Supabase Edge Functions
 #                     PRODUCTION_SUPABASE_PROJECT_REF
 # Never provide either access token as a repository- or organization-level
 # fallback. Each target has a separate job so a staging dispatch cannot evaluate
-# or inherit the production credential.
+# or inherit the production credential. The reviewed deploy script writes the
+# exact MYPERSONAS_DEPLOYMENT_ENVIRONMENT binding and, for staging only, the
+# protected MYPERSONAS_STAGING_PROJECT_REF before deploying any function.
 on:
   workflow_dispatch:
     inputs:

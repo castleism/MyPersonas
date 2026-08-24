@@ -4,6 +4,7 @@
 // the credential or image bytes to another host.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   loadMediaEnvironmentConfig,
   publicMediaIdFromRequestUrl,
@@ -31,12 +32,7 @@ const IMAGE_BUDGET_RESERVATION_TOKENS = 32_768;
 const MAX_PROMPT_CHARS = 5_000;
 const MAX_KEY_CHARS = 32_768;
 const GOOGLE_PROVIDERS = ["google", "google_legacy"];
-const ALLOWED_ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: {

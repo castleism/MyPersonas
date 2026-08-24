@@ -379,6 +379,19 @@ together. Do not paste the secret into the stored cron SQL.
 Supabase injects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never put a secret,
 refresh token, password, or provider key in `index.html`, a migration, or documentation.
 
+Browser-facing functions share one fail-closed environment and project boundary. Before
+deploying them, set `MYPERSONAS_DEPLOYMENT_ENVIRONMENT` to exactly `production` or
+`staging`. Production is accepted only when injected `SUPABASE_URL` exactly matches the
+reviewed `nwsqyuucwzihruszocge` project; it trusts only the four historical first-party
+production origins. Staging additionally requires `MYPERSONAS_STAGING_PROJECT_REF` to
+equal the separate 20-character staging ref and requires `SUPABASE_URL` to equal
+`https://<that-ref>.supabase.co`; it trusts only
+`https://mypersonas-staging.pages.dev` and `https://staging.mypersonas.online`.
+Missing, malformed, legacy `MYPERSONAS_APP_ORIGINS`, production/staging crossover, and
+project-ref mismatch configuration all fail closed during function startup. Do not set
+`MYPERSONAS_STAGING_PROJECT_REF` in production. The reviewed deployment script writes
+the exact environment binding from its protected target and project ref before deploying.
+
 Scheduled generation, fan chat, and mailbox classification have separate outbound
 model-host allowlists. Their built-in lists cover the supported hosted providers and
 Azure OpenAI subdomains. Add only hostnames you operate or explicitly trust:
@@ -392,7 +405,6 @@ supabase secrets set MAILBOX_AI_HOSTS="models.example.com,another.example.com"
 - `SCHEDULE_AI_HOSTS` extends only `run-tasks` scheduled generation.
 - `FAN_CHAT_AI_HOSTS` extends only public fan-chat generation.
 - `MAILBOX_AI_HOSTS` extends only optional, owner-consented mailbox classification.
-- `FAN_CHAT_ALLOWED_ORIGINS` optionally adds comma-separated browser origins.
 - `FAN_CHAT_HOURLY_LIMIT` optionally changes the per-visitor hourly cap; default 12.
 
 Do not add a broad domain merely to make a request pass. The three model-host settings are

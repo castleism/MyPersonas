@@ -4,6 +4,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAal2 } from "../_shared/aal2.ts";
+import { loadAppOrigins } from "../_shared/app-origin.ts";
 import {
   detectLegacyMedia,
   legacyMediaPreviewHeaders,
@@ -16,12 +17,7 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const ALLOWED_ORIGINS = new Set([
-  "https://aliaspaces.com",
-  "https://www.aliaspaces.com",
-  "https://app.aliaspaces.com",
-  "https://mypersonas.online",
-]);
+const ALLOWED_ORIGINS = loadAppOrigins((name) => Deno.env.get(name));
 const ACTIONS = new Set(["inventory", "list", "preview"]);
 const SAFE_STATES = new Set([
   "pending",
