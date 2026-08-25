@@ -37,7 +37,8 @@ test("portable and privacy exports fail closed across organization and governanc
   assert.match(html, /p_limit:pageSize/);
   assert.match(html, /repeated a pagination cursor/);
   assert.match(html, /dependentError[\s\S]*return\{data:null,error:dependentError\}/);
-  assert.match(html, /data\.version=4/);
+  assert.match(html, /data\.version=5/);
+  assert.match(html, /persona_custom_field_boxes:customFields\.data\|\|\[\]/);
   assert.match(html, /\.\.\.governanceSections\.data/);
   assert.match(html, /my_friend_request_security_events/);
   assert.match(html, /my_platform_security_events/);
@@ -47,7 +48,7 @@ test("portable and privacy exports fail closed across organization and governanc
 
 test("privacy export excludes secrets and sensitive abuse identifiers", async () => {
   const html = await read("MyPersonas.Online_v0/index.html");
-  const loader = html.match(/async function loadGovernanceExportSections[\s\S]*?\n}\nasync function loadFanSessionRows/)?.[0] || "";
+  const loader = html.match(/async function loadGovernanceExportSections[\s\S]*?\r?\n}\r?\nasync function loadFanSessionRows/)?.[0] || "";
   assert.ok(loader, "governance export loader was not found");
   assert.match(loader, /affiliate_click_events","id,owner,persona_id,offer_id,product_id,source,utm_source,utm_medium,utm_campaign,created_at"/);
   assert.match(loader, /product_review_requests","id,owner,persona_id,requester_email,requester_name,product_name,product_url,reason,consent_to_reply,marketing_consent,status,captcha_verified_at,created_at,updated_at,retention_expires_at"/);
@@ -92,6 +93,8 @@ test("restore remaps IDs and forces draft private disconnected states", async ()
   assert.match(html, /p_visibility:"owner_only"/);
   assert.match(html, /p_project_status:"paused"/);
   assert.match(html, /p_account_ledger_id:null/);
+  assert.match(html, /save_project_resource_v2/);
+  assert.match(html, /p_expected_row_version:null/);
   assert.match(html, /p_connection_state:"not_configured"/);
   assert.match(html, /p_enabled:false/);
   assert.match(html, /save_business_draft/);
@@ -100,6 +103,13 @@ test("restore remaps IDs and forces draft private disconnected states", async ()
   assert.match(html, /featureDrafts=.*status==="draft"/);
   assert.match(html, /extensionDrafts=.*status==="draft"/);
   assert.match(html, /no sync authority or publication state was restored/);
+  assert.match(html, /requireAal2ForSensitiveAction\("restore disconnected project-resource metadata"\)/);
+  assert.match(html, /nothing from this restore was written/);
+  const restore=html.slice(html.indexOf("async function restoreImport"),html.indexOf("// ---------- first-persona onboarding"));
+  const preflight=restore.indexOf('requireAal2ForSensitiveAction("restore disconnected project-resource metadata")');
+  const fixedClient=restore.indexOf("fixedSessionClient(token)");
+  const firstWrite=restore.indexOf("for(const p of personas)");
+  assert.ok(preflight>0&&preflight<fixedClient&&fixedClient<firstWrite,"AAL2 preflight and fresh fixed token precede every restore write");
   assert.doesNotMatch(html, /restoreClient\.rpc\("(?:publish_persona_page|publish_business_page|save_business_review_draft|submit_business_for_review|submit_extension_for_review|submit_feature_request)"/);
 });
 
@@ -182,6 +192,6 @@ test("restore await guard stops before or immediately after logout and account s
   assert.doesNotMatch(restore, /\bsb\.(?:rpc|from)\(/);
   const awaitedHelpers = [...restore.matchAll(/\bawait\s+([A-Za-z_$][\w$]*)/g)].map(match => match[1]);
   assert.ok(awaitedHelpers.length > 10);
-  assert.deepEqual([...new Set(awaitedHelpers)].sort(), ["restoreAwait", "restoreRpc", "restoreWrite"]);
+  assert.deepEqual([...new Set(awaitedHelpers)].sort(), ["requireAal2ForSensitiveAction", "restoreAwait", "restoreRpc", "restoreWrite"]);
   assert.match(restore, /catch\(error\)\{if\(error\?\.code==="RESTORE_SESSION_CHANGED"\)return;/);
 });
