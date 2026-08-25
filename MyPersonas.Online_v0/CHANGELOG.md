@@ -3,6 +3,115 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## MyPersonas / AliaSpaces repository split checkpoint (2026-08-24)
+
+Status: **repository preservation and ownership documentation only; no production
+deployment, migration, provider, Pages, DNS, or secret change.**
+
+- MyPersonas is now defined as the automation/control plane; AliaSpaces owns the
+  first-party social network. Root `REPOSITORY-BOUNDARIES.md` is the ownership
+  authority and `REPOSITORY-SPLIT-MANIFEST.md` is the cutover ledger.
+- Renamed the misleading local `Aliaspaces` branch to
+  `rescue/pre-split-mixed-worktree-20260824`. The old label was only a second pointer
+  to MyPersonas `main`, not a separate repository.
+- Preserved migration 065 as release-rejected commit `21fe42d`; preserved AliaSpaces
+  migrations 066-067 as `344302b`; preserved overlapping crop/mobile release wiring
+  as `21703a9` before upstream reconciliation.
+- Pushed all unique MyPersonas topic and preservation branches. Migration-bearing
+  branches remain off `main` because the installed Supabase integration has previously
+  observed that branch independently of GitHub Actions.
+- Kept one Supabase/Auth/persona identity system for the transition. Splitting live
+  identity and data is explicitly outside this repository-only checkpoint.
+
+## Soul Concept documentation moved to its own repository (2026-08-23)
+
+Status: **documentation only. No source, migration, Edge Function, credential, provider,
+payment, or media-gateway state was created, changed, or deployed by this work.**
+
+- Nine Soul Concept architecture documents were filed here briefly under
+  `soul-concept/`, then moved to a new repository, **`soul-concept-engine`**. They were
+  never committed to this repo. Nothing referenced them except three markdown pointers,
+  all rewritten.
+- **Why they moved — the deciding reason is worth recording.** The Pages artifact is a
+  public boundary. The current workflow is manual-dispatch and deny-by-default, but files
+  placed in the version directory can still be exposed if they are later added to that
+  allowlist. The Soul Concept documents contain private commercial and legal planning and
+  therefore do not belong in this product repository.
+- Rationale and alternatives: `soul-concept-engine/decisions/ADR-0001-separate-repository.md`.
+- **`concepts/soulular.md` and the V2-BLUEPRINT soulular section stay here.** Evaluated
+  and found to belong to AliaSpaces, not to the engine — it names the persona-graph layer
+  and is already in the app icon. See `ADR-0002` in that repo. The wider "soul" naming
+  collision between the two products is unresolved and will be forced by the trademark
+  filing in the 90-day plan.
+- **Standing coordination risk:** the engine specifies a C2PA-compatible manifest while
+  this repo already ships AI content provenance (`AI-CONTENT-PROVENANCE.md`, migrations
+  060/061 lineage `20260823010000` and `20260823020000`). Two repos make accidental
+  divergence easier. One owner for both formats, or an explicit decision that they differ.
+- No ROADMAP milestone was created. Soul Concept is not scheduled against the v0 line.
+
+**A general reminder this surfaced:** only reviewed public assets belong in the Pages
+artifact. Working notes, strategy, and commercial material must remain outside it.
+
+## Matrix phone-width overflow hotfix (production release) (2026-08-23)
+
+Status: **frontend-only commit `c46b1b6` is live from Pages run `32647147304` and
+verified in the signed-in public Studio at 390px.** Physical-phone QA remains open.
+
+- Signed-in 390px QA measured a 591px live document against a 375px usable viewport,
+  with two persona-card columns plus Matrix/model actions extending off-screen.
+- The phone tier now bounds `main`, uses one min-width-safe persona column, and wraps
+  the Matrix and model-provider controls. Reloaded live QA measures document, body, and
+  main at 375px, with a 351px persona grid and no horizontal overflow.
+- Added a source regression test for the bounded grid and wrapping hooks. This does not
+  replace physical-phone, touch, orientation, or unrelated-account testing.
+- The isolated commit contains only `index.html` and its regression test. No migration,
+  Edge Function, credential, provider, publication, payment, or media-gateway state changed.
+
+## Legacy media canonical remediation (quarantined rescue branch; release rejected) (2026-08-23)
+
+Status: **local-only and intentionally non-releasable.** Migration 065 has matching
+canonical/timestamped files and green local tests, but its readiness flags remain false.
+
+- Independent review reproduced broken ordinary persona deletion when an applied import
+  exists and found no durable post-commit Storage-object identity check.
+- Affiliate imports can invalidate active persona review twice, invalidate inactive attached
+  personas once, and report an inaccurate affected-persona count.
+- A same-product concurrent-offer race lacks a shared product lock; audit tables retain broad
+  service-role DML; AI-use declarations have no safe correction path; and old/new media
+  producers cannot cross the migration boundary without a tested expand/contract or write freeze.
+- Hosted Supabase proof is mandatory before accepting any trigger on vendor-owned
+  `storage.objects`. Full two-owner, CAS rollback, destination tamper/deletion, lease/erasure/
+  orphan, queue cleanup, persona-deletion, concurrency, privilege, and hosted cutover matrices
+  remain required. Migration 065 may be preserved on a non-deploying branch, but it must
+  not be merged to `main`, applied, or deployed as-is.
+
+## Custom persona fields and project-resource editor (local candidate) (2026-08-23)
+
+Status: **implemented, tested, and preserved on a non-deploying rescue branch; not
+merged to `main`, applied, deployed, or verified live.** The last verified production
+build does not contain these interfaces.
+
+- Added migration 066 and owner Settings controls for up to 24 first-class persona
+  field boxes. Values are escaped text or one credential-free HTTPS link with
+  owner/friend/follower/public visibility, enable/disable, ordering, compare-and-swap
+  editing, bounded exact-actor reads, publication-review invalidation, safe export/
+  restore, and account erasure. HTML/JavaScript/embeds remain prohibited.
+- Added migration 067 and the previously missing project-resource editor beneath a
+  persona's project memberships. It stores credential-free private metadata only,
+  requires AAL2 for writes, rejects credential-like text, preserves quotas and lock
+  order, accepts only a nonsuspended owner Account Ledger binding, and never claims
+  that a database, repository, Drive folder, or OAuth connection was tested.
+- Replaced migration 049's last-write-wins resource RPCs with row-versioned v2 writes,
+  revoked the old execution grants, blocked writes during owner erasure, captured the
+  complete browser form/route/persona revision before MFA, and moved backup AAL2
+  verification ahead of every restore write.
+- Repeated PostgreSQL harnesses and focused Node/frontend tests are green for both
+  migrations. See `CUSTOM-PERSONA-FIELD-BOXES.md` and
+  `PROJECT-RESOURCE-EDITOR.md`.
+- These timestamped migrations cannot bypass earlier unapplied migrations in the
+  Supabase GitHub App sequence. They remain held with the migration-bearing release
+  until its predecessors and live privacy/release gates are satisfied.
+
 ## Opaque reviewed media delivery and legacy preview (local release candidate) (2026-08-23)
 
 Status: **implemented locally; not applied, deployed, backfilled, finalized, or
