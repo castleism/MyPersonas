@@ -9,7 +9,7 @@ const SUPABASE_ORIGIN = /^https:\/\/[a-z0-9]{20}[.]supabase[.]co$/;
 const DELIVERY_ORIGIN = /^https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.]mypersonas[.]online$/;
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
-const STORAGE_PATH = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/published\/provenance\/(none|assisted|generated|unknown)\/(uploaded|generated)\/(?:[a-z0-9_-]{1,64}\/){2,7}[0-9a-f]{64}\.(png|jpg|webp|gif|mp4|webm)$/;
+const STORAGE_PATH = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/published\/provenance\/(none|assisted|generated|unknown)\/(?<origin>uploaded|generated|imported)\/(?:[a-z0-9_-]{1,64}\/){2,7}(?<hash>[0-9a-f]{64})\.(?<extension>png|jpg|webp|gif|mp4|webm)$/;
 const MIME = new Set([
   "image/png",
   "image/jpeg",
@@ -18,6 +18,15 @@ const MIME = new Set([
   "video/mp4",
   "video/webm",
 ]);
+const MIME_BY_EXTENSION = Object.freeze({
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+});
+const IMPORTED_STATIC_EXTENSIONS = new Set(["png", "jpg", "webp"]);
 
 export type PublicMediaResolution = Readonly<{
   bucket: "persona-media";
@@ -219,13 +228,22 @@ export function validatePublicMediaResolution(value: unknown): PublicMediaResolu
   }
   const row = value as Record<string, unknown>;
   const allowed = new Set(["bucket", "storage_path", "mime_type", "byte_size", "content_sha256"]);
+  const pathMatch = typeof row.storage_path === "string"
+    ? row.storage_path.match(STORAGE_PATH)
+    : null;
+  const origin = pathMatch?.groups?.origin ?? "";
+  const extension = pathMatch?.groups?.extension ?? "";
+  const pathHash = pathMatch?.groups?.hash ?? "";
   if (Object.keys(row).some((key) => !allowed.has(key)) ||
       row.bucket !== "persona-media" || typeof row.storage_path !== "string" ||
-      !STORAGE_PATH.test(row.storage_path) || row.storage_path.includes("..") ||
+      !pathMatch || row.storage_path.includes("..") ||
       typeof row.mime_type !== "string" || !MIME.has(row.mime_type) ||
+      MIME_BY_EXTENSION[extension as keyof typeof MIME_BY_EXTENSION] !== row.mime_type ||
+      (origin === "imported" && !IMPORTED_STATIC_EXTENSIONS.has(extension)) ||
       typeof row.byte_size !== "number" || !Number.isSafeInteger(row.byte_size) ||
       row.byte_size < 1 || row.byte_size > MAX_PUBLIC_MEDIA_BYTES ||
-      typeof row.content_sha256 !== "string" || !SHA256.test(row.content_sha256)) {
+      typeof row.content_sha256 !== "string" || !SHA256.test(row.content_sha256) ||
+      pathHash !== row.content_sha256) {
     throw new Error("Unsafe public media resolution");
   }
   return Object.freeze({

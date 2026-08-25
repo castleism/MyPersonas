@@ -1,10 +1,13 @@
 # Castleborn relationships, project, and business foundation
 
-Status: **Implemented and tested locally; not pushed, applied to the linked database,
-deployed, configured, activated, or verified live unless separately evidenced.** This
-surface spans migration 049's data foundation, migration 051's publication/privacy and
-export/restore governance, and migration 052's reviewed business publication. Follow the
-order in `RELEASE-MANIFEST-2026-08-22.md`.
+Status: **the migration 049 data foundation and matching organization/business draft UI
+are live in production build `cbea6a1`; the new migration 067 project-resource editor is
+implemented and tested locally only.** No Castleborn business page, family edge, or
+project resource has been published or connected by this work. This surface spans
+migration 049's data foundation, migration 051's publication/privacy and export/restore
+governance, migration 052's reviewed business publication, and local migration 067's
+hardened editor. Follow the order in `RELEASE-MANIFEST-2026-08-22.md` and the current
+handoff before any new production action.
 
 ## Authority and open canon
 
@@ -52,9 +55,10 @@ groups—carry project roles and resource metadata.
 - Migration 052 replaces direct business publication with an AAL2, exact-revision review,
   publish, and unpublish workflow. Mission or persona-title edits return the business to
   draft. A presentation title such as `Spokesperson` remains copy, never authorization.
-- The local owner editor covers relationships, project membership/roles, resource metadata,
-  business bios/missions/titles, and field visibility. WAIS's manager role does not give
-  WAIS credentials or access to the referenced Castleborn database.
+- The live owner editor covers relationships, project membership/roles, business bios/
+  missions/titles, and field visibility. Migration 067 adds the previously absent
+  credential-free project-resource metadata editor locally. WAIS's manager role does not
+  give WAIS credentials or access to a referenced Castleborn database.
 - Account export includes the family, group, project, resource, business, business-review,
   and publication-governance rows. UUID-remapped restore recreates owner data through
   bounded RPCs in private/draft/paused states; review evidence is export-only and restore
@@ -94,17 +98,19 @@ invented.
 
 ## Security and release sequence
 
-1. Apply and rollback-test migration 049 in a non-production Supabase branch.
-2. Verify cross-owner relationship, project, business, group, and account-ledger
+1. Preserve the already-recorded migration 049 source and verify its production parity;
+   do not reapply or rewrite its historical ledger row.
+2. Apply and rollback-test migration 067 in a non-production Supabase branch.
+3. Verify cross-owner relationship, project, business, group, and account-ledger
    references are rejected.
-3. Verify direct authenticated table mutation is denied and bounded owner RPCs
+4. Verify direct authenticated table mutation is denied and bounded owner RPCs
    work only for the signed-in owner's rows.
-4. Verify the exact seed counts: 20 parent edges, 4 partner edges, 21 Castleborn
+5. Verify the exact seed counts: 20 parent edges, 4 partner edges, 21 Castleborn
    project memberships, one WAIS manager, and one blank draft business shell.
-5. Confirm public projections return none of the seeded owner-private data.
-6. Obtain the exact Castleborn database/provider, resource locator, allowed data
+6. Confirm public projections return none of the seeded owner-private data.
+7. Obtain the exact Castleborn database/provider, resource locator, allowed data
    scope, and server-side credential plan before adding a `project_resources` row.
-7. Run signed-in owner/editor, keyboard, mobile, public/other-owner, export, and restore
+8. Run signed-in owner/editor, keyboard, mobile, public/other-owner, export, and restore
    visual QA before deployment. Publishing a business page or family edge remains a
    separate explicit owner action.
 

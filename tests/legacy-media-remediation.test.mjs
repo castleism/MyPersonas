@@ -196,6 +196,9 @@ test("content-only erasure removes every retained legacy-remediation owner row",
     "legacy_media_references",
     "legacy_media_sources",
     "legacy_media_remediation_rate_limits_064",
+    "legacy_media_declarations_065",
+    "legacy_media_imports_065",
+    "legacy_media_actions_065",
   ]) {
     assert.match(
       erasure,
@@ -203,4 +206,70 @@ test("content-only erasure removes every retained legacy-remediation owner row",
       `${table} must be erased even when the profile is retained`,
     );
   }
+  assert.match(erasure, /revoke_persona_public_media_owner_service_065/);
+  assert.match(erasure, /erase_persona_media_upload_leases_owner_service_065/);
+});
+
+test("migration 065 is mirrored, lease-bound, append-only, and finalizer-free", async () => {
+  const canonicalPath = path.join(root, "MyPersonas.Online_v0/sql-updates/065-legacy-media-canonical-remediation.sql");
+  const mirrorPath = path.join(root, "supabase/migrations/20260823070000_legacy_media_canonical_remediation.sql");
+  const [sql, mirror] = await Promise.all([
+    readFile(canonicalPath, "utf8"),
+    readFile(mirrorPath, "utf8"),
+  ]);
+  assert.equal(mirror, sql);
+  assert.match(sql, /create table if not exists public\.legacy_media_declarations_065/);
+  assert.match(sql, /create table if not exists public\.legacy_media_imports_065/);
+  assert.match(sql, /create table if not exists public\.legacy_media_actions_065/);
+  assert.match(sql, /create table if not exists public\.persona_media_upload_leases_065/);
+  assert.match(sql, /create trigger guard_legacy_media_declaration_audit_065/);
+  assert.match(sql, /create trigger guard_legacy_media_import_binding_065/);
+  assert.match(sql, /create trigger guard_legacy_media_action_audit_065/);
+  assert.match(sql, /p_ai_use not in\('none','assisted','generated','unknown'\)/);
+  assert.match(sql, /p_mime_type not in\('image\/png','image\/jpeg','image\/webp'\)/);
+  assert.match(sql, /origin='imported' and declaration_source='import'/);
+  assert.match(sql, /perform public\.assert_persona_media_upload_lease_065/);
+  assert.match(sql, /Legacy source object changed after exact-byte verification/);
+  assert.match(sql, /from storage\.objects object[\s\S]{0,700}bucket_id='media'[\s\S]{0,700}for update/);
+  assert.match(sql, /Canonical destination changed after exact-byte verification/);
+  assert.match(sql, /draft\.posted_at is null[\s\S]{0,180}draft\.fb_published_at is null[\s\S]{0,180}draft\.ig_published_at is null/);
+  for (const field of [
+    "active_upload_leases",
+    "active_owner_erasure_leases",
+    "unregistered_canonical_objects",
+    "blocked_unverifiable_references",
+    "legacy_bucket_public",
+  ]) assert.match(sql, new RegExp(`'${field}'`));
+  assert.match(sql, /'finalizer_installed',false,'purge_performed',false/);
+  assert.doesNotMatch(sql, /update storage\.buckets[\s\S]{0,100}set public=false/);
+  assert.doesNotMatch(sql, /grant execute on function public\.register_imported_persona_media_asset_service_065[\s\S]{0,260}to service_role/);
+  assert.doesNotMatch(sql, /grant execute on function public\.inventory_legacy_media_references_core_064[\s\S]{0,260}to service_role/);
+});
+
+test("normal intake and remediation both use owner/path leases and opaque delivery", async () => {
+  const [ingest, remediation, publicMedia, config] = await Promise.all([
+    readFile(path.join(root, "supabase/functions/media-ingest/index.ts"), "utf8"),
+    readFile(path.join(root, "supabase/functions/legacy-media-remediation/index.ts"), "utf8"),
+    readFile(path.join(root, "supabase/functions/_shared/public-media.ts"), "utf8"),
+    readFile(path.join(root, "supabase/config.toml"), "utf8"),
+  ]);
+  for (const edge of [ingest, remediation]) {
+    assert.match(edge, /claim_persona_media_upload_service_065/);
+    assert.match(edge, /p_upload_lease_id/);
+    assert.match(edge, /persona_media_upload_cleanup_allowed_065/);
+    assert.match(edge, /release_persona_media_upload_service_065/);
+    assert.match(edge, /upsert:\s*false/);
+  }
+  assert.match(remediation, /if \(action === "declare"\)/);
+  assert.match(remediation, /if \(action === "import"\)/);
+  assert.match(remediation, /if \(action === "clear"\)/);
+  assert.match(remediation, /validateLegacyStaticRaster/);
+  assert.match(remediation, /verifyExistingCanonicalObject/);
+  assert.match(remediation, /requireAal2\(req, admin\)/);
+  assert.doesNotMatch(remediation, /return json\(\{[^}]{0,500}(?:storage_path|legacy_url|source_sha256|content_sha256)/);
+  assert.match(publicMedia, /origin>uploaded\|generated\|imported/);
+  assert.match(publicMedia, /IMPORTED_STATIC_EXTENSIONS = new Set\(\["png", "jpg", "webp"\]\)/);
+  assert.match(publicMedia, /MIME_BY_EXTENSION\[extension as keyof typeof MIME_BY_EXTENSION\] !== row\.mime_type/);
+  assert.match(publicMedia, /pathHash !== row\.content_sha256/);
+  assert.match(config, /\[functions\.legacy-media-remediation\][\s\S]*static_files\s*=\s*\["\.\/functions\/media-ingest\/MyPersonas-AI-Watermark\.png"\]/);
 });

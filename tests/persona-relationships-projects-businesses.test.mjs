@@ -171,10 +171,11 @@ test("persona Settings can create, edit, remove, and scope direct family connect
   assert.match(card, /Sibling labels are derived safely from shared parent connections/);
 });
 
-test("handoff records unresolved canon and the production approval gates", async () => {
+test("handoff distinguishes the live organization foundation from the local resource editor", async () => {
   const doc = await read("MyPersonas.Online_v0/CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md");
-  assert.match(doc, /Implemented and tested locally/i);
-  assert.match(doc, /not pushed, applied to the linked database,[\s\S]*deployed,[\s\S]*or verified live/i);
+  assert.match(doc, /migration 049 data foundation[\s\S]*live in production build `cbea6a1`/i);
+  assert.match(doc, /migration 067 project-resource editor is[\s\S]*implemented and tested locally only/i);
+  assert.match(doc, /No Castleborn business page, family edge, or[\s\S]*project resource has been published or connected/i);
   assert.match(doc, /Abel Atiq is canon-only and has no MyPersonas row/);
   assert.match(doc, /Enki has no persona row or\s+resolved surname/);
   assert.match(doc, /21 memberships total/);

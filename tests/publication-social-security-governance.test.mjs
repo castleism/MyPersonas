@@ -497,7 +497,7 @@ test("owner-private family and project mutations are serialized, bounded, and de
   assert.match(index, /restoreRpc\(context,"set_persona_family_relationship",\{p_relationship_id:null/);
   assert.match(index, /restoreRpc\(context,"save_persona_project",\{p_project_id:null/);
   assert.match(index, /restoreRpc\(context,"set_persona_project_membership",\{p_project_id:projectId/);
-  assert.match(index, /restoreRpc\(context,"save_project_resource",\{p_resource_id:null/);
+  assert.match(index, /restoreRpc\(context,"save_project_resource_v2",\{p_resource_id:null,p_expected_row_version:null/);
 });
 
 test("review-request owner inbox exposes bounded evidence and cannot publish content", async () => {

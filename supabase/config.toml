@@ -119,6 +119,7 @@ verify_jwt = true
 # bucket. Raw Storage paths and integrity hashes remain service-only.
 [functions.legacy-media-remediation]
 verify_jwt = true
+static_files = ["./functions/media-ingest/MyPersonas-AI-Watermark.png"]
 
 # Test-mode billing browser entrypoints also validate the gateway JWT with
 # auth.getUser, require a confirmed email, and accept only the configured app

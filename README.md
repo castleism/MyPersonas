@@ -1,40 +1,68 @@
-# MyPersonas.Online
+# MyPersonas
 
-Source for https://aliaspaces.com — the persona network.
+MyPersonas is the automation and control plane for persona-owned work. It owns
+AI/provider routing, research, private source libraries, account connections,
+drafting and approval queues, scheduled third-party publishing, billing and
+entitlements, operational controls, and deletion orchestration.
 
-## Structure
+AliaSpaces is the separate first-party social network for persona profiles,
+feeds, relationships, businesses, projects, public media, and social
+interactions. Its repository is
+[`castleism/aliaspaces.com`](https://github.com/castleism/aliaspaces.com).
 
-- `MyPersonas.Online_v0/` — current working tree (major version line v0).
-  The folder is renamed only on major version changes; point releases and
-  hotfixes are git tags. See `MyPersonas.Online_v0/VERSIONING.md`.
-- `.github/workflows/pages.yml` — deploys the current version folder to
-  GitHub Pages on every push to `main`. Bump `SITE_DIR` there on major
-  version changes.
-- `supabase/functions/mailbox-manager/` and `run-mailbox-jobs/` — the
-  owner-authenticated Inbox Concierge control endpoint and its cron-secret worker.
-  Gmail is the first real adapter; provider tokens and message references remain
-  server-side, and every mailbox mutation requires an exact owner-approved plan.
+## Repository split status
 
-## Development & CI/CD
+The source history is still transitional: the legacy `MyPersonas.Online_v0/`
+shell contains both products. `REPOSITORY-BOUNDARIES.md` is the ownership
+authority and `REPOSITORY-SPLIT-MANIFEST.md` records the migration sequence.
 
-- `npm test` — unit tests for pure helpers (`tests/`). Runs in CI.
-- `node scripts/check-frontend-syntax.mjs` — parse-check the single-file app.
-- `.github/workflows/ci.yml` — tests + `deno check` on all edge functions +
-  frontend syntax on every PR/push.
-- `.github/workflows/supabase-deploy.yml` — deploys edge functions on merge to
-  `main` (needs the `SUPABASE_ACCESS_TOKEN` secret). See `CI-CD-SETUP.md`.
+- Do not add new AliaSpaces-only features to MyPersonas except a documented
+  compatibility bridge.
+- Do not let both repositories deploy the same migration, Edge Function, Pages
+  artifact, scheduled job, or provider callback.
+- Keep the existing Supabase Auth/persona identity contract during the code
+  split. A live Auth/database migration is a separate reviewed project.
+- Migration-bearing preservation and integration branches must not be merged to
+  `main` until their isolated-staging gates pass.
 
-## Key docs
+## Current structure
 
-- `MyPersonas.Online_v0/ARCHITECTURE-REVIEW.md` — retrospective + prioritized
-  refactor backlog (P0–P3).
-- `MyPersonas.Online_v0/CONNECTOR-CORE-DESIGN.md` — plan to de-duplicate the
-  five OAuth connectors.
-- `MyPersonas.Online_v0/KEY-ROTATION.md` — migrating off deprecated Supabase keys.
-- `CI-CD-SETUP.md` — one-time CI/CD setup.
-- `MyPersonas.Online_v0/ROADMAP.md` / `CHANGELOG.md` — status of record.
+- `MyPersonas.Online_v0/` — transitional owner application and historical
+  product documentation.
+- `supabase/functions/` — authenticated automation, provider, billing,
+  operations, and shared-contract boundaries.
+- `supabase/migrations/` — ordered database migrations. Ownership is recorded
+  in the split manifest; timestamp order is not deployment approval.
+- `apps/workroom-bridge/` — local provider workroom bridge.
+- `scripts/`, `tools/`, and `tests/` — release validation and local automation.
+- `.github/workflows/` — CI plus owner-triggered, protected release workflows.
 
-## Deployment
+## Development and release safety
 
-GitHub Pages must be set to **Settings → Pages → Source: GitHub Actions**
-(not "Deploy from a branch") for this layout to serve correctly.
+- `npm test` runs the repository contract suite.
+- `node scripts/check-frontend-syntax.mjs` parses the transitional frontend.
+- `node scripts/check-committed-secrets.mjs --history` scans the working tree
+  and reachable Git history without printing matched values.
+- `.github/workflows/pages.yml` is manual-dispatch and packages an explicit
+  allowlist. A push is not proof of a Pages deployment.
+- `.github/workflows/supabase-deploy.yml` is manual-dispatch and deploys only a
+  selected reviewed function scope. It does not apply database migrations.
+- The installed Supabase GitHub integration has previously observed `main`;
+  keep unapproved migrations off `main` until that provider-side behavior is
+  disabled or independently proven safe.
+
+## Key documents
+
+- `REPOSITORY-BOUNDARIES.md` — product and code ownership.
+- `REPOSITORY-SPLIT-MANIFEST.md` — branch, migration, function, and cutover
+  ledger.
+- `MyPersonas.Online_v0/ARCHITECTURE-REVIEW.md` — architecture backlog.
+- `MyPersonas.Online_v0/KEY-ROTATION.md` — credential rotation plan.
+- `MyPersonas.Online_v0/ROADMAP.md` and `CHANGELOG.md` — historical status.
+- `CI-CD-SETUP.md` — GitHub environment setup.
+
+## Related repository
+
+`soul-concept-engine` is a separate product and shares no schema or runtime with
+MyPersonas. Its provenance format still requires explicit coordination with
+MyPersonas AI-content provenance so the two standards do not drift silently.

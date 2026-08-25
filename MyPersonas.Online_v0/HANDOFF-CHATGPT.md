@@ -1,18 +1,32 @@
 # Handoff — MyPersonas / AliaSpaces (for ChatGPT)
 
-_Written 2026-08-13; release truth refreshed 2026-08-22. This hands the project to ChatGPT to continue. It explains how the
+_Written 2026-08-13; release truth refreshed 2026-08-24. This hands the project to ChatGPT to continue. It explains how the
 project works, what's already built, the exact contracts you'll need, and a prioritized
 task list. Agents may prepare code, SQL, tests, plans, and dashboard steps. The owner must confirm
 production migrations/deployments, provider permissions, keys, MFA, publishing, and money actions
 at the exact action boundary._
 
-Current release truth: **production serves build `cbea6a1` with the migration
-ledger read back through 061. The 062-064 opaque-media and cleanup-preview
-candidate is implemented and tested locally only; it has not been pushed,
-applied, deployed, configured, activated, or verified live.** The local gate
-passed 324/324 Node tests, frontend syntax, all 15 changed Edge TypeScript checks,
-three disposable PostgreSQL apply/reapply/runtime harnesses, migration parity,
-and a high-confidence secret scan.
+Current release truth: **the last signed-in production verification covered frontend-only hotfix `c46b1b6` with the
+migration ledger read back through 061. The current owner completed TOTP and reached
+the signed-in owner Studio. Pages run `32647147304` deployed only `index.html` plus
+its source test; signed-in 390px QA verified a 375px document/body/main with one 351px
+persona column and no horizontal overflow. No migration, Function, provider, payment,
+publication, or gateway change accompanied that hotfix.** The 062-064 opaque-media and
+cleanup-preview foundation is a committed local release candidate (`ad68319`), not
+live. Migration 065's declaration/import/rewrite second slice remains local and is
+explicitly rejected for deployment despite green local tests: ordinary persona deletion,
+durable destination identity, affiliate review invalidation, same-product concurrency,
+audit authority, declaration correction, producer cutover, and hosted Storage compatibility
+remain unsafe or unproven. Migrations 066 custom
+persona fields and 067 project-resource editing are locally green but cannot bypass
+the earlier timestamped migration sequence. Nothing in 062-067 has been applied,
+deployed, configured, activated, or verified live. Preservation branches have been
+pushed to GitHub, but no migration-bearing branch has been merged to `main`.
+Repository topology after the pre-split rescue: `origin/main` is `569f002`; unique
+opaque-media, monetization/security, source-library, and rescue work is preserved on
+named remote branches. Migration 065 is explicitly quarantined. Migrations 066-067 are
+designated for AliaSpaces. Read the root `REPOSITORY-BOUNDARIES.md` and
+`REPOSITORY-SPLIT-MANIFEST.md` before reconciling or deploying anything.
 Start with `RELEASE-MANIFEST-2026-08-22.md`, then this handoff. Historical live claims
 below are useful evidence snapshots but may have drifted and do not prove the current source.
 
@@ -55,6 +69,21 @@ below are useful evidence snapshots but may have drifted and do not prove the cu
   - Production migration history was read back through **061** on 2026-08-23. Migrations **062-064**
     remain local-only until their complete release gate passes. Re-audit older dormant migrations
     and deployed-function drift against the current runbooks before activation.
+  - Migration 065 has canonical and timestamped mirrors plus green local Node, Deno, and
+    repeat-apply/runtime harnesses, but the independent review verdict is **REJECT for
+    deployment**. Keep its readiness flags false. Required corrections/evidence include:
+    ordinary persona deletion with imported media and sibling isolation; retained destination
+    object identity plus missing/replaced-object detection; exactly-once affiliate review
+    invalidation with accurate audit cardinality; a shared product lock and two-session race
+    test; RPC-only append/audit authority; safe pre-import AI-use correction; a tested
+    expand/contract sequence or explicit media-write maintenance window; full two-owner,
+    CAS-zero-side-effect, tamper, lease/erasure/orphan, and Facebook/Instagram cleanup matrices;
+    and hosted Supabase success/reject/cleanup proof plus explicit owner acceptance before any
+    `storage.objects` trigger risk. The current producer and migration signatures are not
+    zero-downtime compatible.
+  - Migrations 066 and 067 have focused repeated-apply/runtime evidence locally. See
+    `CUSTOM-PERSONA-FIELD-BOXES.md` and `PROJECT-RESOURCE-EDITOR.md`; their UI is absent
+    from production build `c46b1b6`.
 - **Project ref:** `nwsqyuucwzihruszocge`. Site: `https://mypersonas.online`.
 - **⚠ Drift:** several deployed functions are NOT in the repo (see `DRIFT.md`): `twitter-post`,
   `daily-discovery`, `gemini-models`, `gemini-probe`, `image-probe`,

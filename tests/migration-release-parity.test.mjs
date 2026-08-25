@@ -21,6 +21,8 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/062-opaque-public-media-delivery.sql","supabase/migrations/20260823040000_opaque_public_media_delivery.sql"],
   ["MyPersonas.Online_v0/sql-updates/063-opaque-approved-media-delivery.sql","supabase/migrations/20260823050000_opaque_approved_media_delivery.sql"],
   ["MyPersonas.Online_v0/sql-updates/064-legacy-media-remediation.sql","supabase/migrations/20260823060000_legacy_media_remediation.sql"],
+  ["MyPersonas.Online_v0/sql-updates/066-custom-persona-field-boxes.sql","supabase/migrations/20260823080000_custom_persona_field_boxes.sql"],
+  ["MyPersonas.Online_v0/sql-updates/067-project-resource-editor-hardening.sql","supabase/migrations/20260823090000_project_resource_editor_hardening.sql"],
   ["MyPersonas.Online_v0/sql-updates/068-account-subscription-entitlements.sql","supabase/migrations/20260823100000_account_subscription_entitlements.sql"],
   ["MyPersonas.Online_v0/sql-updates/069-operational-alert-inbox.sql","supabase/migrations/20260823110000_operational_alert_inbox.sql"],
   ["MyPersonas.Online_v0/sql-updates/070-persona-source-library.sql","supabase/migrations/20260823120000_persona_source_library.sql"],

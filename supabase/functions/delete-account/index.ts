@@ -462,6 +462,46 @@ async function revokeApprovedMediaDelivery(
   }
 }
 
+async function revokePersonaMediaDelivery(
+  admin: SupabaseClient,
+  uid: string,
+) {
+  const revoked = await admin.rpc(
+    "revoke_persona_public_media_owner_service_065",
+    { p_owner: uid },
+  );
+  if (revoked.error || !Number.isSafeInteger(Number(revoked.data)) ||
+    Number(revoked.data) < 0) {
+    throw new Error(
+      `persona-media delivery revocation: ${revoked.error?.message || "invalid verification result"}`,
+    );
+  }
+  const remaining = await admin.from("persona_public_media_handles")
+    .select("public_id", { count: "exact", head: true })
+    .eq("owner", uid).eq("state", "active");
+  if (remaining.error || remaining.count !== 0) {
+    throw new Error(
+      `persona-media delivery revocation verification: ${remaining.error?.message || "active handles remain"}`,
+    );
+  }
+}
+
+async function armPersonaMediaErasureCooldown(
+  admin: SupabaseClient,
+  uid: string,
+  leaseId: string,
+) {
+  const armed = await admin.rpc(
+    "arm_persona_media_erasure_tombstone_service_065",
+    { p_owner: uid, p_lease_id: leaseId },
+  );
+  if (armed.error || armed.data !== true) {
+    throw new Error(
+      `persona-media late-write cooldown: ${armed.error?.message || "could not be verified"}`,
+    );
+  }
+}
+
 async function eraseOwnedStorage(admin: SupabaseClient, uid: string) {
   const normalizedOwner = uid.toLowerCase();
   const targets: OwnedStorageTarget[] = [
@@ -1682,6 +1722,24 @@ async function eraseOwnedRows(
   // inventory explicitly so unbound sources, blocked references, and retained
   // rate counters cannot survive merely because their profile still exists.
   await checked(
+    "persona media upload leases",
+    admin.rpc("erase_persona_media_upload_leases_owner_service_065", {
+      p_owner: uid,
+    }),
+  );
+  await checked(
+    "legacy media remediation actions",
+    admin.from("legacy_media_actions_065").delete().eq("owner", uid),
+  );
+  await checked(
+    "legacy media remediation imports",
+    admin.from("legacy_media_imports_065").delete().eq("owner", uid),
+  );
+  await checked(
+    "legacy media remediation declarations",
+    admin.from("legacy_media_declarations_065").delete().eq("owner", uid),
+  );
+  await checked(
     "legacy media remediation references",
     admin.from("legacy_media_references").delete().eq("owner", uid),
   );
@@ -2194,6 +2252,13 @@ export function createErasureHandler(
           admin,
           uid,
           metaOwnerErasureLeaseId,
+          "persona-media delivery revocation",
+        );
+        await revokePersonaMediaDelivery(admin, uid);
+        await renewMetaOwnerErasure(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
           "owned storage erasure",
         );
         await eraseOwnedStorage(admin, uid);
@@ -2204,6 +2269,15 @@ export function createErasureHandler(
           "owned-row erasure",
         );
         await eraseOwnedRows(admin, uid, personaIds);
+        // The Storage-row advisory trigger blocks concurrent writes while the
+        // erasure lease is active. Arm a bounded hashed-owner cooldown before
+        // keep-account release or profile deletion closes that lease, so a
+        // request already in transport cannot land behind the verified sweep.
+        await armPersonaMediaErasureCooldown(
+          admin,
+          uid,
+          metaOwnerErasureLeaseId,
+        );
 
         if (body.keepAccount === true) {
           await renewMetaOwnerErasure(

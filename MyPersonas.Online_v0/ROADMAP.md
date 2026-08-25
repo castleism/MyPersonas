@@ -15,14 +15,18 @@ owner-gated external actions.
 Current linked database: **the production ledger records 047–061, migration 061 was
 applied/read back, and the sole owner has active global-administrator and technician
 roles.** The matching source passed 284/284 Node tests, frontend syntax, migration 058's
-role-switched runtime, and the frozen-059 → 060 → 060-reapply runtime. The public Pages
-site currently serves build `cbea6a1`; CI,
+role-switched runtime, and the frozen-059 → 060 → 060-reapply runtime. The last verified
+public Pages build was frontend hotfix `c46b1b6`; CI,
 deployment runs, and byte-for-byte public asset parity are recorded in the 2026-08-23
 manifest. The current owner cleared TOTP and production owner-route QA verified
 Overview/Persona, account handles, family editor/tree, page designer/console, business
 draft workspace, staff queue, asset preview/**Save a copy**, friend policy, and the
 deterministic intention plan at desktop and responsive-emulation sizes with zero console
-errors. Signed-in real-phone QA and unrelated-account privacy proof remain separate.
+errors. A later signed-in 390px pass found the live Matrix 216px wider than its 375px usable
+viewport. Frontend-only commit `c46b1b6` and Pages run `32647147304` shipped the
+single-column/wrapping repair; signed-in public QA measured document, body, and main at exactly
+375px with a 351px card grid and no horizontal overflow. Signed-in physical-phone QA and
+unrelated-account privacy proof remain separate.
 `RELEASE-MANIFEST-2026-08-22.md` remains the historical ordered-release
 authority; `RELEASE-MANIFEST-2026-08-23-AI-PROVENANCE.md` records the forward 060 apply.
 For migrations 062-064, frozen local validation is green while isolated staging,
@@ -30,6 +34,25 @@ protected media-gateway, real signed-in two-account, and live evidence remain op
 Function and Pages pushes validate but deploy nothing without their exact manual
 confirmation; a migration-bearing `main` push is different because the installed
 Supabase GitHub App may apply timestamped SQL before CI finishes.
+
+---
+
+## Repository split (active, 2026-08-24)
+
+- MyPersonas is the automation/control-plane repository: AI providers, research,
+  private source libraries, account connections, drafting/approval/scheduling,
+  external publishing, billing, operations, and deletion orchestration.
+- AliaSpaces is the first-party social-network repository: persona and business
+  pages, discovery, feeds, relationships, layout/custom fields, public media, and
+  social interactions.
+- Auth, canonical account/persona IDs, entitlements, deletion, provenance, and
+  security audit interfaces remain MyPersonas-owned shared contracts during the
+  split. AliaSpaces consumes narrow RLS views and RPC/Edge interfaces.
+- The source is still transitional and fused. No repository branch may claim the
+  split is complete until the cutover checklist in root
+  `REPOSITORY-SPLIT-MANIFEST.md` passes.
+- Migration 065 is quarantined and release-rejected. Migrations 066-067 are
+  designated for AliaSpaces but remain unapplied and unverified live.
 
 ---
 
@@ -94,6 +117,24 @@ Shipped:
       verified the family editor/tree and business draft workspace after TOTP; Abel and
       Enki remain
       unresolved rather than invented. See `CASTLEBORN-RELATIONSHIPS-PROJECT-BUSINESS.md`.
+- [~] First-class custom persona field boxes are preserved and tested on the
+      non-deploying rescue branch in migration 066:
+      Settings create/edit/delete/enable/order controls; escaped text or one safe HTTPS
+      link; owner/friend/follower/public audiences; exact Persona-mode relationship
+      checks; exact publication-review binding; safe export/restore; and erasure. The
+      fixed card presentation is not yet integrated with designer width/shape/tone.
+      Migration, frontend deployment, and unrelated-account audience QA remain open.
+      See `CUSTOM-PERSONA-FIELD-BOXES.md`.
+- [~] The missing project-resource Settings editor is preserved and tested on the
+      non-deploying rescue branch in migration 067. It is AAL2-gated, same-owner,
+      quota-preserving, credential-rejecting metadata
+      for a persona's projects and never claims a provider/database connection was
+      tested. Its v2 RPCs add owner-erasure exclusion and exact row-version conflicts;
+      the browser snapshots route/persona/form state before MFA, restores resources only
+      after an up-front AAL2 preflight, and fails closed when an Account Ledger binding is
+      later suspended. No real Castleborn resource was invented. Migration/deployment,
+      two-account QA, and any later least-privilege connector remain open. See
+      `PROJECT-RESOURCE-EDITOR.md`.
 - [~] Review-first persona publication and governance has its database and owner UI live: draft /
       review / publish / unpublish, transparent AI disclosure, exact-revision checks,
       owner-confirmed feature tickets, separate follow/friend policies, persona account
@@ -459,11 +500,12 @@ larger product phase remains.
       meta-ig-discover, split-post, twitter-post). Blocked from here (dashboard
       "deploy status unavailable" / body API returns eszip / inline secrets);
       `supabase functions download` checklist + secret-scrub in functions/DRIFT.md
-- [~] Responsive: SHIPPED 2026-08-12 — safe-area insets (viewport-fit=cover; header,
-      stale bar, main, overlay, fanbox/sdPanel) + tablet tier (768–1024px → studio
-      `.cols` 280px/1fr). Additive, no-op on desktop, all rules parse valid in Blink,
-      syntax check passes, backup in _to_delete/backups/. PENDING: sticky mobile CTA
-      (needs logged-in visual verify) — MOBILE-BLUEPRINT.md
+- [~] Responsive: safe-area insets and the tablet tier are live. Signed-in browser QA at
+      390px found Matrix cards/actions overflowing by 216px; frontend-only hotfix `c46b1b6`
+      now collapses persona cards to one bounded column and wraps Matrix/model actions.
+      Verified-live evidence measures document, body, and main at the exact 375px usable
+      viewport. Repeat on a physical phone; the sticky mobile CTA remains pending —
+      MOBILE-BLUEPRINT.md
 - [~] Native apps: the PWA manifest/install/public-offline shell is complete locally.
       Push notifications remain a separate permission/backend phase; Expo/React Native
       comes later for chat, approvals, share/camera, and the sourced AI feed.
@@ -501,6 +543,34 @@ larger product phase remains.
 - [ ] Extension marketplace: third-party extensions, in-site install flows
 - [ ] Groups/communities around topics
 - [ ] Creator monetization: tips, gated albums
+
+---
+
+## Adjacent — Soul Concept (separate repo, NOT scheduled)
+
+**Soul Concept is a separate product under the same parent company, in its own
+repository: `soul-concept-engine`.** It is not part of this roadmap, nothing in it is
+implemented, and no work on it is scheduled against the v0 line.
+
+It is recorded here only because three v1.5+ items sit directly adjacent to it and
+should not be designed in ignorance of it:
+
+- **Concept cloud sync / LoRA-consistent persona imagery** overlaps that engine's Step 2
+  (Soul training on FLUX-dev LoRA).
+- **Creator monetization** overlaps its per-generation creator pool, which is a
+  fundamentally different model — weight-proportional royalty per generation rather than
+  tips and gated access.
+- **Provenance is the live risk.** Any generated-media provenance work here should check
+  `soul-concept-engine/docs/PROVENANCE-LAYER.md` before inventing a second manifest
+  format. This repo already ships AI content provenance (`AI-CONTENT-PROVENANCE.md`,
+  migrations `20260823010000` / `20260823020000`); that engine specifies a
+  C2PA-compatible manifest. **The two must not diverge by accident** — one owner for
+  both, or a written decision that they are deliberately different.
+
+**Naming, unresolved:** "soulular" (line 454 above, `concepts/soulular.md`, and the app
+icon's soul node) stays with AliaSpaces — it names the persona-graph layer. But "soul"
+vocabulary now spans both products, and the trademark filings in the engine's 90-day
+plan will force a ruling. See `soul-concept-engine/decisions/ADR-0002`.
 
 ---
 
