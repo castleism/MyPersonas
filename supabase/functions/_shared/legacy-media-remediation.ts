@@ -18,15 +18,6 @@ export type DetectedLegacyMedia = {
   mediaType: "image" | "video";
 };
 
-export type LegacyMediaImportResolution = LegacyMediaResolution & {
-  source_sha256: string;
-  detected_mime: DetectedLegacyMedia["mime"];
-  ai_use: "none" | "assisted" | "generated" | "unknown";
-  persona_id: string;
-  purpose: string;
-  rendition: "original" | "facebook" | "instagram" | "x";
-};
-
 function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -73,56 +64,6 @@ export function validateLegacyMediaResolution(
     object_id: value.object_id,
     object_updated_at: value.object_updated_at,
     expected_byte_size: expectedByteSize,
-  };
-}
-
-export function validateLegacyMediaImportResolution(
-  value: unknown,
-  owner: string,
-): LegacyMediaImportResolution {
-  if (!record(value) || !exactKeys(value, [
-    "bucket",
-    "storage_path",
-    "object_id",
-    "object_updated_at",
-    "expected_byte_size",
-    "source_sha256",
-    "detected_mime",
-    "ai_use",
-    "persona_id",
-    "purpose",
-    "rendition",
-  ])) throw new Error("Invalid legacy media import resolution");
-  const base = validateLegacyMediaResolution({
-    bucket: value.bucket,
-    storage_path: value.storage_path,
-    object_id: value.object_id,
-    object_updated_at: value.object_updated_at,
-    expected_byte_size: value.expected_byte_size,
-  }, owner);
-  const sha256 = typeof value.source_sha256 === "string" ? value.source_sha256 : "";
-  const mime = typeof value.detected_mime === "string" ? value.detected_mime : "";
-  const aiUse = typeof value.ai_use === "string" ? value.ai_use : "";
-  const personaId = typeof value.persona_id === "string" ? value.persona_id : "";
-  const purpose = typeof value.purpose === "string" ? value.purpose : "";
-  const rendition = typeof value.rendition === "string" ? value.rendition : "";
-  if (!/^[0-9a-f]{64}$/.test(sha256) ||
-      !["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"].includes(mime) ||
-      !["none", "assisted", "generated", "unknown"].includes(aiUse) ||
-      !UUID.test(personaId) || personaId !== personaId.toLowerCase() ||
-      !/^[a-z0-9_-]{1,64}(?:\/[a-z0-9_-]{1,64}){0,4}$/.test(purpose) ||
-      !["original", "facebook", "instagram", "x"].includes(rendition) ||
-      base.expected_byte_size < 1 || base.expected_byte_size > MAX_LEGACY_MEDIA_BYTES) {
-    throw new Error("Invalid legacy media import resolution");
-  }
-  return {
-    ...base,
-    source_sha256: sha256,
-    detected_mime: mime as LegacyMediaImportResolution["detected_mime"],
-    ai_use: aiUse as LegacyMediaImportResolution["ai_use"],
-    persona_id: personaId,
-    purpose,
-    rendition: rendition as LegacyMediaImportResolution["rendition"],
   };
 }
 
