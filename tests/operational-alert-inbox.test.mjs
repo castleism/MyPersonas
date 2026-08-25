@@ -160,7 +160,7 @@ test("staff UI parses, escapes rows, and discards route or account races", async
   assert.match(css, /\.gov-alert-list/);
   assert.match(css, /\.gov-alert\.critical/);
   assert.match(html, /platform-governance\.css\?v=20260823-2/);
-  assert.match(html, /platform-governance\.js\?v=20260823-2/);
+  assert.match(html, /platform-governance\.js\?v=20260823-4/);
 });
 
 test("staff alert renderer escapes hostile rows and a late account response is inert", async () => {
