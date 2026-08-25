@@ -107,6 +107,7 @@ verify_jwt = true
 # bucket. Raw Storage paths and integrity hashes remain service-only.
 [functions.legacy-media-remediation]
 verify_jwt = true
+static_files = ["./functions/media-ingest/MyPersonas-AI-Watermark.png"]
 
 [functions.agent-board-propose]
 verify_jwt = true

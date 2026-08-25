@@ -99,9 +99,29 @@ test("resolution validation is bounded and rejects correlation or path smuggling
     { ...resolution, storage_path: `../${resolution.storage_path}` },
     { ...resolution, storage_path: resolution.storage_path.replace("/published/", "/private/") },
     { ...resolution, mime_type: "image/svg+xml" },
+    { ...resolution, mime_type: "video/mp4" },
+    { ...resolution, storage_path: resolution.storage_path.replace(/\.png$/, ".webp") },
+    { ...resolution, content_sha256: "1".repeat(64) },
     { ...resolution, byte_size: MAX_PUBLIC_MEDIA_BYTES + 1 },
     { ...resolution, content_sha256: "0".repeat(63) },
   ]) assert.throws(() => validatePublicMediaResolution(value));
+
+  const imported = {
+    ...resolution,
+    storage_path: resolution.storage_path.replace("/uploaded/", "/imported/"),
+  };
+  assert.deepEqual(validatePublicMediaResolution(imported), imported);
+  for (const [extension, mime_type] of [
+    ["gif", "image/gif"],
+    ["mp4", "video/mp4"],
+    ["webm", "video/webm"],
+  ]) {
+    assert.throws(() => validatePublicMediaResolution({
+      ...imported,
+      storage_path: imported.storage_path.replace(/\.png$/, `.${extension}`),
+      mime_type,
+    }));
+  }
 });
 
 test("delivery verifies the exact reviewed bytes and emits no-store metadata only", async () => {

@@ -1,6 +1,6 @@
-// AAL2 owner inventory and exact-byte preview for references to the historical
-// public `media` bucket. This first slice cannot declare, import, rewrite,
-// delete, finalize, or change Storage policies.
+// AAL2 owner inventory, exact-byte preview, explicit AI-use declaration, and
+// canonical import/clear for references to the historical public `media`
+// bucket. This endpoint never privatizes or purges either Storage bucket.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAal2 } from "../_shared/aal2.ts";
@@ -10,8 +10,18 @@ import {
   legacyMediaSha256,
   MAX_LEGACY_MEDIA_BYTES,
   readBoundedLegacyMediaResponse,
+  validateLegacyMediaImportResolution,
   validateLegacyMediaResolution,
 } from "../_shared/legacy-media-remediation.ts";
+import {
+  LEGACY_AI_MAX_SOURCE_BYTES,
+  LEGACY_FINAL_IMAGE_MAX_BYTES,
+  LEGACY_WATERMARK_SHA256,
+  LEGACY_WATERMARK_VERSION,
+  legacyMediaExtension,
+  renderLegacyRasterDerivative,
+  validateLegacyStaticRaster,
+} from "../_shared/legacy-media-raster.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -22,7 +32,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://app.aliaspaces.com",
   "https://mypersonas.online",
 ]);
-const ACTIONS = new Set(["inventory", "list", "preview"]);
+const ACTIONS = new Set(["inventory", "list", "preview", "declare", "import", "clear"]);
 const SAFE_STATES = new Set([
   "pending",
   "missing",
@@ -30,7 +40,10 @@ const SAFE_STATES = new Set([
   "blocked_persona",
   "blocked_shared_product",
   "stale",
+  "imported",
+  "cleared",
 ]);
+const AI_USES = new Set(["none", "assisted", "generated", "unknown"]);
 
 type JsonRecord = Record<string, unknown>;
 
@@ -129,6 +142,53 @@ function safeUuid(value: unknown) {
   return typeof value === "string" && UUID.test(value) ? value : null;
 }
 
+async function fetchLegacyBytes(
+  resolution: { bucket: string; storage_path: string; expected_byte_size: number },
+) {
+  const encodedPath = resolution.storage_path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetch(
+    `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/${resolution.bucket}/${encodedPath}`,
+    {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "apikey": SERVICE_ROLE_KEY,
+        "Accept-Encoding": "identity",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(20_000),
+    },
+  );
+  return await readBoundedLegacyMediaResponse(response, resolution.expected_byte_size);
+}
+
+async function verifyExistingCanonicalObject(
+  admin: {
+    storage: {
+      from(bucket: string): {
+        download(path: string): PromiseLike<{
+          data: Blob | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  },
+  path: string,
+  expected: Uint8Array,
+  expectedSha256: string,
+) {
+  const downloaded = await admin.storage.from("persona-media").download(path);
+  if (downloaded.error || !downloaded.data || downloaded.data.size !== expected.byteLength ||
+      downloaded.data.size > MAX_LEGACY_MEDIA_BYTES) {
+    throw new Error("immutable object mismatch");
+  }
+  const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+  if (bytes.byteLength !== expected.byteLength ||
+      await legacyMediaSha256(bytes) !== expectedSha256) {
+    throw new Error("immutable object mismatch");
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("Origin") ?? "";
   if (!ALLOWED_ORIGINS.has(origin)) {
@@ -175,6 +235,250 @@ Deno.serve(async (req: Request) => {
   }
   if (rate.data !== true) {
     return errorResponse(429, origin, "rate_limited", "Try again in a minute");
+  }
+
+  if (action === "declare") {
+    if (!exactKeys(body, ["action", "itemId", "aiUse"]) ||
+        !safeUuid(body.itemId) || typeof body.aiUse !== "string" ||
+        !AI_USES.has(body.aiUse)) {
+      return errorResponse(400, origin, "invalid_request", "Invalid request");
+    }
+    const declared = await admin.rpc("declare_legacy_media_reference_service", {
+      p_owner: owner,
+      p_item_id: body.itemId,
+      p_ai_use: body.aiUse,
+    });
+    const declarationId = safeUuid(declared.data);
+    if (declared.error || !declarationId) {
+      return errorResponse(409, origin, "declaration_failed", "The exact preview could not be declared");
+    }
+    return json({
+      action: "declare",
+      declarationId,
+      aiUse: body.aiUse,
+      state: "declared",
+    }, 200, origin);
+  }
+
+  if (action === "clear") {
+    if (!exactKeys(body, ["action", "itemId"]) || !safeUuid(body.itemId)) {
+      return errorResponse(400, origin, "invalid_request", "Invalid request");
+    }
+    const cleared = await admin.rpc("clear_legacy_media_reference_service_065", {
+      p_owner: owner,
+      p_item_id: body.itemId,
+    });
+    if (cleared.error || cleared.data !== true) {
+      return errorResponse(409, origin, "clear_failed", "The exact reference could not be cleared");
+    }
+    return json({ action: "clear", state: "cleared" }, 200, origin);
+  }
+
+  if (action === "import") {
+    if (!exactKeys(body, ["action", "declarationId"]) ||
+        !safeUuid(body.declarationId)) {
+      return errorResponse(400, origin, "invalid_request", "Invalid request");
+    }
+    const declarationId = String(body.declarationId);
+    const priorStatus = await admin.rpc("legacy_media_import_status_service", {
+      p_owner: owner,
+      p_declaration_id: declarationId,
+    });
+    const prior = Array.isArray(priorStatus.data) ? priorStatus.data[0] : priorStatus.data;
+    if (!priorStatus.error && prior && typeof prior === "object" &&
+        (prior as JsonRecord).state === "applied") {
+      const importId = safeUuid((prior as JsonRecord).import_id);
+      if (importId) return json({ action: "import", importId, state: "imported" }, 200, origin);
+    }
+    const resolved = await admin.rpc("resolve_legacy_media_import_service", {
+      p_owner: owner,
+      p_declaration_id: declarationId,
+    });
+    const rawResolution = Array.isArray(resolved.data) ? resolved.data[0] : resolved.data;
+    if (resolved.error || !rawResolution) {
+      return errorResponse(409, origin, "import_failed", "The declaration is no longer current");
+    }
+    let resolution;
+    try {
+      resolution = validateLegacyMediaImportResolution(rawResolution, owner);
+    } catch {
+      return errorResponse(409, origin, "import_failed", "The declaration is no longer current");
+    }
+    let sourceBytes: Uint8Array;
+    try {
+      sourceBytes = await fetchLegacyBytes(resolution);
+    } catch {
+      return errorResponse(502, origin, "media_unavailable", "Legacy media unavailable");
+    }
+    let detected;
+    let sourceSha256: string;
+    try {
+      detected = detectLegacyMedia(sourceBytes);
+      sourceSha256 = await legacyMediaSha256(sourceBytes);
+    } catch {
+      return errorResponse(422, origin, "unsupported_media", "Legacy media format is unsupported");
+    }
+    if (detected.mime !== resolution.detected_mime ||
+        sourceBytes.byteLength !== resolution.expected_byte_size ||
+        sourceSha256 !== resolution.source_sha256) {
+      return errorResponse(409, origin, "media_changed", "The previewed bytes changed");
+    }
+    try {
+      await validateLegacyStaticRaster(sourceBytes, resolution.detected_mime);
+    } catch {
+      return errorResponse(
+        422,
+        origin,
+        "unsupported_media",
+        "Legacy canonical import requires a static PNG, JPEG, or WebP image",
+      );
+    }
+    if (resolution.ai_use !== "none" && sourceBytes.byteLength > LEGACY_AI_MAX_SOURCE_BYTES) {
+      return errorResponse(413, origin, "media_too_large", "AI-used legacy media is too large to watermark");
+    }
+    let finalBytes = sourceBytes;
+    if (resolution.ai_use !== "none" || resolution.rendition !== "original") {
+      try {
+        finalBytes = await renderLegacyRasterDerivative(
+          sourceBytes,
+          resolution.detected_mime,
+          resolution.rendition,
+          resolution.ai_use !== "none",
+        );
+      } catch {
+        return errorResponse(
+          422,
+          origin,
+          "unsupported_media",
+          "This legacy media cannot be converted to its canonical rendition",
+        );
+      }
+    }
+    if (finalBytes.byteLength < 1 ||
+        finalBytes.byteLength > LEGACY_FINAL_IMAGE_MAX_BYTES ||
+        finalBytes.byteLength > MAX_LEGACY_MEDIA_BYTES) {
+      return errorResponse(413, origin, "media_too_large", "The canonical media exceeds its byte limit");
+    }
+    const contentSha256 = await legacyMediaSha256(finalBytes);
+    if (resolution.ai_use !== "none" && contentSha256 === sourceSha256 ||
+        resolution.ai_use === "none" && resolution.rendition === "original" &&
+        (contentSha256 !== sourceSha256 || finalBytes.byteLength !== sourceBytes.byteLength)) {
+      return errorResponse(500, origin, "import_failed", "Canonical byte invariants were not satisfied");
+    }
+    const extension = legacyMediaExtension(resolution.detected_mime);
+    const path = `${owner}/published/provenance/${resolution.ai_use}/imported/${resolution.persona_id}/${resolution.purpose}/legacy_${resolution.rendition}/${contentSha256}.${extension}`;
+    const uploadLeaseId = crypto.randomUUID();
+    const claimed = await admin.rpc("claim_persona_media_upload_service_065", {
+      p_owner: owner,
+      p_lease_id: uploadLeaseId,
+      p_storage_path: path,
+      p_operation: "legacy_import",
+      p_ttl_seconds: 180,
+    });
+    if (claimed.error || claimed.data !== "claimed") {
+      return errorResponse(
+        claimed.data === "busy" ? 409 : 423,
+        origin,
+        "import_failed",
+        "A conflicting upload or account erasure is in progress",
+      );
+    }
+    let createdObject = false;
+    let canonicalRegistered = false;
+    try {
+      const upload = await admin.storage.from("persona-media").upload(path, finalBytes, {
+        contentType: resolution.detected_mime,
+        cacheControl: "31536000",
+        upsert: false,
+      });
+      createdObject = !upload.error;
+      if (upload.error) {
+        if (!/already exists|duplicate/i.test(upload.error.message || "")) {
+          return errorResponse(502, origin, "import_failed", "Canonical media could not be stored");
+        }
+      }
+      const destination = await admin.rpc("resolve_legacy_media_destination_service_065", {
+        p_owner: owner,
+        p_declaration_id: declarationId,
+        p_storage_path: path,
+        p_content_sha256: contentSha256,
+        p_content_byte_size: finalBytes.byteLength,
+        p_mime_type: resolution.detected_mime,
+        p_upload_lease_id: uploadLeaseId,
+      });
+      const rawDestination = Array.isArray(destination.data) ? destination.data[0] : destination.data;
+      const destinationRow = rawDestination && typeof rawDestination === "object"
+        ? rawDestination as JsonRecord
+        : null;
+      const destinationObjectId = safeUuid(destinationRow?.object_id);
+      const destinationUpdatedAt = typeof destinationRow?.object_updated_at === "string" &&
+          Number.isFinite(Date.parse(destinationRow.object_updated_at))
+        ? destinationRow.object_updated_at
+        : null;
+      if (destination.error || !destinationObjectId || !destinationUpdatedAt) {
+        return errorResponse(409, origin, "import_failed", "The immutable destination could not be bound");
+      }
+      try {
+        // Re-download every destination, including a newly-created object. The
+        // destination identity/timestamp above is re-locked by the commit RPC.
+        await verifyExistingCanonicalObject(admin, path, finalBytes, contentSha256);
+      } catch {
+        return errorResponse(409, origin, "import_failed", "An immutable canonical object conflicts");
+      }
+      const renewed = await requireAal2(req, admin);
+      if (!renewed.ok || renewed.user.id.toLowerCase() !== owner) {
+        return errorResponse(401, origin, "authentication_required", "Sign in again");
+      }
+      const registryUrl = admin.storage.from("persona-media").getPublicUrl(path).data.publicUrl;
+      const committed = await admin.rpc("commit_legacy_media_import_service_065", {
+        p_owner: owner,
+        p_declaration_id: declarationId,
+        p_storage_path: path,
+        p_public_url: registryUrl,
+        p_content_sha256: contentSha256,
+        p_content_byte_size: finalBytes.byteLength,
+        p_mime_type: resolution.detected_mime,
+        p_watermark_state: resolution.ai_use === "none" ? "not_required" : "system_applied",
+        p_watermark_version: resolution.ai_use === "none" ? "" : LEGACY_WATERMARK_VERSION,
+        p_watermark_asset_sha256: resolution.ai_use === "none" ? "" : LEGACY_WATERMARK_SHA256,
+        p_destination_object_id: destinationObjectId,
+        p_destination_updated_at: destinationUpdatedAt,
+        p_upload_lease_id: uploadLeaseId,
+      });
+      let importId = safeUuid(committed.data);
+      if (committed.error || !importId) {
+        const retryStatus = await admin.rpc("legacy_media_import_status_service", {
+          p_owner: owner,
+          p_declaration_id: declarationId,
+        });
+        const retry = Array.isArray(retryStatus.data) ? retryStatus.data[0] : retryStatus.data;
+        if (!retryStatus.error && retry && typeof retry === "object" &&
+            (retry as JsonRecord).state === "applied") {
+          importId = safeUuid((retry as JsonRecord).import_id);
+        }
+        if (!importId) {
+          return errorResponse(409, origin, "import_failed", "The exact reference changed before import");
+        }
+      }
+      canonicalRegistered = true;
+      return json({ action: "import", importId, state: "imported" }, 200, origin);
+    } finally {
+      if (createdObject && !canonicalRegistered) {
+        const cleanupAllowed = await admin.rpc("persona_media_upload_cleanup_allowed_065", {
+          p_owner: owner,
+          p_lease_id: uploadLeaseId,
+          p_storage_path: path,
+        });
+        if (!cleanupAllowed.error && cleanupAllowed.data === true) {
+          await admin.storage.from("persona-media").remove([path]);
+        }
+      }
+      const released = await admin.rpc("release_persona_media_upload_service_065", {
+        p_owner: owner,
+        p_lease_id: uploadLeaseId,
+      });
+      void released;
+    }
   }
 
   if (action === "inventory") {

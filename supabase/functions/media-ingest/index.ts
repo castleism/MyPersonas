@@ -479,77 +479,108 @@ serve(async (req) => {
 
   const source = assetOrigin === "site_generated" ? "generated" : "uploaded";
   const path = `${user.id.toLowerCase()}/published/provenance/${aiUse}/${source}/${personaId}/${purpose}/${contentSha256}.${detected.extension}`;
-  const upload = await admin.storage.from(BUCKET).upload(path, finalBytes, {
-    contentType: detected.mime,
-    cacheControl: "31536000",
-    upsert: false,
-  });
-  let createdObject = !upload.error;
-  if (upload.error) {
-    if (/already exists|duplicate/i.test(upload.error.message || "")) {
-      try {
-        await verifyExisting(path, finalBytes, contentSha256);
-      } catch (error) {
-        return json({ error: (error as Error).message }, 409, origin);
-      }
-      createdObject = false;
-    } else {
-      return json({ error: "The immutable media object could not be stored" }, 502, origin);
-    }
-  }
-  // This canonical URL remains private registry evidence after the bucket
-  // cutover. It is never returned to the browser; authenticated preview bytes
-  // are renewed through owner-media-preview.
-  const registryUrl = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-  const watermarkState = aiUse === "none" ? "not_required" : "system_applied";
-  const registered = await admin.rpc("register_persona_media_asset_service", {
+  const uploadLeaseId = crypto.randomUUID();
+  const claimed = await admin.rpc("claim_persona_media_upload_service_065", {
     p_owner: user.id,
-    p_persona_id: personaId,
-    p_media_type: detected.mediaType,
+    p_lease_id: uploadLeaseId,
     p_storage_path: path,
-    p_public_url: registryUrl,
-    p_mime_type: detected.mime,
-    p_byte_size: finalBytes.byteLength,
-    p_origin: assetOrigin,
-    p_ai_use: aiUse,
-    p_source_sha256: sourceSha256,
-    p_content_sha256: contentSha256,
-    p_watermark_state: watermarkState,
-    p_watermark_version: aiUse === "none" ? "" : WATERMARK_VERSION,
-    p_watermark_asset_sha256: aiUse === "none" ? "" : WATERMARK_SHA256,
-    p_generation_event_id: assetOrigin === "site_generated" ? generationEventId : null,
-    p_rendition: rendition,
+    p_operation: "media_ingest",
+    p_ttl_seconds: 180,
   });
-  if (registered.error || !UUID.test(String(registered.data || ""))) {
-    if (createdObject) {
-      const cleanup = await admin.storage.from(BUCKET).remove([path]);
-      if (cleanup.error) console.error("media-ingest orphan cleanup failed", cleanup.error);
+  if (claimed.error || claimed.data !== "claimed") {
+    return json({ error: "A conflicting upload or account erasure is in progress" }, 423, origin);
+  }
+  let createdObject = false;
+  let registryBound = false;
+  try {
+    const upload = await admin.storage.from(BUCKET).upload(path, finalBytes, {
+      contentType: detected.mime,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    createdObject = !upload.error;
+    if (upload.error) {
+      if (/already exists|duplicate/i.test(upload.error.message || "")) {
+        try {
+          await verifyExisting(path, finalBytes, contentSha256);
+        } catch (error) {
+          return json({ error: (error as Error).message }, 409, origin);
+        }
+      } else {
+        return json({ error: "The immutable media object could not be stored" }, 502, origin);
+      }
     }
-    return json({ error: "The bytes were stored but their provenance record failed closed" }, 500, origin);
+    // This canonical URL remains private registry evidence after the bucket
+    // cutover. It is never returned to the browser; authenticated preview bytes
+    // are renewed through owner-media-preview.
+    const registryUrl = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    const watermarkState = aiUse === "none" ? "not_required" : "system_applied";
+    const registered = await admin.rpc("register_persona_media_asset_service", {
+      p_owner: user.id,
+      p_persona_id: personaId,
+      p_media_type: detected.mediaType,
+      p_storage_path: path,
+      p_public_url: registryUrl,
+      p_mime_type: detected.mime,
+      p_byte_size: finalBytes.byteLength,
+      p_origin: assetOrigin,
+      p_ai_use: aiUse,
+      p_source_sha256: sourceSha256,
+      p_content_sha256: contentSha256,
+      p_watermark_state: watermarkState,
+      p_watermark_version: aiUse === "none" ? "" : WATERMARK_VERSION,
+      p_watermark_asset_sha256: aiUse === "none" ? "" : WATERMARK_SHA256,
+      p_generation_event_id: assetOrigin === "site_generated" ? generationEventId : null,
+      p_rendition: rendition,
+      p_upload_lease_id: uploadLeaseId,
+    });
+    if (registered.error || !UUID.test(String(registered.data || ""))) {
+      return json({ error: "The bytes were stored but their provenance record failed closed" }, 500, origin);
+    }
+    registryBound = true;
+    const issued = await admin.rpc("issue_persona_public_media_handle_service", {
+      p_asset_id: registered.data,
+      p_rotate: false,
+    });
+    if (issued.error || !UUID.test(String(issued.data || ""))) {
+      // Do not delete immutable bytes after their registry row exists. They remain
+      // unreferenced until the coordinated 062 release can issue an opaque handle.
+      console.error("media-ingest opaque handle issuance failed", issued.error);
+      return json({ error: "Media was registered but opaque public delivery is unavailable" }, 503, origin);
+    }
+    const publicUrl = publicMediaDeliveryUrl(String(issued.data).toLowerCase());
+    return json({
+      assetId: registered.data,
+      publicUrl,
+      sha256: contentSha256,
+      sourceSha256,
+      mime: detected.mime,
+      byteSize: finalBytes.byteLength,
+      sourceByteSize: bytes.byteLength,
+      aiUse,
+      watermarkState,
+      watermarkVersion: aiUse === "none" ? "" : WATERMARK_VERSION,
+      watermarkAuthority: aiUse === "none" ? "not_required" : "server_generated",
+      crop,
+    }, 200, origin);
+  } finally {
+    if (createdObject && !registryBound) {
+      const cleanupAllowed = await admin.rpc("persona_media_upload_cleanup_allowed_065", {
+        p_owner: user.id,
+        p_lease_id: uploadLeaseId,
+        p_storage_path: path,
+      });
+      if (!cleanupAllowed.error && cleanupAllowed.data === true) {
+        const cleanup = await admin.storage.from(BUCKET).remove([path]);
+        if (cleanup.error) console.error("media-ingest safe orphan cleanup failed", cleanup.error);
+      }
+    }
+    const released = await admin.rpc("release_persona_media_upload_service_065", {
+      p_owner: user.id,
+      p_lease_id: uploadLeaseId,
+    });
+    if (released.error || released.data !== true) {
+      console.error("media-ingest upload lease release failed", released.error);
+    }
   }
-  const issued = await admin.rpc("issue_persona_public_media_handle_service", {
-    p_asset_id: registered.data,
-    p_rotate: false,
-  });
-  if (issued.error || !UUID.test(String(issued.data || ""))) {
-    // Do not delete immutable bytes after their registry row exists. They remain
-    // unreferenced until the coordinated 062 release can issue an opaque handle.
-    console.error("media-ingest opaque handle issuance failed", issued.error);
-    return json({ error: "Media was registered but opaque public delivery is unavailable" }, 503, origin);
-  }
-  const publicUrl = publicMediaDeliveryUrl(String(issued.data).toLowerCase());
-  return json({
-    assetId: registered.data,
-    publicUrl,
-    sha256: contentSha256,
-    sourceSha256,
-    mime: detected.mime,
-    byteSize: finalBytes.byteLength,
-    sourceByteSize: bytes.byteLength,
-    aiUse,
-    watermarkState,
-    watermarkVersion: aiUse === "none" ? "" : WATERMARK_VERSION,
-    watermarkAuthority: aiUse === "none" ? "not_required" : "server_generated",
-    crop,
-  }, 200, origin);
 });
