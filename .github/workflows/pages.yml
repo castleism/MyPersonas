@@ -51,6 +51,8 @@ jobs:
             --include '/platform-governance.js' \
             --include '/ai-content-provenance.css' \
             --include '/ai-content-provenance.js' \
+            --include '/profile-image-crop.css' \
+            --include '/profile-image-crop.js' \
             --include '/agent-board.css' \
             --include '/agent-board.js' \
             --include '/assets/***' \
