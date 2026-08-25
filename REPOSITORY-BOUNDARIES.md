@@ -107,18 +107,27 @@ The separate AliaSpaces repository is:
 
 `C:\Users\Justice Right\Documents\GitHub\aliaspaces.com`
 
-At the time this contract was recorded:
+At the current repository checkpoint:
 
-- The current rescue branch was
-  `rescue/pre-split-mixed-worktree-20260824` at source commit
-  `21703a9252d56f155f7210affa373d7d69f07e92`.
-- That commit follows `21fe42d` (quarantined migration 065), `344302b`
-  (custom fields and project resources), and `21703a9` (profile-crop and mobile
-  release wiring), based on local `main` commit `ad68319`.
-- Local `main` and `origin/main` were divergent. A branch name or pushed commit
-  is not evidence that a production deployment occurred.
-- `aliaspaces.com` was a clean redirect-only Pages repository at `f546fa1`.
-- The rescue branch is a preservation branch, not a production release branch.
+- The pushed rescue branch is
+  `rescue/pre-split-mixed-worktree-20260824` at
+  `cc7789582ecb4e5bbdf80ce20649b27a681bf2b7`. It preserves migration 065 only
+  as rejected work alongside the separated profile/resource commits.
+- The pushed integration branch and annotated tag
+  `pre-repo-split-2026-08-24` identify validated extraction source
+  `b2c85b8d7443e474c2654bd2fe082843b496829c`. Migration 065 is absent from
+  this checkpoint.
+- Local MyPersonas `main` and `origin/main` now both identify
+  `569f0029c0ddd95b7fcf09e497a1b2d629b09591`; the former divergence was
+  reconciled only after its unique work was preserved on pushed branches.
+- AliaSpaces `main` remains the clean redirect-only Pages repository at
+  `f546fa104584f19c34fee3e6ecceb86fb5579a57`.
+- The pushed, non-deploying AliaSpaces extraction branch is
+  `split/social-platform-20260824` at
+  `ff5c9b6ecd7a0221630d5bfc96d2ade536a34494`; it contains the first isolated
+  social component and repository boundary controls, not the fused application.
+- A branch name, pushed commit, tag, or successful test is not evidence that a
+  production deployment occurred.
 
 Re-read all refs before relying on this snapshot. Never force-push, reset, or
 delete a worktree because this document names an older commit.

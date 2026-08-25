@@ -2,7 +2,7 @@
 
 **Manifest date:** 2026-08-24
 
-**Manifest state:** Planning and extraction control
+**Manifest state:** Repository preservation complete; social extraction phase 1 pushed
 
 **Production state:** Unchanged. No production deploy, migration, DNS edit, or provider action is authorized by this manifest.
 
@@ -23,8 +23,9 @@ They must be re-read before release.
 
 | Ref or checkpoint | Inspected SHA | Meaning | Destination |
 | --- | --- | --- | --- |
-| `rescue/pre-split-mixed-worktree-20260824` | `21703a9252d56f155f7210affa373d7d69f07e92` | Preserved mixed source after quarantining 065 and separating profile/resource work into descriptive commits | Extraction source only; never deploy directly |
-| Local MyPersonas `main` | `ad683198ee1bcd8131a140184d7a095a085adcab` | Local opaque-media candidate lineage | Historical integration input |
+| `rescue/pre-split-mixed-worktree-20260824` | `cc7789582ecb4e5bbdf80ce20649b27a681bf2b7` | Pushed preservation branch containing the descriptive rescue commits and the merge of current remote UI fixes | Extraction evidence only; never deploy directly |
+| `integration/pre-repo-split-20260824` / `pre-repo-split-2026-08-24` | `b2c85b8d7443e474c2654bd2fe082843b496829c` | Pushed, validated integration checkpoint; migration 065 is explicitly removed | Canonical extraction source for the next split phase |
+| Local MyPersonas `main` | `569f0029c0ddd95b7fcf09e497a1b2d629b09591` | Reconciled to the exact remote default branch after unique local work was preserved and pushed | Clean GitHub Desktop/default-branch checkout |
 | MyPersonas `origin/main` | `569f0029c0ddd95b7fcf09e497a1b2d629b09591` | Remote default branch at inspection | Current default-branch source, not proof of live production |
 | `release/opaque-media-062-064` | `c0484ba6a83aff42af32770e54aebb66f3aa6351` | Mixed public/approved/legacy media release candidate | Split 062 to AliaSpaces, 063 to MyPersonas, keep 064 shared initially |
 | `release/monetization-security-integration` | `c93c34cf088786410fa84f60aabd99be5c4d001a` | Integrated billing, operations, staging, and security baseline | MyPersonas |
@@ -34,7 +35,8 @@ They must be re-read before release.
 | `codex/staging-bootstrap-readiness` | `f5ad0cdda2c78488116fb4dd0aa8de59f1f3f7b4` | Original staging bootstrap branch | MyPersonas; compare with integrated successor before merging |
 | `codex/staging-billing-ops-release` | `57a9449d4db418e4348ae3e7b1833079d9230a07` | Original staging billing/operations release branch | MyPersonas; compare with integrated successor before merging |
 | `feature/persona-source-library` | `1cd68819f6cdf506969cf659cbb14e7d8cdb5997` | Private Persona Source Library | MyPersonas |
-| AliaSpaces `main` | `f546fa1` | Redirect-only GitHub Pages front door | Preserve as rollback until social cutover passes |
+| AliaSpaces `main` | `f546fa104584f19c34fee3e6ecceb86fb5579a57` | Redirect-only GitHub Pages front door | Preserve as rollback until social cutover passes |
+| AliaSpaces `split/social-platform-20260824` | `ff5c9b6ecd7a0221630d5bfc96d2ade536a34494` | Pushed non-deploying social workspace with the independently extracted image cropper, provenance, boundary checks, and pinned CI dependencies | Continue social extraction; not a production artifact |
 
 Do not merge every branch tip merely because it exists. Several feature branch
 changes have richer integrated successors in `c93c34c`. Compare trees, tests,
@@ -174,30 +176,30 @@ testable slices and preserve import/redirect compatibility until cutover.
 
 ### 1. Preserve and reconcile source
 
-- [ ] Confirm there is no active Git writer or stale index lock.
-- [ ] Record `git status`, worktree list, local refs, remote refs, and current
+- [x] Confirm there is no active Git writer or stale index lock.
+- [x] Record `git status`, worktree list, local refs, remote refs, and current
       default branch without discarding changes.
-- [ ] Commit preservation work with descriptive, scoped messages.
-- [ ] Reconcile local/remote divergence without force-push or destructive reset.
+- [x] Commit preservation work with descriptive, scoped messages.
+- [x] Reconcile local/remote divergence without force-push or destructive reset.
 - [ ] Compare feature branch tips with `c93c34c`; mark integrated equivalents as
       superseded instead of blindly merging them.
-- [ ] Create and push a reviewed immutable pre-split tag.
-- [ ] Run repository tests, migration repeat-apply/runtime tests, syntax checks,
+- [x] Create and push a reviewed immutable pre-split tag.
+- [x] Run repository tests, migration repeat-apply/runtime tests, syntax checks,
       secret history scan, and `git diff --check` on the exact checkpoint.
 
 ### 2. Establish AliaSpaces source
 
-- [ ] Keep `f546fa1` reachable as the redirect rollback.
-- [ ] Create a non-deploying extraction branch in `aliaspaces.com`.
-- [ ] Add a provenance receipt naming the exact MyPersonas source SHA and copied
+- [x] Keep `f546fa1` reachable as the redirect rollback.
+- [x] Create a non-deploying extraction branch in `aliaspaces.com`.
+- [x] Add a provenance receipt naming the exact MyPersonas source SHA and copied
       file hashes.
 - [ ] Extract social routes and assets; do not ship the fused `index.html` as the
       permanent two-product architecture.
-- [ ] Remove provider credentials, automation workers, billing internals, and
+- [x] Remove provider credentials, automation workers, billing internals, and
       service-role operations from AliaSpaces source.
 - [ ] Give AliaSpaces its own name, icons, manifest scope, cache namespace,
       canonical URLs, policies, and Pages artifact allowlist.
-- [ ] Add CI that rejects MyPersonas-only functions and migrations.
+- [x] Add CI that rejects MyPersonas-only functions and migrations.
 
 ### 3. Slim MyPersonas
 
