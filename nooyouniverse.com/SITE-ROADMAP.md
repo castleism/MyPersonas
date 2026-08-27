@@ -1,10 +1,10 @@
 # nooyouniverse.com — Site Roadmap
 
-Updated: 2026-08-13 (full roadmap execution reconciliation; live site state unchanged) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
+Updated: 2026-08-26 (Phase 3 deployed and independently verified live) · Owner: Christian · Persona: Cillian O'Sullivan / Noo YouNiverse
 
 Stack: static site → **Cloudflare Worker with static assets** + Supabase free-tier email waitlist. This is not Cloudflare Pages. GitHub Pages remains a fallback (CNAME file included). Recorded infrastructure cost: $0/month; billing was not re-audited in this session.
 
-## Status — 🟢 LIVE at https://nooyouniverse.com (2026-08-09)
+## Status — 🟢 LIVE at https://nooyouniverse.com (Phase 3 verified 2026-08-26)
 
 | Item | State |
 |---|---|
@@ -12,29 +12,37 @@ Stack: static site → **Cloudflare Worker with static assets** + Supabase free-
 | Mission Log — 10 concepts (`/log`) | ✅ Live |
 | 404 page, robots, sitemap | ✅ Live |
 | Waitlist table + RLS (migration 027) | ✅ Run in Supabase |
-| Waitlist end-to-end | ✅ Verified: insert 201 · duplicate 409 · bad email 400 · anon read 401 (denied) |
-| Deploy repo `castleism/nooyouniverse` | ✅ Pushed; Cloudflare auto-builds on push |
-| Cloudflare Worker + apex domain | ✅ HTTPS live, 18 assets served |
-| `www.nooyouniverse.com` | ✅ Added; resolves, canonical points to apex (no duplicate content) |
-| **Phase 3** — source badges, `/sources`, `/corrections` | ✅ Built — **awaiting deploy** |
+| Waitlist end-to-end | ✅ Previously verified: insert 201 · duplicate 409 · bad email 400 · anon read 401 (denied); not rerun for Phase 3 |
+| Deploy repo `castleism/nooyouniverse` | ✅ Phase 3 commit `e8971ad` pushed to `main` |
+| Cloudflare Worker + apex domain | ✅ HTTPS live; Phase 3 Worker version 4 serves 20 public files |
+| `www.nooyouniverse.com` | ✅ Resolves; pages declare apex canonicals; a host-level redirect is not configured |
+| **Phase 3** — source badges, `/sources`, `/corrections` | ✅ **Verified live — 2026-08-26** |
 | **Package A** — Missions 11–14 | 📝 Four internal copy drafts + four visual candidates — **zero approved; not in site source; not deployed** |
 
-### Outstanding — one release decision plus one cleanup
+### Outstanding — operations and owner-only follow-up
 
-1. **Review the Phase 3-only release candidate:**
-   ```powershell
-   & .\_ops\deploy-nooyouniverse.ps1
-   ```
-   The default is now a read-only preview. After Christian confirms the exact Phase 3-only scope, publish with `-Publish -Message "Phase 3: source badges, sources page, corrections log"`. The helper stages only the scoped site paths; it no longer stages the whole dirty repository. Full validation and rollback expectations are in `outputs/cillian-noo-youniverse/site/NOO-PHASE-3-RELEASE-READINESS-2026-08-13.md`.
+1. **Repair or revalidate the Cloudflare Git build hook.** The 2026-08-26 push did not automatically create a build. The existing Cloudflare build trigger was therefore invoked manually for the exact pushed commit, and that build completed successfully. Do not assume a future push will deploy until the automatic path is tested again.
 2. **Verify, then delete, 2 recorded test rows** in Supabase → Table Editor → `noo_waitlist`: `deploy-test-2026-08-09@nooyouniverse.com` and one `verify-…@example.com`. Their current presence was not rechecked in this session; confirm exact rows before deletion.
+3. **Optional domain cleanup:** decide whether `www` should redirect to the apex at the host level. It currently serves successfully and declares the apex canonical, but does not redirect the browser.
 
-## Phase 3 (built 2026-08-09)
+## Phase 3 (built 2026-08-09; deployed and verified 2026-08-26)
 
 - **Source-basis badges** on all ten Mission Log entries. They label *what kind of support an entry rests on* — Health-agency source / Methodology reference / Regulatory guidance / Editorial promise · no efficacy claim / Introduction · no factual claim. Classifications taken verbatim from `SOURCE-AND-POLICY-LEDGER.md`; deliberately **not** framed as evidence tiers, because most entries teach method rather than assert empirical claims. Inventing a tier for a non-claim would be exactly the certainty theater the charter forbids.
 - **`/sources`** — badge legend, per-mission source table with live links to NCCIH/AHRQ/NHLBI/FDA/FTC, the publication standard, and the hard-limits list ("what this project will never do").
-- **`/corrections`** — the charter promises corrections at equal visibility; this makes that operational before it is needed. Four change grades (Note / Clarification / Correction / Retraction), the five-step process, an append-only commitment, and how to report an error. Ships with an honest empty state.
+- **`/corrections`** — the charter promises corrections at equal visibility; this makes the publication log operational before it is needed. Four change grades (Note / Clarification / Correction / Retraction), the five-step process, an append-only commitment, reporting guidance, and an honest empty state. It is informational; a data-minimizing public correction-intake channel is still unverified.
 
 Both pages are linked from the nav, the homepage evidence + charter sections, and every footer.
+
+### Phase 3 deployment record — 2026-08-26
+
+- Owner command authorized the exact Phase 3-only scope; Package A was excluded.
+- Deploy commit: `e8971ad0726695b70f99bf7fe4f7eb8434a8c8e6` (`Phase 3: source badges, sources page, corrections log`).
+- Cloudflare build: `9f5e67e9-4ba0-4242-b66b-2107fbd5cd99`, successful at `2026-08-27T02:54:04.800Z` (`2026-08-26` in Alaska).
+- Cloudflare deployment: `13ec93d6-7ba7-411b-864f-b7fd8cdcbdc9`; Worker version 4 ID `b6939236-5037-42a8-a659-b3f9219ca2e4`; 100% traffic.
+- Independent HTTP checks passed for `/`, `/log`, `/sources`, `/corrections`, the custom 404, apex canonicals, and the `www` host.
+- The live Mission Log contains exactly 10 missions, 10 source-basis badges, 10 Transparency lines, and 10 mission image references. Package A titles, IDs, and assets found: zero.
+- All nine checked source/property links returned successful responses: eight `200` responses and an accepted `202` from AHRQ.
+- The waitlist write path was deliberately not rerun during this content release, so no new test row was created or deleted. Its earlier end-to-end result remains a dated prior verification, not a fresh runtime claim.
 
 ## Package A continuation (drafted 2026-08-13)
 
@@ -49,7 +57,7 @@ State: **four copy drafts and four visual candidates prepared; zero owner approv
 
 The sources were checked on their current primary or official pages on August 13, 2026 and recorded in `SOURCE-AND-POLICY-LEDGER.md`. Mission 14 uses FDA measurement guidance only as a bounded design influence; it does not imply that the unbuilt consumer tracker is FDA governed, validated, compliant, cleared, or approved. Track A remains a recommendation awaiting an owner decision.
 
-Publication gates remain unchanged: Christian must decide per entry; proposed public Transparency lines cannot be treated as human-reviewed until a human actually reviews them; Mission 14 additionally needs product, privacy, legal, health-safety, and technical review. Any later site integration must update the hard-coded ten-entry copy, table of contents, source table, and sitemap dates. Do not deploy Package A merely because Phase 3 is already awaiting deployment.
+Publication gates remain unchanged: Christian must decide per entry; proposed public Transparency lines cannot be treated as human-reviewed until a human actually reviews them; Mission 14 additionally needs product, privacy, legal, health-safety, and technical review. Any later site integration must update the hard-coded ten-entry copy, table of contents, source table, and sitemap dates. Do not deploy Package A merely because Phase 3 is now live.
 
 ## Deploy architecture (as built)
 
@@ -63,7 +71,8 @@ Cloudflare **Worker with static assets** (not Pages — Cloudflare's Git-connect
 
 - **Empty-repo build failure:** connecting Cloudflare to a repo *before* pushing code fails with "error occurred while fetching repository". Fix is Retry build after the first push, not reconfiguration.
 - **Worker ≠ Pages:** a dashboard-created Worker ships a "Hello world" script that serves the domain until a successful asset build replaces it. Seeing "Hello world" means the build never succeeded.
-- **Clean URLs:** Workers assets 301s `/log.html` → `/log`. Internal links, canonicals, og:url and sitemap all use the extensionless form.
+- **Clean URLs:** Workers assets redirect `/log.html` → `/log` (a `307` was observed on 2026-08-26). Internal links, canonicals, og:url and sitemap all use the extensionless form.
+- **Git hook drift:** the Phase 3 push did not automatically create a Cloudflare build even though the repository connection and trigger still existed. The existing trigger was manually invoked for the exact pushed commit; repair or revalidate automatic delivery before relying on it again.
 - **Sandbox git:** locks can't be unlinked on this mount — rename them aside and commit via `GIT_INDEX_FILE` + `write-tree`/`commit-tree`/`update-ref`. `_ops/deploy-nooyouniverse.ps1` sweeps the debris.
 
 ## Overnight session notes (2026-08-09)
@@ -80,11 +89,11 @@ Cloudflare **Worker with static assets** (not Pages — Cloudflare's Git-connect
 - [x] Privacy/data-deletion links point to mypersonas.online pages for v1
 - [x] Social handles listed text-only until account ownership verified
 
-These content approvals do not mark the still-unpublished Phase 3 build as verified live. Because the deployment now has an explicit release manifest and Package A exists as a separate unapproved draft, confirm the exact Phase 3-only release scope before using `-Publish`.
+The exact Phase 3-only release was authorized, deployed, and independently verified on 2026-08-26. That approval did not extend to Package A, which remains a separate unapproved draft. Confirm any later release scope independently before using `-Publish`.
 
 ## Later phases (aligned to master roadmap)
 
-- **Phase 3:** per-post source-basis badges, Sources, and Corrections are **built locally; release still pending**.
+- **Phase 3:** per-post source-basis badges, Sources, and Corrections are **verified live as of 2026-08-26**.
 - **Phase 4 (newsletter):** the double-opt-in contract, lifecycle copy, ESP/compliance audit, QA, and owner-decision package are drafted under `outputs/cillian-noo-youniverse/newsletter/`. The waitlist currently stores emails only; nothing is sent. Before the first send: owner/operator decisions, lawful consent treatment, unsubscribe, sender identity and postal address, mailbox/domain authentication, current DNS verification, and restating Cillian's fictional identity in every email.
 - **Phase 5 (product):** Observation Log build-diary series → waitlist segmentation. Requires product, privacy, security, legal and health review before *any* capability claim. Mission 09 describes it as unbuilt — that must stay accurate.
 - **Press/collab kit:** blocked until a qualified reviewer is named (see below).
@@ -126,7 +135,7 @@ The supplied v0.1 community model was already present locally but conflicted wit
 - `k ≥ 20` is a provisional privacy floor, not a guarantee or legal safe harbor.
 - Generic-compound-only/no-brand reporting is the recommended commerce boundary; it does not itself guarantee FTC compliance.
 
-State: **documentation reconciled; zero new owner decisions; zero app code; zero community infrastructure; zero reviews/sign-offs; zero public-site page/code changes; roadmap documentation only; zero deploys.** The live site and pending Phase 3 deploy scope are unchanged.
+State of the **2026-08-13 community-model documentation sweep:** **zero new owner decisions; zero app code; zero community infrastructure; zero reviews/sign-offs; zero public-site page/code changes; roadmap documentation only; zero deploys during that bounded sweep.** Separately, the Phase 3 informational pages and badges were deployed and verified live on 2026-08-26; that did not activate any community operation or intake system.
 
 ## Open items the site cannot solve
 
