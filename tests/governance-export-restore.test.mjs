@@ -47,7 +47,7 @@ test("portable and privacy exports fail closed across organization and governanc
 
 test("privacy export excludes secrets and sensitive abuse identifiers", async () => {
   const html = await read("MyPersonas.Online_v0/index.html");
-  const loader = html.match(/async function loadGovernanceExportSections[\s\S]*?\n}\nasync function loadFanSessionRows/)?.[0] || "";
+  const loader = html.match(/async function loadGovernanceExportSections[\s\S]*?\r?\n}\r?\nasync function loadFanSessionRows/)?.[0] || "";
   assert.ok(loader, "governance export loader was not found");
   assert.match(loader, /affiliate_click_events","id,owner,persona_id,offer_id,product_id,source,utm_source,utm_medium,utm_campaign,created_at"/);
   assert.match(loader, /product_review_requests","id,owner,persona_id,requester_email,requester_name,product_name,product_url,reason,consent_to_reply,marketing_consent,status,captcha_verified_at,created_at,updated_at,retention_expires_at"/);

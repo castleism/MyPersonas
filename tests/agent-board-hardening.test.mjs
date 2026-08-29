@@ -96,10 +96,11 @@ test("runner RPCs enforce exact idempotent claims, one-use capabilities, and saf
   assert.match(reconcile, /status='failed'/);
   assert.match(complete, /auth\.role\(\)[\s\S]*service_role/);
   assert.match(complete, /char_length\(coalesce\(p_result_text,''\)\)>100000/);
-  const ownerLookup = complete.indexOf("select request.owner into v_owner");
-  const ownerLock = complete.indexOf("51051120");
-  const requestLock = complete.indexOf("request.status='running'\n  for update");
-  const runLock = complete.indexOf("run.status='running' and run.provider_started_at is not null for update");
+  const normalizedComplete = complete.replaceAll("\r\n", "\n");
+  const ownerLookup = normalizedComplete.indexOf("select request.owner into v_owner");
+  const ownerLock = normalizedComplete.indexOf("51051120");
+  const requestLock = normalizedComplete.indexOf("request.status='running'\n  for update");
+  const runLock = normalizedComplete.indexOf("run.status='running' and run.provider_started_at is not null for update");
   assert.ok(ownerLookup >= 0 && ownerLookup < ownerLock);
   assert.ok(ownerLock < requestLock && requestLock < runLock);
 });
