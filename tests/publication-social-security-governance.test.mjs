@@ -824,7 +824,7 @@ test("persona content and lifecycle UI mutations use the locked owner RPCs", asy
   assert.match(index, /async function deleteAlbum\(id\)[\s\S]*?rpc\("delete_persona_album",\{p_album_id:id\}\)/);
   assert.match(index, /async function addAlbumItem\(aid\)[\s\S]*?rpc\("save_persona_album_item",\{p_item_id:null,p_album_id:aid,p_thumb_url:thumb,[\s\S]*?p_sort:\(a\.items\|\|\[\]\)\.length\}\)/);
   assert.match(index, /async function deleteAlbumItem\(id\)[\s\S]*?rpc\("delete_persona_album_item",\{p_item_id:id\}\)/);
-  assert.match(index, /async function savePersona\(\)[\s\S]*?rpc\("set_persona_pet_project",\{p_persona_id:_pid,p_pet_project:_pet\}\)/);
+  assert.match(index, /async function savePersona\(destination="default"\)[\s\S]*?rpc\("set_persona_pet_project",\{p_persona_id:_pid,p_pet_project:_pet\}\)/);
   assert.match(index, /async function deletePersona\(\)[\s\S]*?rpc\("delete_owned_persona",\{p_persona_id:targetId\}\)/);
   assert.match(index, /async function createPrivatePersona\(name,handle\)[\s\S]*?rpc\("save_persona_bundle",\{p_persona_id:null[\s\S]*?visibility:"private"/);
   assert.match(index, /async function createAndAssignLedgerPersona\(id\)[\s\S]*?if\(assigned\.error\)[\s\S]*?rpc\("delete_owned_persona",\{p_persona_id:data\.id\}\)/);

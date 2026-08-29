@@ -232,7 +232,7 @@ test("owner and service erasure cannot be blocked by a full audit log", () => {
 });
 
 test("retained usage receipt is owner-exported but never restored", () => {
-  const exportLoader = html.match(/async function loadGovernanceExportSections[\s\S]*?\n}\nasync function loadFanSessionRows/)?.[0] || "";
+  const exportLoader = html.match(/async function loadGovernanceExportSections[\s\S]*?\r?\n}\r?\nasync function loadFanSessionRows/)?.[0] || "";
   const xlsx = html.match(/async function downloadDataXlsx\(\)[\s\S]*?\nfunction restoreFromFile/)?.[0] || "";
   const restore = html.match(/async function restoreImport\(data\)[\s\S]*?\n}\nfunction/)?.[0] || "";
   assert.match(exportLoader, /\["agent_action_storage_usage","\*","updated_at"\]/);

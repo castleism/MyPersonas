@@ -2704,7 +2704,10 @@ async function renderEdit(id,epoch=++renderEpoch){
   }
   if(epoch!==renderEpoch||session?.user?.id!==ownerUid)return;
   editId=targetId;editLinks=links;editInitialLinks=links.map((l,i)=>({platform:l.platform||"",handle:l.handle||"",url:l.url||"",sort:i}));editT8=top8;t8ResultRows=[];editPageLayout=normalizePersonaPageLayout(layout);editInitialPageLayout=normalizePersonaPageLayout(layout);editPageSnippets=snippets;
-  app.innerHTML=`<div class="card"><h3>${editId?"Edit":"New"} Persona</h3>
+  app.innerHTML=`<div class="card"><div class="matrix-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <h3 style="margin:0">${editId?"Edit":"New"} Persona</h3>
+      ${editId?`<div class="matrix-actions" style="display:flex;gap:8px"><button id="personaEditViewPage" class="btn sec" type="button" title="Save these changes, then open this persona's page" onclick="savePersona('view')">Save &amp; view page</button></div>`:""}
+    </div>
     <p class="muted">Use the <b>?</b> beside a writing field to see how the public page and AI use it. Empty fields show an example only; placeholders are never saved as persona data.</p>
     <div class="row">
       <div><label>Name ${fieldHelp("name","Name")}</label><input id="eName" maxlength="256" value="${esc(p.name||"")}" placeholder="${fieldTemplate("name")}"></div>
@@ -2943,7 +2946,7 @@ function personaDiffLabels(existing,next,extras){
   return labels;
 }
 function concisePersonaDiff(labels){const unique=[...new Set(labels)],shown=unique.slice(0,8),more=unique.length-shown.length;return shown.length?`${shown.join(", ")} updated${more?` and ${more} more`:""}`:""}
-async function savePersona(){
+async function savePersona(destination="default"){
   const startEditId=editId,epoch=renderEpoch,uid=session?.user?.id,accessToken=session?.access_token,handle=document.getElementById("eHandle").value.trim().toLowerCase();
   let targetId=startEditId;
   if(!targetId){const _mine=(myPersonas||[]).find(p=>p.handle===handle);if(_mine)targetId=_mine.id;}
@@ -2994,7 +2997,9 @@ async function savePersona(){
   if(_pid)await loadMine(uid,authLoadGeneration);
   if(editId!==startEditId||epoch!==renderEpoch||session?.user?.id!==uid)return;
   const savedPersona=_pid?myPersonas.find(p=>p.id===_pid):null,requiresReview=!!savedPersona?.publication_state&&savedPersona.publication_state!=="published";
-  toast(requiresReview?"Saved as draft — review the page before publishing":"Saved");go(requiresReview?"review/"+_pid:"p/"+handle);
+  toast(requiresReview?"Saved as draft — review the page before publishing":"Saved");
+  if(destination==="view"&&savedPersona?.handle){go("p/"+savedPersona.handle);return}
+  go(requiresReview?"review/"+_pid:"p/"+(savedPersona?.handle||handle));
 }
 async function deletePersona(){
   const targetId=editId,uid=session?.user?.id,epoch=renderEpoch;if(!targetId||!confirm("Delete this persona, its page, links and all its posts? This cannot be undone. If it is in a backup pair, the other persona stays and becomes standalone."))return;
