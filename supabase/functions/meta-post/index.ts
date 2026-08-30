@@ -6,7 +6,9 @@
 // App Review is only for posting on behalf of other people. See APP-REVIEW-META.md.
 //
 // Actions (POST, owner bearer token):
-//   { action:"publish-draft", draftId }
+//   { action:"prepare-publish-draft", draftId }
+//     returns one short-lived server-authored exact preview receipt.
+//   { action:"publish-draft", draftId, receiptId }
 //     atomically claims one editable post_drafts row, publishes every selected
 //     Meta target, checkpoints each provider ID, then finalizes the row.
 //     -> { status, facebook?: {postId}, instagram?: {mediaId}, errors?: string[] }
@@ -21,6 +23,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   graphDelete,
   isRestrictedMetaPersona,
+  type MetaPublishTarget,
   providerOutcomeIsUncertain,
   publishFacebook,
   publishInstagram,
@@ -45,6 +48,7 @@ type Draft = {
   persona_id: string | null;
   facebook_ledger_id: string | null;
   status: string;
+  scheduled_for: string | null;
   targets: string[] | null;
   source_image_url: string | null;
   fb_image_url: string | null;
@@ -69,7 +73,7 @@ type Draft = {
 };
 
 const DRAFT_COLUMNS = [
-  "id", "owner", "persona_id", "facebook_ledger_id", "status", "targets",
+  "id", "owner", "persona_id", "facebook_ledger_id", "status", "scheduled_for", "targets",
   "source_image_url", "fb_image_url", "ig_image_url", "fb_caption", "ig_caption",
   "fb_post_id", "ig_media_id", "approved_content_hash",
   "approved_fb_media_sha256", "approved_fb_media_mime", "approved_fb_media_bytes",
@@ -168,9 +172,10 @@ async function requireOwnerPublishingUnpaused(owner: string) {
   }
 }
 
-async function ensureImmutableAttemptMedia(
+async function ensureImmutableMedia(
   draft: Draft,
   targets: string[],
+  allowedStatuses: string[],
 ): Promise<Draft> {
   const patch: Record<string, unknown> = {};
   for (const target of targets) {
@@ -208,10 +213,10 @@ async function ensureImmutableAttemptMedia(
   const saved = await admin.from("post_drafts").update({
     ...patch,
     updated_at: new Date().toISOString(),
-  }).eq("id", draft.id).eq("owner", draft.owner).eq("status", "publishing")
+  }).eq("id", draft.id).eq("owner", draft.owner).in("status", allowedStatuses)
     .select(DRAFT_COLUMNS).maybeSingle();
   if (saved.error || !saved.data) {
-    throw new Error("The immutable publish-attempt media snapshot could not be saved.");
+    throw new Error("The immutable preview media snapshot could not be saved.");
   }
   const persisted = saved.data as unknown as Draft;
   for (const target of targets) {
@@ -260,6 +265,122 @@ async function noteReconciliation(
   });
 }
 
+async function handlePreparePublishDraft(
+  userId: string,
+  body: Record<string, unknown>,
+  origin: string,
+) {
+  const draftId = String(body.draftId || "");
+  if (!SAFE_UUID.test(draftId)) {
+    return json({ error: "A valid draftId is required." }, 400, origin);
+  }
+  const pause = await ownerPauseState(userId);
+  if (!pause.available || pause.paused) {
+    return json({ error: pauseMessage(pause), paused: pause.paused },
+      pause.paused ? 409 : 503, origin);
+  }
+  const loaded = await admin.from("post_drafts").select(DRAFT_COLUMNS)
+    .eq("id", draftId).eq("owner", userId)
+    .in("status", ["draft", "approved", "failed"]).maybeSingle();
+  if (loaded.error) {
+    return json({ error: "The Meta draft could not be verified. Nothing was published." }, 503, origin);
+  }
+  if (!loaded.data) {
+    return json({ error: "This Meta draft is scheduled, publishing, or read-only." }, 409, origin);
+  }
+  let draft = loaded.data as unknown as Draft;
+  if (draft.scheduled_for && Date.parse(draft.scheduled_for) > Date.now()) {
+    return json({
+      error:
+        "A future-scheduled draft cannot be posted now. Unschedule, edit, and review it again.",
+    }, 409, origin);
+  }
+  const targets = [...new Set(
+    (Array.isArray(draft.targets) ? draft.targets : [])
+      .map((value) => String(value).toLowerCase()),
+  )];
+  const errors: string[] = [];
+  if (!targets.length || targets.some((target) => !["facebook", "instagram"].includes(target))) {
+    errors.push("Immediate publishing requires Facebook and/or Instagram only; remove X first.");
+  }
+  if (!draft.persona_id || isRestrictedMetaPersona(draft.persona_id)) {
+    errors.push("This persona is not eligible for Meta publishing.");
+  } else {
+    const persona = await admin.from("personas").select("id")
+      .eq("id", draft.persona_id).eq("owner", userId).maybeSingle();
+    if (persona.error || !persona.data) errors.push("The draft persona is missing or not owned.");
+  }
+  if (!draft.facebook_ledger_id || !SAFE_ID.test(draft.facebook_ledger_id)) {
+    errors.push("The draft has no valid Facebook destination.");
+  }
+  const pendingTargets = targets.filter((target) =>
+    (target === "facebook" && !draft.fb_post_id) ||
+    (target === "instagram" && !draft.ig_media_id)
+  ) as MetaPublishTarget[];
+  if (!pendingTargets.length) errors.push("Every selected Meta destination already has a provider result.");
+  if (pendingTargets.includes("facebook") &&
+    !/^https:\/\/\S+$/i.test(draft.fb_image_url || draft.source_image_url || "")) {
+    errors.push("Facebook needs a public HTTPS image.");
+  }
+  if (pendingTargets.includes("instagram") &&
+    !/^https:\/\/\S+$/i.test(draft.ig_image_url || draft.source_image_url || "")) {
+    errors.push("Instagram needs a public HTTPS image.");
+  }
+  if (errors.length) return json({ errors, error: errors.join(" | ") }, 409, origin);
+
+  const context = await resolvePageContext(
+    admin,
+    userId,
+    draft.facebook_ledger_id!,
+    true,
+    pendingTargets,
+  );
+  if (!context.ok) {
+    return json({
+      error: context.error,
+      ...(context.missingScopes
+        ? { postingNotEnabled: true, missingScopes: context.missingScopes }
+        : {}),
+    }, context.status, origin);
+  }
+  if (draft.publish_facebook_page_id &&
+    draft.publish_facebook_page_id !== String(context.asset.facebook_page_id)) {
+    return json({ error: "The Facebook Page changed after a prior provider result." }, 409, origin);
+  }
+  const instagramId = pendingTargets.includes("instagram")
+    ? String(context.asset.instagram_business_id || "")
+    : "";
+  if (draft.publish_instagram_business_id &&
+    draft.publish_instagram_business_id !== instagramId) {
+    return json({ error: "The Instagram destination changed after a prior provider result." }, 409, origin);
+  }
+
+  try {
+    draft = await ensureImmutableMedia(
+      draft,
+      pendingTargets,
+      ["draft", "approved", "failed"],
+    );
+  } catch (error) {
+    return json({ error: (error as Error).message }, 409, origin);
+  }
+  const issued = await admin.rpc("issue_immediate_meta_preview_receipt_service", {
+    p_owner: userId,
+    p_draft_id: draft.id,
+    p_action: "meta.publish_now",
+  });
+  const receipt = (Array.isArray(issued.data) ? issued.data[0] : issued.data) as
+    | Record<string, unknown>
+    | null;
+  if (issued.error || !receipt) {
+    return json({
+      error: issued.error?.message ||
+        "The server could not create an exact Meta preview receipt. Nothing was published.",
+    }, 409, origin);
+  }
+  return json({ receipt }, 200, origin);
+}
+
 async function handlePublishDraft(
   userId: string,
   body: Record<string, unknown>,
@@ -267,6 +388,12 @@ async function handlePublishDraft(
 ) {
   const draftId = String(body.draftId || "");
   if (!SAFE_UUID.test(draftId)) return json({ error: "A valid draftId is required." }, 400, origin);
+  const receiptId = String(body.receiptId || "");
+  if (!SAFE_UUID.test(receiptId)) {
+    return json({
+      error: "Open and approve the current server-generated Meta preview before publishing.",
+    }, 409, origin);
+  }
 
   // The global owner stop applies to interactive publishing too. Check once
   // before taking the row and again after the atomic claim to close the race.
@@ -278,17 +405,22 @@ async function handlePublishDraft(
 
   // The state transition is the concurrency guard. A second click/tab and the
   // scheduled worker both lose this compare-and-set before any provider call.
-  const claimedAt = new Date().toISOString();
-  const claim = await admin.from("post_drafts").update({
-    status: "publishing", publish_claimed_at: claimedAt, updated_at: claimedAt,
-  }).eq("id", draftId).eq("owner", userId)
-    .in("status", ["draft", "approved", "failed"])
-    .select(DRAFT_COLUMNS).maybeSingle();
-  if (claim.error) return json({ error: "Could not claim the draft for publishing." }, 500, origin);
-  if (!claim.data) {
-    return json({ error: "This draft is scheduled, already publishing, or read-only. Reload it first." }, 409, origin);
+  const claim = await admin.rpc(
+    "claim_immediate_meta_post_draft_with_preview_service",
+    {
+      p_owner: userId,
+      p_draft_id: draftId,
+      p_action: "meta.publish_now",
+      p_receipt_id: receiptId,
+    },
+  );
+  if (claim.error) {
+    return json({ error: claim.error.message || "The exact Meta preview receipt could not be consumed." }, 409, origin);
   }
-  let draft = claim.data as unknown as Draft;
+  if (!claim.data) {
+    return json({ error: "The server preview expired, was used, or no longer matches. Reload and preview again." }, 409, origin);
+  }
+  let draft = (Array.isArray(claim.data) ? claim.data[0] : claim.data) as unknown as Draft;
   const pauseAfterClaim = await ownerPauseState(userId);
   if (!pauseAfterClaim.available || pauseAfterClaim.paused) {
     const message = pauseMessage(pauseAfterClaim);
@@ -340,7 +472,7 @@ async function handlePublishDraft(
   // with an existing snapshot verifies and reuses it, ignoring mutable source
   // URLs. The platform URL columns are pinned to the canonical snapshot too.
   try {
-    draft = await ensureImmutableAttemptMedia(draft, targets);
+    draft = await ensureImmutableMedia(draft, targets, ["publishing"]);
   } catch (error) {
     validationErrors.push((error as Error).message);
     const finished = await finishClaim(
@@ -354,7 +486,17 @@ async function handlePublishDraft(
     return json({ status: "failed", errors: validationErrors }, 409, origin);
   }
 
-  const ctx = await resolvePageContext(admin, userId, draft.facebook_ledger_id!);
+  const pendingTargets = targets.filter((target) =>
+    (target === "facebook" && !draft.fb_post_id) ||
+    (target === "instagram" && !draft.ig_media_id)
+  ) as MetaPublishTarget[];
+  const ctx = await resolvePageContext(
+    admin,
+    userId,
+    draft.facebook_ledger_id!,
+    true,
+    pendingTargets,
+  );
   if (!ctx.ok) {
     const finished = await finishClaim(
       userId, draftId, "failed", ctx.error,
@@ -527,7 +669,13 @@ async function handleDelete(
   const pageIdFromPost = postId.includes("_") ? postId.split("_")[0] : "";
 
   // Cleanup remains available even when new publishing is policy-blocked.
-  const ctx = await resolvePageContext(admin, userId, facebookLedgerId, false);
+  const ctx = await resolvePageContext(
+    admin,
+    userId,
+    facebookLedgerId,
+    false,
+    ["facebook"],
+  );
   if (!ctx.ok) return json({ error: ctx.error }, ctx.status, origin);
   if (pageIdFromPost && pageIdFromPost !== String(ctx.asset.facebook_page_id)) {
     return json({ error: "That post does not belong to the specified Page." }, 403, origin);
@@ -551,6 +699,9 @@ serve(async (req) => {
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(body.action || "");
+  if (action === "prepare-publish-draft") {
+    return await handlePreparePublishDraft(user.id, body, origin);
+  }
   if (action === "publish-draft") return await handlePublishDraft(user.id, body, origin);
   if (action === "publish") {
     return json({ error: "Direct image publishing is retired; publish an owner-scoped draft instead." }, 410, origin);

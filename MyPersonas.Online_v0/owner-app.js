@@ -34,6 +34,7 @@ const OWNER_APP_CHANNELS = Object.freeze([
   { key: "facebook", label: "Facebook", icon: "f" },
   { key: "website", label: "Website", icon: "⌂" },
 ]);
+const OWNER_APP_CONTENT_PREVIEW_VERSION = "content-package-preview-v1";
 
 const ownerAppState = {
   uid: "",
@@ -1285,6 +1286,63 @@ function ownerAppPackageVariants(packageId) {
   return OWNER_APP_CHANNELS.map(({ key }) => ownerAppState.variants.find((row) => row.package_id === packageId && row.channel === key)).filter(Boolean);
 }
 
+function ownerAppPackageProposal(id) {
+  const pack = ownerAppState.packages.find((row) => row.id === id);
+  const timezone = autoTz();
+  const fallback = autoZonedInput(pack?.approved_preview_scheduled_for || pack?.scheduled_for || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), timezone);
+  const wall = document.getElementById(`ownerScheduleAt_${id}`)?.value || fallback;
+  const scheduledFor = zonedInputToIso(wall, timezone);
+  if (!scheduledFor) { toast(`That time is invalid in ${timezone}`); return null; }
+  if (Date.parse(scheduledFor) <= Date.now()) { toast("Choose a future proposed manual-work time"); return null; }
+  return { scheduledFor, timezone };
+}
+
+function ownerAppPackagePreviewItems(snapshot) {
+  const proposedFor = String(snapshot?.proposed_for || "");
+  const timezone = String(snapshot?.timezone || autoTz());
+  const packageTitle = String(snapshot?.package_title || "Four-channel content kit");
+  return (Array.isArray(snapshot?.variants) ? snapshot.variants : []).map((variant) => {
+    const mediaPlan = Array.isArray(variant?.media_plan) ? variant.media_plan : [];
+    const mediaItems = mediaPlan.map((item, index) => ({
+      url: safeHttpUrl(item?.source_url || ""),
+      kind: item?.type || "image",
+      label: item?.brief || `Media ${index + 1}`,
+    })).filter((item) => item.url);
+    const primaryMedia = mediaItems[0] || null;
+    const scheduling = snapshot?.action === "manual_schedule";
+    const provider = variant?.preview_provider || (variant?.channel === "x" ? "twitter" : variant?.channel);
+    const placement = ({ twitter: "Timeline", instagram: "Feed", facebook: "Feed", website: "Article" })[provider] || "Standard placement";
+    return {
+      provider,
+      account: variant?.account_label || "No exact account assigned · manual handoff",
+      accountId: variant?.target_id || `manual:${variant?.channel || "unknown"}:unassigned`,
+      title: variant?.title || "",
+      text: variant?.body || "",
+      mediaUrl: primaryMedia?.url || "",
+      mediaKind: primaryMedia?.kind || "",
+      mediaItems,
+      placement,
+      requiresExactTarget: scheduling,
+      exactTargetReady: variant?.target_determinable === true,
+      requiredMediaMissing: scheduling && mediaItems.length !== mediaPlan.length,
+      scheduledFor: proposedFor,
+      timezone,
+      mode: snapshot?.action === "approve"
+        ? "Approval only · proposed manual-work time"
+        : "Manual planning only · no auto-post",
+      platformDetails: [
+        `Package: ${packageTitle}`,
+        `Variant title: ${variant?.title || "(empty)"}`,
+        `Description / SEO summary: ${variant?.description || "(empty)"}`,
+        `Accessibility text: ${variant?.alt_text || "(empty)"}`,
+        `Exact media plan: ${JSON.stringify(mediaPlan)}`,
+        `Target status: ${variant?.target_state || "unassigned"}${variant?.target_determinable ? " · exact assigned account" : " · finish the account choice in the provider portal"}`,
+        "This is a planning record only; it cannot call a provider or auto-post.",
+      ],
+    };
+  });
+}
+
 function ownerAppPackageStatus(status) {
   return ({ generating: "Generating", owner_review: "Needs review", approved: "Approved", scheduled: "Manual schedule", completed: "Completed", rejected: "Rejected", archived: "Archived" })[status] || status;
 }
@@ -1299,13 +1357,14 @@ function ownerAppPackageCard(pack) {
   const persona = ownerAppPersona(pack.persona_id);
   const editable = ["owner_review", "approved"].includes(pack.status);
   const scheduled = pack.status === "scheduled";
-  const wall = autoZonedInput(pack.scheduled_for || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), pack.timezone || autoTz());
+  const zone = autoTz();
+  const wall = autoZonedInput(pack.approved_preview_scheduled_for || pack.scheduled_for || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), zone);
   return `<article class="oa-kit" id="ownerKit_${pack.id}"><div class="oa-kithead"><div class="oa-persona-line"><span class="oa-avatar-sm" style="${safeBgStyle(persona?.avatar_url)}"></span><div><h3>${esc(pack.title || "Four-channel content kit")}</h3><div class="oa-date">${esc(persona?.name || "Persona")} · ${esc(ownerAppPackageStatus(pack.status))}${pack.scheduled_for ? ` · ${esc(ownerAppTime(pack.scheduled_for))}` : ""}</div></div></div><span class="oa-chip ${scheduled ? "good" : pack.status === "owner_review" ? "warn" : ""}">${esc(ownerAppPackageStatus(pack.status))}</span></div>
     <div class="oa-channels">${variants.map(ownerAppChannelCard).join("") || '<div class="oa-capability">No channel variants were stored.</div>'}</div>
     <div class="oa-actions" style="margin-top:12px"><button class="oa-secondary oa-small" onclick="ownerAppEditPackage('${pack.id}')">Review &amp; edit</button><button class="oa-secondary oa-small" onclick="ownerAppOpenHandoff('package','${pack.id}')">AI workroom</button>
-    ${pack.status === "owner_review" ? `<button class="oa-primary oa-small" onclick="ownerAppApprovePackage('${pack.id}')">Approve exact kit</button>` : ""}
+    ${pack.status === "owner_review" ? `<button class="oa-primary oa-small" onclick="ownerAppApprovePackage('${pack.id}')">Preview &amp; approve exact kit</button>` : ""}
     ${scheduled ? `<button class="oa-secondary oa-small" onclick="ownerAppUnschedulePackage('${pack.id}')">Unschedule</button>` : ""}</div>
-    ${pack.status === "approved" ? `<div class="oa-scheduleline"><label><span>Manual schedule time · ${esc(autoTz())}</span><input id="ownerScheduleAt_${pack.id}" type="datetime-local" value="${esc(wall)}"></label><label><span>Meaning</span><div class="oa-chip warn">Planning only · no auto-post</div></label><button class="oa-primary" onclick="ownerAppSchedulePackage('${pack.id}')">Place on schedule</button></div>` : ""}
+    ${["owner_review", "approved"].includes(pack.status) ? `<div class="oa-scheduleline"><label><span>Proposed manual-work time · ${esc(zone)}</span><input id="ownerScheduleAt_${pack.id}" type="datetime-local" value="${esc(wall)}"></label><label><span>Meaning</span><div class="oa-chip warn">Planning only · no auto-post</div></label>${pack.status === "approved" ? `<button class="oa-primary" onclick="ownerAppSchedulePackage('${pack.id}')">Preview &amp; place on schedule</button>` : `<span class="oa-sub">This exact time appears in every approval preview; approval does not schedule it.</span>`}</div>` : ""}
   </article>`;
 }
 
@@ -1346,7 +1405,7 @@ function ownerAppEditPackage(id) {
       <label>Title</label><input id="ownerVariantTitle_${variant.id}" maxlength="300" value="${esc(variant.title || "")}"><label>Body</label><textarea id="ownerVariantBody_${variant.id}" maxlength="${variant.channel === "x" ? 280 : variant.channel === "website" ? 30000 : 10000}" style="min-height:${variant.channel === "website" ? 220 : 120}px">${esc(variant.body || "")}</textarea>
       <label>Description / SEO summary</label><textarea id="ownerVariantDescription_${variant.id}" maxlength="2000">${esc(variant.description || "")}</textarea><label>Accessibility text</label><textarea id="ownerVariantAlt_${variant.id}" maxlength="2000">${esc(variant.alt_text || "")}</textarea>
       <div class="oa-actions"><button class="oa-secondary oa-small" onclick="ownerAppCopyVariant('${variant.id}')">Copy ${esc(variant.channel)}</button><button class="oa-secondary oa-small" onclick="ownerAppOpenChannel('${variant.id}')">Open portal</button>${["scheduled", "approved"].includes(variant.status) ? `<button class="oa-secondary oa-small" onclick="ownerAppMarkVariantPosted('${variant.id}')">Confirm manually posted</button>` : ""}</div></section>`).join("")}
-    <div class="oa-actions" style="margin-top:14px"><button class="oa-primary" onclick="ownerAppSavePackage('${id}')">Save changes</button>${pack.status === "owner_review" ? `<button class="oa-secondary" onclick="ownerAppApprovePackage('${id}')">Approve exact kit</button>` : ""}<button class="oa-secondary" onclick="ownerAppClosePackage()">Close</button></div>
+    <div class="oa-actions" style="margin-top:14px"><button class="oa-primary" onclick="ownerAppSavePackage('${id}')">Save changes</button>${pack.status === "owner_review" ? `<button class="oa-secondary" onclick="ownerAppApprovePackage('${id}')">Preview saved kit &amp; approve</button>` : ""}<button class="oa-secondary" onclick="ownerAppClosePackage()">Close</button></div>
   </div></div>`;
   document.body.appendChild(modal);
   ownerAppReadNotificationFor("content_package", id);
@@ -1384,23 +1443,78 @@ async function ownerAppSavePackage(id) {
 }
 
 async function ownerAppApprovePackage(id) {
-  if (!confirm("Approve the exact X, Instagram, Facebook, and website variants shown? Any later edit clears this approval.")) return;
-  const result = await sb.rpc("approve_content_package", { p_package_id: id });
-  if (result.error) { toast(result.error.message); return; }
-  toast("Exact four-channel kit approved; it is not published or scheduled yet");
-  ownerAppClosePackage(); ownerAppState.loadedAt = 0; await ownerAppLoad(true); ownerAppRenderScheduleLoaded();
+  return ownerAppPreviewPackageAction(id, "approve");
 }
 
 async function ownerAppSchedulePackage(id) {
-  const wall = document.getElementById(`ownerScheduleAt_${id}`)?.value || "";
-  const timezone = autoTz();
-  const scheduledFor = zonedInputToIso(wall, timezone);
-  if (!scheduledFor) { toast(`That time is invalid in ${timezone}`); return; }
-  if (!confirm(`Place this approved kit on the manual work schedule for ${ownerAppTime(scheduledFor)}? This does not auto-post.`)) return;
-  const result = await sb.rpc("schedule_content_package", { p_package_id: id, p_scheduled_for: scheduledFor, p_timezone: timezone });
+  return ownerAppPreviewPackageAction(id, "manual_schedule");
+}
+
+async function ownerAppPreviewPackageAction(id, action) {
+  if (typeof openPlatformPreviewDialog !== "function") {
+    toast("Exact platform preview is unavailable. Nothing was approved or scheduled.");
+    return;
+  }
+  const proposal = ownerAppPackageProposal(id);
+  if (!proposal) return;
+  const result = await sb.rpc("content_package_preview_snapshot", {
+    p_package_id: id,
+    p_action: action,
+    p_scheduled_for: proposal.scheduledFor,
+    p_timezone: proposal.timezone,
+  });
+  const snapshot = result.data;
+  const expectedChannels = ["x", "instagram", "facebook", "website"];
+  const channels = Array.isArray(snapshot?.variants) ? snapshot.variants.map((row) => row?.channel) : [];
+  if (result.error || snapshot?.version !== OWNER_APP_CONTENT_PREVIEW_VERSION
+      || snapshot?.action !== action || snapshot?.package_id !== id
+      || expectedChannels.some((channel) => !channels.includes(channel))
+      || !snapshot?.preview_hash || !snapshot?.target_hash
+      || !snapshot?.variant_hashes
+      || !/^[0-9a-f-]{36}$/i.test(String(snapshot?.receipt_id || ""))
+      || !Number.isFinite(Date.parse(snapshot?.expires_at || ""))
+      || Date.parse(snapshot.expires_at) <= Date.now()
+      || Date.parse(snapshot?.proposed_for || "") !== Date.parse(proposal.scheduledFor)) {
+    toast(result.error?.message || "The server could not bind all four exact platform previews. Nothing changed.");
+    return;
+  }
+  const items = ownerAppPackagePreviewItems(snapshot);
+  if (items.length !== 4) { toast("All four exact platform previews are required. Nothing changed."); return; }
+  openPlatformPreviewDialog({
+    title: action === "approve" ? "Review all four variants before approval" : "Review all four manual schedule previews",
+    intro: action === "approve"
+      ? `Review the exact saved X, Instagram, Facebook, and website variants and their proposed manual-work time (${ownerAppTime(proposal.scheduledFor)}). Approval does not schedule or publish them.`
+      : `Review every exact variant, target, media plan, and time (${ownerAppTime(proposal.scheduledFor)}). This creates a planning record only and never auto-posts.`,
+    items,
+    confirmLabel: action === "approve" ? "Approve exact four-card preview" : "Approve previews & place on manual schedule",
+    onConfirm: () => ownerAppCommitPackagePreview(id, snapshot),
+  });
+}
+
+async function ownerAppCommitPackagePreview(id, snapshot) {
+  if (Date.parse(snapshot?.expires_at || "") <= Date.now()) {
+    toast("That exact four-platform preview expired. Open it again before continuing.");
+    return;
+  }
+  const proof = {
+    p_receipt_id: snapshot.receipt_id,
+    p_package_id: id,
+    p_action: snapshot.action,
+    p_scheduled_for: snapshot.proposed_for,
+    p_timezone: snapshot.timezone,
+    p_preview_version: snapshot.version,
+    p_preview_hash: snapshot.preview_hash,
+    p_target_hash: snapshot.target_hash,
+    p_variant_hashes: snapshot.variant_hashes,
+  };
+  const acknowledgement = await sb.rpc("acknowledge_content_package_preview", proof);
+  if (acknowledgement.error) { toast(acknowledgement.error.message); return; }
+  const result = await sb.rpc("commit_content_package_preview", proof);
   if (result.error) { toast(result.error.message); return; }
-  toast("Added to the manual schedule; no provider publishing was activated");
-  ownerAppState.loadedAt = 0; await ownerAppLoad(true); ownerAppRenderScheduleLoaded();
+  toast(snapshot.action === "approve"
+    ? "Exact four-channel preview approved; nothing was scheduled or published"
+    : "Added to the manual plan; no provider publishing was activated");
+  ownerAppClosePackage(); ownerAppState.loadedAt = 0; await ownerAppLoad(true); ownerAppRenderScheduleLoaded();
 }
 
 async function ownerAppUnschedulePackage(id) {

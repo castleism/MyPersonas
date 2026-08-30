@@ -193,9 +193,14 @@ test("Composer schedules only through the authenticated immutable-media boundary
 
   assert.match(frontend, /functions\/v1\/approve-post-draft/);
   assert.match(frontend, /Authorization":"Bearer "\+active\.access_token/);
-  assert.match(frontend, /button\.textContent="Approving media…"/);
+  assert.match(frontend, /button\.textContent="Staging exact media…"/);
   assert.doesNotMatch(frontend, /sb\.rpc\("approve_and_schedule_post_draft"/);
-  assert.match(approvalFunction, /admin\.rpc\("approve_and_schedule_post_draft"/);
+  assert.match(approvalFunction, /admin\.rpc\("issue_post_draft_schedule_preview_receipt_service"/);
+  assert.match(approvalFunction, /consume_acknowledged_post_draft_schedule_preview_service/);
+  assert.match(frontend, /acknowledge_post_draft_schedule_preview_receipt/);
+  assert.match(frontend, /action:"prepare-schedule"/);
+  assert.match(frontend, /action:"commit-schedule"/);
+  assert.doesNotMatch(frontend, /previewConfirmed:true,previewFacebookPageId/);
   assert.match(config, /\[functions\.approve-post-draft\]\s*verify_jwt\s*=\s*true/);
 });
 

@@ -14,9 +14,10 @@ test("Reddit publishing uses the canonical owner pause and an exact atomic claim
   const source = await readFile(redditPostPath, "utf8");
   assert.match(source, /\.from\("agent_owner_settings"\)/);
   assert.doesNotMatch(source, /\.from\("agent_settings"\)/);
-  assert.match(source, /\.eq\("approval_state", "approved"\)/);
-  assert.match(source, /\.eq\("approved_content_hash", draft\.approved_content_hash\)/);
-  assert.match(source, /\.eq\("provider_post_id", ""\)/);
+  assert.match(source, /"issue_immediate_agent_preview_receipt_service"/);
+  assert.match(source, /"claim_immediate_agent_draft_with_preview_service"/);
+  assert.match(source, /p_receipt_id: receiptId/);
+  assert.doesNotMatch(source, /const \{ data: claimed, error: leaseError \} = await service\.from\("drafts"\)/);
   assert.match(source, /const title = \(claimed\.title/);
   assert.match(source, /old\.publish_state|Protected draft fields cannot change once publishing begins|publish_state: "publishing"/);
 });
@@ -52,9 +53,10 @@ test("the owner Queue exposes only the guarded Reddit draft endpoint", async () 
   const html = await readFile(frontendPath, "utf8");
   assert.match(html, /Post to Reddit now/);
   assert.match(html, /function publishRedditDraft\(id,button\)/);
-  assert.match(html, /\/functions\/v1\/reddit-post/);
-  assert.match(html, /body:JSON\.stringify\(\{draftId:id\}\)/);
-  assert.match(html, /response\.status===202&&result\.reconciliationRequired/);
+  assert.match(html, /providerPostAction\("reddit-post",\{action:"prepare-publish-draft",draftId:id\}\)/);
+  assert.match(html, /providerPostAction\("reddit-post",\{action:"publish-draft",draftId:id,receiptId\}\)/);
+  assert.match(html, /openImmediateReceiptPreview/);
+  assert.match(html, /sent\.status===202&&sent\.data\?\.reconciliationRequired/);
 });
 
 test("Reddit disconnect confirms provider revocation before clearing local tokens", async () => {

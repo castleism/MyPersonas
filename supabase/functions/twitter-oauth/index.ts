@@ -3,7 +3,7 @@
 // Frontend contract (all POST requests require the signed-in user's Supabase
 // bearer token and an allowed Origin):
 //   { action:"capabilities", ledgerId? }
-//   { action:"start", ledgerId }
+//   { action:"start", ledgerId, enablePosting? }
 //     -> { authorizationUrl, browserNonce }
 //   { action:"complete", state, code, browserNonce, providerError? }
 //   { action:"refresh", ledgerId }
@@ -24,8 +24,10 @@
 // merely because an ambiguous provider request failed.
 //
 // Tokens are never returned to the browser. Access and refresh tokens are stored
-// only in Supabase Vault by service-only migration 015 RPCs. This connector does
-// not contain any X posting endpoint and reports postingEnabled:false.
+// only in Supabase Vault by service-only migration 015 RPCs. Identity/read is
+// the default authorization. The owner must explicitly set enablePosting:true
+// (and reconnect an existing read-only grant) before tweet.write is requested.
+// media.write is deliberately absent until a reviewed media-upload adapter exists.
 //
 // Deploy without gateway JWT verification because the X callback has no
 // Supabase Authorization header. Every POST action validates the JWT manually.
@@ -47,13 +49,17 @@ const X_AUTHORIZATION_URL = "https://x.com/i/oauth2/authorize";
 const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 const X_REVOKE_URL = "https://api.x.com/2/oauth2/revoke";
 const X_ME_URL = "https://api.x.com/2/users/me";
-// Least privilege for identity binding and durable connection health. A future
-// posting connector must request tweet.write through explicit reauthorization
-// only after its publish path and consent UI are reviewed and enabled.
-const REQUIRED_SCOPES = [
+// Least privilege for identity binding and durable connection health.
+const READ_SCOPES = [
   "tweet.read",
   "users.read",
   "offline.access",
+] as const;
+// Publishing is a separate, explicit consent mode. Do not add media.write until
+// this repository contains and verifies a real X media-upload implementation.
+const PUBLISH_SCOPES = [
+  ...READ_SCOPES,
+  "tweet.write",
 ] as const;
 const LOCAL_RESET_ERROR_CODES = new Set([
   "twitter_already_connected",
@@ -98,7 +104,10 @@ type OAuthActionBody = {
   browserNonce?: string;
   providerError?: string;
   manualRevocationAcknowledged?: boolean;
+  enablePosting?: boolean;
 };
+
+type XAccessMode = "read" | "publish";
 
 type XIdentity = {
   id: string;
@@ -226,8 +235,22 @@ function normalizeScopes(value: unknown) {
   ].sort();
 }
 
-function hasRequiredScopes(scopes: string[]) {
-  return REQUIRED_SCOPES.every((scope) => scopes.includes(scope));
+function scopesForMode(mode: XAccessMode): readonly string[] {
+  return mode === "publish" ? PUBLISH_SCOPES : READ_SCOPES;
+}
+
+function hasRequiredScopes(
+  scopes: string[],
+  required: readonly string[] = READ_SCOPES,
+) {
+  return required.every((scope) => scopes.includes(scope));
+}
+
+function accessModeFromState(state: string): XAccessMode {
+  // The state is random, single-use, stored only as a SHA-256 digest, and
+  // checked against the initiating browser nonce before this prefix is trusted.
+  // Legacy unprefixed transactions remain read-only.
+  return state.startsWith("w_") ? "publish" : "read";
 }
 
 function safeExpiry(expiresIn: unknown) {
@@ -748,7 +771,11 @@ async function capabilities(
     configured: credentialsConfigured(),
     authenticationEnabled: credentialsConfigured(),
     postingEnabled: false,
-    requiredScopes: [...REQUIRED_SCOPES],
+    requiredScopes: [...READ_SCOPES],
+    readScopes: [...READ_SCOPES],
+    postingScopes: [...PUBLISH_SCOPES],
+    explicitPostingConsentRequired: true,
+    mediaUploadEnabled: false,
     refreshSupported: true,
     revokeSupported: true,
     callbackUrl: CALLBACK_URL,
@@ -764,8 +791,9 @@ async function capabilities(
   }
   const [connection, credential] = await Promise.all([
     admin.from("account_connections")
-      .select("connection_state,error_code,expires_at")
+      .select("connection_state,error_code,expires_at,granted_scopes")
       .eq("ledger_id", ledger.id)
+      .eq("owner", ledger.owner)
       .maybeSingle(),
     admin.from("twitter_credentials")
       .select("ledger_id")
@@ -782,6 +810,15 @@ async function capabilities(
   result.errorCode = connection.data?.error_code || "";
   result.expiresAt = connection.data?.expires_at || null;
   result.credentialPresent = Boolean(credential.data);
+  const grantedScopes = normalizeScopes(connection.data?.granted_scopes);
+  result.grantedScopes = grantedScopes;
+  result.postingEnabled = credentialsConfigured() &&
+    connection.data?.connection_state === "connected" &&
+    hasRequiredScopes(grantedScopes, PUBLISH_SCOPES) &&
+    Boolean(credential.data);
+  result.writeReconnectRequired =
+    connection.data?.connection_state === "connected" &&
+    !result.postingEnabled;
   return json(result, 200, origin);
 }
 
@@ -789,6 +826,7 @@ async function startAuthorization(
   req: Request,
   origin: string,
   ledgerIdInput = "",
+  enablePosting = false,
 ) {
   if (!credentialsConfigured()) {
     return json(
@@ -845,8 +883,10 @@ async function startAuthorization(
   if (connection.data?.connection_state === "connected") {
     return json(
       {
-        error:
-          "This X account is already connected. Disconnect it before authorizing it again.",
+        error: enablePosting
+          ? "This X account has an existing grant. Disconnect it, then choose the explicit posting connection to request tweet.write."
+          : "This X account is already connected. Disconnect it before authorizing it again.",
+        writeReconnectRequired: enablePosting,
       },
       409,
       origin,
@@ -925,7 +965,11 @@ async function startAuthorization(
     );
   }
 
-  const state = randomUrlSafe(32);
+  const accessMode: XAccessMode = enablePosting ? "publish" : "read";
+  const requestedScopes = scopesForMode(accessMode);
+  // Encode only the non-secret consent mode in the single-use random state.
+  // The exact state remains protected by the stored digest and browser nonce.
+  const state = `${accessMode === "publish" ? "w" : "r"}_${randomUrlSafe(32)}`;
   const browserNonce = randomUrlSafe(32);
   const verifier = randomUrlSafe(64);
   const stateHash = await sha256Hex(state);
@@ -956,7 +1000,7 @@ async function startAuthorization(
     response_type: "code",
     client_id: X_CLIENT_ID,
     redirect_uri: CALLBACK_URL,
-    scope: REQUIRED_SCOPES.join(" "),
+    scope: requestedScopes.join(" "),
     state,
     code_challenge: challenge,
     code_challenge_method: "S256",
@@ -966,6 +1010,9 @@ async function startAuthorization(
     {
       authorizationUrl: authorization.toString(),
       browserNonce,
+      accessMode,
+      requestedScopes: [...requestedScopes],
+      postingRequested: accessMode === "publish",
       postingEnabled: false,
     },
     200,
@@ -1029,6 +1076,8 @@ async function completeAuthorization(
   if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
 
   const rawState = (body.state || "").trim();
+  const requestedMode = accessModeFromState(rawState);
+  const requestedScopes = scopesForMode(requestedMode);
   const browserNonce = (body.browserNonce || "").trim();
   const code = (body.code || "").trim();
   const providerError = body.providerError === "access_denied"
@@ -1253,11 +1302,12 @@ async function completeAuthorization(
     }
     if (shared.shared) return rejectSharedXGrant(ledger, origin);
 
-    if (!hasRequiredScopes(token.scopes)) {
+    if (!hasRequiredScopes(token.scopes, requestedScopes)) {
       return failAfterProviderGrant(ledger, origin, {
         errorCode: "x_scope_missing",
-        message:
-          "X did not grant every required identity, reading, and offline-access permission.",
+        message: requestedMode === "publish"
+          ? "X did not grant the requested posting permission. Revoke this attempt before reconnecting."
+          : "X did not grant every required identity, reading, and offline-access permission.",
         token,
         identity,
       });
@@ -1340,7 +1390,10 @@ async function completeAuthorization(
           username: identity.username,
           name: identity.name,
         },
-        postingEnabled: false,
+        accessMode: requestedMode,
+        grantedScopes: token.scopes,
+        postingEnabled: hasRequiredScopes(token.scopes, PUBLISH_SCOPES),
+        mediaUploadEnabled: false,
       },
       200,
       origin,
@@ -1491,7 +1544,7 @@ async function refreshAuthorization(
         origin,
       );
     }
-    if (!hasRequiredScopes(token.scopes)) {
+    if (!hasRequiredScopes(token.scopes, READ_SCOPES)) {
       await markConnectionError(ledger, "x_scope_missing", true);
       return json(
         { error: "The refreshed X grant is missing required permissions." },
@@ -1554,7 +1607,9 @@ async function refreshAuthorization(
         refreshed: true,
         ledgerId: ledger.id,
         expiresAt: token.expiresAt,
-        postingEnabled: false,
+        grantedScopes: token.scopes,
+        postingEnabled: hasRequiredScopes(token.scopes, PUBLISH_SCOPES),
+        mediaUploadEnabled: false,
       },
       200,
       origin,
@@ -1944,7 +1999,12 @@ serve(async (req) => {
     return capabilities(req, origin, body.ledgerId);
   }
   if (body.action === "start") {
-    return startAuthorization(req, origin, body.ledgerId);
+    return startAuthorization(
+      req,
+      origin,
+      body.ledgerId,
+      body.enablePosting === true,
+    );
   }
   if (body.action === "complete") {
     return completeAuthorization(req, origin, body);

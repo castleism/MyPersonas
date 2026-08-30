@@ -2,7 +2,8 @@
 // Reddit account (official OAuth API, scope "submit").
 //
 // Frontend contract (POST, signed-in user's Supabase bearer token required):
-//   { draftId } -> { published:true, url, fullname } | { error }
+//   { action:"prepare-publish-draft", draftId } -> short-lived exact receipt
+//   { action:"publish-draft", draftId, receiptId } -> provider result | error
 //
 // Destination rule: if the draft's tags contain "r/<subreddit>", the post goes
 // to that subreddit; otherwise it posts to the account's own profile
@@ -95,10 +96,24 @@ serve(async (req: Request): Promise<Response> => {
   }
   const uid = guard.user.id;
 
+  let body: Record<string, unknown> = {};
   let draftId = "";
-  try { draftId = String((await req.json())?.draftId || ""); }
+  try {
+    body = await req.json() as Record<string, unknown>;
+    draftId = String(body?.draftId || "");
+  }
   catch (_e) { return json(origin, 400, { error: "Invalid request body" }); }
   if (!SAFE_UUID.test(draftId)) return json(origin, 400, { error: "A draft id is required" });
+  const action = String(body.action || "publish-draft");
+  if (!["prepare-publish-draft", "publish-draft"].includes(action)) {
+    return json(origin, 400, { error: "Unknown action" });
+  }
+  const receiptId = String(body.receiptId || "");
+  if (action === "publish-draft" && !SAFE_UUID.test(receiptId)) {
+    return json(origin, 409, {
+      error: "Open and approve the current server-generated Reddit preview before publishing.",
+    });
+  }
 
   const service = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
@@ -146,19 +161,51 @@ serve(async (req: Request): Promise<Response> => {
   const scopes = Array.isArray(connection.granted_scopes) ? connection.granted_scopes : [];
   if (!scopes.includes("submit")) return json(origin, 409, { error: "This Reddit grant has no submit permission. Reconnect the account." });
 
+  if (action === "prepare-publish-draft") {
+    const issued = await service.rpc(
+      "issue_immediate_agent_preview_receipt_service",
+      {
+        p_owner: uid,
+        p_draft_id: draft.id,
+        p_provider: "reddit",
+        p_action: "reddit.publish_now",
+      },
+    );
+    const receipt = (Array.isArray(issued.data) ? issued.data[0] : issued.data) as
+      | Record<string, unknown>
+      | null;
+    if (issued.error || !receipt) {
+      return json(origin, 409, {
+        error: issued.error?.message ||
+          "The server could not create an exact Reddit preview receipt. Nothing was published.",
+      });
+    }
+    return json(origin, 200, { receipt });
+  }
+
   // Atomically claim the same exact approved row that was validated above.
   // Protected draft fields cannot change once publishing begins, and every
   // provider input below comes from the claimed row rather than the stale read.
-  const { data: claimed, error: leaseError } = await service.from("drafts")
-    .update({ publish_state: "publishing", publish_error: "" })
-    .eq("id", draft.id).eq("owner", uid)
-    .eq("approval_state", "approved")
-    .eq("approved_content_hash", draft.approved_content_hash)
-    .eq("provider_post_id", "")
-    .in("publish_state", ["not_queued", "queued", "failed", "blocked"])
-    .select("id,owner,persona_id,account_id,platform,title,body,tags,media_url,content_kind,publish_at,approval_state,approved_content_hash,publish_state,provider_post_id")
-    .maybeSingle();
-  if (leaseError) return json(origin, 503, { error: "The approved Reddit draft could not be claimed. Nothing was published." });
+  // Receipt consumption and the state transition occur in one DB transaction.
+  const claim = await service.rpc(
+    "claim_immediate_agent_draft_with_preview_service",
+    {
+      p_owner: uid,
+      p_draft_id: draft.id,
+      p_provider: "reddit",
+      p_action: "reddit.publish_now",
+      p_receipt_id: receiptId,
+    },
+  );
+  const claimed = (Array.isArray(claim.data) ? claim.data[0] : claim.data) as
+    | typeof draft
+    | null;
+  if (claim.error) {
+    return json(origin, 409, {
+      error: claim.error.message ||
+        "The server preview expired, was used, or no longer matches. Nothing was published.",
+    });
+  }
   if (!claimed) return json(origin, 409, { error: "This draft changed, lost approval, or is already being published" });
   // Preserve the successful narrowing inside the nested audit/reconciliation
   // helpers below; they execute only after the atomic claim succeeded.
