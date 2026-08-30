@@ -185,6 +185,8 @@ button.oa-listitem{width:100%;font:inherit;cursor:pointer}
 
 .oa-companion{width:100%}
 .oa-companion-dialogue{position:relative;width:100%;display:block;text-align:left;border:1px solid rgba(150,181,231,.34);border-radius:15px 15px 15px 5px;padding:10px 11px;background:linear-gradient(145deg,#172c4d,#263f6b);color:#fff;box-shadow:0 10px 25px rgba(11,28,56,.23);cursor:pointer}
+.oa-companion-dialogue[hidden]{display:none!important}.oa-companion-dialogue[hidden]+.oa-companion-card{margin-top:0}
+.oa-companion-dialogue[data-dismissible="true"]{padding-right:34px}.oa-companion-dialogue[data-dismissible="true"]:before{content:"×";position:absolute;right:11px;top:8px;width:18px;height:18px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:15px;line-height:1;font-weight:900}
 .oa-companion-dialogue:after{content:"";position:absolute;left:23px;bottom:-8px;border:8px solid transparent;border-top-color:#263f6b;border-bottom:0;transform:skewX(-16deg)}
 .oa-companion-dialogue span{display:block;color:#aecaef;font-size:9px;line-height:1.2;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
 .oa-companion-dialogue b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;font-size:11px;line-height:1.4;font-weight:750}
