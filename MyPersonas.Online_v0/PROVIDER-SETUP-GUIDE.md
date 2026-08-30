@@ -101,7 +101,7 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 **Owner steps**
 
 1. Open [Meta for Developers — My Apps](https://developers.facebook.com/apps/) and create a **Business** app.
-2. Open [Meta Business](https://business.facebook.com/) and confirm that you administer the Pages and linked Instagram accounts.
+2. Open [Meta Business settings](https://business.facebook.com/settings/), select the correct business portfolio, and confirm that you administer the Pages and linked Instagram accounts.
 3. Add Facebook Login for Business and this exact callback:
    `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth`
 4. Add `mypersonas.online` to the allowed app domains and use the live policy URLs above.
@@ -121,7 +121,7 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 - Deploy and verify the reviewed media-container status checks, publish primitive, media validation, partial-success reconciliation, and one disposable professional-account test. Instagram deletion remains a manual in-app action.
 - Stories through the Facebook Login route are limited to eligible business accounts; do not assume every professional account can use every format.
 
-Meta's official references: [Facebook API workspace](https://www.postman.com/meta/facebook/overview), [Instagram API with Facebook Login](https://www.postman.com/meta/instagram/folder/23987686-3a75357f-e106-47ef-a8d9-af1aadf85365), [App Review](https://developers.facebook.com/docs/app-review/), and [Business verification](https://developers.facebook.com/docs/development/release/business-verification).
+Meta's official setup and reference links: [Meta App Dashboard](https://developers.facebook.com/apps/) to configure the app, [Facebook Pages API getting started](https://developers.facebook.com/docs/pages-api/getting-started/) and [Page posts documentation](https://developers.facebook.com/docs/pages-api/posts/) for the Page-publishing API, [Instagram API with Facebook Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/), [App Review](https://developers.facebook.com/docs/app-review/), and [Business verification](https://developers.facebook.com/docs/development/release/business-verification).
 
 **Standalone Instagram alternative:** Meta also offers Instagram Login for professional accounts without a linked Page. It uses `instagram_business_basic` and `instagram_business_content_publish`. MyPersonas should add this only as a separate connector after the paired Page route is stable; see the [official Instagram API documentation](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api).
 
