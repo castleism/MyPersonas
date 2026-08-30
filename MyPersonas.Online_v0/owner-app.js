@@ -388,7 +388,33 @@ function ownerAppCompanionNotice(persona) {
     || ownerAppState.briefs.find((item) => item.status === "new");
   if (brief) return { kind: "route", route: `briefs/${brief.id}`, kicker: `New briefing · ${ownerAppPersonaName(brief.persona_id)}`, message: brief.title || brief.summary || "New research is ready to read." };
   if (ownerAppState.unreadCount) return { kind: "route", route: "notifications", kicker: "Owner review", message: `${ownerAppState.unreadCount} item${ownerAppState.unreadCount === 1 ? " is" : "s are"} waiting for review.` };
-  return { kind: "chat", kicker: persona ? `${persona.name} is ready` : "Owner companion", message: persona?.tagline || "Choose what we work on next." };
+  const tagline = String(persona?.tagline || "").trim();
+  if (persona && tagline) return { kind: "tagline", kicker: `${persona.name} is ready`, message: tagline };
+  return { kind: "chat", kicker: persona ? `${persona.name} is ready` : "Owner companion", message: "Choose what we work on next." };
+}
+
+function ownerAppCompanionTaglineKey(personaId, uid = session?.user?.id || "") {
+  return uid && personaId ? `aliaspaces_owner_companion_tagline_${uid}_${personaId}` : "";
+}
+
+function ownerAppCompanionTaglineDismissed(persona, action) {
+  if (!persona?.id || action?.kind !== "tagline") return false;
+  const key = ownerAppCompanionTaglineKey(persona.id);
+  if (!key) return false;
+  try { return sessionStorage.getItem(key) === action.message; } catch (_) { return false; }
+}
+
+function ownerAppDismissCompanionTagline(action = ownerAppState.companionAction || ownerAppCompanionNotice(ownerAppPersona())) {
+  if (action?.kind !== "tagline") return false;
+  const persona = ownerAppPersona();
+  const key = ownerAppCompanionTaglineKey(persona?.id);
+  if (key) {
+    try { sessionStorage.setItem(key, action.message); } catch (_) {}
+  }
+  const dialogue = document.getElementById("ownerCompanionDialogue");
+  if (dialogue) dialogue.hidden = true;
+  document.getElementById("ownerCompanionPortrait")?.focus();
+  return true;
 }
 
 function ownerAppSyncCompanion() {
@@ -401,6 +427,7 @@ function ownerAppSyncCompanion() {
   const badge = document.getElementById("ownerCompanionBadge");
   const kicker = document.getElementById("ownerCompanionKicker");
   const message = document.getElementById("ownerCompanionMessage");
+  const dialogue = document.getElementById("ownerCompanionDialogue");
   if (portrait) {
     const avatar = safeHttpUrl(persona?.avatar_url || "");
     portrait.style.backgroundImage = avatar ? `url("${avatar.replace(/["\\]/g, "")}")` : "";
@@ -413,8 +440,22 @@ function ownerAppSyncCompanion() {
     badge.hidden = ownerAppState.unreadCount < 1;
   }
   ownerAppState.companionAction = ownerAppCompanionNotice(persona);
-  if (kicker) kicker.textContent = ownerAppState.companionAction.kicker;
-  if (message) message.textContent = ownerAppState.companionAction.message;
+  const action = ownerAppState.companionAction;
+  const tagline = action.kind === "tagline";
+  if (dialogue) {
+    dialogue.hidden = tagline && ownerAppCompanionTaglineDismissed(persona, action);
+    if (tagline) {
+      dialogue.dataset.dismissible = "true";
+      dialogue.setAttribute("aria-label", `Hide ${persona.name} tagline`);
+      dialogue.title = "Hide this tagline bubble";
+    } else {
+      delete dialogue.dataset.dismissible;
+      dialogue.setAttribute("aria-label", action.kind === "chat" ? "Chat with selected persona" : `Open ${action.kicker}`);
+      dialogue.title = action.kind === "chat" ? "Chat with selected persona" : `Open ${action.kicker}`;
+    }
+  }
+  if (kicker) kicker.textContent = action.kicker;
+  if (message) message.textContent = action.message;
 }
 
 function ownerAppSyncChrome() {
@@ -465,7 +506,8 @@ function ownerAppTalkToCompanion() {
 
 function ownerAppOpenCompanionNotice() {
   const action = ownerAppState.companionAction || ownerAppCompanionNotice(ownerAppPersona());
-  if (action.kind === "notification") ownerAppOpenNotification(action.id);
+  if (action.kind === "tagline") ownerAppDismissCompanionTagline(action);
+  else if (action.kind === "notification") ownerAppOpenNotification(action.id);
   else if (action.kind === "route") go(action.route);
   else ownerAppTalkToCompanion();
 }

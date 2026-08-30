@@ -24,16 +24,20 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(html, /id="ownerMobileNav"/);
   assert.match(html, /id="ownerMobileMore"/);
   assert.match(html, /id="ownerPersonaCompanion"/);
+  assert.match(html, /id="ownerCompanionDialogue"[^>]*aria-describedby="ownerCompanionMessage"/);
   assert.doesNotMatch(html, /id="(?:bugBtnMobile|pageChatBtnMobile)"/);
   assert.match(css, /safe-area-inset-bottom/);
   assert.match(css, /\.oa-mobile-nav\[hidden\]\{display:none!important\}/);
   assert.match(css, /\.oa-companion-dialogue/);
+  assert.match(css, /\.oa-companion-dialogue\[hidden\]\{display:none!important\}/);
+  assert.match(css, /\.oa-companion-dialogue\[data-dismissible="true"\]/);
   assert.match(css, /@media\(max-width:520px\)/);
   assert.match(source, /function ownerAppSyncChrome\(\)/);
   assert.match(source, /function ownerAppRememberPersona\(/);
   assert.match(source, /function ownerAppSelectRoutePersona\(/);
   assert.match(source, /function ownerAppToggleMore\(/);
   assert.match(source, /function ownerAppOpenCompanionNotice\(\)/);
+  assert.match(source, /function ownerAppDismissCompanionTagline\(/);
   assert.ok(workflow.includes("--include '/owner-app.css'"));
   assert.ok(workflow.includes("--include '/owner-app.js'"));
   new vm.Script(source, { filename: "owner-app.js" });
@@ -70,7 +74,89 @@ test("route and dropdown persona changes update the companion selection", async 
   assert.equal(syncs, 2);
   assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
   assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
-  assert.match(html, /owner-app\.js\?v=20260822-6/);
+  assert.match(html, /owner-app\.js\?v=20260829-1/);
+});
+
+test("clicking the persona tagline bubble dismisses it without opening chat", async () => {
+  const source = await read("MyPersonas.Online_v0/owner-app.js");
+  const helperStart = source.indexOf("function ownerAppCompanionTaglineKey");
+  const helperEnd = source.indexOf("function ownerAppSyncChrome", helperStart);
+  const clickStart = source.indexOf("function ownerAppOpenCompanionNotice");
+  const clickEnd = source.indexOf("function ownerAppPickerHtml", clickStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart && clickStart >= 0 && clickEnd > clickStart);
+
+  const values = new Map();
+  const persona = { id: "persona-a", name: "Alpha", handle: "alpha", tagline: "Alpha's current tagline.", avatar_url: "" };
+  const elements = {
+    ownerPersonaCompanion: { hidden: false },
+    ownerCompanionPortrait: { style: {}, setAttribute() {}, focusCount: 0, focus() { this.focusCount += 1; } },
+    ownerCompanionName: {}, ownerCompanionHandle: {}, ownerCompanionBadge: {},
+    ownerCompanionKicker: {}, ownerCompanionMessage: {},
+    ownerCompanionDialogue: {
+      hidden: false, dataset: {}, attributes: {},
+      setAttribute(name, value) { this.attributes[name] = value; },
+    },
+  };
+  let action = { kind: "tagline", kicker: "Alpha is ready", message: persona.tagline };
+  let chatCalls = 0, notificationCalls = 0, routeCalls = 0;
+  const context = vm.createContext({
+    ownerAppState: { companionAction: null, unreadCount: 0 },
+    ownerAppPersona: () => persona,
+    ownerAppCompanionNotice: () => action,
+    ownerAppPersonaName: () => persona.name,
+    safeHttpUrl: () => "",
+    session: { user: { id: "owner-1" } },
+    sessionStorage: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+    },
+    document: { getElementById: (id) => elements[id] || null },
+    ownerAppOpenNotification: () => { notificationCalls += 1; },
+    go: () => { routeCalls += 1; },
+    ownerAppTalkToCompanion: () => { chatCalls += 1; },
+  });
+  vm.runInContext(source.slice(helperStart, helperEnd) + "\n" + source.slice(clickStart, clickEnd), context);
+
+  vm.runInContext("ownerAppSyncCompanion()", context);
+  assert.equal(elements.ownerCompanionDialogue.hidden, false);
+  assert.equal(elements.ownerCompanionDialogue.attributes["aria-label"], "Hide Alpha tagline");
+  assert.equal(elements.ownerCompanionDialogue.dataset.dismissible, "true");
+
+  vm.runInContext("ownerAppOpenCompanionNotice()", context);
+  assert.equal(elements.ownerCompanionDialogue.hidden, true);
+  assert.equal(elements.ownerCompanionPortrait.focusCount, 1);
+  assert.equal(values.get("aliaspaces_owner_companion_tagline_owner-1_persona-a"), persona.tagline);
+  assert.equal(chatCalls, 0);
+  assert.equal(notificationCalls, 0);
+  assert.equal(routeCalls, 0);
+
+  vm.runInContext("ownerAppSyncCompanion()", context);
+  assert.equal(elements.ownerCompanionDialogue.hidden, true, "same tagline stays dismissed after a rerender");
+
+  action = { kind: "notification", id: "notice-1", kicker: "Account notice", message: "Review this" };
+  vm.runInContext("ownerAppSyncCompanion()", context);
+  assert.equal(elements.ownerCompanionDialogue.hidden, false, "actionable notices override tagline dismissal");
+  assert.equal("dismissible" in elements.ownerCompanionDialogue.dataset, false);
+  vm.runInContext("ownerAppOpenCompanionNotice()", context);
+  assert.equal(notificationCalls, 1);
+});
+
+test("a different persona or changed tagline reopens the companion bubble", async () => {
+  const source = await read("MyPersonas.Online_v0/owner-app.js");
+  const start = source.indexOf("function ownerAppCompanionTaglineKey");
+  const end = source.indexOf("function ownerAppDismissCompanionTagline", start);
+  assert.ok(start >= 0 && end > start);
+  const values = new Map([["aliaspaces_owner_companion_tagline_owner-1_persona-a", "Original tagline"]]);
+  const context = vm.createContext({
+    ownerAppState: {},
+    session: { user: { id: "owner-1" } },
+    sessionStorage: { getItem: (key) => values.get(key) ?? null },
+  });
+  vm.runInContext(source.slice(start, end), context);
+
+  assert.equal(vm.runInContext("ownerAppCompanionTaglineDismissed({id:'persona-a'},{kind:'tagline',message:'Original tagline'})", context), true);
+  assert.equal(vm.runInContext("ownerAppCompanionTaglineDismissed({id:'persona-b'},{kind:'tagline',message:'Original tagline'})", context), false);
+  assert.equal(vm.runInContext("ownerAppCompanionTaglineDismissed({id:'persona-a'},{kind:'tagline',message:'Updated tagline'})", context), false);
 });
 
 test("briefing workflow keeps four channels and truthful manual boundaries", async () => {
