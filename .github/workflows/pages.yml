@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       provider_release_confirmation:
-        description: "Type PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-075 are applied, read back, and smoke-tested"
+        description: "Type PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-076 are applied, read back, and smoke-tested"
         required: true
         type: string
 
@@ -43,7 +43,7 @@ jobs:
             exit 1
           }
           test "${PROVIDER_RELEASE_CONFIRMATION}" = "PROVIDER-MIGRATIONS-VERIFIED" || {
-            echo "Release blocked: apply and read back provider migrations 065 through 075, then review their smoke tests first."
+            echo "Release blocked: apply and read back provider migrations 065 through 076, then review their smoke tests first."
             exit 1
           }
       - name: Prepare public site artifact

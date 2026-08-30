@@ -12,7 +12,7 @@ test("provider deployment remains owner-triggered and migration-readback gated",
   assert.doesNotMatch(workflow, /\n\s+push:/);
   assert.match(workflow, /provider-publish/);
   assert.match(workflow, /PROVIDER-MIGRATIONS-VERIFIED/);
-  assert.match(workflow, /provider migrations 065 through 075/i);
+  assert.match(workflow, /provider migrations 065 through 076/i);
   assert.match(workflow, /Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured/);
 });
 
@@ -42,6 +42,6 @@ test("provider deployment uses an exact reviewed function allowlist", () => {
 test("provider-capable site deployment requires both migration ledgers", () => {
   assert.match(pagesWorkflow, /MIGRATIONS-VERIFIED/);
   assert.match(pagesWorkflow, /PROVIDER-MIGRATIONS-VERIFIED/);
-  assert.match(pagesWorkflow, /provider migrations 065 through 075/i);
+  assert.match(pagesWorkflow, /provider migrations 065 through 076/i);
   assert.match(pagesWorkflow, /--include '\/cms-connector-ui\.js'/);
 });

@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Use MIGRATIONS-VERIFIED for AI provenance, or PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-075 are read back"
+        description: "Use MIGRATIONS-VERIFIED for AI provenance, or PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-076 are read back"
         required: true
         type: string
       release_scope:
@@ -54,7 +54,7 @@ jobs:
             }
           else
             test "${RELEASE_CONFIRMATION}" = "PROVIDER-MIGRATIONS-VERIFIED" || {
-              echo "Deployment blocked: verify and read back provider migrations 065 through 075 before provider function code."
+              echo "Deployment blocked: verify and read back provider migrations 065 through 076 before provider function code."
               exit 1
             }
           fi

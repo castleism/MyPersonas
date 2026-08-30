@@ -19,16 +19,17 @@ This guide covers every account type currently available in the MyPersonas Accou
 
 Current implementation:
 
+- **Production release:** the live site, provider migrations 065–076, and matching Edge functions are deployed. This proves the gated infrastructure, not provider readiness. No content is scheduled, queued, or publishing, and no recurring publisher cron job is enabled.
 - **Gmail:** real OAuth and Inbox Concierge source are implemented. Google still requires each testing mailbox to be listed as a test user, or the app must complete production verification. Reverify the deployed source before relying on it.
-- **X / Twitter:** OAuth plus an owner-triggered, text-only publisher are implemented in this source release. The publisher is still inactive until this release is deployed, the production X app has credits, every intended account is reauthorized with `tweet.write`, and one exact-account proof is read back. Existing read-only grants cannot publish.
-- **Facebook Pages and linked Instagram professional accounts:** official pairing plus owner-triggered Page/IG publishing were proven earlier on an owner-controlled asset. Recurring publishing remains off, and the current hardened source/migration release is not deployed or live-verified. App Review is still required before serving accounts outside the app's permitted owner/test roles.
+- **X / Twitter:** the owner-triggered, text-only publisher is deployed, but all 27 X connection records are expired and none has `tweet.write`. Fresh authorization, API credits as required, and one exact-account proof are still required. Media upload remains disabled.
+- **Facebook Pages and linked Instagram professional accounts:** the hardened Page/IG publisher is deployed. Production has 25 fresh Facebook Page connections and 25 fresh linked-Instagram connections with their write scopes. That does not prove a post: no current-release provider proof has run, nothing is queued, and recurring publishing remains off. App Review is still required before serving accounts outside the app's permitted owner/test roles.
 - **Reddit:** official OAuth and explicit owner-triggered posting source exist locally. Migration 021, credentials, deployment, commercial/API terms, revocation, erasure, and one disposable live post still require owner review and proof.
-- **Discord:** official `webhook.incoming` OAuth plus an exact-channel, owner-triggered publisher are implemented in this source release. It remains inactive until deployment, authorization, and a designated-channel proof; mentions are disabled by default.
-- **YouTube:** narrow `youtube.upload` OAuth and a Private-first uploader are implemented in this source release, but credentials, deployment, channel authorization, and a Private readback proof are still required.
-- **TikTok:** narrow `video.upload` OAuth and Upload-to-inbox are implemented in this source release. Direct Post and unattended public scheduling are deliberately disabled; the owner finishes the draft inside TikTok.
-- **Twitch:** action-specific OAuth is implemented for channel information, stream schedule segments, and announcements. Twitch does not provide an ordinary social-feed or uploaded-video publisher through this route.
-- **Patreon:** API v2 read/report authorization plus a native-editor handoff are implemented. Patreon ordinary post creation and scheduling remain owner actions inside Patreon.
-- **Wix and WordPress:** exact-site Draft creation is implemented in this source release. Neither connector can publish or schedule; deployment, exact site/author authorization, provider-draft readback, and the provider's own theme preview are still required.
+- **Discord:** official `webhook.incoming` OAuth plus the exact-channel, owner-triggered publisher are deployed. There are zero Discord credential or connection rows, so authorization and a designated-channel proof are still required; mentions remain disabled by default.
+- **YouTube:** narrow `youtube.upload` OAuth and the Private-first uploader are deployed. There are zero credential or connection rows; credentials, channel authorization, and a Private readback proof are still required.
+- **TikTok:** narrow `video.upload` OAuth and Upload-to-inbox are deployed. There are zero credential or connection rows. Direct Post and unattended public scheduling are deliberately disabled; the owner finishes the draft inside TikTok.
+- **Twitch:** action-specific OAuth is deployed for channel information, stream schedule segments, and announcements, but there are zero credential or connection rows. Twitch does not provide an ordinary social-feed or uploaded-video publisher through this route.
+- **Patreon:** API v2 read/report authorization plus a native-editor handoff are deployed, but there are zero credential or connection rows. Patreon ordinary post creation and scheduling remain owner actions inside Patreon.
+- **Wix and WordPress:** exact-site Draft creation is deployed. Both have zero credential or connection rows. Neither connector can publish or schedule; exact site/author authorization, provider-draft readback, and the provider's own theme preview are still required.
 - **Every other provider:** remains an inventory or planning record until its connector is built and tested. A saved username, matching email, or “ownership verified” label is not provider authorization.
 
 ## Seven separate checks before a provider is called ready
@@ -55,6 +56,22 @@ A display such as `3 / 0` means three inventory records and zero authorized conn
 - the date, clock time, named time zone, and exact provider action that will occur.
 
 The server first prepares a short-lived immutable receipt, and the site renders the platform preview from that server snapshot. Your confirmation then records a separate AAL2 acknowledgement for the same owner session; only that acknowledged, unexpired, unchanged receipt can be consumed once. Any change to content, media, destination, visibility, disclosure, action, or time invalidates the receipt and requires a new preview. The preview shows the full submitted asset and safe-area guidance; final rendering can still vary by device, placement, provider UI, and active website theme. For Wix and WordPress, the owner must also open the provider's own draft/theme preview before any later public schedule because the live theme controls the final page.
+
+## Production credential handoff
+
+Open the official [MyPersonas Supabase Edge Function secrets page](https://supabase.com/dashboard/project/nwsqyuucwzihruszocge/functions/secrets) in your own signed-in browser. Add each key and value there and press **Save**. Supabase makes saved function settings available to the deployed functions without another deployment. Never paste a secret into MyPersonas, the Account Ledger, source files, or chat.
+
+| Provider | Edge Function settings | Exact provider callback |
+|---|---|---|
+| YouTube | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`; optional overrides `YOUTUBE_OAUTH_REDIRECT_URI`, `YOUTUBE_OAUTH_APP_ORIGIN` | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/youtube-oauth` |
+| TikTok | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_OAUTH_REDIRECT_URI`, `TIKTOK_OAUTH_APP_ORIGIN`; leave `TIKTOK_DIRECT_POST_ENABLED` false and `TIKTOK_CLIENT_AUDIT_STATE` unset in this Upload-to-inbox release | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/tiktok-oauth` |
+| Discord | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`; use `DISCORD_OAUTH_REDIRECT_URI` and `DISCORD_OAUTH_APP_ORIGIN` only to override the deployed defaults | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/discord-oauth` |
+| Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_OAUTH_REDIRECT_URI`, `TWITCH_OAUTH_APP_ORIGIN` | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitch-oauth` |
+| Patreon | `PATREON_CLIENT_ID`, `PATREON_CLIENT_SECRET`, `PATREON_OAUTH_REDIRECT_URI`, `PATREON_OAUTH_APP_ORIGIN` | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/patreon-oauth` |
+| Wix | `WIX_APP_ID`, `WIX_SHARE_URL_ID`, `WIX_POST_INSTALL_URI`, `WIX_OAUTH_APP_ORIGIN`; the app secret is the Vault-only exception below | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wix-oauth` |
+| WordPress.com | `WORDPRESS_COM_CLIENT_ID`, `WORDPRESS_COM_REDIRECT_URI`, `WORDPRESS_OAUTH_APP_ORIGIN`; the client secret is the Vault-only exception below | `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wordpress-oauth` |
+
+Use `https://mypersonas.online` for every listed `*_APP_ORIGIN` value and the matching callback above for every listed redirect/post-install value. Wix's app secret must instead be stored in Supabase Vault under the exact name `wix_app_secret`; WordPress.com's client secret must be stored under `wordpress_com_client_secret`. The deployed CMS functions do not read those two secrets from Edge Function settings. Use the reviewed secure Vault setup and the official [Supabase Vault guidance](https://supabase.com/docs/guides/database/vault); never expose either value in a query shared through chat or in this site.
 
 ## Who does what
 
@@ -84,8 +101,8 @@ The server first prepares a short-lived immutable receipt, and the site renders 
 
 1. **Keep the public review pages live:** [Privacy](https://mypersonas.online/privacy.html), [Terms](https://mypersonas.online/terms.html), and [Data deletion](https://mypersonas.online/data-deletion.html).
 2. **Finish one Gmail connection and one real report** before connecting the rest of the mailboxes.
-3. **Deploy the reviewed provider release**, add X API credits, then reauthorize each intended X account with `tweet.write` for the text-only first release.
-4. **Finish the Meta Business app**, connect Facebook Pages, and pair each linked Instagram professional account.
+3. **Repair X authorization:** confirm the production app and credits, then freshly authorize each intended X account with `tweet.write` for the text-only first release.
+4. **Prove one Meta pair:** the 25 Facebook and 25 Instagram grants are fresh and write-scoped, but an exact preview-approved provider proof is still required before relying on posting.
 5. Add **Outlook**, then the secure Yahoo/iCloud worker and local Proton Bridge companion.
 6. Configure and privately prove the implemented **Discord, YouTube, TikTok Upload-to-inbox, Twitch, Patreon handoff, Wix Draft, and WordPress Draft** routes one exact destination at a time.
 7. Submit any required review/audit applications for **Meta, TikTok, YouTube, LinkedIn, Reddit, and Snapchat**.
@@ -110,7 +127,7 @@ The server first prepares a short-lived immutable receipt, and the site renders 
 
 **Before posting can be enabled**
 
-- Deploy the reviewed `twitter-post` function and migrations, then complete an exact-account text-post proof with provider readback. Media upload remains disabled in this first release.
+- The reviewed `twitter-post` function and provider migrations are deployed; complete an exact-account text-post proof with provider readback. Media upload remains disabled in this first release.
 - The app must request `tweet.write`.
 - You must explicitly reauthorize after the write feature exists. The existing read grant cannot publish.
 
@@ -126,7 +143,7 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 2. Convert the Instagram account to **Business or Creator**.
 3. Link that Instagram professional account to the correct Facebook Page.
 4. Put both assets in the same Meta Business Portfolio.
-5. The MyPersonas pairing flow lets you choose a Page and discover its linked Instagram account. An owner-triggered Page/IG pair was proven earlier, but the recurring queue remains off and the current hardened source has not been deployed or reverified. Every retry keeps separate provider result identifiers to avoid claiming or blindly repeating a partially successful pair.
+5. The MyPersonas pairing flow lets you choose a Page and discover its linked Instagram account. Production currently has 25 fresh Facebook Page connections and 25 fresh linked-Instagram connections with write scopes. The hardened publisher is deployed, but no current-release provider proof has run and the recurring queue remains off. Every retry keeps separate provider result identifiers to avoid claiming or blindly repeating a partially successful pair.
 
 **Owner steps**
 
@@ -140,15 +157,15 @@ Official reference: [OAuth 2.0 Authorization Code with PKCE](https://docs.x.com/
 7. First authorize discovery scopes: `pages_show_list`, `pages_read_engagement`, and `instagram_basic`.
 8. After the pairing flow passes, request Advanced Access/app review for the exact production features.
 
-**Before Facebook Page posting can be re-enabled from this source release**
+**Before Facebook Page posting can be relied on**
 
 - Add `pages_manage_posts`; add `pages_manage_engagement` only if Page comment/reply management is enabled.
-- Deploy and verify the reviewed Page publish primitives, duplicate protection, partial-success reconciliation, revocation, and one disposable real Page test. Do not infer current deployment parity from the earlier proof.
+- The reviewed Page publish primitives, duplicate protection, partial-success reconciliation, and revocation path are deployed. Run one separately previewed and approved low-stakes Page proof and read it back before treating the route as verified.
 
-**Before linked Instagram posting can be re-enabled from this source release**
+**Before linked Instagram posting can be relied on**
 
 - Add `instagram_content_publish`; add `instagram_manage_comments` only for owner-approved comment management; add insights only if reports need them.
-- Deploy and verify the reviewed media-container status checks, publish primitive, media validation, partial-success reconciliation, and one disposable professional-account test. Instagram deletion remains a manual in-app action.
+- The reviewed media-container status checks, publish primitive, media validation, and partial-success reconciliation are deployed. Run one separately previewed and approved low-stakes professional-account proof and read it back before treating the route as verified. Instagram deletion remains a manual in-app action.
 - Stories through the Facebook Login route are limited to eligible business accounts; do not assume every professional account can use every format.
 
 Meta's official setup and reference links: [Meta App Dashboard](https://developers.facebook.com/apps/) to configure the app, [Facebook Pages API getting started](https://developers.facebook.com/docs/pages-api/getting-started/) and [Page posts documentation](https://developers.facebook.com/docs/pages-api/posts/) for the Page-publishing API, [Instagram API with Facebook Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/), [App Review](https://developers.facebook.com/docs/app-review/), and [Business verification](https://developers.facebook.com/docs/development/release/business-verification).
@@ -173,7 +190,7 @@ Official reference: [Threads official API workspace](https://www.postman.com/met
 
 **Implemented action:** Upload a video to the authorized creator's TikTok inbox so the owner can finish the caption, privacy, disclosure, and interaction choices in TikTok. Direct Post is deliberately disabled in this release.
 
-**Current MyPersonas state:** the `video.upload` OAuth and Upload-to-inbox source are implemented but not deployed or live-verified. Production app credentials, an exact creator authorization, a verified media source, and one inbox readback proof are still required.
+**Current MyPersonas state:** the `video.upload` OAuth and Upload-to-inbox connector are deployed, but production has zero TikTok credential and connection rows. App credentials, exact creator authorization, a verified media source, and one inbox readback proof are still required.
 
 **Owner steps**
 
@@ -182,7 +199,8 @@ Official reference: [Threads official API workspace](https://www.postman.com/met
 3. Add the **Content Posting API** product.
 4. Request the minimum `video.upload` scope for the implemented Upload-to-inbox flow. Do not request `video.publish` for this release.
 5. Verify the media domain or URL prefix if TikTok will pull hosted media.
-6. Submit the app and Upload API use case for any review or audit TikTok requires.
+6. Save `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_OAUTH_REDIRECT_URI`, and `TIKTOK_OAUTH_APP_ORIGIN` through the production credential handoff above. Keep Direct Post disabled.
+7. Submit the app and Upload API use case for any review or audit TikTok requires.
 
 Before every upload, MyPersonas shows the exact creator, media, caption handoff, and action, then consumes a short-lived owner preview receipt. The safe first proof is an Upload-to-inbox followed by provider-status polling; the owner completes or discards it in TikTok. It does not authorize Direct Post or unattended public scheduling.
 
@@ -192,7 +210,7 @@ Official references: [Content Posting API setup](https://developers.tiktok.com/d
 
 **Supported action:** upload a video with the narrow `youtube.upload` scope. A private upload is the safe first connector proof.
 
-**Current MyPersonas state:** the narrow OAuth and Private-first uploader are implemented in source but not deployed or live-verified. Production client credentials, owner authorization, exact channel binding, and one Private readback proof are still required.
+**Current MyPersonas state:** the narrow OAuth and Private-first uploader are deployed, but production has zero YouTube credential and connection rows. Client credentials, owner authorization, exact channel binding, and one Private readback proof are still required.
 
 **Owner steps**
 
@@ -201,8 +219,9 @@ Official references: [Content Posting API setup](https://developers.tiktok.com/d
 3. Configure the OAuth consent screen with the live policy URLs and add this callback: `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/youtube-oauth`.
 4. Create a Web OAuth client and add the owner as a test user during development.
 5. Request `https://www.googleapis.com/auth/youtube.upload`; add broader YouTube scopes only if a separately approved feature needs them.
-6. Complete Google OAuth verification as required.
-7. Submit the YouTube API compliance audit before relying on public uploads.
+6. Save `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` through the production credential handoff above. The deployed callback and app origin are already the defaults; set optional `YOUTUBE_OAUTH_REDIRECT_URI` and `YOUTUBE_OAUTH_APP_ORIGIN` only if the provider registration and function settings are changed together.
+7. Complete Google OAuth verification as required.
+8. Submit the YouTube API compliance audit before relying on public uploads.
 
 Uploads from unverified API projects created after July 28, 2020 are restricted to private visibility. The first proof must upload a clearly labeled test video as Private, read back its returned video ID and status from the exact channel, and leave it private or delete it only after approval. YouTube can also schedule an unpublished private video using `status.publishAt`, but MyPersonas must first show the exact channel, title, description opening, thumbnail/crop, audience, synthetic-media disclosure, privacy, date, and named time zone.
 
@@ -267,16 +286,16 @@ Official references: [Devvit user actions](https://developers.reddit.com/docs/ca
 
 ## Bot, live-stream, membership, and business-messaging APIs
 
-### Discord — bot only
+### Discord — exact-channel webhook consent, not a bot account
 
 **Owner steps**
 
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Add a bot and install it into each server through OAuth with `bot` and `applications.commands`.
-3. Grant only the channels and permissions needed: typically View Channel, Send Messages, Embed Links, Attach Files, and Read Message History only when required.
-4. Store the bot token only in the deployment secret store.
+2. Add this exact OAuth2 redirect: `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/discord-oauth`.
+3. Save `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` through the production credential handoff above.
+4. In MyPersonas, choose **Connect Discord channel**. Discord's official `webhook.incoming` consent screen lets the owner select one exact server and channel and returns that channel's webhook directly to the deployed connector.
 
-Never automate a normal Discord user account or use a “self-bot.” Codex must build channel selection, slash-command/interaction verification, rate-limit handling, moderation boundaries, and audit logs.
+Do not create or paste a bot token, webhook URL, user token, or normal Discord password. This connector requests only `webhook.incoming`; it does not request `bot` or `applications.commands`. Mentions remain disabled by default, and the first send must use a designated channel with its own exact preview and approval.
 
 Official reference: [Discord OAuth and permissions](https://docs.discord.com/developers/platform/oauth2-and-permissions).
 
@@ -306,37 +325,39 @@ Official reference: [Telegram Bot API](https://core.telegram.org/bots/api).
 
 This connector may manage customer conversations for the business number. It must not be presented as social posting or as access to a personal WhatsApp account. Automated replies need opt-in, template/window compliance, escalation rules, and owner approval for sensitive messages.
 
-### Patreon — reporting/webhooks plus native scheduled posts
+### Patreon — read-only reports plus native scheduled posts
 
-**Supported API actions:** identity, campaigns, memberships, post reads, webhooks, and Patreon Live capabilities that Patreon makes available to an eligible early-access integration.
+**Implemented API actions:** read the authorized identity, list campaigns, bind one exact campaign, and report its existing posts through `identity`, `campaigns`, and `campaigns.posts`. The separate handoff opens Patreon's native editor after an exact MyPersonas preview. This release does not implement membership details, webhooks, Patreon Live, or provider-side post creation.
 
 **Unsupported action:** Patreon's public API does not offer a general create-post permission. MyPersonas cannot honestly provide API-based ordinary Patreon post publishing or scheduling.
 
 **Owner steps**
 
 1. Register a client in the [Patreon developer portal](https://www.patreon.com/portal/registration/register-clients).
-2. Configure the callback Codex supplies when the connector is built.
-3. Grant only identity/campaign/member/post-read/webhook scopes needed for reporting.
-4. Use Patreon's own [scheduled posts](https://support.patreon.com/hc/en-us/articles/360031956632-Scheduled-posts) for publishing.
+2. Configure this exact callback: `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/patreon-oauth`.
+3. Save `PATREON_CLIENT_ID`, `PATREON_CLIENT_SECRET`, `PATREON_OAUTH_REDIRECT_URI`, and `PATREON_OAUTH_APP_ORIGIN` through the production credential handoff above.
+4. Grant only `identity`, `campaigns`, and `campaigns.posts` for the deployed read report.
+5. Use Patreon's own [scheduled posts](https://support.patreon.com/hc/en-us/articles/360031956632-Scheduled-posts) for publishing.
 
 MyPersonas should stage the title, body, media, attachment, access tier/audience, charge setting when applicable, disclosure, and intended time. The owner then opens Patreon's native draft, checks Patreon's own preview, schedules it there, and returns the native draft/post URL to MyPersonas. A safe API proof is read-only reporting access to the exact campaign; a safe content proof is a native Patreon draft, not a public test post.
 
 Official reference: [Patreon API documentation](https://docs.patreon.com/).
 
-### Twitch — channel, schedule, chat, and moderation tools
+### Twitch — channel information, schedule, and announcements
 
-**Supported actions:** read/update selected channel information, manage eligible stream schedule segments, and perform separately authorized chat/announcement or moderation actions.
+**Implemented actions:** read/update selected channel information, manage eligible stream schedule segments, and send separately authorized announcements. The deployed feature scopes are `channel:manage:broadcast`, `channel:manage:schedule`, and `moderator:manage:announcements`.
 
 **Unsupported action:** Twitch does not expose a general social-feed or uploaded-video publisher. A Twitch connection must not be labeled as ordinary scheduled-post capability.
 
 **Owner steps**
 
 1. Register an app in the [Twitch Developer Console](https://dev.twitch.tv/console/apps).
-2. Add the callback Codex supplies when the connector is built.
-3. Request only the scopes required for selected features, such as `channel:manage:schedule` or the current chat/moderation scopes.
-4. Confirm Affiliate/Partner eligibility before relying on nonrecurring schedule operations.
+2. Add this exact callback: `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitch-oauth`.
+3. Save `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_OAUTH_REDIRECT_URI`, and `TWITCH_OAUTH_APP_ORIGIN` through the production credential handoff above.
+4. Request only the scopes required for selected features: `channel:manage:broadcast`, `channel:manage:schedule`, and/or `moderator:manage:announcements`.
+5. Confirm Affiliate/Partner eligibility before relying on nonrecurring schedule operations.
 
-First verify the exact broadcaster/channel with a read. Any write test can be visible, so it requires a separate platform-shaped preview and explicit owner approval; use a reversible schedule item or a designated test channel where available. A Twitch preview must show the actual action type—schedule segment, channel change, or chat announcement—rather than a fake feed card.
+First verify the exact broadcaster/channel with a read. Any write test can be visible, so it requires a separate platform-shaped preview and explicit owner approval; use a reversible schedule item or a designated test channel where available. A Twitch preview must show the actual action type—schedule segment, channel change, or announcement—rather than a fake feed card.
 
 Official references: [Twitch API](https://dev.twitch.tv/docs/api/), [scopes](https://dev.twitch.tv/docs/authentication/scopes/), and [schedule API](https://dev.twitch.tv/docs/api/schedule).
 
@@ -443,9 +464,9 @@ Official reference: [Proton IMAP/SMTP and Bridge](https://proton.me/support/imap
 
 Use the native MyPersonas external app-install flow. Create the app in [Wix Custom Apps](https://manage.wix.com/account/custom-apps), request only **Manage Blog** and **Read Members**, release the permission version, and create a Share Install Link if the app is unlisted. MyPersonas does not ask the owner for a Wix password or account API key.
 
-Set the external post-install URL to `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wix-oauth`. Store the app secret only in Supabase Vault as `wix_app_secret`. MyPersonas verifies the signed instance and exact site ID, then separately binds the intended author/member ID and proves the installed permissions with provider reads.
+Set the external post-install URL to `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wix-oauth`. Save `WIX_APP_ID`, the Share Install Link GUID as `WIX_SHARE_URL_ID`, that callback as `WIX_POST_INSTALL_URI`, and `https://mypersonas.online` as `WIX_OAUTH_APP_ORIGIN` through the production credential handoff above. Store the app secret only in Supabase Vault as `wix_app_secret`; do not duplicate it as an Edge Function setting. MyPersonas verifies the signed instance and exact site ID, then separately binds the intended author/member ID and proves the installed permissions with provider reads.
 
-The connector source is staged but not deployed or live-verified. Its first proof creates one uniquely titled Blog draft with publishing explicitly off and reads it back from the exact site. Wix does not document an active-theme preview deep link for this API draft, so MyPersonas returns the exact site dashboard and provider ID; the owner opens Blog → Posts → Drafts and uses Wix's own preview. No CMS public schedule exists in this release.
+The Draft-only connector is deployed, but production has zero Wix credential and connection rows. Its first proof creates one uniquely titled Blog draft with publishing explicitly off and reads it back from the exact site. Wix does not document an active-theme preview deep link for this API draft, so MyPersonas returns the exact site dashboard and provider ID; the owner opens Blog → Posts → Drafts and uses Wix's own preview. No CMS public schedule exists in this release.
 
 Official references: [create Wix Blog posts](https://dev.wix.com/docs/api-reference/business-solutions/blog/skills/how-to-create-blog-posts), [Wix Draft Posts API](https://dev.wix.com/docs/api-reference/business-solutions/blog/draft-posts/introduction), and [external install flow](https://dev.wix.com/docs/build-apps/launch-your-app/app-distribution/install-your-app/set-up-the-external-install-flow).
 
@@ -460,9 +481,10 @@ Official references: [create Wix Blog posts](https://dev.wix.com/docs/api-refere
 
 1. Identify every site as WordPress.com or self-hosted and save its exact site address/ID.
 2. Select the intended author/byline and grant only content-writing access.
-3. Do not treat a generic Website record or saved URL as authorization.
-4. After deployment and exact connection, approve the platform preview and create one uniquely titled **Draft**; read it back from the exact site and author. Private, Publish, and Schedule are outside this proof.
-5. Open WordPress Preview in the site's active theme on desktop and mobile before approving a public schedule.
+3. For WordPress.com, register this callback: `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wordpress-oauth`. Save `WORDPRESS_COM_CLIENT_ID`, that callback as `WORDPRESS_COM_REDIRECT_URI`, and `https://mypersonas.online` as `WORDPRESS_OAUTH_APP_ORIGIN` through the production credential handoff above. Store the client secret only in Supabase Vault as `wordpress_com_client_secret`; the deployed function will not read it from Edge Function settings.
+4. Do not treat a generic Website record or saved URL as authorization. For self-hosted WordPress, create a dedicated Application Password and enter it only in the transient MyPersonas connection dialog.
+5. After exact connection, approve the platform preview and create one uniquely titled **Draft**; read it back from the exact site and author. The connector is deployed, but production currently has zero WordPress credential and connection rows. Private, Publish, and Schedule are outside this proof.
+6. Open WordPress Preview in the site's active theme on desktop and mobile before approving a public schedule.
 
 Official references: [WordPress.com OAuth](https://developer.wordpress.com/docs/api/oauth2/), [WordPress.com REST API](https://developer.wordpress.com/docs/api/getting-started/), [REST Posts](https://developer.wordpress.org/rest-api/reference/posts/), and [Application Passwords](https://developer.wordpress.org/advanced-administration/security/application-passwords/).
 
@@ -614,16 +636,16 @@ Never use:
 
 | Ledger key | Account type | Current safe classification |
 | --- | --- | --- |
-| `twitter` | X / Twitter | Text-only publisher implemented; deploy, credits, `tweet.write` reauthorization, and provider proof required |
-| `instagram` | Instagram | Meta professional-account publisher implemented; deployment, app review where applicable, exact target, and provider proof required |
-| `facebook` | Facebook Page | Meta Page publisher implemented; deployment, app review where applicable, exact target, and provider proof required |
-| `tiktok` | TikTok | Upload-to-inbox implemented with `video.upload`; Direct Post disabled; deployment/review/proof required |
+| `twitter` | X / Twitter | Text-only publisher deployed; 27 records expired, 0 have `tweet.write`; fresh authorization, credits as required, and provider proof required |
+| `instagram` | Instagram | Meta professional-account publisher deployed; 25 fresh write-scoped connections; current-release provider proof still required |
+| `facebook` | Facebook Page | Meta Page publisher deployed; 25 fresh write-scoped connections; current-release provider proof still required |
+| `tiktok` | TikTok | Upload-to-inbox deployed with `video.upload`; 0 credentials/connections; Direct Post disabled; review/proof required |
 | `onlyfans` | OnlyFans | Manual staging only |
 | `patreon` | Patreon | API v2 read/report connector and native-editor handoff implemented; ordinary post scheduling stays in Patreon |
 | `snapchat` | Snapchat | Public Profile API allowlist/partner gate |
-| `discord` | Discord | Exact-channel incoming-webhook OAuth and owner-triggered send implemented; deployment and proof required |
+| `discord` | Discord | Exact-channel incoming-webhook OAuth and owner-triggered send deployed; 0 credentials/connections; proof required |
 | `reddit` | Reddit | Official OAuth owner-triggered post route; deployment, terms review, and disposable proof required |
-| `youtube` | YouTube | Private-first uploader implemented; credentials, deployment, channel authorization, audit, and proof required |
+| `youtube` | YouTube | Private-first uploader deployed; 0 credentials/connections; channel authorization, audit, and proof required |
 | `twitch` | Twitch | Action-specific channel/schedule/announcement connector implemented; no ordinary feed/video publisher |
 | `kick` | Kick | Limited channel/chat/rewards/moderation API |
 | `rumble` | Rumble | Native/manual uploader and scheduler |
@@ -639,8 +661,8 @@ Never use:
 | `bluesky` | Bluesky | Official OAuth connector can be built |
 | `threads` | Threads | Meta app/review and connector required |
 | `legalzoom` | LegalZoom | Narrow official MCP may be evaluated; legal actions manual/approval-gated |
-| `wix` | Wix | Exact-site/author Draft connector implemented; deployment, authorization, and provider preview proof required |
-| _(not first-class yet)_ | WordPress | Identify WordPress.com vs self-hosted; exact site connector and draft/private test required |
+| `wix` | Wix | Exact-site/author Draft connector deployed; 0 credentials/connections; authorization and provider preview proof required |
+| _(not first-class yet)_ | WordPress | Draft-only connector deployed; 0 credentials/connections; identify .com vs self-hosted, authorize an exact site, and run a Draft proof |
 | `fiverr` | Fiverr | Manual staging only |
 | `amazon` | Amazon / Affiliate | Associates + Creators API for approved link/product data |
 | `etsy` | Etsy | Seller/shop API connector required |
