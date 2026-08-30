@@ -7,6 +7,10 @@ on:
         description: "Type MIGRATIONS-VERIFIED after migration 060 is recorded in the linked ledger and its smoke tests are reviewed"
         required: true
         type: string
+      provider_release_confirmation:
+        description: "Type PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-075 are applied, read back, and smoke-tested"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -32,9 +36,14 @@ jobs:
       - name: Require reviewed database release evidence
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+          PROVIDER_RELEASE_CONFIRMATION: ${{ inputs.provider_release_confirmation }}
         run: |
           test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
             echo "Release blocked: verify migration 060 in the linked ledger and review its smoke tests first."
+            exit 1
+          }
+          test "${PROVIDER_RELEASE_CONFIRMATION}" = "PROVIDER-MIGRATIONS-VERIFIED" || {
+            echo "Release blocked: apply and read back provider migrations 065 through 075, then review their smoke tests first."
             exit 1
           }
       - name: Prepare public site artifact
@@ -45,6 +54,7 @@ jobs:
             --include '/index.html' \
             --include '/owner-app.css' \
             --include '/owner-app.js' \
+            --include '/cms-connector-ui.js' \
             --include '/persona-view.css' \
             --include '/persona-view.js' \
             --include '/platform-governance.css' \

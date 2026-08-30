@@ -16,6 +16,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   isRestrictedMetaPersona,
+  type MetaPublishTarget,
   providerOutcomeIsUncertain,
   publishFacebook,
   publishInstagram,
@@ -30,7 +31,6 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const BATCH = 1;
-const IG_ROLLING_LIMIT = 24; // conservative guard below the documented ~25/24h cap
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -53,6 +53,8 @@ type Draft = {
   approved_at: string;
   approved_by: string;
   approved_content_hash: string;
+  approved_preview_version: string;
+  approved_preview_hash: string;
   approved_timezone: string;
   approved_facebook_page_id: string;
   approved_instagram_business_id: string;
@@ -129,15 +131,6 @@ function approvedMediaFor(d: Draft, target: "facebook" | "instagram"): ApprovedM
       path: d.approved_ig_media_path,
       url: d.approved_ig_media_url,
     };
-}
-
-async function instagramPostsInWindow(d: Draft) {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  return await admin.from("post_drafts").select("id", { count: "exact", head: true })
-    .eq("owner", d.owner)
-    .eq("publish_instagram_business_id", d.publish_instagram_business_id)
-    .not("ig_media_id", "is", null)
-    .gte("ig_published_at", since);
 }
 
 async function rememberProviderResult(
@@ -266,6 +259,11 @@ serve(async (req) => {
       }
       if (!d.approved_at || d.approved_by !== d.owner || !d.approved_content_hash) {
         errs.push("approval: exact owner approval is missing");
+      } else if (
+        !String(d.approved_preview_version || "").trim() ||
+        !String(d.approved_preview_hash || "").trim()
+      ) {
+        errs.push("approval: the exact owner-approved preview evidence is missing");
       } else {
         const hash = await expectedHash(d);
         if (hash.error || hash.data !== d.approved_content_hash) {
@@ -302,10 +300,23 @@ serve(async (req) => {
       const upd: { fb_post_id?: string; ig_media_id?: string } = {};
       let safeToContinue = true;
       let reconciliationRequired = false;
-      const needsMeta = (targets.includes("facebook") && !d.fb_post_id) ||
-        (targets.includes("instagram") && !d.ig_media_id);
+      const pendingMetaTargets = [
+        ...(targets.includes("facebook") && !d.fb_post_id
+          ? ["facebook" as const]
+          : []),
+        ...(targets.includes("instagram") && !d.ig_media_id
+          ? ["instagram" as const]
+          : []),
+      ] satisfies MetaPublishTarget[];
+      const needsMeta = pendingMetaTargets.length > 0;
       const ctx = needsMeta && d.facebook_ledger_id
-        ? await resolvePageContext(admin, d.owner, d.facebook_ledger_id)
+        ? await resolvePageContext(
+          admin,
+          d.owner,
+          d.facebook_ledger_id,
+          true,
+          pendingMetaTargets,
+        )
         : null;
       if (needsMeta && !d.facebook_ledger_id) errs.push("meta: no target Facebook page");
       else if (ctx && !ctx.ok) errs.push("meta: " + ctx.error);
@@ -390,34 +401,30 @@ serve(async (req) => {
         } else if (!ctx.asset.instagram_business_id) {
           errs.push("instagram: no linked professional account");
         } else {
-          // This local counter is an advisory guard only; activation still
-          // requires an atomic provider-account reservation and reconciliation.
-          const recent = await instagramPostsInWindow(d);
-          if (recent.error) errs.push("instagram: could not verify the rolling publish guard");
-          else if ((recent.count || 0) >= IG_ROLLING_LIMIT) errs.push("instagram: rolling 24-hour safety guard reached");
+          const img = d.approved_ig_media_url;
+          if (!img) errs.push("instagram: no image");
           else {
-            const img = d.approved_ig_media_url;
-            if (!img) errs.push("instagram: no image");
-            else {
-              try {
-                const r = await publishInstagram(
-                  String(ctx.asset.instagram_business_id),
-                  ctx.pageToken,
-                  img,
-                  d.ig_caption || "",
-                );
-                const saved = await rememberProviderResult(d, "ig_media_id", r.mediaId);
-                if (saved.saved) {
-                  upd.ig_media_id = r.mediaId;
-                  d.ig_media_id = r.mediaId;
-                } else {
-                  reconciliationRequired = true;
-                  errs.push(`instagram: provider accepted ${r.mediaId}, but its result was not saved`);
-                }
-              } catch (e) {
-                if (providerOutcomeIsUncertain(e)) reconciliationRequired = true;
-                errs.push("instagram: " + (e as Error).message);
+            try {
+              // publishInstagram reads Meta's current account-specific content
+              // publishing quota before creating a container; no stale local
+              // hard limit is used here.
+              const r = await publishInstagram(
+                String(ctx.asset.instagram_business_id),
+                ctx.pageToken,
+                img,
+                d.ig_caption || "",
+              );
+              const saved = await rememberProviderResult(d, "ig_media_id", r.mediaId);
+              if (saved.saved) {
+                upd.ig_media_id = r.mediaId;
+                d.ig_media_id = r.mediaId;
+              } else {
+                reconciliationRequired = true;
+                errs.push(`instagram: provider accepted ${r.mediaId}, but its result was not saved`);
               }
+            } catch (e) {
+              if (providerOutcomeIsUncertain(e)) reconciliationRequired = true;
+              errs.push("instagram: " + (e as Error).message);
             }
           }
         }

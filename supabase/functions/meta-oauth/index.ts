@@ -6,6 +6,9 @@
 //   { action:"capabilities", ledgerId? }
 //   { action:"start" }
 //     -> { authorizationUrl, browserNonce }
+//   { action:"start", requestPublishing:true,
+//       publishTargets:["facebook"|"instagram", ...] }
+//     -> { authorizationUrl, browserNonce, requestedPublishTargets }
 //   { action:"complete", state, code, browserNonce, providerError? }
 //     -> { selectionToken, metaUser, pages[] }
 //   { action:"finalize", selectionToken, browserNonce, bindings:[
@@ -38,9 +41,10 @@
 // revocation, credentials remain encrypted, every connected asset is marked as
 // requiring manual revocation, and reset requires explicit acknowledgement.
 //
-// This connector intentionally requests no write scope, exposes no posting
-// action, and reports postingEnabled:false. A future publisher must add scopes,
-// approval gates, reconciliation, and live provider tests separately.
+// Discovery remains the default and requests no write scope. Publishing
+// reauthorization is a separate, explicit owner opt-in: requestPublishing must
+// be true and publishTargets must name the exact destination(s). The publisher
+// still enforces scopes and Page tasks immediately before provider writes.
 //
 // Deploy without gateway JWT verification because the provider callback has no
 // Supabase Authorization header. Every POST action validates the JWT manually.
@@ -67,19 +71,53 @@ const REQUIRED_SCOPES = [
   "pages_read_engagement",
   "instagram_basic",
 ] as const;
-// Standard-access publish scopes. When a connected grant carries all of these,
-// posting to the owner's own Pages/IG works (the meta-post publisher enforces the
-// same check at publish time). Reported back as capabilities.postingEnabled.
-const PUBLISH_SCOPES = [
-  "pages_manage_posts",
-  "instagram_content_publish",
-  "business_management",
-] as const;
-function hasPublishScopes(scopes: unknown): boolean {
-  const granted = new Set(
-    Array.isArray(scopes) ? scopes.map((s) => String(s)) : [],
+type MetaPublishTarget = "facebook" | "instagram";
+const TARGET_PUBLISH_SCOPES: Record<MetaPublishTarget, readonly string[]> = {
+  // Page discovery permissions are requested for every connection. The only
+  // additional permission needed for a Facebook Page write is pages_manage_posts.
+  facebook: ["pages_manage_posts"],
+  // Instagram publishing also relies on the Page/IG discovery permissions.
+  instagram: [...REQUIRED_SCOPES, "instagram_content_publish"],
+};
+const PAGE_WRITE_TASKS = new Set(["CREATE_CONTENT", "MANAGE"]);
+
+function scopesForPublishTargets(targets: readonly MetaPublishTarget[]) {
+  return [
+    ...new Set([
+      ...REQUIRED_SCOPES,
+      ...targets.flatMap((target) => TARGET_PUBLISH_SCOPES[target]),
+    ]),
+  ];
+}
+
+function missingPublishScopes(target: MetaPublishTarget, scopes: unknown) {
+  const granted = new Set(normalizeScopes(scopes));
+  return TARGET_PUBLISH_SCOPES[target].filter((scope) => !granted.has(scope));
+}
+
+function hasPageWriteTask(tasks: unknown) {
+  return normalizeScopes(tasks).some((task) =>
+    PAGE_WRITE_TASKS.has(task.toUpperCase())
   );
-  return PUBLISH_SCOPES.every((scope) => granted.has(scope));
+}
+
+function publishReadiness(
+  target: MetaPublishTarget,
+  scopes: unknown,
+  pageTasks: unknown,
+  hasLinkedInstagram = true,
+) {
+  const missingScopes = missingPublishScopes(target, scopes);
+  const pageWriteTaskPresent = hasPageWriteTask(pageTasks);
+  return {
+    enabled: missingScopes.length === 0 && pageWriteTaskPresent &&
+      (target !== "instagram" || hasLinkedInstagram),
+    missingScopes,
+    pageWriteTaskPresent,
+    linkedInstagramPresent: target === "instagram"
+      ? hasLinkedInstagram
+      : undefined,
+  };
 }
 const MAX_DISCOVERED_PAGES = 100;
 const MANUAL_REVOCATION_URL =
@@ -98,6 +136,8 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 type OAuthActionBody = {
   action?: string;
   ledgerId?: string;
+  requestPublishing?: boolean;
+  publishTargets?: unknown;
   state?: string;
   code?: string;
   browserNonce?: string;
@@ -327,6 +367,22 @@ function normalizeScopes(value: unknown) {
       ),
     ),
   ].sort();
+}
+
+function requestedPublishTargets(
+  requestPublishing: unknown,
+  value: unknown,
+): MetaPublishTarget[] | null {
+  if (requestPublishing !== true) return [];
+  if (!Array.isArray(value) || value.length < 1 || value.length > 2) return null;
+  const targets = [
+    ...new Set(value.map((target) => String(target || "").toLowerCase())),
+  ];
+  return targets.every((target) =>
+      target === "facebook" || target === "instagram"
+    )
+    ? targets as MetaPublishTarget[]
+    : null;
 }
 
 function hasRequiredScopes(scopes: string[]) {
@@ -1100,6 +1156,17 @@ async function capabilities(
     facebookPagesSupported: true,
     linkedInstagramProfessionalAccountsSupported: true,
     requiredScopes: [...REQUIRED_SCOPES],
+    publishOptInRequired: true,
+    publishAuthorizationAction: "start",
+    publishAuthorizationParameters: {
+      requestPublishing: true,
+      publishTargets: ["facebook", "instagram"],
+    },
+    publishScopesByTarget: {
+      facebook: [...TARGET_PUBLISH_SCOPES.facebook],
+      instagram: [...TARGET_PUBLISH_SCOPES.instagram],
+    },
+    acceptedPageWriteTasks: [...PAGE_WRITE_TASKS],
     callbackUrl: CALLBACK_URL,
     graphApiVersion: META_GRAPH_API_VERSION,
     loginConfigurationPresent: Boolean(META_LOGIN_CONFIG_ID),
@@ -1238,30 +1305,60 @@ async function capabilities(
         origin,
       );
     }
+    const grant = grantResult.data;
     result.credentialPresent = true;
-    // Posting is enabled for this asset when its grant carries the publish scopes.
-    result.postingEnabled = hasPublishScopes(grantResult.data.granted_scopes);
+    const publishTarget: MetaPublishTarget = ledger.provider === "instagram"
+      ? "instagram"
+      : "facebook";
+    const readiness = publishReadiness(
+      publishTarget,
+      grant.granted_scopes,
+      asset.page_tasks,
+      Boolean(asset.instagram_business_id),
+    );
+    result.publishTarget = publishTarget;
+    result.postingEnabled = readiness.enabled;
+    result.publishReadiness = readiness;
     result.grant = {
-      id: grantResult.data.id,
-      metaUserId: grantResult.data.meta_user_id,
-      metaUserName: grantResult.data.meta_user_name,
-      grantedScopes: grantResult.data.granted_scopes,
-      expiresAt: grantResult.data.expires_at,
-      assets: assets.map((item) => ({
-        facebookLedgerId: item.facebook_ledger_id,
-        facebookPageId: item.facebook_page_id,
-        facebookPageName: item.facebook_page_name,
-        pageTasks: item.page_tasks,
-        instagramLedgerId: item.instagram_ledger_id,
-        instagramBusinessId: item.instagram_business_id,
-        instagramUsername: item.instagram_username,
-      })),
+      id: grant.id,
+      metaUserId: grant.meta_user_id,
+      metaUserName: grant.meta_user_name,
+      grantedScopes: grant.granted_scopes,
+      expiresAt: grant.expires_at,
+      assets: assets.map((item) => {
+        const facebook = publishReadiness(
+          "facebook",
+          grant.granted_scopes,
+          item.page_tasks,
+          Boolean(item.instagram_business_id),
+        );
+        const instagram = publishReadiness(
+          "instagram",
+          grant.granted_scopes,
+          item.page_tasks,
+          Boolean(item.instagram_business_id),
+        );
+        return {
+          facebookLedgerId: item.facebook_ledger_id,
+          facebookPageId: item.facebook_page_id,
+          facebookPageName: item.facebook_page_name,
+          pageTasks: item.page_tasks,
+          instagramLedgerId: item.instagram_ledger_id,
+          instagramBusinessId: item.instagram_business_id,
+          instagramUsername: item.instagram_username,
+          publishReadiness: { facebook, instagram },
+        };
+      }),
     };
   }
   return json(result, 200, origin);
 }
 
-async function startAuthorization(req: Request, origin: string) {
+async function startAuthorization(
+  req: Request,
+  origin: string,
+  body: OAuthActionBody,
+) {
   if (!credentialsConfigured()) {
     return json(
       { error: "Meta authorization is not configured yet" },
@@ -1271,6 +1368,21 @@ async function startAuthorization(req: Request, origin: string) {
   }
   const user = await caller(req);
   if (!user) return json({ error: "Invalid or expired session" }, 401, origin);
+  const publishTargets = requestedPublishTargets(
+    body.requestPublishing,
+    body.publishTargets,
+  );
+  if (!publishTargets) {
+    return json(
+      {
+        error:
+          "Publishing permission requires explicit publishTargets containing Facebook and/or Instagram.",
+      },
+      400,
+      origin,
+    );
+  }
+  const requestedScopes = scopesForPublishTargets(publishTargets);
 
   const state = randomUrlSafe(32);
   const browserNonce = randomUrlSafe(32);
@@ -1363,7 +1475,7 @@ async function startAuthorization(req: Request, origin: string) {
     client_id: META_APP_ID,
     redirect_uri: CALLBACK_URL,
     response_type: "code",
-    scope: REQUIRED_SCOPES.join(","),
+    scope: requestedScopes.join(","),
     state,
     auth_type: "rerequest",
   });
@@ -1376,6 +1488,9 @@ async function startAuthorization(req: Request, origin: string) {
     {
       authorizationUrl: authorization.toString(),
       browserNonce,
+      requestedPublishTargets: publishTargets,
+      requestedScopes,
+      publishingAuthorizationRequested: publishTargets.length > 0,
       postingEnabled: false,
     },
     200,
@@ -1855,6 +1970,23 @@ async function completeAuthorization(
         metaUser: { id: identity.id, name: identity.name },
         pages: sanitizePages(pages, existingAssets),
         expiresAt: candidateExpiresAt,
+        publishReadinessByPage: pages.map((page) => ({
+          pageId: page.page_id,
+          facebook: publishReadiness(
+            "facebook",
+            grantedScopes,
+            page.page_tasks,
+            Boolean(page.instagram),
+          ),
+          instagram: publishReadiness(
+            "instagram",
+            grantedScopes,
+            page.page_tasks,
+            Boolean(page.instagram),
+          ),
+        })),
+        // A candidate cannot publish until the owner finalizes its exact asset
+        // bindings, even when the provider granted every requested permission.
         postingEnabled: false,
       },
       200,
@@ -2209,11 +2341,36 @@ async function finalizeSelection(
           origin,
         );
       }
+      const publishReadinessByBinding = effectiveBindings.map((binding) => {
+        const page = liveById.get(binding.pageId)!;
+        return {
+          pageId: binding.pageId,
+          facebookLedgerId: binding.facebookLedgerId,
+          instagramLedgerId: binding.instagramLedgerId || null,
+          facebook: publishReadiness(
+            "facebook",
+            scopes,
+            page.page_tasks,
+            Boolean(page.instagram),
+          ),
+          instagram: publishReadiness(
+            "instagram",
+            scopes,
+            page.page_tasks,
+            Boolean(page.instagram),
+          ),
+        };
+      });
+      const postingEnabled = publishReadinessByBinding.some((binding) =>
+        binding.facebook.enabled ||
+        (Boolean(binding.instagramLedgerId) && binding.instagram.enabled)
+      );
       return json(
         {
           connected: true,
           ...finalized.data,
-          postingEnabled: false,
+          postingEnabled,
+          publishReadinessByBinding,
         },
         200,
         origin,
@@ -3209,7 +3366,7 @@ serve(async (req) => {
     return capabilities(req, origin, body.ledgerId);
   }
   if (body.action === "start") {
-    return startAuthorization(req, origin);
+    return startAuthorization(req, origin, body);
   }
   if (body.action === "complete") {
     return completeAuthorization(req, origin, body);

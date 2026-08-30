@@ -53,6 +53,42 @@
     ul,ol{padding-left:23px;margin:9px 0}
     li+li{margin-top:6px}
     .plain{color:var(--dim);font-size:14px}
+    .sectionhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .sectionhead p{max-width:720px;margin-top:0;color:var(--dim)}
+    .previewrule{margin:16px 0;border:2px solid #145c3d;background:#effaf4;border-radius:14px;padding:18px}
+    .previewrule h3{color:#145c3d;margin:0 0 6px}
+    .previewrule p{margin:5px 0}
+    .previewcheck{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+    .previewcheck div{background:#fff;border:1px solid #b8dfca;border-radius:9px;padding:10px;font-size:13px}
+    .gates{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;list-style:none;padding:0;margin:16px 0}
+    .gates li{border:1px solid var(--border);border-radius:10px;padding:11px 9px;background:#fbfcfe;min-width:0;font-size:12px;color:var(--dim)}
+    .gates b{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:var(--navy);color:#fff;margin-bottom:7px}
+    .gates strong{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
+    .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .readinesstable{width:100%;min-width:980px;border-collapse:collapse;font-size:13px}
+    .readinesstable caption{text-align:left;padding:13px 14px;background:#f7f9fc;color:var(--dim);font-size:13px}
+    .readinesstable th,.readinesstable td{padding:10px 8px;border-top:1px solid var(--border);text-align:left;vertical-align:top}
+    .readinesstable thead th{color:var(--navy);background:#f7f9fc;font-size:12px}
+    .readinesstable tbody th{min-width:110px;color:var(--navy)}
+    .state{display:inline-block;border-radius:999px;padding:3px 7px;font-size:11px;font-weight:800;white-space:nowrap}
+    .state.saved{background:var(--green-bg);color:var(--green)}
+    .state.owner{background:var(--amber-bg);color:var(--amber)}
+    .state.blocked{background:var(--red-bg);color:var(--red)}
+    .state.limited{background:var(--purple-bg);color:var(--purple)}
+    .idhelp{margin-top:14px;background:#f7f9fc;border:1px solid var(--border);border-radius:12px;padding:15px}
+    .idhelp summary{cursor:pointer;font-weight:800;color:var(--navy)}
+    .idgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+    .idgrid div{background:#fff;border:1px solid var(--border);border-radius:9px;padding:11px;font-size:13px}
+    .idgrid strong{display:block;color:var(--navy)}
+    .focuscards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:16px}
+    .focuscard{border:1px solid var(--border);border-radius:13px;padding:17px;background:#fff;min-width:0}
+    .focuscard h3{margin:0}
+    .focuscard h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);margin:14px 0 5px}
+    .focuscard ul,.focuscard ol{font-size:13px}
+    .supportline{border-left:4px solid var(--green);padding-left:10px}
+    .limitline{border-left:4px solid var(--red);padding-left:10px}
+    .proof{background:#f7f9fc;border:1px solid var(--border);border-radius:9px;padding:11px;font-size:13px;margin-top:12px}
+    .previewshape{background:#effaf4;border:1px solid #b8dfca;border-radius:9px;padding:11px;font-size:13px;margin-top:9px}
     .split{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
     .stepbox{border:1px solid var(--border);border-radius:12px;padding:17px;background:#fbfcfe}
     .stepbox h3{margin-top:0}
@@ -86,8 +122,8 @@
     footer{border-top:1px solid var(--border);background:#fff;color:var(--dim)}
     footer .bar{font-size:13px;align-items:flex-start}
     footer p{margin:0}
-    @media(max-width:850px){.legend{grid-template-columns:repeat(2,1fr)}.cards,.split{grid-template-columns:1fr}.manualflow{grid-template-columns:1fr 1fr}}
-    @media(max-width:560px){.bar{padding:12px 16px}main{padding:20px 12px 48px}.hero,section{padding:19px}.legend{grid-template-columns:1fr}.search{align-items:stretch;flex-direction:column;gap:6px}.groupbody{padding:13px}.provider{padding:14px}details.group>summary{padding:17px;font-size:19px}.providerhead{display:block}.providerhead .badge{margin-top:6px}.manualflow{grid-template-columns:1fr}nav{width:100%}nav a{flex:1;text-align:center;min-width:90px}}
+    @media(max-width:850px){.legend{grid-template-columns:repeat(2,1fr)}.cards,.split,.focuscards{grid-template-columns:1fr}.manualflow{grid-template-columns:1fr 1fr}.gates{grid-template-columns:repeat(4,minmax(0,1fr))}.previewcheck,.idgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.bar{padding:12px 16px}main{padding:20px 12px 48px}.hero,section{padding:19px}.legend{grid-template-columns:1fr}.search{align-items:stretch;flex-direction:column;gap:6px}.groupbody{padding:13px}.provider{padding:14px}details.group>summary{padding:17px;font-size:19px}.providerhead{display:block}.providerhead .badge{margin-top:6px}.manualflow,.previewcheck,.idgrid{grid-template-columns:1fr}.gates{grid-template-columns:repeat(2,minmax(0,1fr))}nav{width:100%}nav a{flex:1;text-align:center;min-width:90px}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
     @media print{header,footer,.skip,.search{display:none}body{background:#fff}main{max-width:none;padding:0}.hero,section,.group{box-shadow:none;break-inside:avoid}details.group:not([open])>.groupbody{display:block}.cards{grid-template-columns:1fr 1fr}}
   </style>
@@ -112,7 +148,7 @@
       <p class="eyebrow">Owner setup center</p>
       <h1>Connect accounts safely</h1>
       <p class="lede">Use this page to see which accounts can connect, which require a developer app or provider review, and which should stay in MyPersonas as a manual posting handoff.</p>
-      <span class="updated">Reviewed July 29, 2026</span>
+      <span class="updated">Publishing readiness reviewed August 30, 2026</span>
       <div class="truth">
         <strong>A saved account is not an authenticated account.</strong>
         MyPersonas never treats a username, matching email, password, or cookie as provider permission. Direct posting stays off until the provider's official connector, write permission, and a real-account test all pass.
@@ -125,6 +161,135 @@
       <div><span class="badge limited">Limited / special connector</span><p>Bot, business, partner, local bridge, mailbox, or partial API only.</p></div>
       <div><span class="badge manual">Manual staging only</span><p>Prepare everything here; publish or send in the official provider yourself.</p></div>
     </div>
+
+    <section id="publishingReadiness" aria-labelledby="publishingReadinessTitle">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">Truthful publishing status</p>
+          <h2 id="publishingReadinessTitle">A saved account is only step 1 of 7</h2>
+        </div>
+        <p>Each check must describe a different fact. A username in the Account Ledger, an active sign-in, or a provider offering an API does not prove that MyPersonas can publish to the intended destination.</p>
+      </div>
+
+      <div id="previewBeforeSchedule" class="previewrule" data-scheduling-rule="platform-preview-required">
+        <h3>No preview, no schedule — always</h3>
+        <p><strong>Release requirement:</strong> every approve, schedule, and immediate-action control must stay disabled until MyPersonas renders the platform-specific preview from a short-lived server snapshot. Your confirmation records a separate AAL2 acknowledgement for that exact revision, destination, action, and time; only the unchanged receipt can be consumed once. Any later change invalidates the receipt and requires a new preview.</p>
+        <div class="previewcheck" aria-label="Required platform preview information">
+          <div><strong>Exact destination</strong><br>Platform, account, Page, channel, site, or campaign.</div>
+          <div><strong>Platform layout</strong><br>Full submitted media in the relevant aspect ratio frame, safe-area guidance, text limits, thumbnail, and link treatment.</div>
+          <div><strong>Visibility and safety</strong><br>Audience, privacy, accessibility text, AI/affiliate disclosures, and interaction settings.</div>
+          <div><strong>Exact timing</strong><br>Date, clock time, named time zone, and what the provider will do at that time.</div>
+        </div>
+        <p class="plain">Final rendering can vary by device, placement, provider UI, and active theme. For Wix and WordPress, MyPersonas shows its platform-shaped preview and then requires the provider's own draft preview before any later public schedule.</p>
+      </div>
+
+      <ol class="gates" aria-label="Seven publishing readiness checks">
+        <li data-readiness-gate="inventory"><b>1</b><strong>Inventory</strong>The account or site is saved.</li>
+        <li data-readiness-gate="credentials"><b>2</b><strong>App credentials</strong>The provider recognizes MyPersonas.</li>
+        <li data-readiness-gate="oauth"><b>3</b><strong>Owner sign-in</strong>The correct owner authorized access.</li>
+        <li data-readiness-gate="write-scope"><b>4</b><strong>Write permission</strong>The exact action is allowed.</li>
+        <li data-readiness-gate="target"><b>5</b><strong>Target binding</strong>The exact destination is selected.</li>
+        <li data-readiness-gate="adapter"><b>6</b><strong>Publisher live</strong>Reviewed MyPersonas code handles results safely.</li>
+        <li data-readiness-gate="verification"><b>7</b><strong>Provider proof</strong>A private, draft, or reversible test passed.</li>
+      </ol>
+
+      <div class="tablewrap">
+        <table class="readinesstable">
+          <caption>Current MyPersonas release snapshot. These are separate checks, not one combined “connected” badge.</caption>
+          <thead>
+            <tr><th scope="col">Provider</th><th scope="col">1 · Inventory</th><th scope="col">2 · Credentials</th><th scope="col">3 · Owner sign-in</th><th scope="col">4 · Write permission</th><th scope="col">5 · Target</th><th scope="col">6 · Publisher</th><th scope="col">7 · Test</th></tr>
+          </thead>
+          <tbody>
+            <tr data-readiness-provider="youtube"><th scope="row">YouTube</th><td><span class="state saved">Saved</span></td><td><span class="state owner">Needed</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state blocked">Not granted</span></td><td><span class="state blocked">Channel not bound</span></td><td><span class="state blocked">Not live</span></td><td><span class="state blocked">Not run</span></td></tr>
+            <tr data-readiness-provider="tiktok"><th scope="row">TikTok</th><td><span class="state saved">Saved</span></td><td><span class="state owner">Needed</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state blocked">Not granted</span></td><td><span class="state blocked">Creator not bound</span></td><td><span class="state blocked">Not live</span></td><td><span class="state blocked">Not run</span></td></tr>
+            <tr data-readiness-provider="twitch"><th scope="row">Twitch</th><td><span class="state saved">Saved</span></td><td><span class="state owner">Needed</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state limited">Action-specific</span></td><td><span class="state blocked">Channel not bound</span></td><td><span class="state blocked">Not live</span></td><td><span class="state blocked">Not run</span></td></tr>
+            <tr data-readiness-provider="patreon"><th scope="row">Patreon</th><td><span class="state saved">Saved</span></td><td><span class="state owner">Read/report only</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state limited">No create-post scope</span></td><td><span class="state blocked">Campaign not bound</span></td><td><span class="state limited">Native handoff</span></td><td><span class="state owner">Native proof needed</span></td></tr>
+            <tr data-readiness-provider="wix"><th scope="row">Wix</th><td><span class="state saved">Saved</span></td><td><span class="state owner">Create Wix app</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state blocked">Manage Blog + Read Members</span></td><td><span class="state blocked">Select site + author</span></td><td><span class="state blocked">Not deployed</span></td><td><span class="state blocked">Draft proof not run</span></td></tr>
+            <tr data-readiness-provider="wordpress"><th scope="row">WordPress</th><td><span class="state owner">Identify exact sites</span></td><td><span class="state owner">Choose .com or hosted</span></td><td><span class="state blocked">Not connected</span></td><td><span class="state blocked">Posts / edit_posts</span></td><td><span class="state blocked">Select site + author</span></td><td><span class="state blocked">Not deployed</span></td><td><span class="state blocked">Draft proof not run</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details class="idhelp" open>
+        <summary>What are the numbers and IDs next to “Save target”?</summary>
+        <div class="idgrid">
+          <div><strong>Client ID</strong>Identifies the MyPersonas developer app to the provider. It is not an account count and is normally safe to display.</div>
+          <div><strong>Client secret</strong>The developer app's password. Never put it in a target field, this page, a note, or chat.</div>
+          <div><strong>Target ID</strong>The provider's permanent number for the exact Page, channel, creator, campaign, or site. “Save target” means bind this record to that destination.</div>
+          <div><strong>Author/member ID</strong>Selects the correct byline on a multi-author Wix or WordPress site. It is not the number of members.</div>
+          <div><strong>Provider post ID</strong>The receipt returned after a successful provider action. It lets MyPersonas reconcile or avoid a duplicate.</div>
+          <div><strong>Saved / connected count</strong>For example, 3 / 0 means three inventory records and zero authorized connections. It does not mean three posts.</div>
+        </div>
+      </details>
+
+      <div class="focuscards">
+        <article class="focuscard" id="youtube-readiness" data-focus-provider="youtube">
+          <div class="providerhead"><h3>YouTube</h3><span class="badge review">Private test first</span></div>
+          <p class="supportline"><strong>Supported route:</strong> upload video through YouTube Data API v3 with the narrow <code>youtube.upload</code> permission. A private upload is the safe first proof.</p>
+          <p class="limitline"><strong>Not ready now:</strong> the narrow OAuth and Private-first uploader are implemented in source but not deployed or live-verified. Production credentials, owner authorization, exact channel binding, and a Private provider proof are still required.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud</a>, choose a dedicated project, and enable YouTube Data API v3.</li><li>Configure OAuth, create a Web client, and add callback <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/youtube-oauth</code>.</li><li>Authorize the intended channel with <code>youtube.upload</code>, then confirm its channel name and ID before saving the target.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> upload one clearly labeled test video as <em>Private</em>, read its returned video ID and status, then leave it private or delete it only after approval. Unverified API projects can be restricted to private uploads.</div>
+          <div class="previewshape"><strong>Required preview:</strong> 16:9 or Shorts crop, thumbnail, title, description opening, audience setting, privacy, synthetic-media disclosure, destination channel, and schedule with time zone.</div>
+          <p><a href="https://developers.google.com/youtube/v3/docs/videos/insert" target="_blank" rel="noopener noreferrer">Official YouTube upload requirements</a></p>
+        </article>
+
+        <article class="focuscard" id="tiktok-readiness" data-focus-provider="tiktok">
+          <div class="providerhead"><h3>TikTok</h3><span class="badge review">Consent required</span></div>
+          <p class="supportline"><strong>Implemented route:</strong> TikTok Upload-to-inbox uses the narrow <code>video.upload</code> scope; the owner finishes caption, privacy, disclosure, and interaction choices in TikTok. Direct Post is disabled.</p>
+          <p class="limitline"><strong>Not ready now:</strong> the connector source is not deployed or live-verified. Production credentials, owner OAuth, exact creator binding, verified media source, and an inbox proof are still required.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Follow TikTok's <a href="https://developers.tiktok.com/doc/getting-started-create-an-app" target="_blank" rel="noopener noreferrer">app registration guide</a> and add Content Posting API.</li><li>Add callback <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/tiktok-oauth</code> and request only <code>video.upload</code>.</li><li>At handoff time, review the exact creator and media; then finish privacy and interaction settings inside TikTok.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> upload one designated video to the TikTok inbox and poll its provider status. Finish or discard it in TikTok. This does not enable Direct Post or unattended public scheduling.</div>
+          <div class="previewshape"><strong>Required preview:</strong> full vertical asset in its aspect frame and safe zones, cover frame, caption handoff, account, disclosure, and the exact Upload-to-inbox action. TikTok's own final screen controls privacy and comments/duet/stitch choices.</div>
+          <p><a href="https://developers.tiktok.com/docs/en/content-posting-api-get-started" target="_blank" rel="noopener noreferrer">Official Content Posting setup</a> · <a href="https://developers.tiktok.com/docs/en/content-posting-api-reference-upload-video" target="_blank" rel="noopener noreferrer">Upload-to-inbox reference</a></p>
+        </article>
+
+        <article class="focuscard" id="twitch-readiness" data-focus-provider="twitch">
+          <div class="providerhead"><h3>Twitch</h3><span class="badge limited">Limited actions only</span></div>
+          <p class="supportline"><strong>Supported route:</strong> exact channel information, stream schedule segments, and selected chat/announcement or moderation actions with separate scopes.</p>
+          <p class="limitline"><strong>Not supported:</strong> Twitch does not provide a general social-feed or uploaded-video publisher. “Connect Twitch” cannot honestly promise ordinary scheduled posts.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Register an app in the <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer">Twitch Developer Console</a> after the final callback is available.</li><li>Select the exact Twitch channel and only the feature set you want: schedule, channel, chat, or moderation.</li><li>Grant only the matching scopes; nonrecurring schedule operations can depend on Affiliate/Partner eligibility.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> first verify channel identity with a read. Any schedule or chat write can be visible, so it needs a separate exact preview and approval; use a reversible schedule item or a designated test channel where available.</div>
+          <div class="previewshape"><strong>Required preview:</strong> the real action shape—not a fake feed card. Show the schedule segment, channel change, or chat announcement exactly as applicable, with target channel and timing.</div>
+          <p><a href="https://dev.twitch.tv/docs/api/" target="_blank" rel="noopener noreferrer">Official Twitch API</a> · <a href="https://dev.twitch.tv/docs/authentication/scopes/" target="_blank" rel="noopener noreferrer">Scopes</a> · <a href="https://dev.twitch.tv/docs/api/schedule" target="_blank" rel="noopener noreferrer">Schedule API</a></p>
+        </article>
+
+        <article class="focuscard" id="patreon-readiness" data-focus-provider="patreon">
+          <div class="providerhead"><h3>Patreon</h3><span class="badge manual">Native post scheduler</span></div>
+          <p class="supportline"><strong>Supported API route:</strong> identity, campaigns, memberships, post reads, webhooks, and Patreon Live capabilities that Patreon makes available to an eligible early-access integration.</p>
+          <p class="limitline"><strong>Not supported:</strong> the public API does not offer a general create-post permission. Ordinary Patreon posts must be completed and scheduled in Patreon.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Register a client in the <a href="https://www.patreon.com/portal/registration/register-clients" target="_blank" rel="noopener noreferrer">Patreon developer portal</a> only if reporting, membership, webhook, or eligible Live features are wanted.</li><li>Bind the exact campaign—not just the login email—and grant only the read/report scopes needed.</li><li>For content, use MyPersonas to prepare the package, then open Patreon's <a href="https://support.patreon.com/hc/en-us/articles/360031956632-Scheduled-posts" target="_blank" rel="noopener noreferrer">native scheduled-post flow</a>.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> verify reporting access read-only. For a post, create a Patreon draft, preview its audience/tier and date in Patreon, then return to MyPersonas and record the native draft or post URL.</div>
+          <div class="previewshape"><strong>Required preview:</strong> title, body, media, attachment, campaign, access tier/audience, charge setting when applicable, disclosures, and Patreon's own draft preview before scheduling.</div>
+          <p><a href="https://docs.patreon.com/" target="_blank" rel="noopener noreferrer">Official Patreon API documentation</a></p>
+        </article>
+
+        <article class="focuscard" id="wix-readiness" data-focus-provider="wix">
+          <div class="providerhead"><h3>Wix</h3><span class="badge review">Exact site required</span></div>
+          <p class="supportline"><strong>Implemented route:</strong> an installed Wix app can create a Wix Blog draft for the exact selected site and author. This build does not accept account API keys.</p>
+          <p class="limitline"><strong>Not ready now:</strong> a Wix account seen in another signed-in tool is not permission for the deployed MyPersonas app. Current ledger records are not bound to an exact Wix site and author.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Choose one site and confirm Wix Blog is installed on it.</li><li>Create an app in <a href="https://manage.wix.com/account/custom-apps" target="_blank" rel="noopener noreferrer">Wix Custom Apps</a>, request only <strong>Manage Blog</strong> and <strong>Read Members</strong>, release a version, and create a Share Install Link if the app is unlisted.</li><li>Set the external post-install callback to <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wix-oauth</code>. Put the app secret only in Supabase Vault under <code>wix_app_secret</code>; never paste it into this site.</li><li>In Studio → Accounts → Wix → Connection, choose <strong>Connect Wix site</strong>. Wix returns the exact site ID; MyPersonas then requires a separate exact author/member ID selection.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> create one uniquely titled Wix Blog draft with publishing explicitly off, read it back from the exact site, and open its Wix preview. Do not publish during connector verification.</div>
+          <div class="previewshape"><strong>Required preview:</strong> active-theme draft preview on desktop and mobile, title, cover, excerpt, author, categories/tags, URL slug, SEO fields, disclosures, and exact site.</div>
+          <p><a href="https://dev.wix.com/docs/api-reference/business-solutions/blog/skills/how-to-create-blog-posts" target="_blank" rel="noopener noreferrer">Official create-blog-post recipe</a> · <a href="https://dev.wix.com/docs/api-reference/business-solutions/blog/draft-posts/introduction" target="_blank" rel="noopener noreferrer">Draft Posts API</a> · <a href="https://dev.wix.com/docs/build-apps/launch-your-app/app-distribution/install-your-app/set-up-the-external-install-flow" target="_blank" rel="noopener noreferrer">External install flow</a></p>
+        </article>
+
+        <article class="focuscard" id="wordpress-readiness" data-focus-provider="wordpress">
+          <div class="providerhead"><h3>WordPress</h3><span class="badge review">Choose the hosting route</span></div>
+          <p class="supportline"><strong>Implemented route:</strong> WordPress.com uses production authorization-code OAuth with the <code>posts</code> scope; a self-hosted WordPress site can use its REST API with a separate, revocable Application Password. Both routes create <strong>Draft</strong> only.</p>
+          <p class="limitline"><strong>Not ready now:</strong> “Website” inventory is not WordPress authorization. No exact WordPress.com or self-hosted site is bound to a live MyPersonas publisher.</p>
+          <h4>Owner setup</h4>
+          <ol><li>Identify each site as WordPress.com or self-hosted and save its exact public HTTPS address in the WordPress account record.</li><li>For WordPress.com, register MyPersonas at <a href="https://developer.wordpress.com/apps/" target="_blank" rel="noopener noreferrer">WordPress.com Applications</a> with callback <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/wordpress-oauth</code>. Put the client secret only in Supabase Vault under <code>wordpress_com_client_secret</code>.</li><li>For self-hosted WordPress, create a dedicated Application Password in that site's user profile. Enter it only in Studio → Accounts → WordPress → Connection; the browser does not store it.</li><li>After connection, Queue shows a second exact platform preview before the owner-triggered <strong>Create provider draft</strong> action. Reconciliation must be used instead of retrying an uncertain create result.</li></ol>
+          <div class="proof"><strong>Safe proof:</strong> create one uniquely titled <em>Draft</em>, read it back from the exact site and exact author, and open WordPress Preview. Do not use Private, Publish, or Schedule as the connector test.</div>
+          <div class="previewshape"><strong>Required preview:</strong> active-theme Preview on desktop and mobile, title, featured image, excerpt, author, categories/tags, slug, SEO/disclosures, visibility, and exact site.</div>
+          <p><a href="https://developer.wordpress.com/docs/api/oauth2/" target="_blank" rel="noopener noreferrer">WordPress.com OAuth</a> · <a href="https://developer.wordpress.com/docs/api/getting-started/" target="_blank" rel="noopener noreferrer">WordPress.com REST API</a> · <a href="https://developer.wordpress.org/advanced-administration/security/application-passwords/" target="_blank" rel="noopener noreferrer">Self-hosted Application Passwords</a></p>
+        </article>
+      </div>
+    </section>
 
     <section>
       <h2>Do these first</h2>
@@ -154,7 +319,7 @@
     <section>
       <h2>Meta: one Page-pairing flow for Facebook and Instagram</h2>
       <p>Use Facebook Login for Business to select Pages you administer and discover the eligible Instagram Business or Creator account linked to each Page. Facebook personal profiles and Instagram consumer accounts are not supported.</p>
-      <p><strong>The current Meta connector pairs eligible assets for identity/read use only; it does not publish.</strong> Synchronized posting remains off until the additional permissions, provider review, write adapters, and real-account tests below are complete.</p>
+      <p><strong>The current source includes reviewed owner-triggered Facebook Page and linked-Instagram publishing.</strong> It is not yet deployed or live-verified, and recurring posting remains off until migrations, permissions, provider review where applicable, exact-target proofs, and duplicate-safe reconciliation all pass.</p>
       <div class="split">
         <div class="stepbox">
           <h3>Your setup</h3>
@@ -187,17 +352,17 @@
       <div class="groupbody cards">
         <article class="provider" data-provider="twitter" data-search="x twitter oauth posting social">
           <div class="providerhead"><h3>X / Twitter</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Identity/read OAuth exists. Production credentials, API credits, and a separate tested write adapter are still required.</p>
+          <p>OAuth plus a text-only, owner-triggered publisher are implemented in source. Deployment, API credits, <code>tweet.write</code> reauthorization for every intended account, and an exact-account proof are still required.</p>
           <ul>
             <li><strong>Owner:</strong> create a confidential Web App in the <a href="https://console.x.com" target="_blank" rel="noopener noreferrer">X Developer Console</a>; callback: <code>https://nwsqyuucwzihruszocge.supabase.co/functions/v1/twitter-oauth</code>.</li>
-            <li><strong>Posting:</strong> add <code>tweet.write</code> only after the publish adapter exists, then reauthorize.</li>
+            <li><strong>Posting:</strong> add <code>tweet.write</code> and reauthorize; media upload remains disabled in the first release.</li>
             <li><strong>Cost:</strong> X uses <a href="https://docs.x.com/x-api/getting-started/pricing" target="_blank" rel="noopener noreferrer">pay-per-use credits</a>.</li>
           </ul>
         </article>
 
         <article class="provider" data-provider="instagram" data-search="instagram meta creator business professional facebook linked social">
           <div class="providerhead"><h3>Instagram</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Eligible Business or Creator accounts can publish through Meta. The current MyPersonas flow only pairs the Instagram account linked to a Facebook Page; it does not publish.</p>
+          <p>Eligible Business or Creator accounts can publish through Meta. The reviewed publisher is implemented in source but remains inactive until deployment, exact-target authorization, provider review where applicable, and a live proof.</p>
           <ul>
             <li><strong>Owner:</strong> convert to professional, link the Page, add assets to Meta Business, and complete app review.</li>
             <li><strong>Permission:</strong> <code>instagram_content_publish</code>; comments/insights are separate.</li>
@@ -207,7 +372,7 @@
 
         <article class="provider" data-provider="facebook" data-search="facebook page meta business social">
           <div class="providerhead"><h3>Facebook Page</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Official automation is for Pages the signed-in member administers—not personal profiles. The current MyPersonas flow only pairs the Page; it does not publish.</p>
+          <p>Official automation is for Pages the signed-in member administers—not personal profiles. The reviewed publisher is implemented in source but remains inactive until deployment, exact-target authorization, provider review where applicable, and a live proof.</p>
           <ul>
             <li><strong>Owner:</strong> create or select the Meta Business app in the <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta App Dashboard</a>, then select the exact Page.</li>
             <li><strong>Permission:</strong> <code>pages_manage_posts</code> for publishing; engagement is separate.</li>
@@ -217,19 +382,20 @@
 
         <article class="provider" data-provider="tiktok" data-search="tiktok video photo content posting audit social">
           <div class="providerhead"><h3>TikTok</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Direct Post needs the Content Posting product, <code>video.publish</code>, and TikTok review/audit. Unaudited clients publish privately.</p>
+          <p>MyPersonas implements only Upload-to-inbox with <code>video.upload</code>. Direct Post and unattended public scheduling are disabled; the owner finishes every uploaded draft in TikTok.</p>
           <ul>
             <li><strong>Owner:</strong> follow TikTok's current <a href="https://developers.tiktok.com/doc/getting-started-create-an-app" target="_blank" rel="noopener noreferrer">app registration guide</a>, add policy URLs, and submit the use case.</li>
-            <li><a href="https://developers.tiktok.com/products/content-posting-api" target="_blank" rel="noopener noreferrer">Content Posting API</a></li>
+            <li><strong>First proof:</strong> one designated Upload-to-inbox with provider-status polling, then finish or discard it in TikTok.</li>
+            <li><a href="#tiktok-readiness">Open the exact TikTok readiness steps above</a></li>
           </ul>
         </article>
 
         <article class="provider" data-provider="youtube" data-search="youtube google video upload schedule audit social">
           <div class="providerhead"><h3>YouTube</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Uploads use the YouTube Data API and <code>youtube.upload</code>. Unverified projects are restricted to private uploads.</p>
+          <p>Uploads use YouTube Data API v3 and <code>youtube.upload</code>. The safe connector proof is a private upload to the exact bound channel.</p>
           <ul>
             <li><strong>Owner:</strong> enable YouTube Data API v3 in <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud</a>, configure OAuth, and complete the YouTube audit.</li>
-            <li><a href="https://developers.google.com/youtube/v3/docs/videos/insert" target="_blank" rel="noopener noreferrer">Official upload requirements</a></li>
+            <li><a href="#youtube-readiness">Open the exact YouTube readiness steps above</a></li>
           </ul>
         </article>
 
@@ -314,10 +480,11 @@
 
         <article class="provider" data-provider="patreon" data-search="patreon memberships posts scheduler webhooks">
           <div class="providerhead"><h3>Patreon</h3><span class="badge limited">Limited / special connector</span></div>
-          <p>The API supports identity, campaigns, members, post reads, and webhooks. No public general create-post scope was found.</p>
+          <p>The API supports identity, campaigns, members, post reads, webhooks, and eligible early-access Live work. It has no public general create-post scope.</p>
           <ul>
             <li><strong>Owner:</strong> register a client in the <a href="https://www.patreon.com/portal/registration/register-clients" target="_blank" rel="noopener noreferrer">Patreon portal</a>.</li>
             <li><strong>Posting:</strong> use Patreon's <a href="https://support.patreon.com/hc/en-us/articles/360031956632-Scheduled-posts" target="_blank" rel="noopener noreferrer">native scheduler</a> through manual handoff.</li>
+            <li><a href="#patreon-readiness">Open the exact Patreon readiness steps above</a></li>
           </ul>
         </article>
 
@@ -326,7 +493,8 @@
           <p>The official API covers channel details, schedules, chat, clips, and moderation—not a general social-feed/video-upload publisher.</p>
           <ul>
             <li><strong>Owner:</strong> register an app in the <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer">Twitch Developer Console</a>.</li>
-            <li><a href="https://dev.twitch.tv/docs/authentication/scopes/" target="_blank" rel="noopener noreferrer">Official scopes</a></li>
+            <li><strong>Choose an action:</strong> schedule, channel, chat/announcement, or moderation permissions are separate.</li>
+            <li><a href="#twitch-readiness">Open the exact Twitch readiness steps above</a></li>
           </ul>
         </article>
 
@@ -415,14 +583,25 @@
       <div class="groupbody cards">
         <article class="provider" data-provider="wix" data-search="wix website store cms">
           <div class="providerhead"><h3>Wix</h3><span class="badge review">Requires provider app/review</span></div>
-          <p>Use Wix's official OAuth app route or a minimal-permission API key for an owner-controlled site.</p>
+          <p>Use the implemented Wix external app-install flow, then bind the exact site and author. A Wix sign-in elsewhere is not MyPersonas authorization.</p>
           <ul>
-            <li><strong>Owner:</strong> create the app in the <a href="https://dev.wix.com/" target="_blank" rel="noopener noreferrer">Wix Developer Center</a> or create a narrowly scoped account API key.</li>
-            <li><a href="https://dev.wix.com/docs/build-apps/develop-your-app/api-integrations/rest" target="_blank" rel="noopener noreferrer">Official REST integration guide</a></li>
+            <li><strong>Owner:</strong> create the app in <a href="https://manage.wix.com/account/custom-apps" target="_blank" rel="noopener noreferrer">Wix Custom Apps</a>, request Manage Blog + Read Members, and create a Share Install Link if it is unlisted.</li>
+            <li><strong>First proof:</strong> create and read back a Wix Blog draft with publishing off.</li>
+            <li><a href="#wix-readiness">Open the exact Wix readiness steps above</a></li>
           </ul>
         </article>
 
-        <article class="provider" data-provider="website" data-search="website store cms wordpress shopify squarespace webflow custom">
+        <article class="provider" data-provider="wordpress" data-search="wordpress wordpress.com self hosted website blog cms draft private">
+          <div class="providerhead"><h3>WordPress</h3><span class="badge review">Choose the hosting route</span></div>
+          <p>WordPress.com and self-hosted WordPress need different authorization. A saved website URL is neither one.</p>
+          <ul>
+            <li><strong>Owner:</strong> identify the exact site, authorize only content writing, and select the author/byline when needed.</li>
+            <li><strong>First proof:</strong> create and read back a Draft, then open WordPress Preview. Private, Publish, and Schedule are not part of this proof.</li>
+            <li><a href="#wordpress-readiness">Open the exact WordPress readiness steps above</a></li>
+          </ul>
+        </article>
+
+        <article class="provider" data-provider="website" data-search="website store cms shopify squarespace webflow custom">
           <div class="providerhead"><h3>Website / Store</h3><span class="badge limited">Limited / special connector</span></div>
           <p>Record the actual host or CMS. WordPress, Shopify, Squarespace, Webflow, WooCommerce, and custom sites each need their own official route.</p>
           <ul>

@@ -6,8 +6,9 @@
 // scheduling RPC with the verified digest/MIME/size/path/URL metadata.
 //
 // Contract (POST, owner bearer token):
-//   { draftId, scheduledFor, timezone, fbCaption, igCaption, xCaption, targets }
-//   -> { draft }
+//   prepare-schedule: exact proposal -> immutable server-authored receipt
+//   commit-schedule: { action, draftId, receiptId } -> scheduled draft
+// The AAL2 owner acknowledgement between those calls is a separate SQL RPC.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -85,15 +86,43 @@ serve(async (req) => {
 
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return json({ error: "A JSON request body is required." }, 400, origin);
+  const action = String(body.action || "").trim();
   const draftId = String(body.draftId || "");
+  if (!SAFE_UUID.test(draftId)) {
+    return json({ error: "A valid draftId is required." }, 400, origin);
+  }
+  if (["previewConfirmed", "previewVersion", "previewFacebookPageId",
+    "previewInstagramBusinessId"].some((key) => key in body)) {
+    return json({
+      error: "Raw preview confirmations and browser-supplied provider targets are not accepted.",
+    }, 400, origin);
+  }
+  if (action === "commit-schedule") {
+    const receiptId = String(body.receiptId || "");
+    if (!SAFE_UUID.test(receiptId)) {
+      return json({ error: "A valid acknowledged receiptId is required." }, 400, origin);
+    }
+    const committed = await admin.rpc(
+      "consume_acknowledged_post_draft_schedule_preview_service",
+      { p_owner: user.id, p_draft_id: draftId, p_receipt_id: receiptId },
+    );
+    const draft = Array.isArray(committed.data) ? committed.data[0] : committed.data;
+    if (committed.error || !draft) {
+      return json({
+        error: committed.error?.message ||
+          "The acknowledged preview expired, was used, or no longer matches. Nothing was scheduled.",
+      }, 409, origin);
+    }
+    return json({ draft }, 200, origin);
+  }
+  if (action !== "prepare-schedule") {
+    return json({ error: "Choose prepare-schedule or commit-schedule." }, 400, origin);
+  }
   const scheduledFor = String(body.scheduledFor || "");
   const timezone = String(body.timezone || "").trim();
   const fbCaption = String(body.fbCaption || "");
   const igCaption = String(body.igCaption || "");
   const xCaption = String(body.xCaption || "");
-  if (!SAFE_UUID.test(draftId)) {
-    return json({ error: "A valid draftId is required." }, 400, origin);
-  }
   if (!scheduledFor || !Number.isFinite(Date.parse(scheduledFor))) {
     return json({ error: "A valid scheduledFor timestamp is required." }, 400, origin);
   }
@@ -151,7 +180,7 @@ serve(async (req) => {
       instagramSource ? stage(instagramSource) : Promise.resolve(undefined),
     ]);
 
-    const scheduled = await admin.rpc("approve_and_schedule_post_draft", {
+    const issued = await admin.rpc("issue_post_draft_schedule_preview_receipt_service", {
       p_owner: user.id,
       p_draft_id: draftId,
       p_scheduled_for: scheduledFor,
@@ -165,12 +194,13 @@ serve(async (req) => {
       ...mediaArgs("fb", facebookMedia),
       ...mediaArgs("ig", instagramMedia),
     });
-    if (scheduled.error || !scheduled.data) {
-      const message = scheduled.error?.message || "The exact approval could not be saved.";
+    const receipt = Array.isArray(issued.data) ? issued.data[0] : issued.data;
+    if (issued.error || !receipt) {
+      const message = issued.error?.message || "The exact staged preview could not be created.";
       const status = /no longer|changed|future|unavailable|not found/i.test(message) ? 409 : 422;
       return json({ error: message }, status, origin);
     }
-    return json({ draft: scheduled.data }, 200, origin);
+    return json({ receipt }, 200, origin);
   } catch (error) {
     return json({ error: (error as Error).message }, 422, origin);
   }

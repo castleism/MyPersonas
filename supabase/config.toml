@@ -39,6 +39,68 @@ verify_jwt = true
 [functions.twitter-oauth]
 verify_jwt = false
 
+# Owner-triggered exact-approved X drafts; the function also requires AAL2 and
+# an explicit tweet.write grant before any provider write.
+[functions.twitter-post]
+verify_jwt = true
+
+# Google redirects without a Supabase JWT. The function validates PKCE, a
+# hashed single-use state, the initiating browser nonce, then requires the
+# signed-in owner at AAL2 before exchanging or storing tokens.
+[functions.youtube-oauth]
+verify_jwt = false
+
+# Owner-triggered exact-approved video uploads. This requires a current
+# platform-preview receipt and uses a Vault-checkpointed resumable session.
+[functions.youtube-post]
+verify_jwt = true
+
+# TikTok redirects without a Supabase JWT. The callback consumes a hashed,
+# single-use state plus same-browser nonce and PKCE before storing tokens only
+# through Vault-backed service RPCs.
+[functions.tiktok-oauth]
+verify_jwt = false
+
+# Owner-triggered Upload API handoffs or explicitly audited Direct Post jobs.
+# Every write requires AAL2 plus generic and TikTok-specific preview receipts.
+[functions.tiktok-post]
+verify_jwt = true
+
+# Wix's fixed post-install callback and WordPress.com's OAuth redirect arrive
+# without a Supabase JWT. Both functions bind a short-lived single-use browser
+# handoff to an owner-AAL2 initiation before Vault-only credential storage.
+[functions.wix-oauth]
+verify_jwt = false
+
+[functions.wordpress-oauth]
+verify_jwt = false
+
+# Owner-triggered, text-only provider drafts. Migration 069 exact-preview
+# evidence is rechecked for the exact account/site/author immediately before a
+# Wix or WordPress mutation. Neither function exposes publish or schedule.
+[functions.wix-draft]
+verify_jwt = true
+
+[functions.wordpress-draft]
+verify_jwt = true
+
+# Twitch's provider callback has no Supabase bearer token; its short-lived,
+# hashed state is completed only by the same signed-in AAL2 browser. Twitch
+# mutations are separate owner-triggered functions with two preview receipts.
+[functions.twitch-oauth]
+verify_jwt = false
+
+[functions.twitch-action]
+verify_jwt = true
+
+# Patreon OAuth is API v2 read/report only. Ordinary post creation/scheduling
+# is a previewed native-editor handoff; Patreon exposes no ordinary post write.
+[functions.patreon-oauth]
+verify_jwt = false
+
+[functions.patreon-handoff]
+verify_jwt = true
+
 # Reddit's OAuth callback validates its signed state; posting requires an owner JWT.
 [functions.reddit-oauth]
 verify_jwt = false
@@ -46,7 +108,15 @@ verify_jwt = false
 [functions.reddit-post]
 verify_jwt = true
 
-# Source remains deployed fail-closed/dormant until the Discord safety rebuild is complete.
+# Discord redirects arrive without a Supabase JWT. The callback only forwards
+# the code plus hashed, expiring state; completion requires the same browser
+# nonce and a signed-in owner at AAL2 before any token exchange or Vault write.
+[functions.discord-oauth]
+verify_jwt = false
+
+# Owner-triggered exact-approved Discord drafts only. The function requires
+# AAL2 and platform-preview-v1 evidence for the exact connected channel.
+# No scheduled or background worker invokes this endpoint.
 [functions.discord-post]
 verify_jwt = true
 

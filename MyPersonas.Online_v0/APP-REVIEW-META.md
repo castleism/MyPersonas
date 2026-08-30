@@ -23,8 +23,11 @@ live until this clears._
 |---|---|---|
 | `pages_manage_posts` | Publish owner-approved posts to the creator's own Facebook Page | Advanced access |
 | `instagram_content_publish` | Publish owner-approved posts to the linked professional Instagram account | Advanced access; IG must be Business/Creator linked to the Page |
-| `business_management` | Access Pages/IG that live in the creator's Business portfolio (granular business-asset grants) | Advanced access |
 | `pages_show_list`, `pages_read_engagement`, `instagram_basic` | (Already used) discover + read the Page/IG for pairing | Standard/already granted |
+
+`business_management` is intentionally not part of ordinary Page/Instagram
+publishing. Add it only if a separate, documented Business Portfolio workflow
+actually needs it; do not make every creator grant it for posting.
 
 Framing for the reviewer (use-case text): _"Creators use AliaSpaces to manage many
 persona brands. After connecting their own Facebook Page and linked Instagram
@@ -43,12 +46,17 @@ users are never blocked. In `supabase/functions/meta-oauth/index.ts`:
 const REQUIRED_SCOPES = ["pages_show_list","pages_read_engagement","instagram_basic"] as const;
 
 // NEW — requested only when the owner opts into publishing (post App Review)
-const PUBLISH_SCOPES = ["pages_manage_posts","instagram_content_publish","business_management"] as const;
+const TARGET_PUBLISH_SCOPES = {
+  facebook: ["pages_manage_posts"],
+  instagram: ["pages_show_list","pages_read_engagement","instagram_basic","instagram_content_publish"],
+} as const;
 
-// in the "start" action, when body.requestPublishing === true:
-//   scope: [...REQUIRED_SCOPES, ...PUBLISH_SCOPES].join(",")
-// and derive capabilities.postingEnabled from whether the grant's granted_scopes
-// include every PUBLISH_SCOPE (meta-post already enforces this at publish time).
+// in the "start" action, the owner must send both:
+//   requestPublishing: true
+//   publishTargets: ["facebook" | "instagram", ...]
+// The authorization asks only for discovery plus the selected targets' write
+// scopes. meta-post rechecks the exact target scopes and Page CREATE_CONTENT
+// task immediately before a provider write.
 ```
 
 This means: reviewers and you (as testers) can grant publishing immediately; the
@@ -71,13 +79,23 @@ post prematurely.
   Instagram's Content Publishing API enforces the same restricted-goods rules
   (drugs/cannabis). Plan those brands for owner-approved manual handoff or your own
   platform, not automated Meta posting. (See the monetization note in chat.)
-- Rate limits when live: IG content publishing ≈ 25 posts / 24h per account; build the
-  publish queue to respect that.
+- Publishing quota when live: do not hard-code a historical post count. Read
+  `/{ig-user-id}/content_publishing_limit?fields=config,quota_usage` before
+  creating media and respect the account's current `quota_total` and
+  `quota_duration` values returned by Meta.
+
+Official Meta references:
+
+- [Manage a Page](https://developers.facebook.com/documentation/pages-api/manage-pages)
+- [Page posts](https://developers.facebook.com/documentation/pages-api/posts)
+- [Instagram content publishing](https://developers.facebook.com/documentation/instagram-platform/content-publishing)
+- [Instagram content-publishing limit](https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-user/content_publishing_limit)
+- [Instagram container status](https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-container)
 
 ## Status
 
 - [x] `meta-post` scaffold in repo (gated OFF until scopes present) — `supabase/functions/meta-post/`
 - [ ] Business verification (owner)
 - [ ] App Review submission (owner, using the above)
-- [ ] meta-oauth PUBLISH_SCOPES opt-in (apply after approval)
+- [x] meta-oauth target-specific publishing opt-in (still dormant until App Review and deployment)
 - [ ] Finish `meta-post` token retrieval + queue wiring + live tests

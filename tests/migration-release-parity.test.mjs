@@ -18,6 +18,12 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/056-auth-email-attestation-hardening.sql","supabase/migrations/20260822220000_auth_email_attestation_hardening.sql"],
   ["MyPersonas.Online_v0/sql-updates/057-ai-backend-budget-guard.sql","supabase/migrations/20260822230000_ai_backend_budget_guard.sql"],
   ["MyPersonas.Online_v0/sql-updates/058-persona-view-mode.sql","supabase/migrations/20260823000000_persona_view_mode.sql"],
+  ["MyPersonas.Online_v0/sql-updates/065-post-preview-approval-gate.sql","supabase/migrations/20260830080000_post_preview_approval_gate.sql"],
+  ["MyPersonas.Online_v0/sql-updates/066-discord-oauth-publishing.sql","supabase/migrations/20260830090000_discord_oauth_publishing.sql"],
+  ["MyPersonas.Online_v0/sql-updates/068-tiktok-connector-foundation.sql","supabase/migrations/20260830110000_tiktok_connector_foundation.sql"],
+  ["MyPersonas.Online_v0/sql-updates/069-agent-draft-platform-preview-gate.sql","supabase/migrations/20260830120000_agent_draft_platform_preview_gate.sql"],
+  ["MyPersonas.Online_v0/sql-updates/070-cms-draft-connectors.sql","supabase/migrations/20260830130000_cms_draft_connectors.sql"],
+  ["MyPersonas.Online_v0/sql-updates/072-immediate-provider-preview-receipts.sql","supabase/migrations/20260830150000_immediate_provider_preview_receipts.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

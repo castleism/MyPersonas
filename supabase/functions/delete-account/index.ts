@@ -29,6 +29,10 @@ const META_MANUAL_REVOCATION_URL =
 const META_OWNER_ERASURE_TTL_SECONDS = 3600;
 const REDDIT_USER_AGENT =
   "web:online.mypersonas:v0.5 (MyPersonas account erasure)";
+const DISCORD_API_BASE = "https://discord.com/api/v10";
+const DISCORD_PROVIDER_TIMEOUT_MS = 15_000;
+const DISCORD_SNOWFLAKE = /^[0-9]{10,25}$/;
+const DISCORD_WEBHOOK_TOKEN = /^[A-Za-z0-9_.-]{30,255}$/;
 const META_GRAPH_API_VERSION = /^v[0-9]+\.[0-9]+$/.test(
     Deno.env.get("META_GRAPH_API_VERSION") || "",
   )
@@ -300,9 +304,11 @@ async function listStorageFiles(
       if (!entry.name) continue;
       const path = `${prefix}/${entry.name}`;
       if (entry.id || entry.metadata) files.push(path);
-      else files.push(
-        ...await listStorageFiles(admin, bucket, path, visited),
-      );
+      else {
+        files.push(
+          ...await listStorageFiles(admin, bucket, path, visited),
+        );
+      }
     }
     if (entries.length < 1000) break;
     offset += entries.length;
@@ -417,7 +423,284 @@ async function listRedditLedgers(admin: SupabaseClient, uid: string) {
   }
 }
 
+async function listDiscordLedgers(admin: SupabaseClient, uid: string) {
+  const ledgers: Array<{ id: string }> = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin.from("account_ledger").select("id")
+      .eq("owner", uid).eq("provider", "discord").order("id")
+      .range(from, from + 499);
+    if (error) {
+      throw new Error(`Discord connection inventory: ${error.message}`);
+    }
+    const page = (data || []) as Array<{ id: string }>;
+    ledgers.push(...page);
+    if (page.length < 500) return ledgers;
+    from += page.length;
+  }
+}
+
+type DiscordSecretBundle = {
+  legacy?: unknown;
+  webhook_id?: unknown;
+  webhook_token?: unknown;
+  webhook_url?: unknown;
+  access_token?: unknown;
+  refresh_token?: unknown;
+};
+
+function parseDiscordSecretBundle(value: unknown): DiscordSecretBundle | null {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return null;
+    }
+  }
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as DiscordSecretBundle
+    : null;
+}
+
+function exactDiscordWebhookIdentity(
+  webhookUrl: string,
+  webhookId: string,
+  webhookToken: string,
+) {
+  if (
+    !DISCORD_SNOWFLAKE.test(webhookId) ||
+    !DISCORD_WEBHOOK_TOKEN.test(webhookToken)
+  ) return false;
+  try {
+    const parsed = new URL(webhookUrl);
+    if (
+      parsed.protocol !== "https:" || parsed.port || parsed.username ||
+      parsed.password || parsed.search || parsed.hash ||
+      !["discord.com", "discordapp.com"].includes(parsed.hostname.toLowerCase())
+    ) return false;
+    const match = parsed.pathname.match(
+      /^\/api(?:\/v[0-9]+)?\/webhooks\/([0-9]{10,25})\/([A-Za-z0-9_.-]{30,255})$/,
+    );
+    return Boolean(match) && match![1] === webhookId &&
+      match![2] === webhookToken;
+  } catch {
+    return false;
+  }
+}
+
+async function deleteExactDiscordWebhook(
+  webhookId: string,
+  webhookToken: string,
+) {
+  try {
+    const response = await fetch(
+      `${DISCORD_API_BASE}/webhooks/${webhookId}/${webhookToken}`,
+      {
+        method: "DELETE",
+        redirect: "error",
+        signal: AbortSignal.timeout(DISCORD_PROVIDER_TIMEOUT_MS),
+      },
+    );
+    return response.status === 204 || response.status === 404;
+  } catch {
+    return false;
+  }
+}
+
+async function revokeDiscordGrant(
+  refreshToken: string,
+  accessToken: string,
+  clientId: string,
+  clientSecret: string,
+) {
+  const token = refreshToken || accessToken;
+  if (!token || token.length > 16_384 || !clientId || !clientSecret) {
+    return false;
+  }
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}/oauth2/token/revoke`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+      },
+      body: new URLSearchParams({
+        token,
+        token_type_hint: refreshToken ? "refresh_token" : "access_token",
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(DISCORD_PROVIDER_TIMEOUT_MS),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function eraseDiscordWebhooks(admin: SupabaseClient, uid: string) {
+  const ledgers = await listDiscordLedgers(admin, uid);
+  const clientId = Deno.env.get("DISCORD_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET") || "";
+
+  for (const ledger of ledgers) {
+    const leaseId = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_discord_operation_service",
+      {
+        p_ledger_id: ledger.id,
+        p_owner: uid,
+        p_lease_id: leaseId,
+        p_operation_kind: "disconnect",
+        p_ttl_seconds: 180,
+      },
+    );
+    if (claimError || claimed !== true) {
+      throw new Error(
+        "another Discord operation or unresolved publish is active; wait and retry account deletion",
+      );
+    }
+
+    let operationError: unknown = null;
+    let releaseError: unknown = null;
+    try {
+      const { data, error } = await admin.rpc(
+        "discord_get_connection_secret_service",
+        { p_ledger_id: ledger.id, p_owner: uid },
+      );
+      if (error) {
+        throw new Error(
+          "stored Discord revocation handles could not be inspected; local erasure was not started",
+        );
+      }
+      const bundle = parseDiscordSecretBundle(data);
+      if (!bundle) {
+        const [connection, binding, credential] = await Promise.all([
+          admin.from("account_connections").select(
+            "connection_state,error_code",
+          ).eq("ledger_id", ledger.id).eq("owner", uid).eq(
+            "provider",
+            "discord",
+          ).maybeSingle(),
+          admin.from("discord_channel_bindings").select("ledger_id")
+            .eq("ledger_id", ledger.id).eq("owner", uid).maybeSingle(),
+          admin.from("discord_credentials").select("ledger_id")
+            .eq("ledger_id", ledger.id).eq("owner", uid).maybeSingle(),
+        ]);
+        if (connection.error || binding.error || credential.error) {
+          throw new Error(
+            "the Discord connection state could not be inspected; local erasure was not started",
+          );
+        }
+        if (
+          binding.data || credential.data ||
+          ["connected", "error"].includes(
+            String(connection.data?.connection_state || ""),
+          )
+        ) {
+          throw new Error(
+            "Discord may still hold a webhook or OAuth grant, but its exact revocation handle is unavailable. Remove MyPersonas in Discord Authorized Apps and Server Integrations before retrying account deletion",
+          );
+        }
+        const { error: stateError } = await admin.from(
+          "discord_oauth_transactions",
+        ).delete().eq("owner", uid).eq("ledger_id", ledger.id);
+        if (stateError) {
+          throw new Error("pending Discord authorization cleanup failed");
+        }
+      } else {
+        const webhookId = String(bundle.webhook_id || "");
+        const webhookToken = String(bundle.webhook_token || "");
+        const webhookUrl = String(bundle.webhook_url || "");
+        const accessToken = String(bundle.access_token || "");
+        const refreshToken = String(bundle.refresh_token || "");
+        const legacy = bundle.legacy === true;
+        if (
+          !exactDiscordWebhookIdentity(webhookUrl, webhookId, webhookToken)
+        ) {
+          throw new Error(
+            "the stored Discord webhook identity is invalid; provider deletion is ambiguous and local access was retained",
+          );
+        }
+        if (
+          !legacy &&
+          (!clientId || !clientSecret || !refreshToken || !accessToken)
+        ) {
+          throw new Error(
+            "Discord app credentials and the stored OAuth grant are required before account deletion; no provider or local access was erased",
+          );
+        }
+
+        // Provider-side removal is deliberately ordered before local Vault
+        // deletion. A timeout or non-definitive response retains every handle so
+        // the exact operation can be retried safely.
+        if (!await deleteExactDiscordWebhook(webhookId, webhookToken)) {
+          throw new Error(
+            "Discord did not confirm deletion of the exact channel webhook; local access was retained",
+          );
+        }
+        if (
+          !legacy &&
+          !await revokeDiscordGrant(
+            refreshToken,
+            accessToken,
+            clientId,
+            clientSecret,
+          )
+        ) {
+          throw new Error(
+            "the Discord webhook was removed, but OAuth revocation was not confirmed; local revocation handles were retained",
+          );
+        }
+
+        const { data: cleared, error: clearError } = await admin.rpc(
+          "discord_clear_connection_service",
+          {
+            p_ledger_id: ledger.id,
+            p_owner: uid,
+            p_lease_id: leaseId,
+          },
+        );
+        if (clearError || cleared !== true) {
+          throw new Error(
+            "Discord provider access was removed, but local Vault cleanup could not be verified",
+          );
+        }
+        const { error: stateError } = await admin.from(
+          "discord_oauth_transactions",
+        ).delete().eq("owner", uid).eq("ledger_id", ledger.id);
+        if (stateError) {
+          throw new Error("pending Discord authorization cleanup failed");
+        }
+      }
+    } catch (error) {
+      operationError = error;
+    } finally {
+      const { data: released, error } = await admin.rpc(
+        "release_discord_operation_service",
+        {
+          p_ledger_id: ledger.id,
+          p_owner: uid,
+          p_lease_id: leaseId,
+        },
+      );
+      if (error || released !== true) {
+        releaseError = error ||
+          new Error("Discord lease release was not confirmed");
+      }
+    }
+    if (releaseError) {
+      const prior = operationError instanceof Error
+        ? `${operationError.message}; `
+        : "";
+      throw new Error(
+        `${prior}the Discord disconnect lease could not be released; retry after its safety timeout`,
+      );
+    }
+    if (operationError) throw operationError;
+  }
+
   const { data, error } = await admin.rpc(
     "discord_erase_webhooks_for_owner_service",
     { p_owner: uid },

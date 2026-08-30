@@ -45,18 +45,18 @@ function assertOrdered(haystack, needles) {
   }
 }
 
-test("Reddit claims one exact approved row and recomputes its canonical hash", () => {
+test("Reddit consumes one exact receipt, claims atomically, and recomputes its canonical hash", () => {
   assert.match(source, /const SAFE_UUID = \/\^\[0-9a-f\]\{8\}/);
   assertOrdered(source, [
-    'const { data: claimed, error: leaseError }',
-    '.update({ publish_state: "publishing", publish_error: "" })',
-    '.eq("approved_content_hash", draft.approved_content_hash)',
-    '.eq("provider_post_id", "")',
-    '.in("publish_state", ["not_queued", "queued", "failed", "blocked"])',
+    '"issue_immediate_agent_preview_receipt_service"',
+    '"claim_immediate_agent_draft_with_preview_service"',
+    "p_receipt_id: receiptId",
     'service.rpc("agent_draft_hash"',
     'exactHash !== claimed.approved_content_hash',
     'async function submit(',
   ]);
+  assert.match(source, /Open and approve the current server-generated Reddit preview/);
+  assert.doesNotMatch(source, /const \{ data: claimed, error: leaseError \} = await service\.from\("drafts"\)/);
   const hashCall = source.slice(
     source.indexOf('service.rpc("agent_draft_hash"'),
     source.indexOf("if (hashError", source.indexOf('service.rpc("agent_draft_hash"')),

@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       release_confirmation:
-        description: "Type MIGRATIONS-VERIFIED after the linked database is read back through migration 060"
+        description: "Use MIGRATIONS-VERIFIED for AI provenance, or PROVIDER-MIGRATIONS-VERIFIED after provider migrations 065-075 are read back"
         required: true
         type: string
       release_scope:
@@ -23,6 +23,7 @@ on:
         type: choice
         options:
           - ai-provenance
+          - provider-publish
           - all-reviewed
 
 permissions:
@@ -44,11 +45,19 @@ jobs:
       - name: Require reviewed database release evidence
         env:
           RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+          RELEASE_SCOPE: ${{ inputs.release_scope }}
         run: |
-          test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
-            echo "Deployment blocked: verify and read back migration 060 before function code."
-            exit 1
-          }
+          if test "${RELEASE_SCOPE}" = "ai-provenance"; then
+            test "${RELEASE_CONFIRMATION}" = "MIGRATIONS-VERIFIED" || {
+              echo "Deployment blocked: verify migration 060 in the linked ledger before AI provenance function code."
+              exit 1
+            }
+          else
+            test "${RELEASE_CONFIRMATION}" = "PROVIDER-MIGRATIONS-VERIFIED" || {
+              echo "Deployment blocked: verify and read back provider migrations 065 through 075 before provider function code."
+              exit 1
+            }
+          fi
           test -n "${SUPABASE_ACCESS_TOKEN}" || {
             echo "Deployment blocked: SUPABASE_ACCESS_TOKEN is not configured."
             exit 1
@@ -69,6 +78,25 @@ jobs:
         if: ${{ inputs.release_scope == 'ai-provenance' }}
         run: |
           for function_name in media-ingest gemini-image compose-post ai-proxy; do
+            supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
+          done
+
+      - name: Deploy reviewed provider functions
+        if: ${{ inputs.release_scope == 'provider-publish' }}
+        run: |
+          for function_name in \
+            approve-post-draft \
+            meta-oauth meta-post run-post-queue \
+            twitter-oauth twitter-post \
+            discord-oauth discord-post \
+            youtube-oauth youtube-post \
+            tiktok-oauth tiktok-post \
+            twitch-oauth twitch-action \
+            patreon-oauth patreon-handoff \
+            wix-oauth wix-draft \
+            wordpress-oauth wordpress-draft \
+            reddit-oauth reddit-post \
+            delete-account; do
             supabase functions deploy "${function_name}" --project-ref "${{ steps.cfg.outputs.ref }}"
           done
 
