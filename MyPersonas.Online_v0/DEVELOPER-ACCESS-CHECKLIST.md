@@ -48,7 +48,7 @@ The connector is live; Google gates it while the OAuth app is in Testing.
 ## 3. Meta — Facebook Page + linked Instagram pairing
 
 1. [Meta for Developers → My Apps](https://developers.facebook.com/apps/) → Create App → type **Business**.
-2. In [Meta Business](https://business.facebook.com/), confirm you admin the Page(s); Instagram must be **Business/Creator** and linked to the Page, same Business Portfolio.
+2. In [Meta Business settings](https://business.facebook.com/settings/), select the correct business portfolio and confirm you admin the Page(s); Instagram must be **Business/Creator** and linked to the Page in that same portfolio.
 3. Add **Facebook Login for Business** to the app; callback (paste exactly):
    `https://nwsqyuucwzihruszocge.supabase.co/functions/v1/meta-oauth`
 4. App domains: `mypersonas.online`; policy URLs: [privacy](https://mypersonas.online/privacy.html), [terms](https://mypersonas.online/terms.html), [data deletion](https://mypersonas.online/data-deletion.html).
