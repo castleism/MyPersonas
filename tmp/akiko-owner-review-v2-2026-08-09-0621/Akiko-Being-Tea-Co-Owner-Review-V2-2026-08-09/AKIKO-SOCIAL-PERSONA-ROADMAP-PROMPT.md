@@ -40,7 +40,7 @@ Before producing the full roadmap:
 These are the only high-leverage questions needed before the full roadmap can be finalized:
 
 1. **Identity and pronouns:** What pronouns should Akiko use? Current sources describe Akiko as a woman and a mother; the request that produced this brief used “his.” Please provide the preferred phonetic pronunciation of the name.
-2. **Public identity model:** Should Being Tea Co. be (a) founder-led, (b) hosted by a clearly disclosed fictional/AI-assisted Akiko, or (c) brand-only? The secondary staging site currently names **Brother Kāruṇya** as its public social persona—should that identity be retired, retained separately, or coexist?
+2. **Public identity model:** **Owner ruling (Christian Cody, 2026-09-18):** Being Tea Co. is hosted by a clearly disclosed fictional/AI-assisted Akiko. The former **Brother Kāruṇya** social persona is retired and stripped; do not restore him as a current host. Akiko may be publicly viewable as the Being Tea Co host. Castleborn family remains private-by-default.
 3. **Canon, pairing, and synthetic media:** Do you approve Akiko as the public Being Tea Co. host? The owner has proposed an early-30s visual presentation and a new v2 likeness, while the public page still states age 42, Japanese identity, and motherhood; the surname Sasaki and broader Castleborn connections remain working canon. Which details and which likeness are approved? May the persona use future AI images, an avatar, or an AI voice? Because the already-public page has no visible fiction/AI disclosure, should it receive an approved disclosure promptly or become unlisted/private while identity mode is decided?
 4. **Growth target:** Does one million mean one primary platform or a combined total, and which platform is primary? What countries, languages, and age range should be prioritized? What measurable business result should the first 90 days produce?
 5. **Capacity:** How many hours per week, monthly production budget, paid-promotion budget, filming/editing support, filming locations, and approval turnaround are actually available? Will any real person appear or speak on camera? What batching cadence and weekly output ceiling are sustainable?
@@ -52,7 +52,7 @@ These are the only high-leverage questions needed before the full roadmap can be
 “Unknown” or “undecided” is an acceptable answer; the strategy must then preserve the dependency.
 
 1. Identity/pronouns/pronunciation: `[ ]`
-2. Public identity model and Brother Kāruṇya decision: `[ ]`
+2. Public identity model: `[x]` Akiko is the public Being Tea Co host; Brother Kāruṇya retired/stripped (owner ruling 2026-09-18)
 3. Canon/pairing/public-profile/visuals/AI-media approvals: `[ ]`
 4. Follower target, primary platform, audience geography/language/age, and 90-day business KPI: `[ ]`
 5. Weekly capacity, budgets, team/equipment/locations, batching, output ceiling, and approval time: `[ ]`
@@ -489,7 +489,7 @@ Using current primary evidence, analyze at least ten relevant successful account
 
 ## 3. Brand operating system
 
-Define positioning; follow promise; profile name, bio, link strategy, profile image, banners, pinned content, and welcome sequence; voice and visual guides; three to five pillars; what Akiko owns intellectually or emotionally; what Akiko will never become; how Akiko remains distinct from the real founder, Brother Kāruṇya, and the owner's other personas; and exact fiction/AI disclosures by platform.
+Define positioning; follow promise; profile name, bio, link strategy, profile image, banners, pinned content, and welcome sequence; voice and visual guides; three to five pillars; what Akiko owns intellectually or emotionally; what Akiko will never become; how Akiko remains distinct from the real founder and the owner's other personas (the former Brother Kāruṇya host is retired and must not be restored); and exact fiction/AI disclosures by platform.
 
 ## 4. Repeatable content franchises
 
@@ -519,7 +519,7 @@ Create a trust-preserving sequence for first revenue, affiliates, sponsor readin
 
 ## 10. Failure-prevention register
 
-List at least ten failure modes, consolidating risks only when their warning signs, controls, pause thresholds, and recovery actions genuinely overlap. For every mode provide early warnings, preventive control, approval requirement, pause threshold, and recovery action. At minimum cover fake engagement, engagement bait, copied/watermarked media, interchangeable AI content, unlicensed assets, undisclosed commercial relationships, misleading AI/fiction identity, cultural appropriation or flattening, fictional credentials used as real authority, audience mismatch, brand inconsistency, identity collision with the founder or Brother Kāruṇya, unsafe automation, burnout, reputation crisis, platform-policy violations, single-platform dependence, and optimizing raw views instead of qualified audience growth.
+List at least ten failure modes, consolidating risks only when their warning signs, controls, pause thresholds, and recovery actions genuinely overlap. For every mode provide early warnings, preventive control, approval requirement, pause threshold, and recovery action. At minimum cover fake engagement, engagement bait, copied/watermarked media, interchangeable AI content, unlicensed assets, undisclosed commercial relationships, misleading AI/fiction identity, cultural appropriation or flattening, fictional credentials used as real authority, audience mismatch, brand inconsistency, identity collision with the founder or a retired host, unsafe automation, burnout, reputation crisis, platform-policy violations, single-platform dependence, and optimizing raw views instead of qualified audience growth.
 
 ## 11. Immediate action package
 

@@ -19,10 +19,10 @@ Review:
 
 Decide:
 
-- **Approve / Deny / Revise** Akiko as a disclosed fictional, AI-generated editorial host.
+- **Decided (2026-09-18):** Akiko is the disclosed fictional, AI-generated editorial host and may be publicly viewable. Remaining likeness/wardrobe/copy items below are still reviewable.
 - **Approve / Deny / Revise** the v2 master likeness.
 - Confirm or revise the provisional pronunciation and she/her pronouns.
-- Keep the Castleborn and Brother Kāruṇya connections private by default, or explicitly approve a public connection.
+- **Owner ruling (Christian Cody, 2026-09-18):** Brother Kāruṇya is retired and stripped from Being Tea Co. Akiko Sasaki (`@castleborn.akiko`) may be publicly viewable as the Being Tea Co host. Castleborn *family* details (Song/Rhythm/Lyric, partner) remain private-by-default.
 - **Approve current / Test modern-neutral revision** for the cross-collar tea-host wardrobe and stylized tea-room world in concepts 02–10.
 
 ### 2. Review the ten visual concepts
@@ -90,7 +90,7 @@ Until those gates pass, `QUEUE.csv` remains local, every row remains owner-appro
 
 ## Fast decision block
 
-- Akiko public host: **Approve / Deny / Revise**
+- Akiko public host: **Decided — public host unlocked (2026-09-18)**
 - V2 master likeness: **Approve / Deny / Revise**
 - Pronunciation and pronouns: **Approve / Revise**
 - Current wardrobe/world: **Approve / Test modern-neutral revision**
@@ -98,7 +98,8 @@ Until those gates pass, `QUEUE.csv` remains local, every row remains owner-appro
 - Thirty captions and alt text: **Approve all / Decide individually / Revise**
 - Profile specification: **Approve / Deny / Revise**
 - Release sequence: **Approve order only / Revise**
-- Castleborn connection: **Keep private / Approve public connection**
+- Castleborn *family* (Song/Rhythm/Lyric, partner): **Keep private** (Akiko-as-public-host is already unlocked; family remains private-by-default)
+- Brother Kāruṇya: **Retired / stripped** — Akiko is the public Being Tea Co host (owner ruling 2026-09-18)
 - Public Akiko chat: **Keep paused / Approve separately after safety review**
 
 No decision in this file authorizes posting.

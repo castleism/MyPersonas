@@ -3,7 +3,7 @@
 **Roadmap date:** August 9, 2026  
 **Stretch deadline:** December 31, 2026  
 **Operating state:** Local strategy and production only. No post is published or externally scheduled. Meta authorization remains unresolved; X write access remains unavailable.  
-**Working decisions made to keep progress moving:** she/her; adult presenting 31–34; clearly disclosed fictional, AI-generated editorial host for a human-directed Being Tea Co.; Instagram primary, Facebook secondary, X tertiary; one million means a **combined** stretch total unless the owner later changes it; Castleborn lore stays private; Brother Kāruṇya stays out of the Being Tea launch; health, spiritual, cultural-lineage, and lived-experience claims remain prohibited without verified human evidence.
+**Working decisions made to keep progress moving:** she/her; adult presenting 31–34; clearly disclosed fictional, AI-generated editorial host for a human-directed Being Tea Co.; Instagram primary, Facebook secondary, X tertiary; one million means a **combined** stretch total unless the owner later changes it; Castleborn *family* lore stays private-by-default; **owner ruling 2026-09-18:** Brother Kāruṇya is retired and stripped — Akiko may be publicly viewable as the Being Tea Co host; health, spiritual, cultural-lineage, and lived-experience claims remain prohibited without verified human evidence.
 
 Supporting documents:
 
@@ -201,8 +201,8 @@ A fake human life, wellness oracle, ceremonial authority, generic “Asian wisdo
 
 ### Separation from other personas
 
-- Castleborn lore remains private unless a future post is explicitly framed as fiction and separately approved.
-- Brother Kāruṇya is not a co-host for Being Tea Co. during this launch.
+- Castleborn *family* lore (Song/Rhythm/Lyric, partner) remains private-by-default unless a future post is explicitly framed as fiction and separately approved. Akiko-as-public-host is unlocked.
+- **Owner ruling (2026-09-18):** Brother Kāruṇya is retired and stripped from Being Tea Co. Akiko is the sole public host. Do not restore him as a current tea host.
 - The founder owns Being Tea Co.'s real 2015 history and Deer Park/Plum Village experience; Akiko never speaks those experiences in first person.
 - Other MyPersonas accounts must not repost identical Akiko content or coordinate engagement.
 
@@ -384,9 +384,9 @@ Local work can continue without these decisions; external use cannot.
 | Decision | Recommended default | Current state |
 |---|---|---|
 | Early-30s v2 likeness | Approve after visual review | Produced locally; not public |
-| Fictional/AI host model | Approve with plain disclosure | Working model |
-| Castleborn connection | Deny for launch | Private only |
-| Brother Kāruṇya in Being Tea | Deny for launch | Parked |
+| Fictional/AI host model | Akiko may be publicly viewable as host | Owner ruling 2026-09-18 |
+| Castleborn *family* (Song/Rhythm/Lyric, partner) | Keep private-by-default | Unchanged; only Akiko-as-public-host is unlocked |
+| Brother Kāruṇya in Being Tea | Retired / stripped; Akiko is the public host | Owner ruling 2026-09-18 |
 | Public AI chat | Deny/unlist until safeguards | Potential exposure unresolved |
 | Combined one-million target, Instagram primary | Approve as stretch only | Working assumption |
 | Ten-concept launch sequence | Approve after v2 QA | Local only |

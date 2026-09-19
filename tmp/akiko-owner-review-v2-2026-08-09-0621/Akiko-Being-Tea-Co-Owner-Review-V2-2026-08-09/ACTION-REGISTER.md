@@ -1,7 +1,7 @@
 # Akiko / Being Tea Co. — Canonical Action Register
 
 Prepared: 2026-08-09  
-Status vocabulary: `COMPLETE_LOCAL`, `READY_FOR_OWNER_REVIEW`, `AWAITING_OWNER`, `BLOCKED_ACCESS`, `PROPOSED`, `NOT_STARTED`, `VERIFIED_EXTERNAL`  
+Status vocabulary: `COMPLETE_LOCAL`, `READY_FOR_OWNER_REVIEW`, `AWAITING_OWNER`, `OWNER_DECIDED`, `BLOCKED_ACCESS`, `PROPOSED`, `NOT_STARTED`, `VERIFIED_EXTERNAL`
 Timing rule: `T` is the first owner-approved publication time; proposed calendar dates shift together if approval or access is delayed.
 
 This register is the owner/operations source of truth. Narrative recommendations in the roadmap should be mapped to a row here before execution.
@@ -9,11 +9,11 @@ This register is the owner/operations source of truth. Narrative recommendations
 | ID | Action | Owner | Due | Effort | Cost | Dependency | Approval gate | Truthful status | Success metric |
 |---|---|---|---|---:|---:|---|---|---|---|
 | A01 | Confirm pronunciation and she/her pronouns | Account owner | Before profile approval | 5 min | $0 | Working brief | Owner decision | `AWAITING_OWNER` | One explicit approved spelling/pronunciation/pronoun record |
-| A02 | Approve / deny / revise fictional AI-host model and disclosure | Account owner | Before any post approval | 10 min | $0 | Persona and disclosure review | Owner decision | `AWAITING_OWNER` | Public identity model and exact disclosure approved |
+| A02 | Approve exact fiction/AI disclosure wording | Account owner | Before any post approval | 10 min | $0 | Persona and disclosure review; A06 | Owner decision for remaining copy | `AWAITING_OWNER` | Host identity decided in A06 (Akiko public; Karunya stripped). Exact bio/caption disclosure wording still needs owner approval |
 | A03 | Approve / deny / revise v2 master likeness | Account owner | Before derivative approval | 10–20 min | $0 | Review master and private provenance boundary | Owner decision | `READY_FOR_OWNER_REVIEW` | Master receives a written Approve / Deny / Revise result |
 | A04 | Review 30 v2 derivatives on contact sheet and exceptions | Account owner | Before content approval | 30–60 min | $0 | A03 | Owner decision per concept or batch | `READY_FOR_OWNER_REVIEW` | All 30 derivatives have explicit decisions; revisions identified precisely |
 | A05 | Review 30 captions, alt text, sources, and disclosures | Account owner | Before app-side import | 60–90 min | $0 | A02 and A04 | Owner decision per row | `READY_FOR_OWNER_REVIEW` | `QUEUE.csv` decisions complete with no unresolved claim/rights issue |
-| A06 | Decide public Castleborn connection and Brother Kāruṇya separation | Account owner | Before profile/canon change | 10 min | $0 | Canon review | Owner decision | `AWAITING_OWNER` | Public/private boundary recorded; launch default is keep private/separate |
+| A06 | Record owner ruling: strip Brother Kāruṇya; Akiko is the public Being Tea Co host | Account owner | 2026-09-18 | 10 min | $0 | Canon review | Owner ruling (Christian Cody, 2026-09-18) | `OWNER_DECIDED` | Karunya stripped from Being Tea Co materials; Akiko Sasaki (`@castleborn.akiko`) may be publicly viewable as host; Castleborn *family* (Song/Rhythm/Lyric, partner details) remains private-by-default |
 | A07 | Approve profile names, bios, links, pinned order, and banner directions | Account owner | Before account-side edits | 20–30 min | $0 | A01, A02, A03, final URL | Owner decision | `READY_FOR_OWNER_REVIEW` | One approved profile specification per platform |
 | A08 | Name crisis/global-pause owner and approve comment/DM capacity | Account owner | Before first publication | 10 min | $0 | Community playbook | Owner decision | `AWAITING_OWNER` | Named person, contact route, two daily review windows, and pause rule documented |
 | A09 | Supply current follower totals, 28-day exports, and Account Status screenshots | Account owner | Immediately before T | 20–40 min | $0 | Platform access | Owner-controlled export | `AWAITING_OWNER` | Complete baseline by platform with timestamp and native metric labels |

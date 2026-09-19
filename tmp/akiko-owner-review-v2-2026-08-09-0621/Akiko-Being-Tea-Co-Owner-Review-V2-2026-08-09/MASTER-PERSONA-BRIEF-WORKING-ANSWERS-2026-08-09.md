@@ -13,7 +13,7 @@ Authority: this file proposes operating defaults but does not make public profil
 **Disclosure:** “Akiko is a fictional, AI-generated editorial host. Human-directed account.” Every synthetic launch image also says, “AI-generated image of the fictional character Akiko.”  
 **Audience promise:** “Follow this account to make better tea and notice more—one careful comparison at a time.”  
 **Mission:** Help tea-curious adults improve their cups and learn tea culture through practical technique, sensory attention, cultural attribution, evidence, and honest uncertainty.  
-**Origin story:** Being Tea Co. began with the real founder's reviews and videos in 2015. Akiko is a later fictional host; she does not inherit the founder's experiences. Her Castleborn background stays private unless separately approved as clearly labeled fiction.  
+**Origin story:** Being Tea Co. began with the real founder's reviews and videos in 2015. Akiko is the later fictional public host (owner ruling 2026-09-18); she does not inherit the founder's experiences. The former Brother Kāruṇya social-persona concept is retired and stripped. Castleborn *family* background (Song/Rhythm/Lyric, partner) stays private-by-default unless separately approved as clearly labeled fiction.
 **Credibility:** the brand's 2015 continuity, current cited educational library, transparent sourcing/correction standards, and verified human contributors. Akiko herself has no real-world credentials or lived authority.  
 **Values:** attention, patience, evidence, hospitality, transparent commerce, visible corrections, cultural attribution, useful simplicity, and honest limits.  
 **Distinctive view:** a better tea life comes from attention and repeatable comparison, not prestige, urgency, miracle claims, or collecting expensive objects.  
@@ -114,7 +114,7 @@ Proposed sponsored-content cap: 15% of units in a rolling 28-day window, awaitin
 ## Owner information still needed
 
 1. pronunciation and final pronouns;
-2. whether Akiko's Being Tea role and any Castleborn link are public canon;
+2. **Decided (2026-09-18):** Akiko's Being Tea host role may be public; Castleborn *family* remains private-by-default. Remaining: any other public-canon details still unmarked;
 3. final v2 likeness/profile crop approval;
 4. Facebook URL and verified live account-status screenshots for all platforms;
 5. full 28-day analytics exports and current follower counts;

@@ -89,7 +89,7 @@ This pass does not approve the persona, authorize an account change, establish p
 
 ## Remaining gates
 
-1. Owner approval of public host model, pronunciation, pronouns, v2 likeness, cultural/wardrobe framing, and Castleborn/Brother Kāruṇya boundaries.
+1. Owner approval of pronunciation, pronouns, v2 likeness, and cultural/wardrobe framing. **Decided (2026-09-18):** Akiko may be publicly viewable as the Being Tea Co host; Brother Kāruṇya is retired/stripped; Castleborn family remains private-by-default.
 2. Owner approval of all 30 posts, alt text, profiles, selected Facebook cover, X header, and brewing log.
 3. Current native analytics and account/recommendation-status evidence.
 4. Named crisis/global-pause owner and sustainable response/production capacity.
