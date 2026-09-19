@@ -108,6 +108,10 @@ test("the app head and Pages artifact include the complete PWA shell", async () 
   assert.match(html, /<script src="\.\/pwa\.js" defer><\/script>/);
 
   for (const releasePath of [
+    "/assets/",
+    "/assets/***",
+    "/brand/",
+    "/brand/app-icon/",
     "/brand/app-icon/***",
     "/manifest.webmanifest",
     "/service-worker.js",

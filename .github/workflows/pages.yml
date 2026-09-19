@@ -49,6 +49,8 @@ jobs:
       - name: Prepare public site artifact
         run: |
           mkdir -p .pages-artifact
+          # Trailing exclude-all never enters a dir unless that dir itself is included;
+          # '/foo/bar/***' does not include '/foo/', so parent includes are required.
           rsync -a --delete \
             --prune-empty-dirs \
             --include '/index.html' \
@@ -65,7 +67,10 @@ jobs:
             --include '/profile-image-crop.js' \
             --include '/agent-board.css' \
             --include '/agent-board.js' \
+            --include '/assets/' \
             --include '/assets/***' \
+            --include '/brand/' \
+            --include '/brand/app-icon/' \
             --include '/brand/app-icon/***' \
             --include '/manifest.webmanifest' \
             --include '/service-worker.js' \
