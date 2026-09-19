@@ -49,7 +49,7 @@ jobs:
       - name: Prepare public site artifact
         run: |
           mkdir -p .pages-artifact
-          # rsync --exclude '*' never enters a dir unless that dir itself is included;
+          # Trailing exclude-all never enters a dir unless that dir itself is included;
           # '/foo/bar/***' does not include '/foo/', so parent includes are required.
           rsync -a --delete \
             --prune-empty-dirs \

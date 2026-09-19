@@ -233,8 +233,10 @@ test("Pages deployment ships both provenance assets only after migration 060 rel
   assert.match(workflow, /verify migration 060 in the linked ledger/i);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.css'/);
   assert.match(artifactStep, /--include '\/ai-content-provenance\.js'/);
-  assert.ok(artifactStep.indexOf("/ai-content-provenance.css") < artifactStep.indexOf("--exclude '*'"));
-  assert.ok(artifactStep.indexOf("/ai-content-provenance.js") < artifactStep.indexOf("--exclude '*'"));
+  const excludeAll = artifactStep.lastIndexOf("--exclude '*'");
+  assert.ok(excludeAll !== -1, "Pages artifact rsync must end with an exclude-all filter");
+  assert.ok(artifactStep.indexOf("--include '/ai-content-provenance.css'") < excludeAll);
+  assert.ok(artifactStep.indexOf("--include '/ai-content-provenance.js'") < excludeAll);
 });
 
 test("the provenance release deploys only its reviewed function set by default", async () => {
