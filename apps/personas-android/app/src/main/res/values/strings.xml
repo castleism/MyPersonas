@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyPersonas Owner (debug)</string>
+    <string name="export_prefs">Export local prefs</string>
+    <string name="import_prefs">Import local prefs</string>
+    <string name="offline_title">Disconnected</string>
+</resources>

@@ -427,8 +427,16 @@ larger product phase remains.
       syntax check passes, backup in _to_delete/backups/. PENDING: sticky mobile CTA
       (needs logged-in visual verify) — MOBILE-BLUEPRINT.md
 - [~] Native apps: the PWA manifest/install/public-offline shell is complete locally.
-      Push notifications remain a separate permission/backend phase; Expo/React Native
-      comes later for chat, approvals, share/camera, and the sourced AI feed.
+      The first owner-mobile milestone is source-complete in this checkout: owned
+      persona roster/bottom sheet, private four-channel draft creation through
+      `create_owner_mobile_private_draft`, review/approval via the existing exact
+      preview gate, authorization tests, and a debug Android WebView path. Migration
+      077 is local/unapplied. `publishing_enabled` stays false. No provider send,
+      OAuth scope change, store submission, or production secret is included.
+      Disconnected Android/PWA clients only show limitations. Existing owner-desktop
+      phone-test prototypes are not in this cloud checkout. Push notifications remain
+      a separate permission/backend phase; Expo/React Native chat + camera/share still
+      come later. See `MOBILE-BLUEPRINT.md` and `apps/personas-android/README.md`.
 - [~] Chat workspaces: migration 031 APPLIED + verified; owner-scoped list/create/rename/
       pin/resume, workspace messages, inclusion in the full account export, owner-reviewed Save context, and max-three
       distilled Attach context are complete locally. Deploy ai-proxy first, then Pages,

@@ -1,0 +1,41 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "online.mypersonas.owner"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "online.mypersonas.owner.debug"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0-debug"
+        buildConfigField "String", "DEFAULT_OWNER_ORIGIN", '"https://mypersonas.online/#/owner"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            applicationIdSuffix ".local"
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.webkit:webkit:1.11.0"
+}

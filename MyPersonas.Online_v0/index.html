@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
-<link rel="stylesheet" href="./owner-app.css?v=20260829-1">
+<link rel="stylesheet" href="./owner-app.css?v=20260920-1">
 <link rel="stylesheet" href="./persona-view.css?v=20260822-2">
 <link rel="stylesheet" href="./platform-governance.css?v=20260822-1">
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
@@ -427,6 +427,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   <section class="oa-mobile-more-panel">
     <div class="oa-mobile-more-head"><div><span class="oa-eyebrow">Owner tools</span><h2 id="ownerMobileMoreTitle">More</h2></div><button type="button" class="oa-close" aria-label="Close owner tools" onclick="ownerAppToggleMore(false)">×</button></div>
     <div class="oa-mobile-more-grid">
+      <button type="button" onclick="ownerAppMobilePrivateDraft()"><span>✎</span><b>Private draft</b><small>Owner-only kit · never publishes</small></button>
       <button type="button" onclick="ownerAppMobileGo('activity')"><span>◷</span><b>Activity</b><small>Persona operations trail</small></button>
       <button type="button" onclick="ownerAppMobileGo('notifications')"><span>◉</span><b>Notifications</b><small id="ownerMobileNoticeSummary">All caught up</small></button>
       <button type="button" onclick="ownerAppMobileGo('agent-board')"><span>⌘</span><b>Agent board</b><small>Review bounded persona collaboration</small></button>
@@ -455,7 +456,8 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./owner-app.js?v=20260830-1"></script>
+<script src="./mobile-owner-workflow.js?v=20260920-1"></script>
+<script src="./owner-app.js?v=20260920-1"></script>
 <script src="./persona-view.js?v=20260823-1"></script>
 <script src="./platform-governance.js?v=20260830-1"></script>
 <script src="./agent-board.js?v=20260822-4"></script>

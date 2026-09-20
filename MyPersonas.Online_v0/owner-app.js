@@ -494,6 +494,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 function ownerAppMobileGo(route) { ownerAppToggleMore(false, false); go(route); }
+function ownerAppMobilePrivateDraft() { ownerAppToggleMore(false, false); ownerAppOpenPrivateDraft(); }
 function ownerAppMobileChat() { ownerAppToggleMore(false, false); ownerAppTalkToCompanion(); }
 function ownerAppMobileHQ() { ownerAppToggleMore(false, false); openHQ(); }
 function ownerAppMobileAccount() { ownerAppToggleMore(false, false); goAccount(); }
@@ -513,6 +514,30 @@ function ownerAppOpenCompanionNotice() {
   else ownerAppTalkToCompanion();
 }
 
+function ownerAppWorkflow() {
+  return (typeof MobileOwnerWorkflow !== "undefined" && MobileOwnerWorkflow) || null;
+}
+
+function ownerAppNetworkOnline() {
+  return typeof navigator === "undefined" || navigator.onLine !== false;
+}
+
+function ownerAppOfflineBanner() {
+  if (ownerAppNetworkOnline()) return "";
+  const lines = ownerAppWorkflow()?.OFFLINE_LIMITATIONS || [
+    "Private persona selection, drafts, review, and approval require a live owner session.",
+  ];
+  return `<div class="oa-offline" role="status"><strong>Disconnected</strong><p>${esc(lines[0])}</p><p>The public offline shell cannot create, approve, or send private drafts.</p></div>`;
+}
+
+function ownerAppRosterGroups() {
+  const workflow = ownerAppWorkflow();
+  const backups = typeof personaBackupsReady !== "undefined" && personaBackupsReady && typeof myPersonaBackups !== "undefined" ? myPersonaBackups : [];
+  if (workflow) return workflow.rosterGroups(myPersonas, backups);
+  if (typeof personaBackupGroups === "function") return personaBackupGroups(myPersonas, backups);
+  return (myPersonas || []).map((main) => ({ main, backup: null }));
+}
+
 function ownerAppPickerHtml(destination, allowAll = false) {
   const selected = destination === "briefs" ? ownerAppState.briefPersonaFilter
     : destination === "schedule" ? ownerAppState.schedulePersonaFilter
@@ -520,21 +545,187 @@ function ownerAppPickerHtml(destination, allowAll = false) {
       : destination === "activity" ? ownerAppState.activityPersonaFilter
         : ownerAppState.selectedPersonaId;
   const persona = ownerAppPersona(selected || ownerAppState.selectedPersonaId);
-  const groups = typeof personaBackupGroups === "function"
-    ? personaBackupGroups(myPersonas, typeof personaBackupsReady !== "undefined" && personaBackupsReady && typeof myPersonaBackups !== "undefined" ? myPersonaBackups : [])
-    : myPersonas.map((main) => ({ main, backup: null }));
+  const groups = typeof ownerAppRosterGroups === "function"
+    ? ownerAppRosterGroups()
+    : (typeof personaBackupGroups === "function"
+      ? personaBackupGroups(myPersonas, typeof personaBackupsReady !== "undefined" && personaBackupsReady && typeof myPersonaBackups !== "undefined" ? myPersonaBackups : [])
+      : (myPersonas || []).map((main) => ({ main, backup: null })));
   const options = (allowAll ? '<option value="">All personas</option>' : "") +
     groups.flatMap(({ main, backup }) => [
       `<option value="${esc(main.id)}" ${main.id === selected ? "selected" : ""}>${esc(main.name)} · @${esc(main.handle)}</option>`,
       backup ? `<option value="${esc(backup.id)}" ${backup.id === selected ? "selected" : ""}>↳ Backup for ${esc(main.name)} — ${esc(backup.name)} · @${esc(backup.handle)}</option>` : "",
     ]).join("");
-  return `<div class="oa-picker">
+  const offline = typeof ownerAppOfflineBanner === "function" ? ownerAppOfflineBanner() : "";
+  return `${offline}<div class="oa-picker">
     <span class="oa-picker-avatar" style="${safeBgStyle(persona?.avatar_url)}"></span>
     <label><span>${allowAll ? "Filter by persona" : "Working as"}</span>
       <select aria-label="${allowAll ? "Filter by persona" : "Select persona"}" onchange="ownerAppSelectPersona(this.value,'${destination}')">${options}</select>
     </label>
+    <button type="button" class="oa-secondary oa-small oa-mini" onclick="ownerAppOpenPersonaSheet('${destination}',${allowAll ? "true" : "false"})">Browse</button>
     ${persona ? `<button class="oa-secondary oa-small oa-mini" onclick="go('edit/${persona.id}')">Profile</button>` : ""}
   </div>`;
+}
+
+function ownerAppClosePersonaSheet() {
+  document.getElementById("ownerPersonaSheet")?.remove();
+}
+
+function ownerAppChoosePersonaFromSheet(personaId, destination) {
+  ownerAppClosePersonaSheet();
+  ownerAppSelectPersona(personaId, destination);
+}
+
+function ownerAppPersonaSheetRows(destination, allowAll, query = "") {
+  const workflow = ownerAppWorkflow();
+  const groups = workflow ? workflow.filterRoster(ownerAppRosterGroups(), query) : ownerAppRosterGroups();
+  const selected = destination === "briefs" ? ownerAppState.briefPersonaFilter
+    : destination === "schedule" ? ownerAppState.schedulePersonaFilter
+      : destination === "fan-inbox" ? ownerAppState.fanPersonaFilter
+      : destination === "activity" ? ownerAppState.activityPersonaFilter
+        : ownerAppState.selectedPersonaId;
+  const rows = [];
+  if (allowAll) {
+    rows.push(`<button type="button" class="oa-listitem ${selected ? "" : "on"}" onclick="ownerAppChoosePersonaFromSheet('','${destination}')"><span class="oa-listicon">◎</span><span class="oa-listcopy"><b>All personas</b><span>Account-wide review filter</span></span></button>`);
+  }
+  for (const { main, backup } of groups) {
+    rows.push(`<button type="button" class="oa-listitem ${main.id === selected ? "on" : ""}" onclick="ownerAppChoosePersonaFromSheet('${main.id}','${destination}')"><span class="oa-picker-avatar oa-listicon" style="${safeBgStyle(main.avatar_url)}"></span><span class="oa-listcopy"><b>${esc(main.name)}</b><span>@${esc(main.handle)} · owned persona</span></span></button>`);
+    if (backup) {
+      rows.push(`<button type="button" class="oa-listitem ${backup.id === selected ? "on" : ""}" onclick="ownerAppChoosePersonaFromSheet('${backup.id}','${destination}')"><span class="oa-picker-avatar oa-listicon" style="${safeBgStyle(backup.avatar_url)}"></span><span class="oa-listcopy"><b>↳ ${esc(backup.name)}</b><span>Backup for ${esc(main.name)} · @${esc(backup.handle)}</span></span></button>`);
+    }
+  }
+  return rows.join("") || '<div class="oa-empty"><strong>No matching personas</strong>Owner isolation only lists personas on this account.</div>';
+}
+
+function ownerAppOpenPersonaSheet(destination, allowAll = false) {
+  ownerAppClosePersonaSheet();
+  const modal = document.createElement("div");
+  modal.id = "ownerPersonaSheet";
+  modal.className = "oa-modal";
+  modal.innerHTML = `<div class="oa-sheet" role="dialog" aria-modal="true" aria-labelledby="ownerPersonaSheetTitle">
+    <div class="oa-sheethead"><div><span class="oa-eyebrow">Owned personas only</span><h2 id="ownerPersonaSheetTitle">Select persona</h2></div>
+    <button type="button" class="oa-close" onclick="ownerAppClosePersonaSheet()">×</button></div>
+    <div class="oa-sheetbody">
+      <label><span>Search this account</span><input id="ownerPersonaSheetQuery" maxlength="80" placeholder="Name or handle" oninput="ownerAppFilterPersonaSheet('${destination}',${allowAll ? "true" : "false"})"></label>
+      <div id="ownerPersonaSheetList" class="oa-list">${ownerAppPersonaSheetRows(destination, allowAll)}</div>
+    </div>
+  </div>`;
+  modal.addEventListener("click", (event) => { if (event.target === modal) ownerAppClosePersonaSheet(); });
+  document.body.appendChild(modal);
+  document.getElementById("ownerPersonaSheetQuery")?.focus();
+}
+
+function ownerAppFilterPersonaSheet(destination, allowAll = false) {
+  const list = document.getElementById("ownerPersonaSheetList");
+  if (!list) return;
+  list.innerHTML = ownerAppPersonaSheetRows(destination, allowAll, document.getElementById("ownerPersonaSheetQuery")?.value || "");
+}
+
+function ownerAppChannelBindings(personaId) {
+  const workflow = ownerAppWorkflow();
+  const uid = session?.user?.id || "";
+  if (!workflow) return [];
+  return workflow.channelBindings(myAccounts || [], uid, personaId);
+}
+
+function ownerAppBindingHtml(bindings) {
+  return `<div class="oa-bindgrid">${(bindings || []).map((row) => `<div class="oa-bind ${row.determinable ? "good" : "warn"}"><b>${esc((ownerAppWorkflow()?.CHANNELS || []).find((channel) => channel.key === row.channel)?.label || row.channel)}</b><span>${esc(row.determinable ? ownerAppAccountLabel(row.account) : row.reason)}</span></div>`).join("")}</div>`;
+}
+
+function ownerAppReviewQueueHtml(personaId = "") {
+  const workflow = ownerAppWorkflow();
+  const packs = (ownerAppState.packages || []).filter((row) => !personaId || row.persona_id === personaId);
+  const review = packs.filter((row) => row.status === "owner_review");
+  if (!review.length) return '<p class="oa-sub">No private kits are waiting for owner review.</p>';
+  return `<div class="oa-list">${review.map((pack) => {
+    const variants = ownerAppPackageVariants(pack.id);
+    const bindings = ownerAppChannelBindings(pack.persona_id);
+    const item = workflow ? workflow.reviewItem(pack, variants, ownerAppPersona(pack.persona_id), bindings) : { title: pack.title, personaName: ownerAppPersonaName(pack.persona_id), canApprove: true };
+    return `<button type="button" class="oa-listitem" onclick="go('schedule/${pack.id}')"><span class="oa-listicon">▤</span><span class="oa-listcopy"><b>${esc(item.title)}</b><span>${esc(item.personaName)} · needs review · publishing_enabled=false</span></span><span class="oa-chevron">›</span></button>`;
+  }).join("")}</div>`;
+}
+
+function ownerAppStickyCtaHtml(kind, personaId = "") {
+  if (kind === "home") {
+    return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppOpenPrivateDraft('${personaId}')"${ownerAppNetworkOnline() ? "" : " disabled"}>New private draft</button><button type="button" class="oa-secondary" onclick="go('schedule')">Review queue</button></div>`;
+  }
+  const review = (ownerAppState.packages || []).find((row) => row.status === "owner_review" && (!personaId || row.persona_id === personaId));
+  if (!review) return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppOpenPrivateDraft('${personaId || ownerAppState.selectedPersonaId}')"${ownerAppNetworkOnline() ? "" : " disabled"}>New private draft</button></div>`;
+  return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppApprovePackage('${review.id}')"${ownerAppNetworkOnline() ? "" : " disabled"}>Preview &amp; approve exact kit</button><button type="button" class="oa-secondary" onclick="ownerAppOpenPrivateDraft('${review.persona_id}')">New private draft</button></div>`;
+}
+
+function ownerAppClosePrivateDraft() {
+  document.getElementById("ownerPrivateDraftModal")?.remove();
+}
+
+function ownerAppOpenPrivateDraft(personaId = ownerAppState.selectedPersonaId) {
+  const uid = session?.user?.id || "";
+  const workflow = ownerAppWorkflow();
+  const persona = workflow ? workflow.ownedPersona(myPersonas, uid, personaId) : ownerAppSelectedPersonaStrict(personaId);
+  if (!persona) { toast("Create or select an owned persona first"); return; }
+  if (!ownerAppNetworkOnline()) { toast("Private drafts cannot be created while disconnected"); return; }
+  const bindings = ownerAppChannelBindings(persona.id);
+  ownerAppClosePrivateDraft();
+  const modal = document.createElement("div");
+  modal.id = "ownerPrivateDraftModal";
+  modal.className = "oa-modal";
+  modal.innerHTML = `<div class="oa-sheet" role="dialog" aria-modal="true" aria-labelledby="ownerPrivateDraftTitle">
+    <div class="oa-sheethead"><div><span class="oa-eyebrow">Private owner draft · publishing_enabled=false</span><h2 id="ownerPrivateDraftTitle">Write a four-channel kit</h2></div>
+    <button type="button" class="oa-close" onclick="ownerAppClosePrivateDraft()">×</button></div>
+    <div class="oa-sheetbody">
+      <div class="oa-capability">This saves an owner-only review kit bound to the exact assigned account for each channel. It never posts, changes OAuth scopes, or calls a provider.</div>
+      ${ownerAppBindingHtml(bindings)}
+      <label>Package title</label><input id="ownerMobileDraftTitle" maxlength="300" value="Mobile private draft">
+      <label>Owner guidance</label><textarea id="ownerMobileDraftGuidance" maxlength="6000" placeholder="What this kit must stay true to"></textarea>
+      ${(workflow?.CHANNELS || [{ key: "x", label: "X" }, { key: "instagram", label: "Instagram" }, { key: "facebook", label: "Facebook" }, { key: "website", label: "Website" }]).map((channel) => `<label>${esc(channel.label)} body</label><textarea id="ownerMobileDraft_${channel.key}" maxlength="${workflow?.variantLimit(channel.key) || 30000}" placeholder="Private ${esc(channel.label)} copy"></textarea>`).join("")}
+      <div class="oa-actions" style="margin-top:14px"><button type="button" class="oa-primary" onclick="ownerAppSavePrivateDraft('${persona.id}')">Save private draft for review</button><button type="button" class="oa-secondary" onclick="ownerAppClosePrivateDraft()">Cancel</button></div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function ownerAppSavePrivateDraft(personaId) {
+  const workflow = ownerAppWorkflow();
+  if (!workflow) { toast("Mobile workflow helpers are unavailable"); return; }
+  const uid = session?.user?.id || "";
+  const variants = workflow.CHANNELS.map((channel) => ({
+    channel: channel.key,
+    title: "",
+    body: document.getElementById(`ownerMobileDraft_${channel.key}`)?.value || "",
+    description: "",
+    alt_text: "",
+    media_plan: [],
+  }));
+  const request = workflow.createPrivateDraftRequest({
+    ownerId: uid,
+    personaId,
+    personas: myPersonas,
+    accounts: myAccounts || [],
+    title: document.getElementById("ownerMobileDraftTitle")?.value || "",
+    guidance: document.getElementById("ownerMobileDraftGuidance")?.value || "",
+    timezone: typeof autoTz === "function" ? autoTz() : "UTC",
+    variants,
+    publishingEnabled: false,
+    online: ownerAppNetworkOnline(),
+  });
+  if (!request.ok) { toast(request.error); return; }
+  if (typeof sb?.rpc !== "function") { toast("Signed-in owner RPCs are unavailable"); return; }
+  const created = await sb.rpc("create_owner_mobile_private_draft", {
+    p_persona_id: request.payload.p_persona_id,
+    p_title: request.payload.p_title,
+    p_owner_guidance: request.payload.p_owner_guidance,
+    p_timezone: request.payload.p_timezone,
+    p_variants: request.payload.p_variants,
+    p_bindings: request.payload.p_bindings,
+  });
+  if (created.error || !created.data) {
+    toast(created.error?.message || "The private draft could not be stored. Migration 077 must be applied before this RPC exists.");
+    return;
+  }
+  ownerAppClosePrivateDraft();
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  toast("Private draft saved for owner review; nothing was published");
+  go(`schedule/${created.data}`);
 }
 
 function ownerAppTopbar(title, eyebrow = "Owner command center") {
@@ -625,7 +816,7 @@ function ownerAppRenderHome() {
       <h2>${esc(persona.name)}</h2><p>${esc(persona.tagline || persona.purpose || "Give this persona a clear purpose, voice, and area of focus.")}</p></div>
       <span class="oa-hero-avatar" style="${safeBgStyle(persona.avatar_url)}"></span></div>
       <div class="oa-hero-actions"><button class="oa-action primary" onclick="openPersonaChat('${persona.id}')">Chat with ${esc(persona.name)}</button>
-      <button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
+      <button class="oa-action" onclick="ownerAppOpenPrivateDraft('${persona.id}')">New private draft</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
     </section>
     <div class="oa-stats"><div class="oa-stat"><b>${newBriefs}</b><span>new briefings</span></div><div class="oa-stat"><b>${review}</b><span>kits to review</span></div><div class="oa-stat ${fanUnread ? "attn" : ""}"><b>${fanUnread}</b><span>unread fan chats</span></div><div class="oa-stat ${attention ? "attn" : ""}"><b>${attention}</b><span>publishing attention</span></div></div>
     <div class="oa-grid">
@@ -640,8 +831,10 @@ function ownerAppRenderHome() {
       <section class="oa-panel"><div class="oa-panel-head"><div><h3>Current direction</h3><p class="oa-sub">What research and drafts should serve now.</p></div><button class="oa-linkbtn" onclick="go('studio')">Matrix</button></div>
         <div class="oa-voice">${esc(plan?.current_campaign || plan?.primary_goal || persona.purpose || "No current campaign direction has been recorded.")}</div>
         <div class="oa-chiprow"><button class="oa-secondary oa-small" onclick="ownerAppOpenResearchSettings('${persona.id}')">Research settings</button><button class="oa-secondary oa-small" onclick="openComposer()">Legacy 3-part composer</button></div></section>
+      <section class="oa-panel"><div class="oa-panel-head"><div><h3>Review queue</h3><p class="oa-sub">Owner-only kits. Approval never publishes.</p></div><button class="oa-linkbtn" onclick="go('schedule')">Open queue</button></div>${ownerAppReviewQueueHtml(persona.id)}</section>
       <section class="oa-panel wide"><div class="oa-panel-head"><div><h3>Recent activity</h3><p class="oa-sub">Only actions mediated by MyPersonas or an explicit receipt are shown.</p></div><button class="oa-linkbtn" onclick="go('activity')">Full timeline</button></div><div class="oa-list">${ownerAppRecentActivity(persona.id)}</div></section>
     </div>
+    ${ownerAppStickyCtaHtml("home", persona.id)}
   </div>`;
   ownerAppMobileNav();
 }
@@ -1382,9 +1575,10 @@ function ownerAppRenderScheduleLoaded() {
     ? ""
     : '<div class="oa-capability">Four-channel content kits require migration 045. The existing three-channel Meta/X draft queue remains separate and unchanged.</div>';
   app.innerHTML = `<div class="oa-shell">${ownerAppTopbar("Post schedule", "Four channels · one owner review")}${ownerAppPickerHtml("schedule", true)}${capability}
-    <div class="oa-panel wide" style="margin-bottom:14px"><div class="oa-panel-head"><div><h3>Content kits</h3><p class="oa-sub">X → Instagram → Facebook → website. More room and richer media as the channel expands.</p></div><button class="oa-primary oa-small" onclick="go('briefs')">Build from a briefing</button></div></div>
-    <div>${packages.map(ownerAppPackageCard).join("") || '<div class="oa-empty"><strong>No four-channel kits yet</strong>Open a briefing, select evidence, add owner guidance, and generate a kit for review.</div>'}</div>
+    <div class="oa-panel wide" style="margin-bottom:14px"><div class="oa-panel-head"><div><h3>Content kits</h3><p class="oa-sub">X → Instagram → Facebook → website. More room and richer media as the channel expands. Mobile private drafts stay owner-only with publishing_enabled=false.</p></div><div class="oa-actions"><button class="oa-primary oa-small" onclick="ownerAppOpenPrivateDraft('${esc(personaFilter || ownerAppState.selectedPersonaId)}')">New private draft</button><button class="oa-secondary oa-small" onclick="go('briefs')">Build from a briefing</button></div></div></div>
+    <div>${packages.map(ownerAppPackageCard).join("") || '<div class="oa-empty"><strong>No four-channel kits yet</strong>Write a private draft from the selected persona or open a briefing, select evidence, and generate a kit for review.</div>'}</div>
     <section class="oa-panel wide" style="margin-top:18px"><div class="oa-panel-head"><div><h3>Legacy three-channel publishing queue</h3><p class="oa-sub">Facebook/Instagram immutable-media approvals and X draft state. This remains the only connector publishing surface.</p></div><button class="oa-secondary oa-small" onclick="openComposer()">Open full queue</button></div><div class="oa-list">${legacy.slice(0, 40).map(ownerAppLegacyDraftCard).join("") || '<p class="oa-sub">No legacy post drafts.</p>'}</div></section>
+    ${ownerAppStickyCtaHtml("schedule", personaFilter)}
   </div>`;
   ownerAppMobileNav();
   if (ownerAppState.openPackageId) setTimeout(() => ownerAppEditPackage(ownerAppState.openPackageId), 0);
@@ -1451,6 +1645,19 @@ async function ownerAppSchedulePackage(id) {
 }
 
 async function ownerAppPreviewPackageAction(id, action) {
+  const workflow = ownerAppWorkflow();
+  const pack = ownerAppState.packages.find((row) => row.id === id);
+  if (workflow) {
+    const decision = workflow.approvalDecision({
+      ownerId: session?.user?.id || "",
+      pack,
+      action,
+      bindings: ownerAppChannelBindings(pack?.persona_id),
+      publishingEnabled: false,
+      online: ownerAppNetworkOnline(),
+    });
+    if (!decision.ok) { toast(decision.error); return; }
+  }
   if (typeof openPlatformPreviewDialog !== "function") {
     toast("Exact platform preview is unavailable. Nothing was approved or scheduled.");
     return;

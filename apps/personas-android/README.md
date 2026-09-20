@@ -1,0 +1,59 @@
+# MyPersonas owner Android debug path
+
+This is a **thin debug WebView** over the real MyPersonas owner command center (`#/owner`).
+It is **not** a local social publisher, Play Store build, or replacement for the canonical platform.
+
+`publishing_enabled` stays **false**. The app never ships OAuth scopes, production secrets, or provider send code.
+
+## What it can do
+
+- Open the live owner surfaces (persona selection, private draft, review/approval) when the device is online and the owner can sign in.
+- Show a disconnected page that explains why private workflow is unavailable offline.
+- Export/import **local prefs only** (the owner origin URL) so a debug-signed install can sit beside a differently signed install without pretending to migrate user drafts.
+
+## What it cannot do
+
+- Create, approve, or send drafts while offline.
+- Post to X, Instagram, Facebook, a website, or any other provider.
+- Share Android app data automatically when the signing key changes. Use Export/Import, or keep the installs side by side.
+- Use existing owner-desktop phone-test prototypes. Those are local and are **not** in this cloud checkout.
+
+## Reproducible debug build
+
+Requirements: JDK 17+, Android SDK platform 34, Android build-tools, and a network-capable Gradle 8.7+.
+
+```bash
+# from the repository root
+export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+./scripts/build-personas-android-debug.sh
+```
+
+The script writes a debug APK at `apps/personas-android/app/build/outputs/apk/debug/app-debug.apk` when the SDK is present.
+This APK is **debuggable**, unsigned for Play, and must not be submitted to a store. Do not submit to Play.
+
+If the Android SDK is not installed:
+
+1. Install Android command-line tools and accept licenses.
+2. Install `platforms;android-34` and `build-tools;34.0.0`.
+3. Re-run the script.
+
+Store accounts (Google personal / later submissions) are owner actions. This milestone does not submit, promote, or change Play permissions.
+
+## Side-by-side testing when signing differs
+
+Debug and Play signing keys do not share app storage. Keep both installs, or use the in-app **Export local prefs** / **Import local prefs** buttons. That file is not a user-data backup of private draft bodies.
+
+## Local site testing
+
+To point the WebView at a laptop Pages checkout instead of production, write this JSON to the app external-files directory as `owner-mobile-prefs.json` and import it:
+
+```json
+{
+  "version": "mobile-owner-workflow-export-v1",
+  "owner_origin": "http://10.0.2.2:4173/#/owner",
+  "publishing_enabled": false
+}
+```
+
+Cleartext is allowed only for `localhost`, `127.0.0.1`, and the emulator host `10.0.2.2`.

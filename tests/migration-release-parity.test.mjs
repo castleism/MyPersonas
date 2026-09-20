@@ -25,6 +25,7 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/070-cms-draft-connectors.sql","supabase/migrations/20260830130000_cms_draft_connectors.sql"],
   ["MyPersonas.Online_v0/sql-updates/072-immediate-provider-preview-receipts.sql","supabase/migrations/20260830150000_immediate_provider_preview_receipts.sql"],
   ["MyPersonas.Online_v0/sql-updates/076-youtube-trigger-privilege-hardening.sql","supabase/migrations/20260830190000_youtube_trigger_privilege_hardening.sql"],
+  ["MyPersonas.Online_v0/sql-updates/077-mobile-private-draft-workflow.sql","supabase/migrations/20260920120000_mobile_private_draft_workflow.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

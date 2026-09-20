@@ -116,7 +116,8 @@ test("the app head and Pages artifact include the complete PWA shell", async () 
     "/manifest.webmanifest",
     "/service-worker.js",
     "/pwa.js",
-    "/offline.html"
+    "/offline.html",
+    "/mobile-owner-workflow.js"
   ]) {
     assert.ok(workflow.includes(`--include '${releasePath}'`), `Pages artifact must include ${releasePath}`);
   }

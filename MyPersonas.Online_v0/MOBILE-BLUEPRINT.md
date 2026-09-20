@@ -1,10 +1,17 @@
 # Mobile Blueprint — responsive web, tablet, native apps, chat workspaces
 
-_Updated 2026-08-13. Covers three things: (1) optimizing the responsive **web** for phones and
+_Updated 2026-09-20. Covers three things: (1) optimizing the responsive **web** for phones and
 adding a proper **tablet** tier, (2) the **native iOS/Android apps** focused on talking
 to your personas and approving posts, and (3) **chat workspaces** — saved conversations
 that build a persona's context over time. Sequenced so each step ships on its own and
 reuses the same Supabase backend (no rewrite)._
+
+First owner-mobile milestone (2026-09-20, local source): the real owner command
+center now has a searchable owned-persona sheet, a private four-channel draft
+composer that requires exact ledger bindings, a review-queue/sticky CTA, and
+authorization tests. Android debug WebView wraps `#/owner` and documents
+disconnected limits. Migration 077 is unapplied. This is not a store submission
+and not a local fake publisher. `publishing_enabled` remains false.
 
 ---
 
@@ -140,9 +147,13 @@ to future ones later as you continue to build the context for the persona."_ Thi
    approves source, citation, freshness, and feedback rules.
 5. **Push-notification pilot** — separate permission/subscription/delivery design after the
    installed PWA is stable.
-6. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
+6. **Android debug WebView (first native path, local).** Source-complete: wraps the
+   real `#/owner` command center, shows offline limitations, and exports/imports local
+   prefs when signing keys differ. Blocked on Android SDK in this cloud checkout for
+   an assembled debug APK, plus owner-device sign-in. Do not submit to Play.
+7. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
    camera/share/biometric/notification value justifies another client.
-7. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
+8. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
    guarded code first. App Review is needed only when posting for other users becomes a goal.
 
 Each step is shippable and verifiable on its own; none requires a big-bang rewrite.
