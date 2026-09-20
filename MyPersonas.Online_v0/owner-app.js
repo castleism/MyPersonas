@@ -66,6 +66,7 @@ const ownerAppState = {
   unreadCount: 0,
   handoff: null,
   companionAction: null,
+  networkBound: false,
 };
 
 function ownerAppReset() {
@@ -472,7 +473,9 @@ function ownerAppSyncChrome() {
   if (bug) bug.hidden = authenticated;
   if (companion) companion.hidden = !authenticated || mobile || personaMode;
   if (!authenticated || !mobile || personaMode) ownerAppToggleMore(false, false);
+  ownerAppBindWorkflowChrome();
   ownerAppSyncCompanion();
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppToggleMore(force, restoreFocus = true) {
@@ -487,6 +490,7 @@ function ownerAppToggleMore(force, restoreFocus = true) {
   document.body.classList.toggle("owner-mobile-more-open", open);
   if (open) setTimeout(() => modal.querySelector(".oa-close")?.focus(), 0);
   else if (restoreFocus && document.activeElement && modal.contains(document.activeElement)) button.focus();
+  ownerAppSyncStickyChrome();
 }
 
 window.addEventListener("keydown", (event) => {
@@ -499,6 +503,7 @@ function ownerAppMobileChat() { ownerAppToggleMore(false, false); ownerAppTalkTo
 function ownerAppMobileHQ() { ownerAppToggleMore(false, false); openHQ(); }
 function ownerAppMobileAccount() { ownerAppToggleMore(false, false); goAccount(); }
 function ownerAppMobileReport() { ownerAppToggleMore(false, false); reportError(); }
+function ownerAppMobileWorkflowPrefs() { ownerAppToggleMore(false, false); ownerAppOpenWorkflowPrefs(); }
 
 function ownerAppTalkToCompanion() {
   const persona = ownerAppPersona();
@@ -568,6 +573,7 @@ function ownerAppPickerHtml(destination, allowAll = false) {
 
 function ownerAppClosePersonaSheet() {
   document.getElementById("ownerPersonaSheet")?.remove();
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppChoosePersonaFromSheet(personaId, destination) {
@@ -612,6 +618,7 @@ function ownerAppOpenPersonaSheet(destination, allowAll = false) {
   modal.addEventListener("click", (event) => { if (event.target === modal) ownerAppClosePersonaSheet(); });
   document.body.appendChild(modal);
   document.getElementById("ownerPersonaSheetQuery")?.focus();
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppFilterPersonaSheet(destination, allowAll = false) {
@@ -644,17 +651,164 @@ function ownerAppReviewQueueHtml(personaId = "") {
   }).join("")}</div>`;
 }
 
-function ownerAppStickyCtaHtml(kind, personaId = "") {
-  if (kind === "home") {
-    return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppOpenPrivateDraft('${personaId}')"${ownerAppNetworkOnline() ? "" : " disabled"}>New private draft</button><button type="button" class="oa-secondary" onclick="go('schedule')">Review queue</button></div>`;
+function ownerAppStickyOverlayOpen() {
+  if (document.querySelector(".oa-modal")) return true;
+  const more = document.getElementById("ownerMobileMore");
+  if (more && !more.hidden) return true;
+  if (document.querySelector(".overlay:not([hidden])")) return true;
+  if (document.querySelector(".platformpreviewoverlay")) return true;
+  return false;
+}
+
+function ownerAppFieldHasFocus() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = String(el.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!el.isContentEditable;
+}
+
+function ownerAppSyncStickyChrome() {
+  document.body.classList.toggle("oa-overlay-open", ownerAppStickyOverlayOpen());
+  document.body.classList.toggle("oa-field-focus", ownerAppFieldHasFocus());
+  const bar = document.querySelector(".oa-sticky-cta");
+  if (!bar) return;
+  bar.hidden = ownerAppStickyOverlayOpen() || ownerAppFieldHasFocus();
+}
+
+function ownerAppOnNetworkChange() {
+  const shell = document.querySelector(".oa-shell");
+  const existing = document.querySelector(".oa-offline");
+  if (!ownerAppNetworkOnline()) {
+    if (!existing && shell) shell.insertAdjacentHTML("afterbegin", ownerAppOfflineBanner());
+  } else {
+    existing?.remove();
   }
+  const sticky = document.querySelector(".oa-sticky-cta");
+  if (sticky) {
+    const kind = sticky.dataset.oaSticky || ownerAppView() || "home";
+    const personaId = ownerAppState.selectedPersonaId;
+    sticky.outerHTML = ownerAppStickyCtaHtml(kind, personaId);
+  }
+  ownerAppSyncStickyChrome();
+}
+
+function ownerAppBindWorkflowChrome() {
+  if (ownerAppState.networkBound) return;
+  ownerAppState.networkBound = true;
+  window.addEventListener("online", ownerAppOnNetworkChange);
+  window.addEventListener("offline", ownerAppOnNetworkChange);
+  document.addEventListener("focusin", ownerAppSyncStickyChrome);
+  document.addEventListener("focusout", () => setTimeout(ownerAppSyncStickyChrome, 0));
+}
+
+function ownerAppStickyCtaHtml(kind, personaId = "") {
+  const workflow = ownerAppWorkflow();
   const review = (ownerAppState.packages || []).find((row) => row.status === "owner_review" && (!personaId || row.persona_id === personaId));
-  if (!review) return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppOpenPrivateDraft('${personaId || ownerAppState.selectedPersonaId}')"${ownerAppNetworkOnline() ? "" : " disabled"}>New private draft</button></div>`;
-  return `<div class="oa-sticky-cta"><button type="button" class="oa-primary" onclick="ownerAppApprovePackage('${review.id}')"${ownerAppNetworkOnline() ? "" : " disabled"}>Preview &amp; approve exact kit</button><button type="button" class="oa-secondary" onclick="ownerAppOpenPrivateDraft('${review.persona_id}')">New private draft</button></div>`;
+  const brief = (ownerAppState.briefs || []).find((row) => row.status === "new" && (!personaId || row.persona_id === personaId));
+  const plan = workflow && typeof workflow.stickyCtaPlan === "function"
+    ? workflow.stickyCtaPlan({
+      kind,
+      reviewPack: review,
+      brief,
+      overlayOpen: ownerAppStickyOverlayOpen(),
+      fieldFocus: ownerAppFieldHasFocus(),
+      online: ownerAppNetworkOnline(),
+    })
+    : {
+      show: true,
+      primary: { action: kind === "briefs" && brief ? "open_brief" : review ? "approve" : "new_private_draft", disabled: !ownerAppNetworkOnline() },
+      secondary: kind === "schedule" && review
+        ? { action: "reject", disabled: !ownerAppNetworkOnline() }
+        : kind === "home" ? { action: "review_queue" } : null,
+    };
+  if (!plan.show) return "";
+  const button = (spec, extraClass) => {
+    if (!spec) return "";
+    const map = {
+      new_private_draft: [`ownerAppOpenPrivateDraft('${personaId || ownerAppState.selectedPersonaId}')`, spec.label || "New private draft"],
+      review_queue: ["go('schedule')", spec.label || "Review queue"],
+      approve: [`ownerAppApprovePackage('${review?.id || ""}')`, spec.label || "Preview &amp; approve exact kit"],
+      reject: [`ownerAppRejectPackage('${review?.id || ""}')`, spec.label || "Reject draft"],
+      open_brief: [`go('briefs/${brief?.id || ""}')`, spec.label || "Read briefing"],
+    };
+    const mapped = map[spec.action];
+    if (!mapped) return "";
+    return `<button type="button" class="${extraClass}" onclick="${mapped[0]}"${spec.disabled ? " disabled" : ""}>${mapped[1]}</button>`;
+  };
+  const primary = button(plan.primary, "oa-primary");
+  const secondary = button(plan.secondary, plan.secondary?.action === "reject" ? "oa-danger" : "oa-secondary");
+  if (!primary && !secondary) return "";
+  return `<div class="oa-sticky-cta" data-oa-sticky="${esc(kind)}">${primary}${secondary}</div>`;
 }
 
 function ownerAppClosePrivateDraft() {
   document.getElementById("ownerPrivateDraftModal")?.remove();
+  ownerAppSyncStickyChrome();
+}
+
+function ownerAppCloseWorkflowPrefs() {
+  document.getElementById("ownerWorkflowPrefsModal")?.remove();
+  ownerAppSyncStickyChrome();
+}
+
+function ownerAppWorkflowPrefsBundle() {
+  const workflow = ownerAppWorkflow();
+  if (!workflow) return null;
+  return workflow.exportBundle({
+    ownerId: session?.user?.id || "",
+    selectedPersonaId: ownerAppState.selectedPersonaId,
+    draftIds: (ownerAppState.packages || []).filter((row) => row.creation_source === "mobile_private").map((row) => row.id),
+  });
+}
+
+function ownerAppOpenWorkflowPrefs() {
+  ownerAppCloseWorkflowPrefs();
+  const bundle = ownerAppWorkflowPrefsBundle();
+  const modal = document.createElement("div");
+  modal.id = "ownerWorkflowPrefsModal";
+  modal.className = "oa-modal";
+  modal.innerHTML = `<div class="oa-sheet" role="dialog" aria-modal="true" aria-labelledby="ownerWorkflowPrefsTitle">
+    <div class="oa-sheethead"><div><span class="oa-eyebrow">Local prefs only · publishing_enabled=false</span><h2 id="ownerWorkflowPrefsTitle">Export / import owner workflow prefs</h2></div>
+    <button type="button" class="oa-close" onclick="ownerAppCloseWorkflowPrefs()">×</button></div>
+    <div class="oa-sheetbody">
+      <div class="oa-capability">This file is a side-by-side testing helper when Android debug and Play signing differ. It never includes private draft bodies, secrets, or OAuth tokens.</div>
+      <label>Current export</label>
+      <textarea id="ownerWorkflowPrefsExport" readonly maxlength="20000">${esc(bundle ? JSON.stringify(bundle, null, 2) : "")}</textarea>
+      <div class="oa-actions" style="margin-top:10px"><button type="button" class="oa-secondary" onclick="ownerAppDownloadWorkflowPrefs()">Download owner-mobile-prefs.json</button></div>
+      <label style="margin-top:14px">Import JSON</label>
+      <textarea id="ownerWorkflowPrefsImport" maxlength="20000" placeholder='{"version":"mobile-owner-workflow-export-v1","publishing_enabled":false}'></textarea>
+      <div class="oa-actions" style="margin-top:10px"><button type="button" class="oa-primary" onclick="ownerAppApplyWorkflowPrefs()">Import selected persona</button><button type="button" class="oa-secondary" onclick="ownerAppCloseWorkflowPrefs()">Close</button></div>
+    </div>
+  </div>`;
+  modal.addEventListener("click", (event) => { if (event.target === modal) ownerAppCloseWorkflowPrefs(); });
+  document.body.appendChild(modal);
+  ownerAppSyncStickyChrome();
+}
+
+function ownerAppDownloadWorkflowPrefs() {
+  const bundle = ownerAppWorkflowPrefsBundle();
+  if (!bundle) { toast("Mobile workflow helpers are unavailable"); return; }
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "owner-mobile-prefs.json";
+  link.click();
+  URL.revokeObjectURL(url);
+  toast("Exported local owner workflow prefs. Draft bodies are not included.");
+}
+
+function ownerAppApplyWorkflowPrefs() {
+  const workflow = ownerAppWorkflow();
+  if (!workflow) { toast("Mobile workflow helpers are unavailable"); return; }
+  let bundle;
+  try { bundle = JSON.parse(document.getElementById("ownerWorkflowPrefsImport")?.value || ""); }
+  catch (_) { toast("Paste a valid JSON export"); return; }
+  const result = workflow.importBundle(bundle, { ownerId: session?.user?.id || "", personas: myPersonas });
+  if (!result.ok) { toast(result.error); return; }
+  if (result.selectedPersonaId) ownerAppSelectPersona(result.selectedPersonaId, ownerAppView());
+  ownerAppCloseWorkflowPrefs();
+  toast("Imported local owner workflow prefs. Private draft bodies were not transferred.");
 }
 
 function ownerAppOpenPrivateDraft(personaId = ownerAppState.selectedPersonaId) {
@@ -681,6 +835,7 @@ function ownerAppOpenPrivateDraft(personaId = ownerAppState.selectedPersonaId) {
     </div>
   </div>`;
   document.body.appendChild(modal);
+  ownerAppSyncStickyChrome();
 }
 
 async function ownerAppSavePrivateDraft(personaId) {
@@ -915,6 +1070,7 @@ function ownerAppRenderBriefsLoaded() {
     <label><span>Status</span><select onchange="ownerAppSetBriefFilter('status',this.value)"><option value="" ${!statusFilter ? "selected" : ""}>All</option><option value="new" ${statusFilter === "new" ? "selected" : ""}>New</option><option value="reviewed" ${statusFilter === "reviewed" ? "selected" : ""}>Reviewed</option><option value="archived" ${statusFilter === "archived" ? "selected" : ""}>Archived</option></select></label>
     <button class="oa-primary" onclick="ownerAppOpenResearchSettings('${ownerAppState.selectedPersonaId || myPersonas[0]?.id || ""}')">Research settings</button></div>
     <div class="oa-briefs">${rows.map(ownerAppBriefCard).join("") || '<div class="oa-empty"><strong>No briefings in this view</strong>Change the filter or enable owner-approved research for a persona.</div>'}</div>
+    ${ownerAppStickyCtaHtml("briefs", personaFilter)}
   </div>`;
   ownerAppMobileNav();
   if (ownerAppState.openBriefId) setTimeout(() => ownerAppOpenBriefModal(ownerAppState.openBriefId), 0);
@@ -969,12 +1125,14 @@ function ownerAppOpenBriefModal(id) {
   modal.addEventListener("click", (event) => { if (event.target === modal) ownerAppCloseBrief(); });
   document.body.appendChild(modal);
   ownerAppReadNotificationFor("research_brief", id);
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppCloseBrief() {
   document.getElementById("ownerBriefModal")?.remove();
   ownerAppState.openBriefId = "";
   if (ownerAppView() === "briefs" && location.hash.split("/").length > 2) history.replaceState({}, "", "#/briefs");
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppSetReadMode(mode, briefId) {
@@ -1555,7 +1713,7 @@ function ownerAppPackageCard(pack) {
   return `<article class="oa-kit" id="ownerKit_${pack.id}"><div class="oa-kithead"><div class="oa-persona-line"><span class="oa-avatar-sm" style="${safeBgStyle(persona?.avatar_url)}"></span><div><h3>${esc(pack.title || "Four-channel content kit")}</h3><div class="oa-date">${esc(persona?.name || "Persona")} · ${esc(ownerAppPackageStatus(pack.status))}${pack.scheduled_for ? ` · ${esc(ownerAppTime(pack.scheduled_for))}` : ""}</div></div></div><span class="oa-chip ${scheduled ? "good" : pack.status === "owner_review" ? "warn" : ""}">${esc(ownerAppPackageStatus(pack.status))}</span></div>
     <div class="oa-channels">${variants.map(ownerAppChannelCard).join("") || '<div class="oa-capability">No channel variants were stored.</div>'}</div>
     <div class="oa-actions" style="margin-top:12px"><button class="oa-secondary oa-small" onclick="ownerAppEditPackage('${pack.id}')">Review &amp; edit</button><button class="oa-secondary oa-small" onclick="ownerAppOpenHandoff('package','${pack.id}')">AI workroom</button>
-    ${pack.status === "owner_review" ? `<button class="oa-primary oa-small" onclick="ownerAppApprovePackage('${pack.id}')">Preview &amp; approve exact kit</button>` : ""}
+    ${pack.status === "owner_review" ? `<button class="oa-primary oa-small" onclick="ownerAppApprovePackage('${pack.id}')">Preview &amp; approve exact kit</button><button class="oa-danger oa-small" onclick="ownerAppRejectPackage('${pack.id}')">Reject draft</button>` : ""}
     ${scheduled ? `<button class="oa-secondary oa-small" onclick="ownerAppUnschedulePackage('${pack.id}')">Unschedule</button>` : ""}</div>
     ${["owner_review", "approved"].includes(pack.status) ? `<div class="oa-scheduleline"><label><span>Proposed manual-work time · ${esc(zone)}</span><input id="ownerScheduleAt_${pack.id}" type="datetime-local" value="${esc(wall)}"></label><label><span>Meaning</span><div class="oa-chip warn">Planning only · no auto-post</div></label>${pack.status === "approved" ? `<button class="oa-primary" onclick="ownerAppSchedulePackage('${pack.id}')">Preview &amp; place on schedule</button>` : `<span class="oa-sub">This exact time appears in every approval preview; approval does not schedule it.</span>`}</div>` : ""}
   </article>`;
@@ -1599,16 +1757,42 @@ function ownerAppEditPackage(id) {
       <label>Title</label><input id="ownerVariantTitle_${variant.id}" maxlength="300" value="${esc(variant.title || "")}"><label>Body</label><textarea id="ownerVariantBody_${variant.id}" maxlength="${variant.channel === "x" ? 280 : variant.channel === "website" ? 30000 : 10000}" style="min-height:${variant.channel === "website" ? 220 : 120}px">${esc(variant.body || "")}</textarea>
       <label>Description / SEO summary</label><textarea id="ownerVariantDescription_${variant.id}" maxlength="2000">${esc(variant.description || "")}</textarea><label>Accessibility text</label><textarea id="ownerVariantAlt_${variant.id}" maxlength="2000">${esc(variant.alt_text || "")}</textarea>
       <div class="oa-actions"><button class="oa-secondary oa-small" onclick="ownerAppCopyVariant('${variant.id}')">Copy ${esc(variant.channel)}</button><button class="oa-secondary oa-small" onclick="ownerAppOpenChannel('${variant.id}')">Open portal</button>${["scheduled", "approved"].includes(variant.status) ? `<button class="oa-secondary oa-small" onclick="ownerAppMarkVariantPosted('${variant.id}')">Confirm manually posted</button>` : ""}</div></section>`).join("")}
-    <div class="oa-actions" style="margin-top:14px"><button class="oa-primary" onclick="ownerAppSavePackage('${id}')">Save changes</button>${pack.status === "owner_review" ? `<button class="oa-secondary" onclick="ownerAppApprovePackage('${id}')">Preview saved kit &amp; approve</button>` : ""}<button class="oa-secondary" onclick="ownerAppClosePackage()">Close</button></div>
+    <div class="oa-actions" style="margin-top:14px"><button class="oa-primary" onclick="ownerAppSavePackage('${id}')">Save changes</button>${pack.status === "owner_review" ? `<button class="oa-secondary" onclick="ownerAppApprovePackage('${id}')">Preview saved kit &amp; approve</button><button class="oa-danger" onclick="ownerAppRejectPackage('${id}')">Reject draft</button>` : ""}<button class="oa-secondary" onclick="ownerAppClosePackage()">Close</button></div>
   </div></div>`;
   document.body.appendChild(modal);
   ownerAppReadNotificationFor("content_package", id);
+  ownerAppSyncStickyChrome();
 }
 
 function ownerAppClosePackage() {
   document.getElementById("ownerPackageModal")?.remove();
   ownerAppState.openPackageId = "";
   if (ownerAppView() === "schedule" && location.hash.split("/").length > 2) history.replaceState({}, "", "#/schedule");
+  ownerAppSyncStickyChrome();
+}
+
+async function ownerAppRejectPackage(id) {
+  const workflow = ownerAppWorkflow();
+  const pack = ownerAppState.packages.find((row) => row.id === id);
+  if (workflow) {
+    const decision = workflow.approvalDecision({
+      ownerId: session?.user?.id || "",
+      pack,
+      action: "reject",
+      publishingEnabled: false,
+      online: ownerAppNetworkOnline(),
+    });
+    if (!decision.ok) { toast(decision.error); return; }
+  }
+  if (!confirm("Delete this owner-review draft? Nothing is published. This cannot be undone.")) return;
+  if (typeof sb?.rpc !== "function") { toast("Signed-in owner RPCs are unavailable"); return; }
+  const result = await sb.rpc("delete_owner_content_package_draft", { p_package_id: id });
+  if (result.error) { toast(result.error.message); return; }
+  toast("Private draft rejected and removed; nothing was published");
+  ownerAppClosePackage();
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  ownerAppRenderScheduleLoaded();
 }
 
 async function ownerAppSavePackage(id) {
@@ -1839,6 +2023,7 @@ function ownerAppRenderActivityLoaded() {
   app.innerHTML = `<div class="oa-shell">${ownerAppTopbar("Activity", "Persona operations trail")}${ownerAppPickerHtml("activity", true)}
     <div class="oa-capability">This timeline records MyPersonas-mediated actions and explicit owner/provider receipts. It does not monitor every click, page, keystroke, cookie, or unrelated action on the wider internet.</div>
     <div class="oa-timeline">${rows.map((row) => `<article class="oa-event"><span class="oa-eventdot">${row.icon}</span><div class="oa-eventbody"><b>${esc(row.summary)}</b><p>${esc(row.personaName)} · ${esc(row.source || "mypersonas")}</p><div class="oa-eventtime">${esc(ownerAppTime(row.at))}</div></div></article>`).join("") || '<div class="oa-empty"><strong>No activity in this view</strong>MyPersonas-mediated actions will appear here.</div>'}</div>
+    ${ownerAppStickyCtaHtml("activity", personaFilter)}
   </div>`;
   ownerAppMobileNav();
 }

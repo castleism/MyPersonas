@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
-<link rel="stylesheet" href="./owner-app.css?v=20260920-1">
+<link rel="stylesheet" href="./owner-app.css?v=20260920-2">
 <link rel="stylesheet" href="./persona-view.css?v=20260822-2">
 <link rel="stylesheet" href="./platform-governance.css?v=20260822-1">
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
@@ -345,6 +345,15 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   .matrix-models .t8pick>span[style*="margin-left:auto"]{width:100%;min-width:0;margin-left:0!important;flex-wrap:wrap}
   .matrix-models .muted{overflow-wrap:anywhere}
 }
+@media(max-width:320px){
+  html,body,.appbody,main,.oa-shell,.card,.autocard,.wizbox,.ledgerrow,.mailboxshell,.mailboxhead,.mailboxbar{min-width:0;max-width:100%;overflow-x:hidden}
+  .cols,.pagebuilder-grid,.pagebuilder-controls,.ledgerrow,.mailboxstats,.autogrid,.levelgrid,.pgrid,.managedstats{grid-template-columns:minmax(0,1fr)}
+  .ledgernew>*{min-width:0;flex-basis:100%}
+  .mailboxhead>div:first-child{min-width:0}
+  .mailboxfinding,.mailboxfindingactions,.targetactions{min-width:0}
+  input,select,textarea,.btn,.ledgeritem select,.ledgerproviderpicker{max-width:100%;box-sizing:border-box}
+  .wizbox{padding:16px}
+}
 </style>
 </head>
 <body>
@@ -434,6 +443,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
       <button type="button" onclick="ownerAppMobileChat()"><span>💬</span><b>Persona chat</b><small>Talk with the selected persona</small></button>
       <button type="button" onclick="ownerAppMobileHQ()"><span>✦</span><b>HQ Assistant</b><small>Coordinate the full roster</small></button>
       <button type="button" onclick="ownerAppMobileAccount()"><span>⚙</span><b>Account</b><small>Models, portals, and settings</small></button>
+      <button type="button" onclick="ownerAppMobileWorkflowPrefs()"><span>⇄</span><b>Export / import prefs</b><small>Local selected persona · no draft bodies</small></button>
       <button type="button" onclick="ownerAppMobileReport()"><span>🐞</span><b>Report a problem</b><small>Send the current page context</small></button>
     </div>
   </section>
@@ -456,8 +466,8 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./mobile-owner-workflow.js?v=20260920-1"></script>
-<script src="./owner-app.js?v=20260920-1"></script>
+<script src="./mobile-owner-workflow.js?v=20260920-2"></script>
+<script src="./owner-app.js?v=20260920-2"></script>
 <script src="./persona-view.js?v=20260823-1"></script>
 <script src="./platform-governance.js?v=20260830-1"></script>
 <script src="./agent-board.js?v=20260822-4"></script>

@@ -115,6 +115,33 @@ test("approval stays a private planning record and still requires ownership", ()
   });
   assert.equal(schedule.ok, true);
   assert.equal(schedule.publishes, false);
+  const reject = workflow.approvalDecision({ ownerId: owner, pack, action: "reject", publishingEnabled: false, online: true });
+  assert.equal(reject.ok, true);
+  assert.equal(reject.publishes, false);
+  assert.equal(reject.rpc, "delete_owner_content_package_draft");
+  assert.equal(workflow.approvalDecision({ ownerId: owner, pack, action: "reject", online: false }).ok, false);
+  assert.equal(workflow.approvalDecision({
+    ownerId: owner,
+    pack: { ...pack, status: "approved" },
+    action: "reject",
+    online: true,
+  }).ok, false);
+});
+
+test("sticky CTA hides over overlays and focused fields instead of covering them", () => {
+  const review = { id: "kit-1", status: "owner_review" };
+  const hiddenOverlay = workflow.stickyCtaPlan({ kind: "home", overlayOpen: true, reviewPack: review, online: true });
+  assert.equal(hiddenOverlay.show, false);
+  assert.equal(hiddenOverlay.reason, "overlay");
+  const hiddenField = workflow.stickyCtaPlan({ kind: "schedule", fieldFocus: true, reviewPack: review, online: true });
+  assert.equal(hiddenField.show, false);
+  const schedule = workflow.stickyCtaPlan({ kind: "schedule", reviewPack: review, online: true });
+  assert.equal(schedule.show, true);
+  assert.equal(schedule.primary.action, "approve");
+  assert.equal(schedule.secondary.action, "reject");
+  const briefs = workflow.stickyCtaPlan({ kind: "briefs", brief: { id: "brief-1", status: "new" }, online: false });
+  assert.equal(briefs.primary.action, "open_brief");
+  assert.equal(briefs.secondary.disabled, true);
 });
 
 test("export/import is owner-scoped and refuses a live publisher flag", () => {
@@ -132,10 +159,16 @@ test("owner app uses the workflow helpers instead of a local fake publisher", as
   ]);
   assert.match(source, /function ownerAppOpenPersonaSheet/);
   assert.match(source, /function ownerAppOpenPrivateDraft/);
+  assert.match(source, /function ownerAppRejectPackage/);
+  assert.match(source, /function ownerAppOpenWorkflowPrefs/);
+  assert.match(source, /function ownerAppBindWorkflowChrome/);
+  assert.match(source, /delete_owner_content_package_draft/);
   assert.match(source, /create_owner_mobile_private_draft/);
   assert.match(source, /publishing_enabled=false/);
   assert.match(source, /Private drafts cannot be created while disconnected/);
+  assert.match(source, /addEventListener\("online"/);
   assert.doesNotMatch(source, /fake social publisher|localSocialPublish|postToTwitter\(/);
-  assert.match(html, /mobile-owner-workflow\.js\?v=20260920-1/);
+  assert.match(html, /mobile-owner-workflow\.js\?v=20260920-2/);
   assert.match(html, /ownerAppMobilePrivateDraft/);
+  assert.match(html, /ownerAppMobileWorkflowPrefs/);
 });

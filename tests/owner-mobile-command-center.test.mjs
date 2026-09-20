@@ -22,6 +22,7 @@ test("owner command center is packaged and its external script parses", async ()
   for (const route of ["owner", "briefs", "schedule", "fan-inbox", "activity", "notifications"]) {
     assert.match(html, new RegExp(`view===\\"${route}\\"`));
   }
+  assert.match(html, /@media\(max-width:320px\)/);
   assert.match(html, /id="ownerMobileNav"/);
   assert.match(html, /id="ownerMobileMore"/);
   assert.match(html, /id="ownerPersonaCompanion"/);
@@ -33,6 +34,9 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(css, /\.oa-companion-dialogue\[hidden\]\{display:none!important\}/);
   assert.match(css, /\.oa-companion-dialogue\[data-dismissible="true"\]/);
   assert.match(css, /@media\(max-width:520px\)/);
+  assert.match(css, /@media\(max-width:320px\)/);
+  assert.match(css, /body\.oa-overlay-open \.oa-sticky-cta/);
+  assert.match(css, /body\.oa-field-focus \.oa-sticky-cta/);
   assert.match(source, /function ownerAppSyncChrome\(\)/);
   assert.match(source, /function ownerAppRememberPersona\(/);
   assert.match(source, /function ownerAppSelectRoutePersona\(/);
@@ -77,8 +81,8 @@ test("route and dropdown persona changes update the companion selection", async 
   assert.equal(syncs, 2);
   assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
   assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
-  assert.match(html, /mobile-owner-workflow\.js\?v=20260920-1/);
-  assert.match(html, /owner-app\.js\?v=20260920-1/);
+  assert.match(html, /mobile-owner-workflow\.js\?v=20260920-2/);
+  assert.match(html, /owner-app\.js\?v=20260920-2/);
 });
 
 test("clicking the persona tagline bubble dismisses it without opening chat", async () => {

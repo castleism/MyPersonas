@@ -258,9 +258,50 @@
       return { ok: true, action: "manual_schedule", error: "", rpc: "content_package_preview_snapshot", publishes: false };
     }
     if (action === "reject") {
+      if (input.online === false) return { ok: false, action: "", error: "Rejection requires a live owner session" };
+      if (!["owner_review", "rejected", "archived"].includes(asText(pack.status))) {
+        return { ok: false, action: "", error: "Only an unposted owner-review draft can be rejected" };
+      }
       return { ok: true, action: "reject", error: "", rpc: "delete_owner_content_package_draft", publishes: false };
     }
     return { ok: false, action: "", error: "Unsupported approval action" };
+  }
+
+  function stickyCtaPlan(input = {}) {
+    if (input.overlayOpen === true) {
+      return { show: false, reason: "overlay", primary: null, secondary: null };
+    }
+    if (input.fieldFocus === true) {
+      return { show: false, reason: "field-focus", primary: null, secondary: null };
+    }
+    const kind = asText(input.kind) || "home";
+    const online = input.online !== false;
+    const review = input.reviewPack && asText(input.reviewPack.status) === "owner_review" ? input.reviewPack : null;
+    const brief = input.brief && asText(input.brief.status) === "new" ? input.brief : null;
+    if (kind === "briefs" && brief) {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "open_brief", label: "Read briefing", disabled: false },
+        secondary: { action: "new_private_draft", label: "New private draft", disabled: !online },
+      };
+    }
+    if ((kind === "schedule" || kind === "home") && review) {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "approve", label: "Preview & approve exact kit", disabled: !online },
+        secondary: kind === "schedule"
+          ? { action: "reject", label: "Reject draft", disabled: !online }
+          : { action: "new_private_draft", label: "New private draft", disabled: !online },
+      };
+    }
+    return {
+      show: true,
+      reason: "",
+      primary: { action: "new_private_draft", label: "New private draft", disabled: !online },
+      secondary: kind === "home" ? { action: "review_queue", label: "Review queue", disabled: false } : null,
+    };
   }
 
   function rosterGroups(personas, backups = []) {
@@ -333,6 +374,7 @@
     createPrivateDraftRequest,
     reviewItem,
     approvalDecision,
+    stickyCtaPlan,
     rosterGroups,
     filterRoster,
     exportBundle,

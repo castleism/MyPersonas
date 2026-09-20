@@ -29,6 +29,7 @@ Do **not** replace the platform with a local fake social publisher.
 - Owner UI: `MyPersonas.Online_v0/owner-app.js`
 - RPC: `MyPersonas.Online_v0/sql-updates/077-mobile-private-draft-workflow.sql`
 - Android path: `apps/personas-android/README.md`
+- iOS path: `apps/personas-ios/README.md`
 - Product roadmap: `MyPersonas.Online_v0/ROADMAP.md` and `MOBILE-BLUEPRINT.md`
 
 Existing architecture, approved content, and connector publishing gates stay in

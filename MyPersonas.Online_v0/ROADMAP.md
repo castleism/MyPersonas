@@ -424,24 +424,28 @@ larger product phase remains.
 - [~] Responsive: SHIPPED 2026-08-12 — safe-area insets (viewport-fit=cover; header,
       stale bar, main, overlay, fanbox/sdPanel) + tablet tier (768–1024px → studio
       `.cols` 280px/1fr). Additive, no-op on desktop, all rules parse valid in Blink,
-      syntax check passes, backup in _to_delete/backups/. PENDING: sticky mobile CTA
-      (needs logged-in visual verify) — MOBILE-BLUEPRINT.md
+      syntax check passes, backup in _to_delete/backups/. Context-aware sticky phone
+      CTA and 320 px overflow rules are local source. PENDING: logged-in real-device
+      visual verify — MOBILE-BLUEPRINT.md
 - [~] Native apps: the PWA manifest/install/public-offline shell is complete locally.
-      The first owner-mobile milestone is source-complete in this checkout: owned
-      persona roster/bottom sheet, private four-channel draft creation through
-      `create_owner_mobile_private_draft`, review/approval via the existing exact
-      preview gate, authorization tests, and a debug Android WebView path. Migration
-      077 is local/unapplied. `publishing_enabled` stays false. No provider send,
-      OAuth scope change, store submission, or production secret is included.
-      Disconnected Android/PWA clients only show limitations. Existing owner-desktop
-      phone-test prototypes are not in this cloud checkout.       Local Node suite is green.
-      A labeled fixture harness was smoked at desktop and 390px; it is not the live
-      signed-in app. A debug APK assembled in this run when Android SDK 34 + Gradle
-      8.7 were installed locally; it is not a store build and is not committed.
-      Remaining blockers: apply/read back migration 077, owner AAL2 two-account
-      privacy proof, and real-device sign-in. Push notifications remain a separate
-      permission/backend phase; Expo/React Native chat + camera/share still come later.
-      See `MOBILE-BLUEPRINT.md` and `apps/personas-android/README.md`.
+      Owner-mobile work that Cursor can finish without deploy/store/secrets is
+      source-complete in this checkout: owned persona roster/bottom sheet, private
+      four-channel draft creation through `create_owner_mobile_private_draft`,
+      reject through `delete_owner_content_package_draft`, review/approval via the
+      existing exact preview gate, context-aware sticky CTA, 320 px form overflow,
+      owner-web export/import of local prefs, online/offline listeners, authorization
+      tests, a debug Android WebView with network restore + deep links + Gradle
+      wrapper, and an iOS WKWebView scaffold. Migration 077 is local/unapplied.
+      `publishing_enabled` stays false. No provider send, OAuth scope change, store
+      submission, or production secret is included. Disconnected Android/iOS/PWA
+      clients only show limitations. Existing owner-desktop phone-test prototypes
+      are not in this cloud checkout. Local Node suite is green. A labeled fixture
+      harness can be smoked at desktop and 390px; it is not the live signed-in app.
+      Remaining blockers Cursor cannot finish here: apply/read back migration 077,
+      owner AAL2 two-account privacy proof, real-device sign-in, store submission,
+      push-notification backend, Expo/React Native rewrite, news-feed schema
+      approval, and Meta App Review. See `MOBILE-BLUEPRINT.md`,
+      `apps/personas-android/README.md`, and `apps/personas-ios/README.md`.
 - [~] Chat workspaces: migration 031 APPLIED + verified; owner-scoped list/create/rename/
       pin/resume, workspace messages, inclusion in the full account export, owner-reviewed Save context, and max-three
       distilled Attach context are complete locally. Deploy ai-proxy first, then Pages,

@@ -2,9 +2,12 @@ package online.mypersonas.owner;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -27,8 +30,11 @@ public class OwnerActivity extends Activity {
     static final String PREFS = "owner_mobile_prefs";
     static final String KEY_ORIGIN = "owner_origin";
     static final String EXPORT_VERSION = "mobile-owner-workflow-export-v1";
+    static final String OFFLINE_URL = "file:///android_asset/offline-limitations.html";
 
     WebView web;
+    ConnectivityManager.NetworkCallback networkCallback;
+    boolean showingOffline;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,17 +49,46 @@ public class OwnerActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false;
+                Uri uri = request.getUrl();
+                return uri == null || !allowedOwnerUrl(uri.toString());
             }
         });
         findViewById(R.id.exportPrefs).setOnClickListener(v -> exportPrefs());
         findViewById(R.id.importPrefs).setOnClickListener(v -> importPrefs());
-        loadOwnerSurface();
+        findViewById(R.id.reloadOwner).setOnClickListener(v -> loadOwnerSurface(null));
+        applyIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        applyIntent(intent);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        registerNetwork();
+    }
+
+    @Override
+    protected void onStop() {
+        unregisterNetwork();
+        super.onStop();
     }
 
     String origin() {
         return getSharedPreferences(PREFS, MODE_PRIVATE)
             .getString(KEY_ORIGIN, BuildConfig.DEFAULT_OWNER_ORIGIN);
+    }
+
+    boolean allowedOwnerUrl(String url) {
+        if (url == null) return false;
+        return url.startsWith("https://mypersonas.online/")
+            || url.startsWith("http://10.0.2.2:")
+            || url.startsWith("http://127.0.0.1:")
+            || url.startsWith("http://localhost:");
     }
 
     boolean online() {
@@ -67,12 +102,57 @@ public class OwnerActivity extends Activity {
         );
     }
 
-    void loadOwnerSurface() {
+    void applyIntent(Intent intent) {
+        String deepLink = null;
+        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            String url = intent.getData().toString();
+            if (allowedOwnerUrl(url)) deepLink = url;
+        }
+        loadOwnerSurface(deepLink);
+    }
+
+    void loadOwnerSurface(String overrideUrl) {
         if (!online()) {
-            web.loadUrl("file:///android_asset/offline-limitations.html");
+            showingOffline = true;
+            web.loadUrl(OFFLINE_URL);
             return;
         }
-        web.loadUrl(origin());
+        String target = overrideUrl != null && allowedOwnerUrl(overrideUrl) ? overrideUrl : origin();
+        if (!allowedOwnerUrl(target)) target = BuildConfig.DEFAULT_OWNER_ORIGIN;
+        showingOffline = false;
+        web.loadUrl(target);
+    }
+
+    void registerNetwork() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager == null || networkCallback != null) return;
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                runOnUiThread(() -> {
+                    if (showingOffline) loadOwnerSurface(null);
+                });
+            }
+
+            @Override
+            public void onLost(Network network) {
+                runOnUiThread(() -> {
+                    if (!online()) {
+                        showingOffline = true;
+                        web.loadUrl(OFFLINE_URL);
+                    }
+                });
+            }
+        };
+        manager.registerDefaultNetworkCallback(networkCallback);
+    }
+
+    void unregisterNetwork() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager != null && networkCallback != null) {
+            try { manager.unregisterNetworkCallback(networkCallback); } catch (RuntimeException ignored) {}
+        }
+        networkCallback = null;
     }
 
     void exportPrefs() {
@@ -104,11 +184,15 @@ public class OwnerActivity extends Activity {
             if (bundle.optBoolean("publishing_enabled", false)) {
                 throw new IllegalStateException("publishing_enabled must remain false");
             }
+            String importedOrigin = bundle.optString("owner_origin", BuildConfig.DEFAULT_OWNER_ORIGIN);
+            if (!allowedOwnerUrl(importedOrigin)) {
+                throw new IllegalStateException("Import origin is not an allowed owner URL");
+            }
             SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
-            editor.putString(KEY_ORIGIN, bundle.optString("owner_origin", BuildConfig.DEFAULT_OWNER_ORIGIN));
+            editor.putString(KEY_ORIGIN, importedOrigin);
             editor.apply();
-            Toast.makeText(this, "Imported local prefs. Reload to apply.", Toast.LENGTH_LONG).show();
-            loadOwnerSurface();
+            Toast.makeText(this, "Imported local prefs. Reloading.", Toast.LENGTH_LONG).show();
+            loadOwnerSurface(null);
         } catch (Exception error) {
             Toast.makeText(this, "Import failed: " + error.getMessage(), Toast.LENGTH_LONG).show();
         }

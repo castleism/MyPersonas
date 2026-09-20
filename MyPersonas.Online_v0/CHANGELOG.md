@@ -3,6 +3,25 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Owner mobile workflow completion pass (local source) (2026-09-20)
+
+Status: **Implemented and tested locally; not pushed to production, not applied to
+the linked database, not deployed, and not submitted to a store.**
+
+- Sticky phone CTA is now context-aware: it hides over owner sheets, previews, and
+  focused fields, and it appears on home, briefs, schedule, and activity.
+- Reject on an owner-review kit calls `delete_owner_content_package_draft` after the
+  workflow helper refuses publish/provider-send, offline, and approved-kit deletes.
+- Owner-web export/import writes the same v1 local prefs helper as Android/iOS. Draft
+  bodies, secrets, and OAuth tokens are excluded.
+- Online/offline listeners refresh the disconnected banner and mutation buttons without
+  inventing a local publisher.
+- 320 px overflow rules cover owner command-center grids plus persona-edit / ledger /
+  mailbox forms.
+- Android debug WebView restores `#/owner` when the network returns, accepts
+  `https://mypersonas.online/` deep links, and ships a Gradle 8.7 wrapper.
+- iOS WKWebView scaffold lives at `apps/personas-ios/`. Linux cannot produce an IPA.
+
 ## Owner mobile persona / private-draft milestone (local source) (2026-09-20)
 
 Status: **Implemented and tested locally; not pushed to production, not applied to

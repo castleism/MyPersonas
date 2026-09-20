@@ -8,7 +8,8 @@ It is **not** a local social publisher, Play Store build, or replacement for the
 ## What it can do
 
 - Open the live owner surfaces (persona selection, private draft, review/approval) when the device is online and the owner can sign in.
-- Show a disconnected page that explains why private workflow is unavailable offline.
+- Show a disconnected page that explains why private workflow is unavailable offline, then restore `#/owner` when the network returns.
+- Accept `https://mypersonas.online/...` deep links into the same owner WebView. Other hosts are ignored.
 - Export/import **local prefs only** (the owner origin URL) so a debug-signed install can sit beside a differently signed install without pretending to migrate user drafts.
 
 ## What it cannot do
@@ -20,7 +21,7 @@ It is **not** a local social publisher, Play Store build, or replacement for the
 
 ## Reproducible debug build
 
-Requirements: JDK 17+, Android SDK platform 34, Android build-tools 34.0.0, and Gradle 8.7+. The debug shell uses the platform WebView and Activity classes only (no AndroidX / Kotlin stdlib).
+Requirements: JDK 17+, Android SDK platform 34, and Android build-tools 34.0.0. The committed Gradle wrapper (`./gradlew`, Gradle 8.7) is preferred. A system Gradle 8.7+ binary is only a fallback. The debug shell uses the platform WebView and Activity classes only (no AndroidX / Kotlin stdlib). This is not an Expo/React Native rewrite.
 
 ```bash
 # from the repository root

@@ -4,4 +4,5 @@
     <string name="export_prefs">Export local prefs</string>
     <string name="import_prefs">Import local prefs</string>
     <string name="offline_title">Disconnected</string>
+    <string name="reload_owner">Reload when online</string>
 </resources>

@@ -72,7 +72,8 @@
         <p class="oa-sub">Create: ${request.ok ? "owned draft payload ready" : request.error}</p>
         <p class="oa-sub">Foreign owner: ${denied.error}</p>
       </section>
-      <div class="oa-sticky-cta"><button class="oa-primary" type="button">Save private draft for review</button><button class="oa-secondary" type="button">Review queue</button></div>
+      <p class="oa-sub">Sticky CTA hides over overlays and focused fields. Reject uses delete_owner_content_package_draft and never publishes.</p>
+      <div class="oa-sticky-cta" data-oa-sticky="schedule"><button class="oa-primary" type="button">Preview &amp; approve exact kit</button><button class="oa-danger" type="button">Reject draft</button></div>
     `;
   </script>
 </body>

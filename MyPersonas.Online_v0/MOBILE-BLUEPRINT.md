@@ -34,10 +34,13 @@ Current implementation and remaining gaps:
   ```
 - **Safe-area insets are implemented** for the header, stale bar, main content, overlays,
   fan chat, and image panel; verify them on real notched devices before release.
-- **Sticky bottom action bar on phones** for the primary action (Save / Approve /
-  Send) so the main CTA is always thumb-reachable.
-- **Audit long forms** (persona edit, ledger, mailbox) for horizontal overflow at 320 px;
-  a couple of grids still assume width.
+- **Sticky bottom action bar on phones** is implemented for owner home, briefs,
+  schedule, and activity. It hides while a sheet/preview is open or a field is focused
+  so it cannot cover validation or destructive actions. Logged-in real-device visual
+  verification remains the gate.
+- **Long-form 320 px overflow** rules are in `owner-app.css` and `index.html` for
+  persona edit, ledger, mailbox, and owner grids. Confirm on a real 320 px device
+  before release.
 - **Images**: serve responsive sizes from Storage (`srcset`) once media moves to buckets.
 
 _How to ship safely:_ tablet/safe-area code already exists; screenshot signed-in phone +
@@ -139,8 +142,8 @@ to future ones later as you continue to build the context for the persona."_ Thi
 
 1. **PWA install/offline shell** — code complete locally; owner release + device verify.
    Treat push as its own permission/backend project after the install shell is proven.
-2. **Responsive release verify** — tablet tier + safe-area are local; sticky phone CTA and
-   logged-in real-device checks remain.
+2. **Responsive release verify** — tablet tier, safe-area, 320 px overflow, and
+   context-aware sticky CTA are local; logged-in real-device checks remain.
 3. **Context + chat workspaces** — schema is recorded live and code is complete locally;
    deploy `ai-proxy` before Pages, then verify conflict/RLS/distillation/export behavior.
 4. **Sourced news-feed research pipeline** (`feed_items` + `ai/research`) after the owner
@@ -148,12 +151,18 @@ to future ones later as you continue to build the context for the persona."_ Thi
 5. **Push-notification pilot** — separate permission/subscription/delivery design after the
    installed PWA is stable.
 6. **Android debug WebView (first native path, local).** Source-complete: wraps the
-   real `#/owner` command center, shows offline limitations, and exports/imports local
-   prefs when signing keys differ. A debug APK assembled here with SDK 34 + Gradle
-   8.7; still blocked on owner-device sign-in. Do not submit to Play.
-7. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
-   camera/share/biometric/notification value justifies another client.
-8. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
+   real `#/owner` command center, restores it when the network returns, accepts
+   `https://mypersonas.online/` deep links, shows offline limitations, and
+   exports/imports local prefs when signing keys differ. Gradle wrapper 8.7 is
+   committed. A debug APK can assemble with SDK 34; still blocked on owner-device
+   sign-in. Do not submit to Play.
+7. **iOS WKWebView scaffold (local source only).** Same owner URL, offline page,
+   network restore, and local-prefs helper. Linux cannot produce an IPA. Do not
+   submit to the App Store.
+8. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
+   camera/share/biometric/notification value justifies another client. This checkout
+   does not start that rewrite.
+9. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
    guarded code first. App Review is needed only when posting for other users becomes a goal.
 
 Each step is shippable and verifiable on its own; none requires a big-bang rewrite.

@@ -16,10 +16,17 @@ test("Android companion wraps the real owner command center and documents offlin
     read("apps/personas-android/app/build.gradle"),
   ]);
   await access(path.join(android, "settings.gradle"));
+  await access(path.join(android, "gradlew"));
+  await access(path.join(android, "gradle/wrapper/gradle-wrapper.properties"));
   assert.match(manifest, /android:name="online\.mypersonas\.owner\.OwnerActivity"/);
   assert.match(build, /mypersonas\.online\/#\/owner/);
   assert.match(activity, /offline-limitations\.html/);
   assert.match(activity, /BuildConfig\.DEFAULT_OWNER_ORIGIN/);
+  assert.match(activity, /NetworkCallback/);
+  assert.match(activity, /allowedOwnerUrl/);
+  assert.match(activity, /onNewIntent/);
+  assert.match(manifest, /android:host="mypersonas\.online"/);
+  assert.match(activity, /reloadOwner/);
   assert.doesNotMatch(activity, /twitter\.com\/i\/api|graph\.facebook\.com|oauth|client_secret|SUPABASE_SERVICE/i);
   assert.match(offline, /publishing_enabled=false/);
   assert.match(offline, /cannot create, approve, or send/i);
