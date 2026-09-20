@@ -17,7 +17,9 @@ the linked database, not deployed, and not submitted to a store.**
   bindings, offline refusal, and a permanently disabled publisher.
 - Android debug WebView path lives at `apps/personas-android/` and wraps `#/owner`.
   Disconnected it only shows limitations. No OAuth, production secrets, or provider
-  sends. Existing owner-desktop phone-test prototypes are not in this checkout.
+  sends. A debug APK assembled with SDK 34 + Gradle 8.7 in this agent run; it is
+  not committed and is not a store build. Existing owner-desktop phone-test
+  prototypes are not in this checkout.
 
 ## Required AI-use declaration and forward-only provenance hardening (production release) (2026-08-23)
 
