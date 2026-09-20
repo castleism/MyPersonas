@@ -1,5 +1,6 @@
 package online.mypersonas.owner;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
@@ -10,9 +11,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
-
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONObject;
 
@@ -25,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  * Debug WebView over the real MyPersonas owner command center.
  * This is not a social publisher. publishing_enabled stays false.
  */
-public class OwnerActivity extends AppCompatActivity {
+public class OwnerActivity extends Activity {
     static final String PREFS = "owner_mobile_prefs";
     static final String KEY_ORIGIN = "owner_origin";
     static final String EXPORT_VERSION = "mobile-owner-workflow-export-v1";
@@ -33,7 +31,7 @@ public class OwnerActivity extends AppCompatActivity {
     WebView web;
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_owner);
         web = findViewById(R.id.ownerWeb);

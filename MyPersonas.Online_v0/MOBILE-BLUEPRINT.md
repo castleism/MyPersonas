@@ -149,8 +149,8 @@ to future ones later as you continue to build the context for the persona."_ Thi
    installed PWA is stable.
 6. **Android debug WebView (first native path, local).** Source-complete: wraps the
    real `#/owner` command center, shows offline limitations, and exports/imports local
-   prefs when signing keys differ. Blocked on Android SDK in this cloud checkout for
-   an assembled debug APK, plus owner-device sign-in. Do not submit to Play.
+   prefs when signing keys differ. A debug APK assembled here with SDK 34 + Gradle
+   8.7; still blocked on owner-device sign-in. Do not submit to Play.
 7. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
    camera/share/biometric/notification value justifies another client.
 8. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the

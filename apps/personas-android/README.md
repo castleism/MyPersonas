@@ -20,7 +20,7 @@ It is **not** a local social publisher, Play Store build, or replacement for the
 
 ## Reproducible debug build
 
-Requirements: JDK 17+, Android SDK platform 34, Android build-tools, and a network-capable Gradle 8.7+.
+Requirements: JDK 17+, Android SDK platform 34, Android build-tools 34.0.0, and Gradle 8.7+. The debug shell uses the platform WebView and Activity classes only (no AndroidX / Kotlin stdlib).
 
 ```bash
 # from the repository root

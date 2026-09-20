@@ -434,9 +434,14 @@ larger product phase remains.
       077 is local/unapplied. `publishing_enabled` stays false. No provider send,
       OAuth scope change, store submission, or production secret is included.
       Disconnected Android/PWA clients only show limitations. Existing owner-desktop
-      phone-test prototypes are not in this cloud checkout. Push notifications remain
-      a separate permission/backend phase; Expo/React Native chat + camera/share still
-      come later. See `MOBILE-BLUEPRINT.md` and `apps/personas-android/README.md`.
+      phone-test prototypes are not in this cloud checkout.       Local Node suite is green.
+      A labeled fixture harness was smoked at desktop and 390px; it is not the live
+      signed-in app. A debug APK assembled in this run when Android SDK 34 + Gradle
+      8.7 were installed locally; it is not a store build and is not committed.
+      Remaining blockers: apply/read back migration 077, owner AAL2 two-account
+      privacy proof, and real-device sign-in. Push notifications remain a separate
+      permission/backend phase; Expo/React Native chat + camera/share still come later.
+      See `MOBILE-BLUEPRINT.md` and `apps/personas-android/README.md`.
 - [~] Chat workspaces: migration 031 APPLIED + verified; owner-scoped list/create/rename/
       pin/resume, workspace messages, inclusion in the full account export, owner-reviewed Save context, and max-three
       distilled Attach context are complete locally. Deploy ai-proxy first, then Pages,
