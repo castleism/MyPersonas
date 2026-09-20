@@ -17,7 +17,7 @@ test("iOS companion is a WKWebView scaffold over the real owner command center",
   ]);
   await access(path.join(ios, "Sources/OwnerViewController.swift"));
   assert.match(readme, /cannot produce an IPA|Do not submit to the App Store/i);
-  assert.match(readme, /publishing_enabled stays \*\*false\*\*/);
+  assert.match(readme, /publishing_enabled`? stays \*\*false\*\*/);
   assert.match(plist, /online\.mypersonas\.owner\.debug/);
   assert.match(app, /OwnerViewController/);
   assert.match(owner, /WKWebView/);
