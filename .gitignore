@@ -14,3 +14,9 @@
 /supabase/.temp/
 .DS_Store
 Thumbs.db
+
+# Android debug companion — local SDK path and Gradle outputs only
+/apps/personas-android/local.properties
+/apps/personas-android/.gradle/
+/apps/personas-android/app/build/
+/apps/personas-android/build/

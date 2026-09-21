@@ -17,10 +17,12 @@ test("owner command center is packaged and its external script parses", async ()
     read(".github/workflows/pages.yml"),
   ]);
   assert.match(html, /href="\.\/owner-app\.css\?v=\d{8}-\d+"/);
+  assert.match(html, /src="\.\/mobile-owner-workflow\.js\?v=\d{8}-\d+"/);
   assert.match(html, /src="\.\/owner-app\.js\?v=\d{8}-\d+"/);
   for (const route of ["owner", "briefs", "schedule", "fan-inbox", "activity", "notifications"]) {
     assert.match(html, new RegExp(`view===\\"${route}\\"`));
   }
+  assert.match(html, /@media\(max-width:320px\)/);
   assert.match(html, /id="ownerMobileNav"/);
   assert.match(html, /id="ownerMobileMore"/);
   assert.match(html, /id="ownerPersonaCompanion"/);
@@ -32,6 +34,9 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(css, /\.oa-companion-dialogue\[hidden\]\{display:none!important\}/);
   assert.match(css, /\.oa-companion-dialogue\[data-dismissible="true"\]/);
   assert.match(css, /@media\(max-width:520px\)/);
+  assert.match(css, /@media\(max-width:320px\)/);
+  assert.match(css, /body\.oa-overlay-open \.oa-sticky-cta/);
+  assert.match(css, /body\.oa-field-focus \.oa-sticky-cta/);
   assert.match(source, /function ownerAppSyncChrome\(\)/);
   assert.match(source, /function ownerAppRememberPersona\(/);
   assert.match(source, /function ownerAppSelectRoutePersona\(/);
@@ -40,7 +45,9 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(source, /function ownerAppDismissCompanionTagline\(/);
   assert.ok(workflow.includes("--include '/owner-app.css'"));
   assert.ok(workflow.includes("--include '/owner-app.js'"));
+  assert.ok(workflow.includes("--include '/mobile-owner-workflow.js'"));
   new vm.Script(source, { filename: "owner-app.js" });
+  new vm.Script(await read("MyPersonas.Online_v0/mobile-owner-workflow.js"), { filename: "mobile-owner-workflow.js" });
 });
 
 test("route and dropdown persona changes update the companion selection", async () => {
@@ -74,7 +81,8 @@ test("route and dropdown persona changes update the companion selection", async 
   assert.equal(syncs, 2);
   assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
   assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
-  assert.match(html, /owner-app\.js\?v=20260830-1/);
+  assert.match(html, /mobile-owner-workflow\.js\?v=20260920-2/);
+  assert.match(html, /owner-app\.js\?v=20260920-2/);
 });
 
 test("clicking the persona tagline bubble dismisses it without opening chat", async () => {
@@ -231,5 +239,6 @@ test("public offline shell does not cache owner application code", async () => {
   const worker = await read("MyPersonas.Online_v0/service-worker.js");
   const allowlist = worker.match(/const PUBLIC_SHELL_PATHS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || "";
   assert.doesNotMatch(allowlist, /owner-app\.(?:js|css)/);
+  assert.doesNotMatch(allowlist, /mobile-owner-workflow\.js/);
   assert.doesNotMatch(allowlist, /index\.html/);
 });

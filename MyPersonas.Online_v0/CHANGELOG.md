@@ -3,6 +3,43 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Owner mobile workflow completion pass (local source) (2026-09-20)
+
+Status: **Implemented and tested locally; not pushed to production, not applied to
+the linked database, not deployed, and not submitted to a store.**
+
+- Sticky phone CTA is now context-aware: it hides over owner sheets, previews, and
+  focused fields, and it appears on home, briefs, schedule, and activity.
+- Reject on an owner-review kit calls `delete_owner_content_package_draft` after the
+  workflow helper refuses publish/provider-send, offline, and approved-kit deletes.
+- Owner-web export/import writes the same v1 local prefs helper as Android/iOS. Draft
+  bodies, secrets, and OAuth tokens are excluded.
+- Online/offline listeners refresh the disconnected banner and mutation buttons without
+  inventing a local publisher.
+- 320 px overflow rules cover owner command-center grids plus persona-edit / ledger /
+  mailbox forms.
+- Android debug WebView restores `#/owner` when the network returns, accepts
+  `https://mypersonas.online/` deep links, and ships a Gradle 8.7 wrapper.
+- iOS WKWebView scaffold lives at `apps/personas-ios/`. Linux cannot produce an IPA.
+
+## Owner mobile persona / private-draft milestone (local source) (2026-09-20)
+
+Status: **Implemented and tested locally; not pushed to production, not applied to
+the linked database, not deployed, and not submitted to a store.**
+
+- Added owned-persona bottom-sheet selection, private four-channel draft creation,
+  and a mobile review/sticky-CTA path on the real owner command center.
+- `create_owner_mobile_private_draft` (migration 077) requires caller ownership and
+  exact one-account-per-channel ledger binding. `publishing_enabled` is constrained
+  false. Approval still uses the existing exact four-platform preview gate.
+- Authorization and workflow tests cover foreign-owner denial, missing/ambiguous
+  bindings, offline refusal, and a permanently disabled publisher.
+- Android debug WebView path lives at `apps/personas-android/` and wraps `#/owner`.
+  Disconnected it only shows limitations. No OAuth, production secrets, or provider
+  sends. A debug APK assembled with SDK 34 + Gradle 8.7 in this agent run; it is
+  not committed and is not a store build. Existing owner-desktop phone-test
+  prototypes are not in this checkout.
+
 ## Required AI-use declaration and forward-only provenance hardening (production release) (2026-08-23)
 
 Status: **Migration 060, the four reviewed provenance functions, and the matching Pages

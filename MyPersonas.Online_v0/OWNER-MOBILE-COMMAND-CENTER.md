@@ -25,8 +25,13 @@ publishing remains behind the separate immutable-media approval path.
 
 ## Implemented in this checkout
 
-- `#/owner`: mobile home with persona picker, voice card, owner chat, briefing, queue,
-  account portal, AI route, and activity entry points.
+- `#/owner`: mobile home with persona picker, searchable owned-persona sheet, private
+  four-channel draft composer, review queue, context-aware sticky CTA, voice card, owner chat,
+  briefing, queue, account portal, AI route, and activity entry points.
+  `publishing_enabled` stays false. Migration 077 is local/unapplied.
+  The sticky phone CTA hides over sheets, previews, and focused fields. Reject uses
+  `delete_owner_content_package_draft` and never publishes. More → Export / import prefs
+  writes only the local selected-persona helper, not draft bodies.
 - `#/briefs`: account-wide research queue with persona/status filters, short/study/full
   reading modes, source links, owner comments, text highlights, image references, topic
   approval/rejection, and brief-to-content-kit generation.

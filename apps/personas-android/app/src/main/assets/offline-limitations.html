@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyPersonas owner — disconnected</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; color: #10213b; }
+    .warn { background: #fff7e6; border: 1px solid #f2dfb4; padding: 14px; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="warn">
+    <h1>Disconnected from MyPersonas</h1>
+    <p><strong>publishing_enabled=false.</strong> This debug app is a thin WebView over the real owner command center. It is not a local social publisher.</p>
+    <ul>
+      <li>Private persona selection, draft creation, review, and approval need a live signed-in session.</li>
+      <li>While offline this shell cannot create, approve, or send drafts.</li>
+      <li>No OAuth scopes, production secrets, or provider sends are bundled here.</li>
+      <li>Existing phone-test prototypes on the owner desktop are not in this checkout.</li>
+    </ul>
+    <p>Reconnect, then reload. If this debug APK uses a different signing key than another install, use Export/Import local prefs for side-by-side testing. That export does not include user draft bodies.</p>
+  </div>
+</body>
+</html>
