@@ -21,19 +21,23 @@ Two alternates are included as SVGs: **B (orbit)** and **C (mask)**.
 
 ## Web wiring (paste into `index.html` `<head>`)
 
+The files in this directory are the editable/source set. The six public web
+icons are byte-identical, curated mirrors at the site root so the Pages
+allowlist can publish them without exposing concept and preview material.
+
 ```html
-<link rel="icon" href="/brand/app-icon/favicon.ico" sizes="any">
-<link rel="icon" type="image/svg+xml" href="/brand/app-icon/icon.svg">
-<link rel="apple-touch-icon" sizes="180x180" href="/brand/app-icon/icon-180.png">
+<link rel="icon" type="image/x-icon" href="./favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
 ```
 
 ## PWA manifest (`manifest.webmanifest`)
 
 ```json
 "icons": [
-  { "src": "/brand/app-icon/icon-192.png", "sizes": "192x192", "type": "image/png" },
-  { "src": "/brand/app-icon/icon-512.png", "sizes": "512x512", "type": "image/png" },
-  { "src": "/brand/app-icon/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+  { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" },
+  { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
 ]
 ```
 

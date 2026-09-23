@@ -4,17 +4,17 @@
 // worker is allowed to finish its session; the new worker activates after all
 // AliaSpaces tabs using the old version are closed.
 const CACHE_PREFIX = "aliaspaces-public-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}2026-08-13-1`;
+const CACHE_NAME = `${CACHE_PREFIX}2026-09-23-1`;
 const PUBLIC_SHELL_PATHS = Object.freeze([
   "./offline.html",
   "./manifest.webmanifest",
   "./pwa.js",
-  "./brand/app-icon/favicon.ico",
-  "./brand/app-icon/icon.svg",
-  "./brand/app-icon/icon-180.png",
-  "./brand/app-icon/icon-192.png",
-  "./brand/app-icon/icon-512.png",
-  "./brand/app-icon/icon-maskable-512.png"
+  "./favicon.ico",
+  "./icon.svg",
+  "./icon-180.png",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-maskable-512.png"
 ]);
 
 const SCOPE_URL = new URL(self.registration.scope);

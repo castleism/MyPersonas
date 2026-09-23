@@ -1,7 +1,7 @@
 # AliaSpaces PWA integration
 
 The installable shell is complete and wired into `index.html`. The Pages artifact now
-includes the manifest, worker, install helper, offline page, and brand icons. This is
+includes the manifest, worker, install helper, offline page, and curated root icon mirrors. This is
 **local source state only** until the owner reviews and pushes the release.
 
 ## Integrated `index.html` contract
@@ -10,13 +10,13 @@ The current head contains this block; keep it intact during future head edits:
 
 ```diff
 -<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-+<link rel="icon" href="./brand/app-icon/favicon.ico" sizes="any">
-+<link rel="icon" type="image/svg+xml" href="./brand/app-icon/icon.svg">
++<link rel="icon" type="image/x-icon" href="./favicon.ico" sizes="any">
++<link rel="icon" type="image/svg+xml" href="./icon.svg">
 +<link rel="manifest" href="./manifest.webmanifest">
 +<meta name="theme-color" content="#1877f2">
 +<meta name="apple-mobile-web-app-capable" content="yes">
 +<meta name="apple-mobile-web-app-title" content="AliaSpaces">
-+<link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
++<link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
 +<script src="./pwa.js" defer></script>
 ```
 
@@ -28,6 +28,11 @@ the browser supplies a real install prompt. On iPhone and iPad it instead expose
 All URLs are document-relative. Do not replace them with root-relative `/...` paths:
 the relative form works both at `https://mypersonas.online/` and a GitHub Pages project
 path such as `https://owner.github.io/MyPersonas/`.
+
+The editable brand masters remain under `brand/app-icon/`. The six public files at the
+site root must stay byte-identical to their corresponding masters. The Pages workflow
+allowlists only those six mirrors, so concept art, previews, and brand notes do not enter
+the deployed artifact.
 
 ## Cache and update contract
 
