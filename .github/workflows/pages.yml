@@ -70,9 +70,12 @@ jobs:
             --include '/agent-board.js' \
             --include '/assets/' \
             --include '/assets/***' \
-            --include '/brand/' \
-            --include '/brand/app-icon/' \
-            --include '/brand/app-icon/***' \
+            --include '/favicon.ico' \
+            --include '/icon.svg' \
+            --include '/icon-180.png' \
+            --include '/icon-192.png' \
+            --include '/icon-512.png' \
+            --include '/icon-maskable-512.png' \
             --include '/manifest.webmanifest' \
             --include '/service-worker.js' \
             --include '/pwa.js' \
