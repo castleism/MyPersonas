@@ -17,11 +17,14 @@ platform engine; that remains useful portfolio framing, but it is not repository
 ownership. Its revenue figures are planning targets, not forecasts or approved
 pricing.
 
-## Completed in the isolated local progress branch
+## Completed and pushed for review
 
 Branch: `codex/mypersonas-roadmap-progress-20260924`, based on current
-`origin/main` (`00d7c7dae44db15c6ff5d45f54643d497c3842bc`). Nothing in this
-section is pushed, merged, deployed, or applied to Supabase.
+`origin/main` (`00d7c7dae44db15c6ff5d45f54643d497c3842bc`). Commit
+`35954874381f8f41a7d48577f7bdb9329efa372b` was pushed and opened as
+[PR #13](https://github.com/castleism/MyPersonas/pull/13). At this checkpoint,
+the PR was open and awaiting its required CI; it was not yet merged or deployed,
+and no Supabase migration was applied or repaired by this work.
 
 - Corrected the root README, package description, and roadmap heading/vision so
   they no longer assign the AliaSpaces social product to MyPersonas.
@@ -45,8 +48,12 @@ Validation on this branch:
 - `npm test`: **496/496 passed**.
 - Frontend inline-script syntax: passed.
 - Workflow YAML parse: passed.
+- Production migration 060 was reverified read-only on 2026-09-24: ledger
+  version/name and the recorded normalized-LF SHA-256 matched the reviewed SQL;
+  the critical functions, tables, trigger, constraint, RLS, privileges, and
+  one-time 118-reference grandfather snapshot all read back successfully.
 - No production database, provider, account, billing, or website mutation was
-  performed.
+  performed by the branch or that verification.
 
 ## Verified current release state
 
@@ -67,7 +74,7 @@ Validation on this branch:
 | Area | Current state | Blocking condition |
 |---|---|---|
 | Canonical checkout | Local `main` is 12 commits behind with preserved modified/untracked work | Use the isolated branch; do not pull/reset/clean over owner work |
-| Supabase migration ledger | Latest preview is red: `Remote migration versions not found in local migrations directory` | Authenticated remote inventory and forward-only reconciliation |
+| Supabase migration ledger | Authenticated remote inventory completed; migration 060 is verified, while the latest preview still reports `Remote migration versions not found in local migrations directory` | Forward-only reconciliation of remaining local/remote drift |
 | Migration 077 | Present in source | Not proven applied/read back |
 | Opaque media 062–064 | Pushed release branch only; names now collide with current main's 063–064 meanings | Renumber after remote inventory, disposable runtime, staging release |
 | Custom fields/project resources | Pushed integration branch only | Split by AliaSpaces ownership and rebase after ledger repair |
