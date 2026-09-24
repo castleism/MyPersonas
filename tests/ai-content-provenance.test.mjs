@@ -225,9 +225,11 @@ test("migration 060 and its release mirror bind immutable provenance into every 
 
 test("Pages deployment ships both provenance assets only after migration 060 release evidence", async () => {
   const workflow = await readFile(path.join(repoRoot, ".github/workflows/pages.yml"), "utf8");
+  const uploadStep = workflow.search(/- uses: actions\/upload-pages-artifact@[0-9a-f]{40}\b/);
+  assert.ok(uploadStep !== -1, "Pages upload action must be pinned to an immutable commit");
   const artifactStep = workflow.slice(
     workflow.indexOf("- name: Prepare public site artifact"),
-    workflow.indexOf("- uses: actions/upload-pages-artifact@v3"),
+    uploadStep,
   );
   assert.match(workflow, /release_confirmation:[\s\S]{0,240}migration 060/i);
   assert.match(workflow, /verify migration 060 in the linked ledger/i);

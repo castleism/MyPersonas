@@ -1,11 +1,13 @@
-# AliaSpaces / MyPersonas — Roadmap
+# MyPersonas automation control plane — Roadmap
 
-**Vision:** the home for every persona a person carries. A MySpace-style network where
-each persona gets its own page (looks, music, Top 8, albums, feed, links), with the owner
-identity private and personas unlinked by default (cross-links require explicit opt-in), with an AI layer
-(models per persona and per task, an HQ assistant, character tooling) and an
-extension ecosystem (Concept character studio, Personas desktop companion) that
-carries personas beyond the site onto every platform they live on.
+**Vision:** the private owner control plane for every persona a person carries:
+AI/model routing, research, source libraries, approvals, provider automation,
+billing operations, staff operations, and auditable safety controls. AliaSpaces
+is the separate first-party social product for persona pages, discovery, feeds,
+relationships, and persona-perspective interaction. The current v0 application
+still contains both products while the split proceeds; this roadmap must keep
+transitional implementation state separate from permanent product ownership.
+See `../PROJECT-BOUNDARY.md`.
 
 Current execution package: `SETUP-CONDUCTOR-HANDOFF.md`, `50-HOUR-COMMAND-BOARD.md`,
 `AI-TOOLING-AND-SPRINT-PLAN.md`, `SECURITY-AND-ACCESS-RUNBOOK.md`, and

@@ -1,0 +1,28 @@
+batch_order,persona,canonical_handle,prior_queue_coverage,publication_state_last_aggregate_read,packet_status,publish_authorized
+1,Justice Right,justiceright,website_property_row,unpublished,needs_fresh_server_manifest,false
+2,WAIS,wais,website_property_row,unpublished,needs_fresh_server_manifest,false
+3,Avi Dev,castleborn.avi,website_property_row,unpublished,needs_fresh_server_manifest,false
+4,Maria Luna Garcia,castleborn.maria,website_property_row,unpublished,needs_fresh_server_manifest,false
+5,Akiko Sasaki,castleborn.akiko,website_property_row,unpublished,needs_fresh_server_manifest,false
+6,Zara Grigoriev,castleborn.zara,website_property_row,unpublished,needs_fresh_server_manifest,false
+7,Adam Atiq,castleborn.adam,website_property_row,unpublished,needs_fresh_server_manifest,false
+8,Lilly Dev,castleborn.lilly,website_property_row,unpublished,needs_fresh_server_manifest,false
+9,Brom Grigoriev,castleborn.brom,website_property_row,unpublished,needs_fresh_server_manifest,false
+10,Hecatia Ona-Right,castleborn.hecatia,website_property_row,unpublished,needs_fresh_server_manifest,false
+11,Sophia Ona,castleborn.sophia,two_website_property_rows,unpublished,needs_fresh_server_manifest,false
+12,Song O'Sasaki,castleborn.song,website_property_row,unpublished,needs_fresh_server_manifest,false
+13,Cillian O'Sullivan,castleborn.cillian,website_property_row,unpublished,needs_fresh_server_manifest,false
+14,Alexei Grigoriev,castleborn.alexei,website_property_row,unpublished,needs_fresh_server_manifest,false
+15,Yarra Warruwi,castleborn.yarra,website_property_row,unpublished,needs_fresh_server_manifest,false
+16,Fenrir Ona-Right,castleborn.fenrir,website_property_row,unpublished,needs_fresh_server_manifest,false
+17,Chomes / Classwoods Case Files,chomes,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+18,Chomie,chomie,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+19,Chris Cody / Useful Work + Style,chris.cody.ak,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+20,Christian Cody,christiancodyak,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+21,Kunuk Atiq,castleborn.kunuk,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+22,Lyric O'Sasaki,castleborn.lyric,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+23,Rhythm O'Sasaki,castleborn.rhythm,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+24,Rohan Dev,castleborn.rohan,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+25,Sherlock,sherlock,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+26,Sherlock Chomes,sherlock.chomes,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
+27,Watson / Dispensary Goods,watson,missing_from_property_queue,unpublished,needs_fresh_server_manifest,false
