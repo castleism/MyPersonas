@@ -59,11 +59,33 @@ final class OwnerViewController: UIViewController, WKNavigationDelegate {
         monitor.cancel()
     }
 
+    static let ownerSurfaces: Set<String> = [
+        "owner", "feed", "push", "briefs", "schedule", "activity", "notifications"
+    ]
+
     func allowedOwnerURL(_ url: URL) -> Bool {
-        let value = url.absoluteString
-        return value.hasPrefix("https://mypersonas.online/")
-            || value.hasPrefix("http://127.0.0.1:")
-            || value.hasPrefix("http://localhost:")
+        guard let host = url.host else { return false }
+        let local = host == "localhost" || host == "127.0.0.1"
+        let live = host == "mypersonas.online"
+        guard local || live else { return false }
+        if url.scheme == "https" {
+            // live or local TLS
+        } else if url.scheme == "http" && local {
+            // laptop Pages only
+        } else {
+            return false
+        }
+        let path = url.path
+        if !path.isEmpty && path != "/" { return false }
+        guard let fragment = url.fragment, !fragment.isEmpty else { return true }
+        var route = fragment.hasPrefix("/") ? String(fragment.dropFirst()) : fragment
+        if let slash = route.firstIndex(of: "/") {
+            route = String(route[..<slash])
+        }
+        if let query = route.firstIndex(of: "?") {
+            route = String(route[..<query])
+        }
+        return Self.ownerSurfaces.contains(route)
     }
 
     func openOwnerURL(_ url: URL) -> Bool {

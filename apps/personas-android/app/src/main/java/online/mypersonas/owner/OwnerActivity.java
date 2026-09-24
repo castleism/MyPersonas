@@ -31,6 +31,9 @@ public class OwnerActivity extends Activity {
     static final String KEY_ORIGIN = "owner_origin";
     static final String EXPORT_VERSION = "mobile-owner-workflow-export-v1";
     static final String OFFLINE_URL = "file:///android_asset/offline-limitations.html";
+    static final String[] OWNER_SURFACES = {
+        "owner", "feed", "push", "briefs", "schedule", "activity", "notifications"
+    };
 
     WebView web;
     ConnectivityManager.NetworkCallback networkCallback;
@@ -84,11 +87,34 @@ public class OwnerActivity extends Activity {
     }
 
     boolean allowedOwnerUrl(String url) {
-        if (url == null) return false;
-        return url.startsWith("https://mypersonas.online/")
-            || url.startsWith("http://10.0.2.2:")
-            || url.startsWith("http://127.0.0.1:")
-            || url.startsWith("http://localhost:");
+        if (url == null || url.isEmpty()) return false;
+        Uri uri = Uri.parse(url);
+        if (uri == null) return false;
+        String host = uri.getHost();
+        String scheme = uri.getScheme();
+        boolean local = "localhost".equals(host) || "127.0.0.1".equals(host) || "10.0.2.2".equals(host);
+        boolean live = "mypersonas.online".equals(host);
+        if (!local && !live) return false;
+        if ("https".equals(scheme)) {
+            // live or local TLS
+        } else if ("http".equals(scheme) && local) {
+            // emulator / laptop Pages only
+        } else {
+            return false;
+        }
+        String path = uri.getPath();
+        if (path != null && !path.isEmpty() && !"/".equals(path)) return false;
+        String fragment = uri.getFragment();
+        if (fragment == null || fragment.isEmpty()) return true;
+        String route = fragment.startsWith("/") ? fragment.substring(1) : fragment;
+        int slash = route.indexOf('/');
+        if (slash > 0) route = route.substring(0, slash);
+        int query = route.indexOf('?');
+        if (query > 0) route = route.substring(0, query);
+        for (String surface : OWNER_SURFACES) {
+            if (surface.equals(route)) return true;
+        }
+        return false;
     }
 
     boolean online() {
@@ -107,6 +133,10 @@ public class OwnerActivity extends Activity {
         if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
             String url = intent.getData().toString();
             if (allowedOwnerUrl(url)) deepLink = url;
+        } else if (intent != null && Intent.ACTION_SEND.equals(intent.getAction())) {
+            String shared = intent.getStringExtra(Intent.EXTRA_TEXT);
+            if (allowedOwnerUrl(shared)) deepLink = shared;
+            Toast.makeText(this, "Share intake is planning-only. publishing_enabled=false.", Toast.LENGTH_LONG).show();
         }
         loadOwnerSurface(deepLink);
     }

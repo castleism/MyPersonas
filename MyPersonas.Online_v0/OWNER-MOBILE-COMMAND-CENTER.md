@@ -41,8 +41,10 @@ publishing remains behind the separate immutable-media approval path.
 - `#/notifications`: account-wide in-app review queue. This is not push notification
   delivery and does not request browser notification permission.
 - `#/feed`: owner-private sourced blurbs (migration 078). Read-first. Never publishes.
+  Companion WebViews accept this hash; disconnected shells cannot research.
 - `#/push`: default-off subscription ledger (migration 079). Never requests permission
-  from the public PWA shell and never sends APNs/FCM.
+  from the public PWA shell and never sends APNs/FCM. Companion share intake is
+  planning-only and never posts.
 - AI workroom handoff: builds a bounded prompt, copies it to the clipboard, and opens the
   selected model's official web interface. Cross-origin browser security means the owner
   performs the final paste. No passwords, cookies, or API keys enter the handoff payload.

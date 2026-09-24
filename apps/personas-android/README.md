@@ -7,9 +7,10 @@ It is **not** a local social publisher, Play Store build, or replacement for the
 
 ## What it can do
 
-- Open the live owner surfaces (persona selection, private draft, review/approval) when the device is online and the owner can sign in.
+- Open the live owner surfaces (persona selection, private draft, review/approval, `#/feed`, `#/push`) when the device is online and the owner can sign in.
 - Show a disconnected page that explains why private workflow is unavailable offline, then restore `#/owner` when the network returns.
-- Accept `https://mypersonas.online/...` deep links into the same owner WebView. Other hosts are ignored.
+- Accept `https://mypersonas.online/#/owner`, `#/feed`, `#/push`, and the other owner hashes into the same WebView. Other hosts and public hashes are ignored.
+- Accept `ACTION_SEND` text as planning-only share intake. It never posts.
 - Export/import **local prefs only** (the owner origin URL) so a debug-signed install can sit beside a differently signed install without pretending to migrate user drafts.
 
 ## What it cannot do

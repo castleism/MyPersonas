@@ -25,10 +25,21 @@
   const PUBLISHING_ENABLED = false;
   const CREATION_SOURCE = "mobile_private";
 
+  const OWNER_SURFACES = Object.freeze([
+    "owner",
+    "feed",
+    "push",
+    "briefs",
+    "schedule",
+    "activity",
+    "notifications",
+  ]);
+
   const OFFLINE_LIMITATIONS = Object.freeze([
     "Private persona selection, drafts, review, and approval require a signed-in owner session against the live MyPersonas backend.",
     "The public offline shell never caches owner-app.js, owner drafts, or Supabase responses.",
     "Disconnected Android/WebView builds may only show this limitation page. They cannot create, approve, or send drafts.",
+    "Private feed (#/feed) and the push ledger (#/push) also need a live signed-in session. Disconnected clients cannot research, store endpoints, or send notifications.",
     "Approval is a private planning record. It never posts to X, Instagram, Facebook, a website, or any other provider.",
     "OAuth scopes, production secrets, and provider send paths are unchanged by this milestone.",
   ]);
@@ -296,6 +307,22 @@
           : { action: "new_private_draft", label: "New private draft", disabled: !online },
       };
     }
+    if (kind === "feed") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "request_research", label: "Request research (fail-closed)", disabled: !online },
+        secondary: { action: "review_queue", label: "Review queue", disabled: false },
+      };
+    }
+    if (kind === "push") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "review_queue", label: "Review queue", disabled: false },
+        secondary: { action: "open_feed", label: "Private feed", disabled: false },
+      };
+    }
     return {
       show: true,
       reason: "",
@@ -401,6 +428,48 @@
     };
   }
 
+  function allowedOwnerSurface(url) {
+    const value = asText(url);
+    if (!value) return false;
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      return false;
+    }
+    const host = lower(parsed.hostname);
+    const local = host === "localhost" || host === "127.0.0.1" || host === "10.0.2.2";
+    const live = host === "mypersonas.online";
+    if (!local && !live) return false;
+    if (parsed.protocol === "https:") {
+      // live or local TLS
+    } else if (parsed.protocol === "http:" && local) {
+      // emulator / laptop Pages only
+    } else {
+      return false;
+    }
+    const path = parsed.pathname || "/";
+    if (path !== "/" && path !== "") return false;
+    const route = decodeURIComponent(parsed.hash || "").replace(/^#\/?/, "").split(/[/?#]/)[0];
+    return !route || OWNER_SURFACES.includes(route);
+  }
+
+  function shareIntake(input = {}) {
+    if (input.publishingEnabled === true) {
+      return { ok: false, publishing_enabled: false, destination: "", text: "", error: "publishing_enabled must remain false" };
+    }
+    const shared = asText(input.text || input.url);
+    const destination = allowedOwnerSurface(shared) ? shared : "https://mypersonas.online/#/owner";
+    return {
+      ok: true,
+      publishing_enabled: false,
+      destination,
+      text: shared.slice(0, 2000),
+      error: "",
+      note: "Share intake is planning-only. It opens an owner surface and never posts.",
+    };
+  }
+
   function twoAccountIsolation(input = {}) {
     const ownerA = asText(input.ownerA);
     const ownerB = asText(input.ownerB);
@@ -438,7 +507,10 @@
     EXPORT_VERSION,
     PUBLISHING_ENABLED,
     CREATION_SOURCE,
+    OWNER_SURFACES,
     OFFLINE_LIMITATIONS,
+    allowedOwnerSurface,
+    shareIntake,
     ownedPersona,
     ownedAccounts,
     accountsForChannel,

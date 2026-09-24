@@ -75,6 +75,21 @@ test("078/079 SQL never grants a publisher or foreign-owner write", async () => 
   assert.doesNotMatch(push, /VAPID_PRIVATE|FCM_SERVER|APNS_KEY|client_secret/i);
 });
 
+test("companion shells only open owner surfaces and treat share as planning-only", () => {
+  assert.deepEqual(workflow.OWNER_SURFACES, [
+    "owner", "feed", "push", "briefs", "schedule", "activity", "notifications",
+  ]);
+  assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/feed"), true);
+  assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/push"), true);
+  assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/persona/alpha"), false);
+  assert.equal(workflow.allowedOwnerSurface("https://evil.example/#/owner"), false);
+  const intake = workflow.shareIntake({ text: "https://mypersonas.online/#/feed" });
+  assert.equal(intake.ok, true);
+  assert.equal(intake.publishing_enabled, false);
+  assert.equal(intake.destination, "https://mypersonas.online/#/feed");
+  assert.equal(workflow.shareIntake({ publishingEnabled: true, text: "hello" }).ok, false);
+});
+
 test("owner app exposes private feed and default-off push without a fake publisher", async () => {
   const [source, html] = await Promise.all([
     read("MyPersonas.Online_v0/owner-app.js"),
@@ -82,6 +97,7 @@ test("owner app exposes private feed and default-off push without a fake publish
   ]);
   assert.match(source, /function ownerAppRenderFeedLoaded/);
   assert.match(source, /function ownerAppRenderPushLoaded/);
+  assert.match(source, /request_research/);
   assert.match(source, /request_owner_feed_research/);
   assert.match(source, /revoke_owner_push_subscription/);
   assert.doesNotMatch(source, /Notification\.requestPermission|new Notification\(/);

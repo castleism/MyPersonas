@@ -1,5 +1,18 @@
 # Changelog — AliaSpaces / MyPersonas
 
+## Owner-mobile companion allowlist and share intake (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not submitted to a store.**
+
+- Shared `allowedOwnerSurface` / `shareIntake` helpers keep companion WebViews on
+  `#/owner`, `#/feed`, `#/push`, and the other owner hashes. Share intake is
+  planning-only and never posts.
+- Feed/push sticky CTAs request fail-closed research or return to the review
+  queue. Expo reload now remounts the allowed owner URL.
+- Android `ACTION_SEND` and offline pages document feed/push limits. Public PWA
+  cache tests still exclude owner workflow files.
+
 ## Owner-mobile next local slice (feed, push ledger, Expo) (2026-09-24)
 
 Status: **Implemented and tested locally; not applied to the linked database,

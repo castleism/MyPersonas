@@ -745,6 +745,9 @@ function ownerAppStickyCtaHtml(kind, personaId = "") {
       approve: [`ownerAppApprovePackage('${review?.id || ""}')`, spec.label || "Preview &amp; approve exact kit"],
       reject: [`ownerAppRejectPackage('${review?.id || ""}')`, spec.label || "Reject draft"],
       open_brief: [`go('briefs/${brief?.id || ""}')`, spec.label || "Read briefing"],
+      request_research: ["ownerAppRequestFeedResearch()", spec.label || "Request research (fail-closed)"],
+      open_feed: ["go('feed')", spec.label || "Private feed"],
+      open_push: ["go('push')", spec.label || "Push delivery"],
     };
     const mapped = map[spec.action];
     if (!mapped) return "";

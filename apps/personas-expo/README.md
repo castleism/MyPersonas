@@ -9,8 +9,9 @@ Linux CI and this cloud checkout **cannot produce an IPA or Play AAB**. Use Expo
 
 ## What it can do
 
-- Load `https://mypersonas.online/#/owner` when online.
+- Load `https://mypersonas.online/#/owner` when online, or `#/feed` / `#/push` when a matching owner deep link opens the shell.
 - Show bundled offline limitations when the NetInfo listener reports no network, then restore the owner surface.
+- Reload the allowed owner URL when the owner taps Reload while online.
 - Reuse the same local-prefs export version as Android/iOS (`mobile-owner-workflow-export-v1`).
 
 ## What it cannot do

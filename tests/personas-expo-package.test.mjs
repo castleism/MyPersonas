@@ -19,6 +19,10 @@ test("Expo companion is a WebView scaffold over the real owner command center", 
   assert.match(app, /mypersonas\.online\/#\/owner/);
   assert.match(app, /publishing_enabled=false/);
   assert.match(app, /allowedOwnerUrl/);
+  assert.match(app, /OWNER_SURFACES/);
+  assert.match(app, /setReloadKey/);
+  assert.match(app, /#\/feed/);
+  assert.match(app, /Linking\.addEventListener/);
   assert.doesNotMatch(app, /twitter\.com\/i\/api|graph\.facebook\.com|client_secret|SUPABASE_SERVICE/i);
   assert.match(json, /react-native-webview/);
   assert.equal(JSON.parse(manifest).expo.extra.publishingEnabled, false);

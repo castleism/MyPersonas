@@ -437,8 +437,9 @@ larger product phase remains.
       reject through `delete_owner_content_package_draft`, review/approval via the
       existing exact preview gate, context-aware sticky CTA, 320 px form overflow,
       owner-web export/import of local prefs, online/offline listeners, authorization
-      tests, a debug Android WebView with network restore + deep links + Gradle
-      wrapper, an iOS WKWebView scaffold, and an Expo WebView scaffold.
+      tests, a debug Android WebView with network restore + owner-hash deep
+      links + planning-only share intake + Gradle wrapper, an iOS WKWebView
+      scaffold, and an Expo WebView scaffold that reloads `#/owner`/`#/feed`/`#/push`.
       Migrations 077–079 are local/unapplied. `publishing_enabled` stays false.
       Push delivery stays off. No provider send, OAuth scope change, store
       submission, or production secret is included. Disconnected Android/iOS/Expo/PWA

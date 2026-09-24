@@ -151,7 +151,8 @@ to future ones later as you continue to build the context for the persona."_ Thi
    delivery off. Permission UX, APNs/FCM, and quiet hours remain.
 6. **Android debug WebView (first native path, local).** Source-complete: wraps the
    real `#/owner` command center, restores it when the network returns, accepts
-   `https://mypersonas.online/` deep links, shows offline limitations, and
+   `https://mypersonas.online/#/owner`, `#/feed`, and `#/push` deep links, shows
+   offline limitations, accepts planning-only share text, and
    exports/imports local prefs when signing keys differ. Gradle wrapper 8.7 is
    committed. A debug APK can assemble with SDK 34; still blocked on owner-device
    sign-in. Do not submit to Play.
@@ -159,8 +160,10 @@ to future ones later as you continue to build the context for the persona."_ Thi
    network restore, and local-prefs helper. Linux cannot produce an IPA. Do not
    submit to the App Store.
 8. **Expo native shell** — local WebView scaffold at `apps/personas-expo/` wraps the
-   real `#/owner` command center. It is not a fake publisher and cannot produce a
-   store binary here. Camera/share/biometric remain later.
+   real `#/owner` command center and accepts `#/feed` / `#/push` owner deep links.
+   Reload remounts the allowed URL. Share intake is planning-only and never posts.
+   It is not a fake publisher and cannot produce a store binary here.
+   Camera/biometric remain later.
 9. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
    guarded code first. App Review is needed only when posting for other users becomes a goal.
 

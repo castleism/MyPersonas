@@ -142,6 +142,12 @@ test("sticky CTA hides over overlays and focused fields instead of covering them
   const briefs = workflow.stickyCtaPlan({ kind: "briefs", brief: { id: "brief-1", status: "new" }, online: false });
   assert.equal(briefs.primary.action, "open_brief");
   assert.equal(briefs.secondary.disabled, true);
+  const feed = workflow.stickyCtaPlan({ kind: "feed", online: false });
+  assert.equal(feed.primary.action, "request_research");
+  assert.equal(feed.primary.disabled, true);
+  const push = workflow.stickyCtaPlan({ kind: "push", online: true });
+  assert.equal(push.primary.action, "review_queue");
+  assert.equal(push.secondary.action, "open_feed");
 });
 
 test("export/import is owner-scoped and refuses a live publisher flag", () => {

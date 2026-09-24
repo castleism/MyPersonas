@@ -28,6 +28,10 @@
     const isolation = MobileOwnerWorkflow.twoAccountIsolation({ ownerA: owner, ownerB: other, record: mine });
     const research = MobileOwnerWorkflow.feedResearchRequest({ ownerId: owner, personaId: "persona-a", personas, rulesApproved: false, online: true });
     const push = MobileOwnerWorkflow.pushDeliveryStatus({ ownerId: owner, subscriptions: [] });
+    const feedSurface = MobileOwnerWorkflow.allowedOwnerSurface("https://mypersonas.online/#/feed");
+    const publicSurface = MobileOwnerWorkflow.allowedOwnerSurface("https://mypersonas.online/#/persona/alpha");
+    const intake = MobileOwnerWorkflow.shareIntake({ text: "https://mypersonas.online/#/push" });
+    const feedCta = MobileOwnerWorkflow.stickyCtaPlan({ kind: "feed", online: true });
     document.getElementById("app").innerHTML = `
       <div class="oa-topbar"><div class="oa-brandline"><span class="oa-brandmark">A</span><div>
         <span class="oa-eyebrow">Fixture harness</span><h1 class="oa-title">Private feed + push ledger</h1></div></div></div>
@@ -36,6 +40,9 @@
         <p class="oa-summary">${mine.blurb}</p>
         <p class="oa-sub">Visible to owner: ${isolation.visibleToA} · visible to other: ${isolation.visibleToB}</p>
         <p class="oa-sub">Research: ${research.error}</p>
+        <p class="oa-sub">Owner surface #/feed: ${feedSurface} · public persona hash: ${publicSurface}</p>
+        <p class="oa-sub">Share intake: ${intake.note} · dest ${intake.destination}</p>
+        <p class="oa-sub">Feed CTA: ${feedCta.primary.action}</p>
       </article>
       <div class="oa-empty"><strong>Push delivery off</strong>${push.reason}</div>
     `;
