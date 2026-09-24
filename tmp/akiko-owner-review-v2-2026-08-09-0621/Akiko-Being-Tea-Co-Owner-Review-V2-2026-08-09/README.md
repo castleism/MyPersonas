@@ -59,7 +59,7 @@ The earlier 30 launch images depict the superseded around-42 direction and remai
 
 ## Before publishing
 
-1. Review the personality, pronouns, public canon, and disclosure. **Decided (2026-09-18):** Brother Kāruṇya is retired; Akiko may be publicly viewable as the Being Tea Co host. Castleborn family stays private-by-default.
+1. Review remaining visual/copy items. **Decided (2026-09-18 / 2026-09-24):** Brother Kāruṇya is retired; Akiko may be publicly viewable as the Being Tea Co host; she/her; “AH-kee-koh”; operating disclosure locked. Castleborn family stays private-by-default.
 2. Approve, revise, or deny the proposed early-30s master likeness and its 30 v2 derivatives.
 3. Review every caption, source, image, and alt text in the approval pack.
 4. Confirm likeness/provenance rights and use the available platform AI disclosure controls.

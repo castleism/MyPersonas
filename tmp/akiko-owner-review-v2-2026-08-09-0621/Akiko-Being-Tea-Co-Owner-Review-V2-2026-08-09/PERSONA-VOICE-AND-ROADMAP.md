@@ -164,7 +164,7 @@ Missing an early linear checkpoint does not automatically mean the project faile
 
 ### Required before any post is approved
 
-1. Confirm or change **she/her** and provide the preferred pronunciation.
+1. **Decided (2026-09-24):** **she/her**; pronunciation **AH-kee-koh**.
 2. Approve remaining disclosure wording if needed. **Decided (2026-09-18):** disclosed fictional host Akiko replaces Brother Kāruṇya; Karunya is stripped from Being Tea Co.
 3. Approve remaining public-canon details if needed: surname Sasaki, the owner-directed early-30s presentation, Japanese identity. **Decided (2026-09-18):** Akiko may be publicly viewable as the Being Tea Co host. Castleborn *family* (Song/Rhythm/Lyric, partner) stays private-by-default. If the public host is used, correct any conflicting age-42 field on a live profile only after a separate live-site instruction.
 4. Approve the exact bio and caption disclosure language.

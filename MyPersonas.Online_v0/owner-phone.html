@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Owner check — sites and apps</title>
+<meta name="description" content="Installable owner list of MyPersonas websites and in-development apps to check on your phone.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://mypersonas.online/owner-phone.html">
+<link rel="icon" href="./brand/app-icon/favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="./brand/app-icon/icon.svg">
+<link rel="manifest" href="./owner-phone.webmanifest">
+<meta name="theme-color" content="#1769e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Owner check">
+<link rel="apple-touch-icon" sizes="180x180" href="./brand/app-icon/icon-180.png">
+<script src="./owner-sites-catalog.js"></script>
+<script src="./pwa.js" defer></script>
+<style>
+:root{--ink:#10213b;--muted:#61708a;--line:#dde5f0;--soft:#f4f7fb;--blue:#1769e0;--panel:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.5 Segoe UI,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--soft);min-height:100vh;padding:20px 16px calc(28px + env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto}
+.eyebrow{color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+h1{font-size:1.7rem;letter-spacing:-.03em;margin:.2em 0 .4em}
+.lead,.note{color:var(--muted);margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 12px;box-shadow:0 8px 22px rgba(29,54,92,.06)}
+.card h2{font-size:1.05rem;margin-bottom:6px}
+.card p{color:var(--muted);font-size:.95rem}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:12px;background:var(--blue);color:#fff;font-weight:800;text-decoration:none;border:0;cursor:pointer}
+.btn.sec{background:#fff;color:var(--blue);border:1px solid #b9ccea}
+.list{display:grid;gap:10px}
+ol{padding-left:1.2em;color:var(--muted)}
+li{margin:.35em 0}
+.muted{color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<header style="max-width:640px;margin:0 auto 12px;display:flex;justify-content:flex-end;gap:8px">
+  <nav aria-label="Install"></nav>
+</header>
+<main>
+  <p class="eyebrow">Owner phone launch pad</p>
+  <h1>Sites and apps to check</h1>
+  <p class="lead">Save this page as an Android browser app, then use the cards below. Nothing here posts, schedules, or invents store links.</p>
+
+  <section class="card">
+    <h2>Install on this Android phone</h2>
+    <p>Chrome can put AliaSpaces and this check list on your home screen. A cloud agent cannot tap your phone for you — use the button if Chrome offers it, or follow the steps.</p>
+    <ol>
+      <li>Stay on this HTTPS page in Chrome (not a downloaded file).</li>
+      <li>Tap the menu <b>⋮</b> → <b>Install app</b> or <b>Add to Home screen</b>.</li>
+      <li>Confirm. Open the new <b>Owner check</b> icon.</li>
+      <li>From AliaSpaces home, repeat the same steps to install the main website app.</li>
+    </ol>
+    <p class="note">Samsung Internet: menu → <b>Add page to</b> → <b>Home screen</b>.</p>
+  </section>
+
+  <h2 class="eyebrow" style="margin:18px 0 8px">Websites</h2>
+  <div id="websiteList" class="list"></div>
+
+  <h2 class="eyebrow" style="margin:18px 0 8px">Apps alongside the website</h2>
+  <div id="appList" class="list"></div>
+</main>
+<script>
+(() => {
+  const catalog = window.OWNER_SITES_CATALOG;
+  const render = (items, mountId) => {
+    const mount = document.getElementById(mountId);
+    if (!catalog || !mount) return;
+    mount.innerHTML = items.map((item) => {
+      const action = item.url
+        ? `<a class="btn" href="${item.url}">${item.openLabel || "Open"}</a>`
+        : `<span class="muted">Phone install not available</span>`;
+      return `<article class="card"><div class="row"><div><h2>${item.name}</h2><p>${item.note}</p></div>${action}</div></article>`;
+    }).join("");
+  };
+  render(catalog.websites, "websiteList");
+  render(catalog.apps, "appList");
+})();
+</script>
+</body>
+</html>

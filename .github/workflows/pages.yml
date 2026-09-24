@@ -68,6 +68,9 @@ jobs:
             --include '/assets/***' \
             --include '/brand/app-icon/***' \
             --include '/manifest.webmanifest' \
+            --include '/owner-phone.html' \
+            --include '/owner-phone.webmanifest' \
+            --include '/owner-sites-catalog.js' \
             --include '/service-worker.js' \
             --include '/pwa.js' \
             --include '/offline.html' \

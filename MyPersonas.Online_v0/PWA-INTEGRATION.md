@@ -25,6 +25,11 @@ adds an accessible **Install app** button to the existing header navigation only
 the browser supplies a real install prompt. On iPhone and iPad it instead exposes an
 **Install help** button with the standard Share → Add to Home Screen instruction.
 
+Android Chrome can also open **Install help** when the native prompt is late: menu →
+**Install app** or **Add to Home screen**. The public owner check list at
+`./owner-phone.html` has its own manifest (`Owner check`) so it can be saved as a
+second home-screen app. Signed-in inventory is `#/sites`.
+
 All URLs are document-relative. Do not replace them with root-relative `/...` paths:
 the relative form works both at `https://mypersonas.online/` and a GitHub Pages project
 path such as `https://owner.github.io/MyPersonas/`.

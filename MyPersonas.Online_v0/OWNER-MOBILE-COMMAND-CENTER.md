@@ -27,6 +27,9 @@ publishing remains behind the separate immutable-media approval path.
 
 - `#/owner`: mobile home with persona picker, voice card, owner chat, briefing, queue,
   account portal, AI route, and activity entry points.
+- `#/sites` and `owner-phone.html`: documented websites and in-development apps to check.
+  The public launch pad can be installed as its own Android browser app. This is not
+  remote installation onto a physical phone.
 - `#/briefs`: account-wide research queue with persona/status filters, short/study/full
   reading modes, source links, owner comments, text highlights, image references, topic
   approval/rejection, and brief-to-content-kit generation.

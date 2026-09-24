@@ -8,6 +8,10 @@
     window.navigator.standalone === true;
   const isAppleMobile = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const productName = document.querySelector('link[rel="manifest"][href*="owner-phone"]')
+    ? "Owner check"
+    : "AliaSpaces";
 
   let deferredInstallPrompt = null;
   let installButton = null;
@@ -61,6 +65,8 @@
     if (!deferredInstallPrompt) {
       if (isAppleMobile && !isStandalone()) {
         showStatus("On iPhone or iPad, open Share, then choose Add to Home Screen.", true);
+      } else if (isAndroid && !isStandalone()) {
+        showStatus("On Android Chrome, open the ⋮ menu, then tap Install app or Add to Home screen.", true);
       }
       return;
     }
@@ -74,10 +80,10 @@
       const choice = await promptEvent.userChoice;
       installButton.hidden = true;
       showStatus(
-        choice?.outcome === "accepted" ? "AliaSpaces installation started." : "Installation canceled."
+        choice?.outcome === "accepted" ? `${productName} installation started.` : "Installation canceled."
       );
     } catch {
-      showStatus("The browser could not open its install prompt. Use the browser menu to install AliaSpaces.", true);
+      showStatus(`The browser could not open its install prompt. Use the browser menu to install ${productName}.`, true);
     } finally {
       installButton.disabled = false;
     }
@@ -106,7 +112,7 @@
     deferredInstallPrompt = event;
     ensureInstallUi();
     installButton.textContent = "Install app";
-    installButton.setAttribute("aria-label", "Install AliaSpaces on this device");
+    installButton.setAttribute("aria-label", `Install ${productName} on this device`);
     installButton.hidden = false;
   });
 
@@ -114,13 +120,13 @@
     deferredInstallPrompt = null;
     ensureInstallUi();
     installButton.hidden = true;
-    showStatus("AliaSpaces was installed.");
+    showStatus(`${productName} was installed.`);
   });
 
-  if (isAppleMobile && !isStandalone()) {
+  if ((isAppleMobile || isAndroid) && !isStandalone()) {
     ensureInstallUi();
-    installButton.textContent = "Install help";
-    installButton.setAttribute("aria-label", "Show AliaSpaces installation instructions");
+    installButton.textContent = deferredInstallPrompt ? "Install app" : "Install help";
+    installButton.setAttribute("aria-label", `Show ${productName} installation instructions`);
     installButton.hidden = false;
   }
 

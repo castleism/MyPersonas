@@ -427,6 +427,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
   <section class="oa-mobile-more-panel">
     <div class="oa-mobile-more-head"><div><span class="oa-eyebrow">Owner tools</span><h2 id="ownerMobileMoreTitle">More</h2></div><button type="button" class="oa-close" aria-label="Close owner tools" onclick="ownerAppToggleMore(false)">×</button></div>
     <div class="oa-mobile-more-grid">
+      <button type="button" onclick="ownerAppMobileGo('sites')"><span>▣</span><b>Sites &amp; apps</b><small>Websites and in-dev apps to check</small></button>
       <button type="button" onclick="ownerAppMobileGo('activity')"><span>◷</span><b>Activity</b><small>Persona operations trail</small></button>
       <button type="button" onclick="ownerAppMobileGo('notifications')"><span>◉</span><b>Notifications</b><small id="ownerMobileNoticeSummary">All caught up</small></button>
       <button type="button" onclick="ownerAppMobileGo('agent-board')"><span>⌘</span><b>Agent board</b><small>Review bounded persona collaboration</small></button>
@@ -455,7 +456,8 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./owner-app.js?v=20260830-1"></script>
+<script src="./owner-sites-catalog.js"></script>
+<script src="./owner-app.js?v=20260924-1"></script>
 <script src="./persona-view.js?v=20260823-1"></script>
 <script src="./platform-governance.js?v=20260830-1"></script>
 <script src="./agent-board.js?v=20260822-4"></script>
@@ -1197,6 +1199,7 @@ async function route(){
   if(view==="b")return renderBusinessPage(arg);
   if(view==="owner"&&typeof ownerAppIsPersonaMode==="function"&&ownerAppIsPersonaMode())return renderPersonaViewHome(myEpoch);
   if(view==="owner")return renderOwnerCommandCenter();
+  if(view==="sites")return renderOwnerSites();
   if(view==="briefs")return renderOwnerBriefs(arg);
   if(view==="schedule")return renderOwnerSchedule(arg);
   if(view==="fan-inbox")return renderOwnerFanInbox(arg);

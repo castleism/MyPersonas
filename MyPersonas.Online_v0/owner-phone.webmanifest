@@ -1,0 +1,37 @@
+{
+  "id": "./owner-phone.html",
+  "name": "Owner check — sites and apps",
+  "short_name": "Owner check",
+  "description": "One home-screen list of Castleborn / MyPersonas websites and in-development apps to check.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "./owner-phone.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10213b",
+  "theme_color": "#1769e0",
+  "categories": [
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./brand/app-icon/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./brand/app-icon/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./brand/app-icon/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

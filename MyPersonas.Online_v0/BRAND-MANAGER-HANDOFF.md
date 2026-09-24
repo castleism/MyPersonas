@@ -198,6 +198,8 @@ Castleborn is a **distributed convention**, not a single lore file:
 
 ### Websites
 - `MyPersonas.Online_v0/` — the platform site (all personas). Entry `index.html`.
+  Android home-screen apps: install AliaSpaces from the home page; install **Owner check**
+  from `owner-phone.html`. Signed-in list: `#/sites`. Steps: `ANDROID-PHONE-INSTALL.md`.
 - `nooyouniverse.com/` — Cillian's live static brand site.
 - `outputs/beingteaco-website/` — Akiko's Being Tea Co site (markdown page sources + backups).
 - Per-persona site build notes: Avi (`SITE-ALWAYSCOOKEDJUSTRIGHT.md`), Alexei

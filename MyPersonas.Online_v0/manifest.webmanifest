@@ -50,6 +50,32 @@
       ]
     },
     {
+      "name": "Owner home",
+      "short_name": "Owner",
+      "description": "Open the signed-in owner command center.",
+      "url": "./#/owner",
+      "icons": [
+        {
+          "src": "./brand/app-icon/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Sites to check",
+      "short_name": "Sites",
+      "description": "Open the owner list of websites and in-development apps.",
+      "url": "./#/sites",
+      "icons": [
+        {
+          "src": "./brand/app-icon/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "Discovery inbox",
       "short_name": "Brain",
       "description": "Open the AliaSpaces discovery inbox.",

@@ -21,7 +21,7 @@ Decide:
 
 - **Decided (2026-09-18):** Akiko is the disclosed fictional, AI-generated editorial host and may be publicly viewable. Remaining likeness/wardrobe/copy items below are still reviewable.
 - **Approve / Deny / Revise** the v2 master likeness.
-- Confirm or revise the provisional pronunciation and she/her pronouns.
+- **Decided (2026-09-24):** she/her; pronunciation “AH-kee-koh”.
 - **Owner ruling (Christian Cody, 2026-09-18):** Brother Kāruṇya is retired and stripped from Being Tea Co. Akiko Sasaki (`@castleborn.akiko`) may be publicly viewable as the Being Tea Co host. Castleborn *family* details (Song/Rhythm/Lyric, partner) remain private-by-default.
 - **Approve current / Test modern-neutral revision** for the cross-collar tea-host wardrobe and stylized tea-room world in concepts 02–10.
 
@@ -71,7 +71,7 @@ Use `ACTION-REGISTER.md`. The critical inputs are:
 
 1. Current follower totals and 28-day native analytics exports.
 2. Account Status / recommendation screenshots for Instagram and Facebook, plus X account health or restriction notices.
-3. A named crisis and global-pause owner.
+3. Crisis/global-pause owner is Christian Cody (2026-09-24). Supply different hours only if the two-window default is wrong.
 4. Sustainable weekly hours, production budget, response capacity, and maximum output.
 5. Final website/landing-page URL and email provider, if the owned-audience plan should proceed.
 6. A human tester for any real brewing experiment; Akiko cannot claim personal product use.
@@ -92,7 +92,7 @@ Until those gates pass, `QUEUE.csv` remains local, every row remains owner-appro
 
 - Akiko public host: **Decided — public host unlocked (2026-09-18)**
 - V2 master likeness: **Approve / Deny / Revise**
-- Pronunciation and pronouns: **Approve / Revise**
+- Pronunciation and pronouns: **Decided — she/her; “AH-kee-koh” (2026-09-24)**
 - Current wardrobe/world: **Approve / Test modern-neutral revision**
 - Ten visual concepts: **Approve all / Decide individually / Revise**
 - Thirty captions and alt text: **Approve all / Decide individually / Revise**

@@ -7,7 +7,7 @@ Authority: this file proposes operating defaults but does not make public profil
 ## 1. Identity
 
 **Persona / brand name:** Akiko / Being Tea Co.  
-**Pronunciation:** “AH-kee-koh” — proposed; owner confirmation required.  
+**Pronunciation:** “AH-kee-koh” — operating default recorded 2026-09-24.
 **Current handles / links:** Instagram `@beingteaco`; X `@BeingTeaCo`; Facebook Page recorded as `Being Tea` with public URL still needed; MyPersonas `@castleborn.akiko`; primary site `https://beingteaco.com/`. Reverify every surface before account action.  
 **Persona type:** fictional character and AI-assisted character serving a human-directed business.  
 **Disclosure:** “Akiko is a fictional, AI-generated editorial host. Human-directed account.” Every synthetic launch image also says, “AI-generated image of the fictional character Akiko.”  
@@ -100,7 +100,7 @@ Proposed sponsored-content cap: 15% of units in a rolling 28-day window, awaitin
 **AI may draft:** published-guide links, neutral definitions, source locations, site navigation, existing disclosure/correction language, and low-risk brewing troubleshooting.  
 **Always approve:** health, adverse reactions, pregnancy/medication, culture/religion, allegations, rights, sponsorship/media, personal disclosures, threats, minors, crisis, orders/refunds, and unapproved canon.  
 **Harassment:** preserve credible threats; hide/restrict/block slurs, scams, doxxing, impersonation, and repeated targeted abuse; do not suppress respectful correction.  
-**Crisis / pause owner:** account owner until another person is named.
+**Crisis / pause owner:** Christian Cody (account owner), recorded 2026-09-24.
 
 ## 11. MyPersonas operating mode
 
@@ -113,7 +113,7 @@ Proposed sponsored-content cap: 15% of units in a rolling 28-day window, awaitin
 
 ## Owner information still needed
 
-1. pronunciation and final pronouns;
+1. **Decided (2026-09-24):** she/her; “AH-kee-koh”;
 2. **Decided (2026-09-18):** Akiko's Being Tea host role may be public; Castleborn *family* remains private-by-default. Remaining: any other public-canon details still unmarked;
 3. final v2 likeness/profile crop approval;
 4. Facebook URL and verified live account-status screenshots for all platforms;
@@ -122,4 +122,4 @@ Proposed sponsored-content cap: 15% of units in a rolling 28-day window, awaitin
 7. weekly hours, budget, equipment, team, filming access, and sustainable cap;
 8. website/email ownership, list consent history, sender configuration, and privacy URL;
 9. revenue ranking, tested-product inventory, exclusions, and sponsorship cap;
-10. named crisis/global-pause owner and final comment/DM policy.
+10. **Decided (2026-09-24):** crisis/global-pause owner is Christian Cody. Remaining: final comment/DM policy hours if different from the two 20-minute windows.

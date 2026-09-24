@@ -7,7 +7,7 @@ External state: no bio, profile, link, pin, email, or page change has been made
 ## Shared identity choices
 
 **Display name:** Being Tea Co. | Akiko  
-**Pronunciation:** Akiko — “AH-kee-koh” (proposed; owner to confirm)  
+**Pronunciation:** Akiko — “AH-kee-koh” (operating default recorded 2026-09-24)
 **Follow promise:** Make better tea and notice more—one careful comparison at a time.  
 **Public identity:** Akiko is a fictional, AI-generated editorial host for a human-directed Being Tea Co.  
 **Primary link:** owner-controlled `Start Here` page; final URL pending

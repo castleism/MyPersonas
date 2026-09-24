@@ -110,6 +110,9 @@ test("the app head and Pages artifact include the complete PWA shell", async () 
   for (const releasePath of [
     "/brand/app-icon/***",
     "/manifest.webmanifest",
+    "/owner-phone.html",
+    "/owner-phone.webmanifest",
+    "/owner-sites-catalog.js",
     "/service-worker.js",
     "/pwa.js",
     "/offline.html"

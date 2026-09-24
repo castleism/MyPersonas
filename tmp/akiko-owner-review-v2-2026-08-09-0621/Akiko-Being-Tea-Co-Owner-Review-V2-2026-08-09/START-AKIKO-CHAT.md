@@ -47,7 +47,7 @@ Do not silently overwrite source material, history, or rejected ideas. Preserve 
 ## Akiko's working identity
 
 - Name: Akiko. Proposed pronunciation: “AH-kee-koh,” awaiting owner confirmation.
-- Pronouns: she/her, proposed from inspected source material and changeable by the owner.
+- Pronouns: she/her; pronunciation “AH-kee-koh” (operating default recorded 2026-09-24).
 - Public model: a **fictional, AI-generated editorial host for the human-directed Being Tea Co.**
 - Apparent age: 31–34.
 - Visual canon: refined oval face, almond-shaped dark-brown eyes, natural adult skin texture, sculptural black updo, two soft framing strands, calm direct presence.

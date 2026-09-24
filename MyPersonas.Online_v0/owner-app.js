@@ -361,7 +361,7 @@ function ownerAppMobileNav() {
   nav.querySelectorAll("button[data-view]").forEach((button) => {
     button.classList.toggle("on", button.dataset.view === view || (view === "studio" && button.dataset.view === "owner"));
   });
-  document.getElementById("ownerMobileMoreBtn")?.classList.toggle("on", ["activity", "notifications"].includes(view));
+  document.getElementById("ownerMobileMoreBtn")?.classList.toggle("on", ["activity", "notifications", "sites"].includes(view));
   ownerAppUpdateUnread();
   ownerAppSyncChrome();
 }
@@ -557,6 +557,38 @@ function renderOwnerCommandCenter() {
   return ownerAppRender("owner", ownerAppRenderHome);
 }
 
+function ownerAppCatalogItemHtml(item) {
+  const action = item.url
+    ? `<a class="oa-linkbtn" href="${esc(item.url)}">${esc(item.openLabel || "Open")}</a>`
+    : '<span class="oa-sub">Not a phone app</span>';
+  return `<article class="oa-listitem" style="align-items:flex-start">
+    <span class="oa-listicon">↗</span>
+    <span class="oa-listcopy"><b>${esc(item.name)}</b><span>${esc(item.note)}</span></span>
+    ${action}
+  </article>`;
+}
+
+function ownerAppRenderSitesLoaded() {
+  const catalog = window.OWNER_SITES_CATALOG || { websites: [], apps: [] };
+  app.innerHTML = `<div class="oa-shell">
+    ${ownerAppTopbar("Sites & apps to check", "Owner phone launch pad")}
+    <p class="oa-sub">Install AliaSpaces and Owner check from Android Chrome. This list does not post, schedule, or invent shop links.</p>
+    <div class="oa-grid">
+      <section class="oa-panel wide"><div class="oa-panel-head"><div><h3>Websites</h3><p class="oa-sub">Live or documented origins only.</p></div>
+        <a class="oa-linkbtn" href="./owner-phone.html">Open phone launch pad</a></div>
+        <div class="oa-list">${(catalog.websites || []).map(ownerAppCatalogItemHtml).join("")}</div></section>
+      <section class="oa-panel wide"><div class="oa-panel-head"><div><h3>Apps alongside the website</h3><p class="oa-sub">PWA, owner shell, and desktop-only tools.</p></div></div>
+        <div class="oa-list">${(catalog.apps || []).map(ownerAppCatalogItemHtml).join("")}</div></section>
+    </div>
+  </div>`;
+  ownerAppMobileNav();
+}
+
+function renderOwnerSites() {
+  if (!session) { renderSignin(); return; }
+  return ownerAppRender("sites", ownerAppRenderSitesLoaded);
+}
+
 function ownerAppPortalUrl(account) {
   const own = safeHttpUrl(account?.url || "");
   if (own) return own;
@@ -625,7 +657,7 @@ function ownerAppRenderHome() {
       <h2>${esc(persona.name)}</h2><p>${esc(persona.tagline || persona.purpose || "Give this persona a clear purpose, voice, and area of focus.")}</p></div>
       <span class="oa-hero-avatar" style="${safeBgStyle(persona.avatar_url)}"></span></div>
       <div class="oa-hero-actions"><button class="oa-action primary" onclick="openPersonaChat('${persona.id}')">Chat with ${esc(persona.name)}</button>
-      <button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
+      <button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="go('sites')">Sites &amp; apps</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
     </section>
     <div class="oa-stats"><div class="oa-stat"><b>${newBriefs}</b><span>new briefings</span></div><div class="oa-stat"><b>${review}</b><span>kits to review</span></div><div class="oa-stat ${fanUnread ? "attn" : ""}"><b>${fanUnread}</b><span>unread fan chats</span></div><div class="oa-stat ${attention ? "attn" : ""}"><b>${attention}</b><span>publishing attention</span></div></div>
     <div class="oa-grid">
