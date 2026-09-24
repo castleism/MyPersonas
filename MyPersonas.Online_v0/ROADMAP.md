@@ -429,7 +429,9 @@ larger product phase remains.
       syntax check passes, backup in _to_delete/backups/. Context-aware sticky phone
       CTA and 320 px overflow rules are local source. PENDING: logged-in real-device
       visual verify — MOBILE-BLUEPRINT.md
-- [~] Native apps: the PWA manifest/install/public-offline shell is complete locally.
+- [~] Native apps: the PWA manifest/install/public-offline shell is complete locally,
+      including Android Chrome Install help and public `sites.html` for websites and
+      companion apps to check. Real-device home-screen install remains an owner phone action.
       Owner-mobile work that Cursor can finish without deploy/store/secrets is
       source-complete in this checkout: owned persona roster/bottom sheet, private
       four-channel draft creation through `create_owner_mobile_private_draft`,
@@ -470,8 +472,9 @@ larger product phase remains.
       flag for Concept LoRA sets (verify Adobe ToS on ML use of API-pulled assets)
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
-- [~] PWA: install/offline shell complete locally; real-device release verification and
-      a separate push-notification permission/subscription/delivery phase remain
+- [~] PWA: install/offline shell complete locally, with Android Install help and
+      `sites.html` for sites/apps to check; real-device home-screen install and a
+      separate push-notification permission/subscription/delivery phase remain
 - [ ] Custom auth domain (auth.aliaspaces.com) for branded OAuth consent
 - [ ] Profile analytics for owners (views, clicks on links/albums)
 

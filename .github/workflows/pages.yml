@@ -80,6 +80,7 @@ jobs:
             --include '/service-worker.js' \
             --include '/pwa.js' \
             --include '/offline.html' \
+            --include '/sites.html' \
             --include '/CNAME' \
             --include '/.nojekyll' \
             --include '/robots.txt' \

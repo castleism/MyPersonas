@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1877f2">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Sites and apps to check — AliaSpaces</title>
+  <meta name="description" content="Public checklist of AliaSpaces sites and companion apps. Nothing here posts or asks for notification permission.">
+  <link rel="canonical" href="https://mypersonas.online/sites.html">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+  <script src="./pwa.js" defer></script>
+  <style>
+    :root{color-scheme:light;--bg:#f0f2f5;--panel:#fff;--ink:#1c1e21;--muted:#65676b;--accent:#1877f2;--line:#dddfe2}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:Segoe UI,Helvetica,Arial,sans-serif}
+    header,main,footer{width:min(720px,100%);margin:0 auto;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+    header{padding-top:max(20px,env(safe-area-inset-top));padding-bottom:8px;display:flex;align-items:center;gap:12px}
+    header img{width:48px;height:48px;border-radius:12px}
+    h1{margin:0;font-size:1.35rem;line-height:1.2}
+    .sub{margin:4px 0 0;color:var(--muted);font-size:.92rem}
+    .note{margin:12px 0 20px;padding:12px 14px;background:#e7f3ff;border-radius:12px;color:#315273;font-size:.92rem;line-height:1.45}
+    section{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin:0 0 14px;overflow:hidden}
+    h2{margin:0;padding:14px 16px 0;font-size:1rem}
+    a.row,p.row{display:flex;gap:12px;align-items:flex-start;margin:0;padding:14px 16px;color:inherit;text-decoration:none;border-top:1px solid var(--line);min-height:56px}
+    a.row:hover{background:#f7fafd}
+    .ico{width:28px;flex:0 0 28px;text-align:center;font-weight:700;color:var(--accent)}
+    b{display:block}
+    span{display:block;color:var(--muted);font-size:.88rem;line-height:1.4;overflow-wrap:anywhere}
+    footer{padding:10px 0 max(24px,env(safe-area-inset-bottom));color:var(--muted);font-size:.85rem}
+    code{font-size:.86em}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="./icon.svg" alt="">
+    <div>
+      <h1>Sites and apps to check</h1>
+      <p class="sub">Public surfaces only. This page never posts and never requests notification permission.</p>
+    </div>
+  </header>
+  <main>
+    <p class="note"><b>Save this website on Android.</b> Open <code>https://mypersonas.online/</code> in Chrome, tap the browser menu, then <b>Install app</b> or <b>Add to Home screen</b>. After install, the home-screen shortcut <b>Check</b> opens this list. A cloud agent cannot tap Install on a physical phone.</p>
+
+    <section>
+      <h2>Websites</h2>
+      <a class="row" href="./"><span class="ico">⌂</span><span><b>AliaSpaces home / PWA</b><span>https://mypersonas.online/ — installable browser app</span></span></a>
+      <a class="row" href="./#/owner"><span class="ico">▣</span><span><b>Owner command center</b><span>Signed-in #/owner — persona, drafts, and review</span></span></a>
+      <a class="row" href="./#/studio"><span class="ico">✎</span><span><b>Studio / Matrix</b><span>Full owner administration surface</span></span></a>
+      <a class="row" href="./provider-setup.html"><span class="ico">⚙</span><span><b>Provider setup</b><span>Official API setup pages for connected accounts</span></span></a>
+      <a class="row" href="./privacy.html"><span class="ico">ⓘ</span><span><b>Privacy</b><span>How account and persona data is handled</span></span></a>
+      <a class="row" href="./terms.html"><span class="ico">§</span><span><b>Terms</b><span>Public terms of use</span></span></a>
+      <a class="row" href="./data-deletion.html"><span class="ico">⌫</span><span><b>Data deletion</b><span>How to request account erasure</span></span></a>
+      <a class="row" href="https://nooyouniverse.com/" rel="noopener noreferrer"><span class="ico">✦</span><span><b>Noo YouNiverse</b><span>https://nooyouniverse.com/ — owned public site</span></span></a>
+    </section>
+
+    <section>
+      <h2>Companion apps in this repo</h2>
+      <p class="row"><span class="ico">A</span><span><b>Android debug WebView</b><span>apps/personas-android — wraps the live owner site. Build with scripts/build-personas-android-debug.sh when the Android SDK is present. Not a Play Store app and publishing_enabled stays false.</span></span></p>
+      <p class="row"><span class="ico">i</span><span><b>iOS WKWebView scaffold</b><span>apps/personas-ios — same owner URL. Linux cannot produce an IPA. Do not submit to the App Store.</span></span></p>
+      <p class="row"><span class="ico">⎋</span><span><b>Workroom Bridge</b><span>apps/workroom-bridge — desktop Electron silo only. Not an Android install.</span></span></p>
+    </section>
+
+    <section>
+      <h2>Android install steps</h2>
+      <p class="row"><span class="ico">1</span><span><b>Open Chrome on the phone</b><span>Go to https://mypersonas.online/ over HTTPS. The live PWA icons at ./icon-192.png and ./icon-512.png must load.</span></span></p>
+      <p class="row"><span class="ico">2</span><span><b>Use Install app or this page’s Install help</b><span>Chrome menu → Install app / Add to Home screen. Or tap Install help in the site header.</span></span></p>
+      <p class="row"><span class="ico">3</span><span><b>Open the home-screen app</b><span>Confirm it opens standalone, then use the Check shortcut or reopen ./sites.html to walk this list.</span></span></p>
+    </section>
+  </main>
+  <footer>Owned ledger portals and signed-in-only check rows stay in the owner app. This public page does not invent unpublished companion stores.</footer>
+</body>
+</html>

@@ -3,6 +3,19 @@
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 
+## Public sites checklist and Android browser-app install help (2026-09-24)
+
+Status: **Implemented in source; not live until Pages is owner-dispatched.** This
+does not apply migrations, submit a store build, or install onto a physical phone.
+
+- Android Chrome now gets the same **Install help** control as iOS, documenting
+  menu → Install app / Add to Home screen for `https://mypersonas.online/`.
+- `sites.html` lists the public websites and companion app sources to check.
+- The PWA shortcut **Check** opens that page. The public shell caches it.
+- Live root icons (`./icon-192.png`, `./icon-512.png`) already return 200; the
+  remaining owner step is installing the browser app on the phone after Pages
+  publishes this helper page.
+
 ## Owner mobile workflow completion pass (local source) (2026-09-20)
 
 Status: **Implemented and tested locally; not pushed to production, not applied to
