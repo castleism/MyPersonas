@@ -1,0 +1,280 @@
+{
+  "literally-even": {
+    "name": "Literally Even",
+    "accent": "#61527C",
+    "purpose": "a little more balance",
+    "intro": "Small practices and reflections for finding your next manageable step. Start with one moment, then explore deeper at your own pace.",
+    "features": [
+      "Explore the bundled practices and reflection tools.",
+      "Use plans and prompts to turn an idea into a small next step.",
+      "Return to your saved work without starting over."
+    ],
+    "demo": [
+      "Open Begin a small step and choose a prompt that fits your moment.",
+      "Try one practice. Write a short reflection in the relevant tool if you want to keep it.",
+      "Explore the other sections when you are ready; you do not need to complete them all."
+    ],
+    "setup": [
+      "Choose one practice to try first.",
+      "Find the saved-work and backup controls before keeping important notes.",
+      "Decide when a short reflection would fit your day."
+    ],
+    "boundary": "This Android prototype includes local tools and bundled material. It does not provide professional care or guarantee that every website feature works offline.",
+    "privacy": "Local work stays in this app unless you deliberately share or export it. No account or permission is required for this guide."
+  },
+  "tea": {
+    "name": "Being Tea",
+    "accent": "#315843",
+    "purpose": "your daily tea ritual",
+    "intro": "A brewing companion for keeping track of an infusion, noticing what you taste, and learning what you enjoy.",
+    "features": [
+      "Choose a tea family and explore the supported brewing methods.",
+      "Start, pause and resume an infusion timer.",
+      "Save, edit and search tasting notes, with backup tools for your journal."
+    ],
+    "demo": [
+      "Choose a tea family you already have, then read its method and starting-point guidance.",
+      "Start a session; pause or adjust your timing as you explore the timer.",
+      "After brewing, save what you noticed in a tasting note. This example does not start a timer or save a note."
+    ],
+    "setup": [
+      "Choose your usual tea family and review the suggested method.",
+      "Try the timer while the app is open before relying on it.",
+      "Locate journal export/import and make a backup after your first tasting."
+    ],
+    "boundary": "Brewing guidance uses the approved library. Background and lock-screen timer notifications still need device testing; keep the timer visible when timing matters.",
+    "privacy": "The tasting journal is local. Sharing or importing is your choice; cloud sync is not set up by this guide."
+  },
+  "smile": {
+    "name": "Smile To Your Body",
+    "accent": "#855A21",
+    "purpose": "a thoughtful movement practice",
+    "intro": "Build a personal practice from the approved session library, with room to choose what fits you today.",
+    "features": [
+      "Explore approved practices and compose a session.",
+      "Review the selected activities before beginning.",
+      "Return to the session tools as your needs change."
+    ],
+    "demo": [
+      "Open the practice composer and review the available choices.",
+      "Choose a small session using the existing instructions.",
+      "Review it before you begin. This walkthrough does not prescribe a routine or start a session."
+    ],
+    "setup": [
+      "Read the guidance for any practice you choose.",
+      "Build one short session you can review comfortably.",
+      "Locate the session and saved-work controls."
+    ],
+    "boundary": "This prototype uses approved content only. It does not assess your body or create clinical recommendations.",
+    "privacy": "No body measurements or health permissions are required for the walkthrough. Use only the information you want to keep in the app."
+  },
+  "aware": {
+    "name": "Aware Of My Food",
+    "accent": "#365C43",
+    "purpose": "more thoughtful food choices",
+    "intro": "A private purchase-reflection journal. Consider health, carbon and price without pretending every answer is known.",
+    "features": [
+      "Record purchase context, evidence, unknowns and a chosen next step.",
+      "Use the editorial labels Verified, Reported, Inferred and Unknown.",
+      "Search reflections and use local export/import tools."
+    ],
+    "demo": [
+      "Choose New reflection and name a purchase you want to think about.",
+      "Write what you can support; leave uncertain information Unknown.",
+      "Choose your balance and next step, then save. The example here creates no entry."
+    ],
+    "setup": [
+      "Read How the journal works and the privacy explanation.",
+      "Make one reflection from a real choice, without guessing missing evidence.",
+      "Export a backup after saving information you want to keep."
+    ],
+    "boundary": "There is no product lookup, barcode scoring, food ranking or invented environmental/health score. Evidence labels are editorial, not regulatory classifications.",
+    "privacy": "Reflections stay on this device unless you export them. No account, camera or product database is needed."
+  },
+  "noo": {
+    "name": "Noo You",
+    "accent": "#484675",
+    "purpose": "noticing your own experience",
+    "intro": "A private observation log built around the approved Noo missions. Notice, record and revisit your own experience.",
+    "features": [
+      "Explore the bundled, approved missions.",
+      "Save observations and use the existing filters to revisit them.",
+      "Use backup tools to keep a copy of your local log."
+    ],
+    "demo": [
+      "Review the adult-use disclosure in the app before proceeding.",
+      "Choose an available mission and read its actual instructions.",
+      "Record what you noticed in your own words. This tour does not accept the disclosure or add an observation."
+    ],
+    "setup": [
+      "Review the app’s disclosure yourself.",
+      "Choose one approved mission to explore.",
+      "Locate the observation filters and backup controls."
+    ],
+    "boundary": "Only the approved mission set is included. This is an observation prototype, not a clinical assessment, sensor system or treatment tool.",
+    "privacy": "The walkthrough does not request sensor access or upload observations. Your consent choices remain yours."
+  },
+  "wonder": {
+    "name": "Wonder Notes",
+    "accent": "#965044",
+    "purpose": "ideas worth following",
+    "intro": "Organize ideas into projects, connect what you learn, and prepare useful context for your AI workflows without automatically sending private notes anywhere.",
+    "features": [
+      "Create projects and notes; add tags, sources and connections. Pin, archive, restore and move notes.",
+      "Search locally and explore curated roulette using interests and explicit relevance feedback.",
+      "Prepare context packets, save pasted replies, and share or import workspace backups."
+    ],
+    "demo": [
+      "Create a project such as Garden ideas, then add a note with a source link.",
+      "Connect it to another note or pin it for easy return.",
+      "Try Roulette, mark relevance, then use Library or Assist to prepare a context packet. Nothing is created or sent by this tour."
+    ],
+    "setup": [
+      "Create your first project and note.",
+      "Add a few interests in Library.",
+      "Find workspace backup and export a file after saving useful work.",
+      "Review a context packet before sharing it with any AI tool."
+    ],
+    "boundary": "Roulette currently uses a labeled bundled catalog, not live web discovery. AI context sharing is manual; no model receives your notes automatically.",
+    "privacy": "Your workspace is local. Import validates a backup; Replace overwrites the current workspace, while Merge follows the documented conflict rules."
+  },
+  "brick": {
+    "name": "Brick by Brick",
+    "accent": "#934D36",
+    "purpose": "steady project progress",
+    "intro": "Turn a broad idea into an organized local project and a clearer next step, one piece at a time.",
+    "features": [
+      "Use the local project and planning tools.",
+      "Review and revise your work as a project develops.",
+      "Prepare exports for use outside this app."
+    ],
+    "demo": [
+      "Create a project around one outcome you care about.",
+      "Use the planning tools to identify a manageable next step.",
+      "Review the project and prepare an export when you want to continue elsewhere. This tour adds no project."
+    ],
+    "setup": [
+      "Choose one project to organize first.",
+      "Explore the available planning fields before adding a large backlog.",
+      "Locate export controls and keep a copy of important work."
+    ],
+    "boundary": "The current companion is local. A real MCP connection is not active; its host and access policy still need to be chosen and implemented.",
+    "privacy": "An export is a deliberate action. The guide does not connect tools, grant remote access or send your project to an AI service."
+  },
+  "communication": {
+    "name": "Life Giving Communication",
+    "accent": "#62405A",
+    "purpose": "more thoughtful conversations",
+    "intro": "Prepare for a conversation using the approved communication library, then keep a plan that reflects what you want to say.",
+    "features": [
+      "Explore the canonical library of 40 scripts.",
+      "Use Prepare a conversation to work on a plan.",
+      "Review saved plans and the explicitly labeled walkthrough fixture."
+    ],
+    "demo": [
+      "Choose a situation from the library and read the full script.",
+      "Open Prepare a conversation and adapt a plan to your own situation.",
+      "Review before saving or using it. The fixture is an example, not your private history."
+    ],
+    "setup": [
+      "Browse one script that fits a conversation you want to prepare for.",
+      "Create your first private plan when you are ready.",
+      "Find the saved-plan tools and review what a fixture contains before saving it."
+    ],
+    "boundary": "This app provides local preparation tools and approved scripts. It does not connect you to a live coach or automatically deliver messages.",
+    "privacy": "The walkthrough sends no message and creates no plan. Keep only the personal details you need."
+  },
+  "personas": {
+    "name": "Personas",
+    "accent": "#4C557C",
+    "purpose": "your persona work",
+    "intro": "A mobile entrance to your real MyPersonas owner workspace: select a persona, review work and stay in control of what happens next.",
+    "features": [
+      "Open the actual owner website and switch between the personas available to your account.",
+      "Access the workspace’s available drafts, approvals, research and inbox tools.",
+      "Use account preferences and the website controls for authorized services."
+    ],
+    "demo": [
+      "Sign in with your own MyPersonas account when the website asks.",
+      "Select the intended persona before reviewing a draft or workspace item.",
+      "Review the destination and content before any publishing action. This guide signs in to nothing and publishes nothing."
+    ],
+    "setup": [
+      "Have your real account credentials and any MFA method ready.",
+      "Confirm which persona and account you are using.",
+      "Review provider connections and permissions in the owner website before relying on them."
+    ],
+    "boundary": "The app needs internet and the actual service. Available features depend on your account and connected providers. A saved account row is not proof that a provider is authorized.",
+    "privacy": "Authentication happens through the real service. Do not paste passwords into notes or drafts. The guide requests no credentials."
+  },
+  "terraseeds": {
+    "name": "Terraseeds",
+    "accent": "#3F6442",
+    "purpose": "your growing collection",
+    "intro": "Keep a planter’s seed journal and explore seed cards, starting with a useful record of what you actually have.",
+    "features": [
+      "Record and revisit seeds using the existing local collection tools.",
+      "Open a seed’s detail and inspect its card information.",
+      "Share a JSON backup or choose a backup file for validated merge/replace import."
+    ],
+    "demo": [
+      "Add a seed you own, using information you can verify.",
+      "Open its detail to review your record; expand Card experiment if you want to inspect the proposed game layer.",
+      "Export a backup after adding records. This example creates no seed or trade."
+    ],
+    "setup": [
+      "Choose one seed packet to record first.",
+      "Review the available fields and leave unknown information unspecified.",
+      "Locate backup tools and save a copy of your collection."
+    ],
+    "boundary": "Real seed trading and accounts are not connected. Trading-card game mechanics remain proposed; the Card experiment is not a finished game.",
+    "privacy": "Your collection starts locally. The guide does not publish it, match traders or arrange exchanges. Replace import overwrites the current local collection."
+  },
+  "aliaspaces": {
+    "name": "AliaSpaces",
+    "accent": "#51577F",
+    "purpose": "your different spaces",
+    "intro": "Explore AliaSpaces through three distinct modes while keeping the relationship to your MyPersonas account clear.",
+    "features": [
+      "Website opens the actual AliaSpaces website and shared account system.",
+      "Social opens the first-party social client; sign-in and review gates still apply.",
+      "Local opens a separate demonstration; it does not write to the website database."
+    ],
+    "demo": [
+      "Start in Website to see the real service, or choose Local to inspect the demonstration.",
+      "Check the mode label before entering information or expecting shared-account behavior.",
+      "Use Social only with the understanding that a verified session and review rules are required. This guide creates no account or post."
+    ],
+    "setup": [
+      "Choose the mode appropriate to what you want to test.",
+      "Have your shared MyPersonas credentials and MFA available for real sign-in.",
+      "Confirm the selected account and mode before using online features."
+    ],
+    "boundary": "Website, Social and Local are different experiences. Local demo records are not online posts. Production authorization, moderation and multi-account privacy still need release verification.",
+    "privacy": "Only enter credentials into the real sign-in flow. This walkthrough performs no sign-in, account linking or publication."
+  },
+  "cooked-integrated-test": {
+    "name": "Cooked Just Right",
+    "accent": "#A34332",
+    "purpose": "cooking from what you have",
+    "intro": "Track a quick dish estimate or a weighed recipe, then explore nutrients, preparation and your own context alongside a persistent pantry.",
+    "features": [
+      "Search 13,225 USDA foods and dishes; log portions, meals and dates, with detailed nutrients and personal targets.",
+      "Build weighed recipes with finished yield and selected preparation models. Record storage events, water and dated body/lab context.",
+      "Review evidence explaining nutrient retention and absorption. Export/import your local history, and keep pantry/shopping tools separate from the labeled planner demo."
+    ],
+    "demo": [
+      "Search a dish, choose the closest description and set a portion before saving. Values are estimates, even when the portion is weighed.",
+      "For more detail, add measured ingredients to Recipes and enter the finished batch weight. Check preparation assumptions and missing data.",
+      "Record preparation/storage and body context when useful. No demo records are created by this guide."
+    ],
+    "setup": [
+      "Try one food entry and review its source and portion.",
+      "Create a weighed recipe if you need more detailed meal estimates.",
+      "Choose personal targets only if useful; none are prescribed automatically.",
+      "Back up important records. Nutrition backups include sensitive body/lab notes."
+    ],
+    "boundary": "Storage history does not produce a validated nutrient-decay curve. Body context does not establish a diagnosis or calculate personal absorption. Scanner, live brands and automatic health integrations are not connected.",
+    "privacy": "Records stay in this app unless you export them. Android automatic backup is disabled for this build. The app does not recommend supplement doses."
+  }
+}

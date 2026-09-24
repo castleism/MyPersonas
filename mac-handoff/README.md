@@ -1,0 +1,11 @@
+# Mac handoff — personas
+
+Branch: `codex/mac-handoff-20260923`. App source: `apps/personas-ios`. This is the source checkpoint used for the 23 September Android test build, with portable handoff documentation added. It is not a merge to main or a store release. Other upstream branches may contain later website changes; reconcile separately, do not discard this mobile work.
+
+Read the repository instructions, then mac-handoff/REMAINING-WORK-AND-HANDOFFS.md. The guide-content.json and editable SVG artwork are included here for Gemini's iOS port. Ignore the old Windows paths in the portfolio report; the checked-out app path above is authoritative on your Mac. Android walkthrough code is provided as a reference and must be ported to iOS.
+
+Install the runtime declared by the project and its locked dependencies. Flutter apps: run `flutter pub get`, `flutter test`, and `flutter build ios --simulator` from the app root if an iOS host exists. Capacitor apps: install locked web dependencies, build web assets, then run `npx cap sync ios` where an iOS host exists. Read platform READMEs first; some apps have only an iOS stub or no native host and need implementation. Do not regenerate Android package IDs or overwrite branded native resources.
+
+No private phone records, production credentials or signing keys are included. A newly generated Android debug key on your Mac cannot update the existing phone installation; use the original key through a separate private transfer or verified export/import. Do not uninstall the phone apps to work around signing. Re-create missing standard Gradle wrappers using the project's documented Flutter/Gradle tooling if needed.
+
+Cooked uses pnpm and Expo SDK 54. Run `pnpm install --node-linker=hoisted`, `pnpm check`, then create its missing iOS host with `pnpm exec expo prebuild --platform ios` on the Mac; review the generated project before signing. Its checked-in Android test build uses a standard local debug keystore, intentionally excluded. Generate a local debug key if building Android on a new machine; never label that a production release. USDA nutrition records are public reference data, not private food/lab logs. The full product roadmap remains open.

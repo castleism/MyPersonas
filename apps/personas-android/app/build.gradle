@@ -22,7 +22,7 @@ android {
     buildTypes {
         debug {
             debuggable true
-            applicationIdSuffix ".local"
+            applicationIdSuffix ".cloudtest"
         }
         release {
             minifyEnabled false
@@ -37,3 +37,4 @@ android {
 
 dependencies {
 }
+

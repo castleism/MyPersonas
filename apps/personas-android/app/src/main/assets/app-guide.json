@@ -1,0 +1,23 @@
+{
+  "name": "Personas",
+  "accent": "#4C557C",
+  "purpose": "your persona work",
+  "intro": "A mobile entrance to your real MyPersonas owner workspace: select a persona, review work and stay in control of what happens next.",
+  "features": [
+    "Open the actual owner website and switch between the personas available to your account.",
+    "Access the workspace’s available drafts, approvals, research and inbox tools.",
+    "Use account preferences and the website controls for authorized services."
+  ],
+  "demo": [
+    "Sign in with your own MyPersonas account when the website asks.",
+    "Select the intended persona before reviewing a draft or workspace item.",
+    "Review the destination and content before any publishing action. This guide signs in to nothing and publishes nothing."
+  ],
+  "setup": [
+    "Have your real account credentials and any MFA method ready.",
+    "Confirm which persona and account you are using.",
+    "Review provider connections and permissions in the owner website before relying on them."
+  ],
+  "boundary": "The app needs internet and the actual service. Available features depend on your account and connected providers. A saved account row is not proof that a provider is authorized.",
+  "privacy": "Authentication happens through the real service. Do not paste passwords into notes or drafts. The guide requests no credentials."
+}

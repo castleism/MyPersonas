@@ -1,0 +1,11 @@
+# Twelve-app Android polish checkpoint
+
+All 12 current apps were rebuilt, signature-checked, updated in place on the connected Samsung SM-N986U1, and launched successfully. Installed APK bytes match the packaged SHA-256 hashes. No archived pantry harness or old phone-test copies were reinstalled. Existing app identities/signing were preserved; no current app was uninstalled or data-cleared.
+
+This pass adds 12 distinct editable vector marks, adaptive/themed Android launcher icons, coordinated native welcome illustrations and consistent launcher names. Wonder Notes and Terraseeds no longer show debug ribbons. Cooked no longer requests broad storage or overlay permissions. Previous in-app artwork and local feature work are retained. This is vector art, not a new photography/video collection or a full redesign of remotely hosted websites.
+
+On the physical phone, every guide passed four-page navigation, setup checklist visibility, Back navigation and explicit replay-activity checks. The shared guide also passed a representative 1.4x text-size navigation check in Cooked; the phone's original font setting was restored. The guide's example is explanatory, not an interactive simulated app. Screenshots are in design-apks/guide-screens. Automated build checks passed for all projects that have checks configured in build-design.py; Personas was built without a new full service test suite. Cooked's earlier 42 tests and browser checks remain recorded separately; this pass changed its Android resources/configuration and guide, not nutrition math.
+
+These are personal testing APKs, not production-signed store releases. Broader roadmaps remain open: integrations, reviewed content/canon, scientific validation, iOS, and release/device/accessibility coverage. Startup and walkthrough checks do not establish that every workflow works. No account sign-in, private journal edits, billing setup or public publication was performed. Older duplicate-app data is retained privately and is not automatically migrated.
+
+Use android-polished-test-builds.zip for this checkpoint. It contains exactly twelve APKs, checksums, the verification manifest, this report, and the handoffs. Older ZIPs are historical and may contain a retired duplicate. See REMAINING-WORK-AND-HANDOFFS.md for per-app gaps and ready-to-copy prompts.

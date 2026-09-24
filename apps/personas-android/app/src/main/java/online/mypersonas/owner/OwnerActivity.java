@@ -39,6 +39,7 @@ public class OwnerActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        com.portfolio.guide.AppGuide.install(this);
         setContentView(R.layout.activity_owner);
         web = findViewById(R.id.ownerWeb);
         WebSettings settings = web.getSettings();
@@ -47,6 +48,13 @@ public class OwnerActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                Uri page = Uri.parse(url);
+                if (!"https".equals(page.getScheme()) || !"mypersonas.online".equals(page.getHost())) return;
+                String css = "body{background:#fafaf7!important;color:#10213b}h1,h2{font-family:Georgia,serif!important;font-weight:400!important;letter-spacing:-.025em}button,input,select{min-height:48px}button{border-radius:24px}input,textarea,select{border-radius:14px} :focus-visible{outline:3px solid #5778b0;outline-offset:3px}";
+                view.evaluateJavascript("(()=>{let s=document.getElementById('personas-mobile-design');if(!s){s=document.createElement('style');s.id='personas-mobile-design';document.head.appendChild(s)}s.textContent=" + JSONObject.quote(css) + ";})()", null);
+            }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();

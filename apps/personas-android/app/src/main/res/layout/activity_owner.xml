@@ -2,7 +2,10 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical" android:background="#FAFAF7">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="22dp" android:paddingTop="16dp" android:paddingBottom="8dp"
+        android:text="◐  Personas" android:textColor="#102D55" android:textSize="27sp" android:fontFamily="serif" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,20 +15,20 @@
 
         <Button
             android:id="@+id/exportPrefs"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp" android:layout_weight="1" android:textAllCaps="false" android:textSize="12sp"
+            android:layout_height="48dp" android:backgroundTint="#E5EBF3" android:textColor="#15365E"
             android:text="@string/export_prefs" />
 
         <Button
             android:id="@+id/importPrefs"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp" android:layout_weight="1" android:textAllCaps="false" android:textSize="12sp"
+            android:layout_height="48dp" android:backgroundTint="#E5EBF3" android:textColor="#15365E"
             android:text="@string/import_prefs" />
 
         <Button
             android:id="@+id/reloadOwner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp" android:layout_weight="1" android:textAllCaps="false" android:textSize="12sp"
+            android:layout_height="48dp" android:backgroundTint="#E5EBF3" android:textColor="#15365E"
             android:text="@string/reload_owner" />
     </LinearLayout>
 
@@ -35,3 +38,4 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 </LinearLayout>
+

@@ -20,3 +20,17 @@ Thumbs.db
 /apps/personas-android/.gradle/
 /apps/personas-android/app/build/
 /apps/personas-android/build/
+
+# Local-only mobile development artifacts
+**/node_modules/
+**/.gradle/
+**/.cxx/
+**/local.properties
+**/key.properties
+*.keystore
+*.jks
+*.apk
+*.aab
+.env
+.env.*
+phone-cleanup-backup/
