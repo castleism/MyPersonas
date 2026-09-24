@@ -77,7 +77,7 @@ test("078/079 SQL never grants a publisher or foreign-owner write", async () => 
 
 test("companion shells only open owner surfaces and treat share as planning-only", () => {
   assert.deepEqual(workflow.OWNER_SURFACES, [
-    "owner", "feed", "push", "briefs", "schedule", "activity", "notifications",
+    "owner", "feed", "push", "sites", "briefs", "schedule", "activity", "notifications",
   ]);
   assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/feed"), true);
   assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/push"), true);
@@ -88,6 +88,26 @@ test("companion shells only open owner surfaces and treat share as planning-only
   assert.equal(intake.publishing_enabled, false);
   assert.equal(intake.destination, "https://mypersonas.online/#/feed");
   assert.equal(workflow.shareIntake({ publishingEnabled: true, text: "hello" }).ok, false);
+});
+
+test("sites-to-check lists owned HTTPS portals and keeps foreign accounts out", () => {
+  const list = workflow.sitesToCheck({
+    ownerId: owner,
+    personaId: "persona-a",
+    accounts: [
+      { id: "acc-1", owner, persona_id: "persona-a", provider: "twitter", url: "https://x.com/alpha", suspended: false },
+      { id: "acc-x", owner: other, persona_id: "persona-x", provider: "twitter", url: "https://x.com/foreign", suspended: false },
+    ],
+    officialPortals: { twitter: "https://x.com/home" },
+    origin: "https://mypersonas.online/",
+  });
+  assert.equal(list.ok, true);
+  assert.equal(list.publishing_enabled, false);
+  const portals = list.groups.find((group) => group.id === "portals").items;
+  assert.equal(portals.some((item) => item.url === "https://x.com/alpha"), true);
+  assert.equal(portals.some((item) => /foreign/.test(item.url)), false);
+  assert.equal(workflow.sitesToCheck({ ownerId: owner, publishingEnabled: true }).ok, false);
+  assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/sites"), true);
 });
 
 test("owner app exposes private feed and default-off push without a fake publisher", async () => {
@@ -102,6 +122,10 @@ test("owner app exposes private feed and default-off push without a fake publish
   assert.match(source, /revoke_owner_push_subscription/);
   assert.doesNotMatch(source, /Notification\.requestPermission|new Notification\(/);
   assert.match(html, /ownerAppMobileGo\('feed'\)/);
+  assert.match(html, /ownerAppMobileGo\('sites'\)/);
   assert.match(html, /ownerAppMobileGo\('push'\)/);
   assert.match(html, /view==="feed"/);
+  assert.match(html, /view==="sites"/);
+  assert.match(source, /function ownerAppRenderSitesLoaded/);
+  assert.match(source, /function ownerAppOpenCheckSite/);
 });

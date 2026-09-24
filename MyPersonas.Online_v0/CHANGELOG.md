@@ -1,5 +1,17 @@
 # Changelog — AliaSpaces / MyPersonas
 
+## Owner websites-to-check and Android browser-app install help (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not installed on a physical phone from this checkout.**
+
+- Owner `#/sites` lists MyPersonas surfaces plus owned HTTPS ledger/official
+  portals. Foreign-owner rows stay out. Taps never post.
+- Android/iOS/Expo companions open non-owner HTTPS sites in the system browser
+  and add a Websites to check control. Chrome Install help tells Android how to
+  save `https://mypersonas.online/` as a standalone browser app. This checkout
+  cannot tap Install app on the owner's physical phone.
+
 ## Owner-mobile companion allowlist and share intake (2026-09-24)
 
 Status: **Implemented and tested locally; not applied to the linked database,

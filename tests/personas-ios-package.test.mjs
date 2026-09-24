@@ -26,6 +26,8 @@ test("iOS companion is a WKWebView scaffold over the real owner command center",
   assert.match(owner, /publishing_enabled stays false/);
   assert.match(owner, /mobile-owner-workflow-export-v1/);
   assert.match(owner, /ownerSurfaces/);
+  assert.match(owner, /openSites/);
+  assert.match(owner, /openExternalHTTPS/);
   assert.doesNotMatch(owner, /twitter\.com\/i\/api|graph\.facebook\.com|client_secret|SUPABASE_SERVICE/i);
   assert.match(offline, /publishing_enabled=false/);
   assert.match(offline, /cannot create, approve, or send/i);

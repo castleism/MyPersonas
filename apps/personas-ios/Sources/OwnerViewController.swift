@@ -30,7 +30,10 @@ final class OwnerViewController: UIViewController, WKNavigationDelegate {
         let reload = UIButton(type: .system)
         reload.setTitle("Reload when online", for: .normal)
         reload.addTarget(self, action: #selector(reloadOwner), for: .touchUpInside)
-        let bar = UIStackView(arrangedSubviews: [export, importButton, reload])
+        let sites = UIButton(type: .system)
+        sites.setTitle("Websites to check", for: .normal)
+        sites.addTarget(self, action: #selector(openSites), for: .touchUpInside)
+        let bar = UIStackView(arrangedSubviews: [export, importButton, sites, reload])
         bar.axis = .horizontal
         bar.distribution = .fillEqually
         bar.translatesAutoresizingMaskIntoConstraints = false
@@ -60,7 +63,7 @@ final class OwnerViewController: UIViewController, WKNavigationDelegate {
     }
 
     static let ownerSurfaces: Set<String> = [
-        "owner", "feed", "push", "briefs", "schedule", "activity", "notifications"
+        "owner", "feed", "push", "sites", "briefs", "schedule", "activity", "notifications"
     ]
 
     func allowedOwnerURL(_ url: URL) -> Bool {
@@ -98,6 +101,21 @@ final class OwnerViewController: UIViewController, WKNavigationDelegate {
         loadOwnerSurface(nil)
     }
 
+    @objc func openSites() {
+        let stored = UserDefaults.standard.string(forKey: Self.prefsKey) ?? Self.defaultOrigin.absoluteString
+        let root = stored.split(separator: "#").first.map(String.init) ?? "https://mypersonas.online"
+        let trimmed = root.hasSuffix("/") ? String(root.dropLast()) : root
+        if let url = URL(string: trimmed + "/#/sites") {
+            loadOwnerSurface(url)
+        }
+    }
+
+    func openExternalHTTPS(_ url: URL) -> Bool {
+        guard url.scheme == "https", url.host != nil else { return false }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        return true
+    }
+
     func loadOwnerSurface(_ override: URL?) {
         if monitor.currentPath.status != .satisfied {
             showingOffline = true
@@ -129,11 +147,18 @@ final class OwnerViewController: UIViewController, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let url = navigationAction.request.url, !allowedOwnerURL(url), url.scheme != "file" {
+        guard let url = navigationAction.request.url else {
             decisionHandler(.cancel)
             return
         }
-        decisionHandler(.allow)
+        if allowedOwnerURL(url) || url.scheme == "file" {
+            decisionHandler(.allow)
+            return
+        }
+        if url.scheme == "https" {
+            _ = openExternalHTTPS(url)
+        }
+        decisionHandler(.cancel)
     }
 
     @objc func exportPrefs() {

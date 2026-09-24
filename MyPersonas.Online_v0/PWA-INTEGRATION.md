@@ -24,6 +24,10 @@ No body patch is needed. `pwa.js` registers `./service-worker.js` and progressiv
 adds an accessible **Install app** button to the existing header navigation only when
 the browser supplies a real install prompt. On iPhone and iPad it instead exposes an
 **Install help** button with the standard Share → Add to Home Screen instruction.
+On Android Chrome it exposes **Install help** with menu → Install app or Add to Home
+screen, so the owner can save AliaSpaces as a standalone browser app. That install
+does not post and does not request notification permission. A cloud agent cannot tap
+Install on the owner's physical phone.
 
 All URLs are document-relative. Do not replace them with root-relative `/...` paths:
 the relative form works both at `https://mypersonas.online/` and a GitHub Pages project

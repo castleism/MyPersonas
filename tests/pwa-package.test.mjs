@@ -129,6 +129,8 @@ test("install helper registers a path-relative worker without synthetic push sta
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /aria-live/);
   assert.doesNotMatch(source, /PushManager|pushManager|Notification\.requestPermission|subscribe\s*\(/);
+  assert.match(source, /Android Chrome/);
+  assert.match(source, /Add to Home screen/);
 });
 
 test("the app head and Pages artifact include the complete PWA shell", async () => {

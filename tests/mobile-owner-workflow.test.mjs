@@ -174,7 +174,7 @@ test("owner app uses the workflow helpers instead of a local fake publisher", as
   assert.match(source, /Private drafts cannot be created while disconnected/);
   assert.match(source, /addEventListener\("online"/);
   assert.doesNotMatch(source, /fake social publisher|localSocialPublish|postToTwitter\(/);
-  assert.match(html, /mobile-owner-workflow\.js\?v=20260924-1/);
+  assert.match(html, /mobile-owner-workflow\.js\?v=20260924-2/);
   assert.match(html, /ownerAppMobilePrivateDraft/);
   assert.match(html, /ownerAppMobileWorkflowPrefs/);
 });

@@ -27,6 +27,9 @@ test("Android companion wraps the real owner command center and documents offlin
   assert.match(activity, /onNewIntent/);
   assert.match(activity, /OWNER_SURFACES/);
   assert.match(activity, /ACTION_SEND/);
+  assert.match(activity, /openExternalHttps/);
+  assert.match(activity, /sitesOrigin/);
+  assert.match(activity, /ACTION_VIEW/);
   assert.match(manifest, /android:host="mypersonas\.online"/);
   assert.match(manifest, /android.intent.action.SEND/);
   assert.match(offline, /Private feed/);

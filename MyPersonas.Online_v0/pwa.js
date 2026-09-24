@@ -8,6 +8,7 @@
     window.navigator.standalone === true;
   const isAppleMobile = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
   let deferredInstallPrompt = null;
   let installButton = null;
@@ -61,6 +62,8 @@
     if (!deferredInstallPrompt) {
       if (isAppleMobile && !isStandalone()) {
         showStatus("On iPhone or iPad, open Share, then choose Add to Home Screen.", true);
+      } else if (isAndroid && !isStandalone()) {
+        showStatus("On Android Chrome, open the browser menu, then choose Install app or Add to Home screen. That saves AliaSpaces as a standalone browser app. It does not post and does not request notification permission.", true);
       }
       return;
     }
@@ -117,7 +120,7 @@
     showStatus("AliaSpaces was installed.");
   });
 
-  if (isAppleMobile && !isStandalone()) {
+  if ((isAppleMobile || isAndroid) && !isStandalone()) {
     ensureInstallUi();
     installButton.textContent = "Install help";
     installButton.setAttribute("aria-label", "Show AliaSpaces installation instructions");

@@ -748,6 +748,7 @@ function ownerAppStickyCtaHtml(kind, personaId = "") {
       request_research: ["ownerAppRequestFeedResearch()", spec.label || "Request research (fail-closed)"],
       open_feed: ["go('feed')", spec.label || "Private feed"],
       open_push: ["go('push')", spec.label || "Push delivery"],
+      open_sites: ["go('sites')", spec.label || "Websites to check"],
     };
     const mapped = map[spec.action];
     if (!mapped) return "";
@@ -989,7 +990,7 @@ function ownerAppRenderHome() {
       <h2>${esc(persona.name)}</h2><p>${esc(persona.tagline || persona.purpose || "Give this persona a clear purpose, voice, and area of focus.")}</p></div>
       <span class="oa-hero-avatar" style="${safeBgStyle(persona.avatar_url)}"></span></div>
       <div class="oa-hero-actions"><button class="oa-action primary" onclick="openPersonaChat('${persona.id}')">Chat with ${esc(persona.name)}</button>
-      <button class="oa-action" onclick="ownerAppOpenPrivateDraft('${persona.id}')">New private draft</button><button class="oa-action" onclick="go('feed')">Private feed</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
+      <button class="oa-action" onclick="ownerAppOpenPrivateDraft('${persona.id}')">New private draft</button><button class="oa-action" onclick="go('feed')">Private feed</button><button class="oa-action" onclick="go('sites')">Websites to check</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
     </section>
     <div class="oa-stats"><div class="oa-stat"><b>${newBriefs}</b><span>new briefings</span></div><div class="oa-stat"><b>${review}</b><span>kits to review</span></div><div class="oa-stat ${fanUnread ? "attn" : ""}"><b>${fanUnread}</b><span>unread fan chats</span></div><div class="oa-stat ${attention ? "attn" : ""}"><b>${attention}</b><span>publishing attention</span></div></div>
     <div class="oa-grid">
@@ -2157,6 +2158,50 @@ function ownerAppRenderPushLoaded() {
     <div class="oa-empty"><strong>${rows.length ? `${rows.length} stored endpoint${rows.length === 1 ? "" : "s"}` : "No endpoints stored"}</strong>Registering an endpoint here only stores an owner-private row. It does not enable delivery or request a browser permission prompt.</div>
     <div class="oa-list">${rows.map((row) => `<div class="oa-listitem"><span class="oa-listicon">◎</span><span class="oa-listcopy"><b>${esc(row.platform || "web")}</b><span>enabled=${esc(String(row.enabled))} · delivery_enabled=${esc(String(row.delivery_enabled))}</span></span><button class="oa-danger oa-small" onclick="ownerAppRevokePush('${row.id}')">Revoke</button></div>`).join("")}</div>
     ${ownerAppStickyCtaHtml("push", ownerAppState.selectedPersonaId)}
+  </div>`;
+  ownerAppMobileNav();
+}
+
+function renderOwnerSites() {
+  return ownerAppRender("sites", ownerAppRenderSitesLoaded);
+}
+
+function ownerAppOpenCheckSite(url, openIn) {
+  const workflow = ownerAppWorkflow();
+  const safe = workflow && typeof workflow.httpsUrl === "function" ? workflow.httpsUrl(url) : /^https:\/\//i.test(String(url || "")) ? String(url) : "";
+  if (!safe) { toast("Only HTTPS check sites are allowed"); return; }
+  if (openIn === "owner_shell") {
+    try {
+      const route = decodeURIComponent(new URL(safe).hash || "").replace(/^#\/?/, "").split(/[/?#]/)[0];
+      if (route) { go(route); return; }
+    } catch { /* fall through to browser open */ }
+  }
+  const opened = window.open(safe, "_blank", "noopener,noreferrer");
+  if (!opened) toast("The browser blocked the site. Allow pop-ups, or use Android Chrome to open it.");
+}
+
+function ownerAppRenderSitesLoaded() {
+  const workflow = ownerAppWorkflow();
+  const persona = ownerAppPersona();
+  const list = workflow ? workflow.sitesToCheck({
+    ownerId: session?.user?.id || "",
+    personaId: persona?.id || "",
+    accounts: myAccounts,
+    officialPortals: OWNER_APP_PORTALS,
+    origin: "https://mypersonas.online/",
+    publishingEnabled: false,
+  }) : { ok: false, groups: [], error: "Workflow helpers are unavailable" };
+  const groups = list.ok ? list.groups : [];
+  app.innerHTML = `<div class="oa-shell">${ownerAppTopbar("Websites to check", "Browser app · never posts")}
+    <div class="oa-capability"><b>publishing_enabled=false.</b> Save <code>https://mypersonas.online/</code> as an Android Chrome browser app (menu → Install app or Add to Home screen), or use the debug WebView APK. This screen lists owner surfaces plus HTTPS portals from your owned ledger. Taps open the system browser for other hosts. Nothing is posted and notification permission is not requested.</div>
+    ${groups.map((group) => `<section class="oa-panel"><div class="oa-panel-head"><div><h3>${esc(group.title)}</h3></div></div>
+      <div class="oa-list">${(group.items || []).map((item) => `<button class="oa-listitem" type="button" onclick="ownerAppOpenCheckSite('${esc(item.url)}','${esc(item.openIn || "browser")}')">
+        <span class="oa-listicon">${item.kind === "install" ? "⇩" : item.kind === "portal" ? ownerAppPortalIcon(item.provider) : "↗"}</span>
+        <span class="oa-listcopy"><b>${esc(item.label)}</b><span>${esc(item.note || item.url)}</span></span>
+        <span class="oa-chevron">›</span>
+      </button>`).join("") || '<div class="oa-empty"><strong>No HTTPS sites in this group</strong>Add account records with a reviewed https URL in Matrix → Accounts.</div>'}</div>
+    </section>`).join("")}
+    ${ownerAppStickyCtaHtml("sites", persona?.id || ownerAppState.selectedPersonaId)}
   </div>`;
   ownerAppMobileNav();
 }

@@ -32,6 +32,14 @@
     const publicSurface = MobileOwnerWorkflow.allowedOwnerSurface("https://mypersonas.online/#/persona/alpha");
     const intake = MobileOwnerWorkflow.shareIntake({ text: "https://mypersonas.online/#/push" });
     const feedCta = MobileOwnerWorkflow.stickyCtaPlan({ kind: "feed", online: true });
+    const sites = MobileOwnerWorkflow.sitesToCheck({
+      ownerId: owner,
+      personaId: "persona-a",
+      accounts: [{ id: "acc-1", owner, persona_id: "persona-a", provider: "twitter", url: "https://x.com/alpha" }],
+      officialPortals: { twitter: "https://x.com/home" },
+      origin: "https://mypersonas.online/",
+    });
+    const siteCount = sites.groups.reduce((sum, group) => sum + group.items.length, 0);
     document.getElementById("app").innerHTML = `
       <div class="oa-topbar"><div class="oa-brandline"><span class="oa-brandmark">A</span><div>
         <span class="oa-eyebrow">Fixture harness</span><h1 class="oa-title">Private feed + push ledger</h1></div></div></div>
@@ -43,6 +51,7 @@
         <p class="oa-sub">Owner surface #/feed: ${feedSurface} · public persona hash: ${publicSurface}</p>
         <p class="oa-sub">Share intake: ${intake.note} · dest ${intake.destination}</p>
         <p class="oa-sub">Feed CTA: ${feedCta.primary.action}</p>
+        <p class="oa-sub">Sites to check: ${siteCount} · install help: ${sites.groups[0].items[0].note}</p>
       </article>
       <div class="oa-empty"><strong>Push delivery off</strong>${push.reason}</div>
     `;

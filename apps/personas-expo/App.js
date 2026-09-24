@@ -5,7 +5,8 @@ import { WebView } from "react-native-webview";
 
 const DEFAULT_ORIGIN = "https://mypersonas.online/#/owner";
 const EXPORT_VERSION = "mobile-owner-workflow-export-v1";
-const OWNER_SURFACES = ["owner", "feed", "push", "briefs", "schedule", "activity", "notifications"];
+const OWNER_SURFACES = ["owner", "feed", "push", "sites", "briefs", "schedule", "activity", "notifications"];
+const SITES_ORIGIN = "https://mypersonas.online/#/sites";
 
 function allowedOwnerUrl(url) {
   if (typeof url !== "string") return false;
@@ -35,7 +36,7 @@ const OFFLINE_HTML = `<!doctype html><html><body style="font-family:sans-serif;p
 <div style="background:#fff7e6;border:1px solid #f2dfb4;padding:14px;border-radius:12px">
 <h1>Disconnected from MyPersonas</h1>
 <p><strong>publishing_enabled=false.</strong> This Expo debug shell is a thin WebView over the real owner command center. It is not a local social publisher.</p>
-<p>While offline this shell cannot create, approve, or send drafts. Private feed (#/feed) and the push ledger (#/push) also need a live session. Share intake is planning-only and never posts. Reconnect, then reload.</p>
+<p>While offline this shell cannot create, approve, or send drafts. Private feed (#/feed), websites-to-check (#/sites), and the push ledger (#/push) also need a live session. Share intake is planning-only and never posts. Reconnect, then reload.</p>
 </div></body></html>`;
 
 export default function App() {
@@ -62,6 +63,12 @@ export default function App() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <View style={{ padding: 8, gap: 8 }}>
         <Text>MyPersonas Owner (debug) · publishing_enabled=false · export {EXPORT_VERSION}</Text>
+        <Button title="Websites to check" onPress={() => {
+          if (online && allowedOwnerUrl(SITES_ORIGIN)) {
+            setOrigin(SITES_ORIGIN);
+            setReloadKey((value) => value + 1);
+          }
+        }} />
         <Button title="Reload when online" onPress={() => {
           if (online && allowedOwnerUrl(origin)) setReloadKey((value) => value + 1);
         }} />
@@ -74,7 +81,13 @@ export default function App() {
         javaScriptEnabled
         domStorageEnabled
         originWhitelist={["https://mypersonas.online", "http://127.0.0.1", "http://localhost"]}
-        onShouldStartLoadWithRequest={(request) => allowedOwnerUrl(request.url) || request.url.startsWith("data:")}
+        onShouldStartLoadWithRequest={(request) => {
+          if (allowedOwnerUrl(request.url) || request.url.startsWith("data:")) return true;
+          if (typeof request.url === "string" && request.url.startsWith("https://")) {
+            Linking.openURL(request.url);
+          }
+          return false;
+        }}
       />
     </SafeAreaView>
   );

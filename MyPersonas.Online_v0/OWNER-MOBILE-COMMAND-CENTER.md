@@ -40,6 +40,10 @@ publishing remains behind the separate immutable-media approval path.
 - `#/activity`: combined MyPersonas-mediated activity timeline.
 - `#/notifications`: account-wide in-app review queue. This is not push notification
   delivery and does not request browser notification permission.
+- `#/sites`: websites to check. Lists owner hashes plus owned HTTPS ledger/official
+  portals. Android Chrome can save `https://mypersonas.online/` as a standalone
+  browser app (menu → Install app / Add to Home screen). Companion WebViews open
+  other HTTPS hosts in the system browser. Nothing is posted.
 - `#/feed`: owner-private sourced blurbs (migration 078). Read-first. Never publishes.
   Companion WebViews accept this hash; disconnected shells cannot research.
 - `#/push`: default-off subscription ledger (migration 079). Never requests permission

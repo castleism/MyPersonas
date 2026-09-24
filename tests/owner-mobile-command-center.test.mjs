@@ -19,7 +19,7 @@ test("owner command center is packaged and its external script parses", async ()
   assert.match(html, /href="\.\/owner-app\.css\?v=\d{8}-\d+"/);
   assert.match(html, /src="\.\/mobile-owner-workflow\.js\?v=\d{8}-\d+"/);
   assert.match(html, /src="\.\/owner-app\.js\?v=\d{8}-\d+"/);
-  for (const route of ["owner", "briefs", "schedule", "fan-inbox", "activity", "notifications", "feed", "push"]) {
+  for (const route of ["owner", "briefs", "schedule", "fan-inbox", "activity", "notifications", "feed", "sites", "push"]) {
     assert.match(html, new RegExp(`view===\\"${route}\\"`));
   }
   assert.match(html, /@media\(max-width:320px\)/);
@@ -81,8 +81,8 @@ test("route and dropdown persona changes update the companion selection", async 
   assert.equal(syncs, 2);
   assert.match(source, /function ownerAppSelectPersona[\s\S]*?ownerAppRememberPersona\(personaId\)/);
   assert.match(html, /ownerAppSelectRoutePersona\(view,arg\)/);
-  assert.match(html, /mobile-owner-workflow\.js\?v=20260924-1/);
-  assert.match(html, /owner-app\.js\?v=20260924-1/);
+  assert.match(html, /mobile-owner-workflow\.js\?v=20260924-2/);
+  assert.match(html, /owner-app\.js\?v=20260924-2/);
 });
 
 test("clicking the persona tagline bubble dismisses it without opening chat", async () => {

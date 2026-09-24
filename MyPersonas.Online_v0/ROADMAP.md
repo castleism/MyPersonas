@@ -446,6 +446,9 @@ larger product phase remains.
       clients only show limitations. Existing owner-desktop phone-test prototypes
       are not in this cloud checkout. Two-account isolation is covered by local
       authorization tests; live AAL2 proof is still required.
+      Local `#/sites` lists owner surfaces and owned HTTPS portals; Android
+      Chrome install help documents saving the website as a browser app. This
+      checkout cannot tap Install on a physical phone.
       Remaining blockers this checkout cannot finish: apply/read back 077–079,
       live AAL2 two-account proof, real-device sign-in, store submission,
       APNs/FCM delivery, owner-approved feed research, and Meta App Review.

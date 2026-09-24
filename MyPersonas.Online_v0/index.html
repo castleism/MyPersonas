@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AliaSpaces">
 <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
-<link rel="stylesheet" href="./owner-app.css?v=20260924-1">
+<link rel="stylesheet" href="./owner-app.css?v=20260924-2">
 <link rel="stylesheet" href="./persona-view.css?v=20260822-2">
 <link rel="stylesheet" href="./platform-governance.css?v=20260822-1">
 <link rel="stylesheet" href="./agent-board.css?v=20260822-2">
@@ -444,6 +444,7 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
       <button type="button" onclick="ownerAppMobileHQ()"><span>✦</span><b>HQ Assistant</b><small>Coordinate the full roster</small></button>
       <button type="button" onclick="ownerAppMobileAccount()"><span>⚙</span><b>Account</b><small>Models, portals, and settings</small></button>
       <button type="button" onclick="ownerAppMobileGo('feed')"><span>▣</span><b>Private feed</b><small>Owner-only blurbs · never publishes</small></button>
+      <button type="button" onclick="ownerAppMobileGo('sites')"><span>↗</span><b>Websites to check</b><small>Install browser app · open portals</small></button>
       <button type="button" onclick="ownerAppMobileGo('push')"><span>◌</span><b>Push delivery</b><small>Default off · never sends</small></button>
       <button type="button" onclick="ownerAppMobileWorkflowPrefs()"><span>⇄</span><b>Export / import prefs</b><small>Local selected persona · no draft bodies</small></button>
       <button type="button" onclick="ownerAppMobileReport()"><span>🐞</span><b>Report a problem</b><small>Send the current page context</small></button>
@@ -468,8 +469,8 @@ main{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env
     </div>
   </aside>
 </div>
-<script src="./mobile-owner-workflow.js?v=20260924-1"></script>
-<script src="./owner-app.js?v=20260924-1"></script>
+<script src="./mobile-owner-workflow.js?v=20260924-2"></script>
+<script src="./owner-app.js?v=20260924-2"></script>
 <script src="./persona-view.js?v=20260823-1"></script>
 <script src="./platform-governance.js?v=20260830-1"></script>
 <script src="./agent-board.js?v=20260822-4"></script>
@@ -1217,6 +1218,7 @@ async function route(){
   if(view==="activity")return renderOwnerActivity();
   if(view==="notifications")return renderOwnerNotifications();
   if(view==="feed")return renderOwnerFeed(arg);
+  if(view==="sites")return renderOwnerSites();
   if(view==="push")return renderOwnerPush();
   if(view==="studio"){
     const notice=metaOAuthNotice||patreonOAuthNotice||twitchOAuthNotice||discordOAuthNotice||tiktokOAuthNotice||youtubeOAuthNotice||twitterOAuthNotice||redditOAuthNotice||gmailOAuthNotice;

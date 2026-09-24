@@ -151,8 +151,9 @@ to future ones later as you continue to build the context for the persona."_ Thi
    delivery off. Permission UX, APNs/FCM, and quiet hours remain.
 6. **Android debug WebView (first native path, local).** Source-complete: wraps the
    real `#/owner` command center, restores it when the network returns, accepts
-   `https://mypersonas.online/#/owner`, `#/feed`, and `#/push` deep links, shows
-   offline limitations, accepts planning-only share text, and
+   `https://mypersonas.online/#/owner`, `#/feed`, `#/push`, and `#/sites` deep
+   links, shows offline limitations, accepts planning-only share text, opens
+   HTTPS check sites in the system browser, and
    exports/imports local prefs when signing keys differ. Gradle wrapper 8.7 is
    committed. A debug APK can assemble with SDK 34; still blocked on owner-device
    sign-in. Do not submit to Play.

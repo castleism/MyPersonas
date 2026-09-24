@@ -29,6 +29,7 @@
     "owner",
     "feed",
     "push",
+    "sites",
     "briefs",
     "schedule",
     "activity",
@@ -39,7 +40,7 @@
     "Private persona selection, drafts, review, and approval require a signed-in owner session against the live MyPersonas backend.",
     "The public offline shell never caches owner-app.js, owner drafts, or Supabase responses.",
     "Disconnected Android/WebView builds may only show this limitation page. They cannot create, approve, or send drafts.",
-    "Private feed (#/feed) and the push ledger (#/push) also need a live signed-in session. Disconnected clients cannot research, store endpoints, or send notifications.",
+    "Private feed (#/feed), the push ledger (#/push), and websites-to-check (#/sites) also need a live signed-in session. Disconnected clients cannot research, store endpoints, send notifications, or open provider portals.",
     "Approval is a private planning record. It never posts to X, Instagram, Facebook, a website, or any other provider.",
     "OAuth scopes, production secrets, and provider send paths are unchanged by this milestone.",
   ]);
@@ -323,6 +324,14 @@
         secondary: { action: "open_feed", label: "Private feed", disabled: false },
       };
     }
+    if (kind === "sites") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "open_sites", label: "Websites to check", disabled: false },
+        secondary: { action: "review_queue", label: "Review queue", disabled: false },
+      };
+    }
     return {
       show: true,
       reason: "",
@@ -454,6 +463,87 @@
     return !route || OWNER_SURFACES.includes(route);
   }
 
+  function httpsUrl(value) {
+    const url = asText(value);
+    if (!/^https:\/\//i.test(url) || url.length > 2048) return "";
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:") return "";
+      if (!parsed.hostname) return "";
+      return parsed.href;
+    } catch {
+      return "";
+    }
+  }
+
+  function sitesToCheck(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    if (!ownerId) return { ok: false, groups: [], error: "Authentication required" };
+    if (input.publishingEnabled === true) {
+      return { ok: false, groups: [], error: "publishing_enabled must remain false" };
+    }
+    const origin = httpsUrl(input.origin) || "https://mypersonas.online/";
+    const base = origin.replace(/\/#.*$/, "").replace(/\/$/, "");
+    const personaId = asText(input.personaId);
+    const official = input.officialPortals && typeof input.officialPortals === "object" ? input.officialPortals : {};
+    const surfaceItems = OWNER_SURFACES.map((route) => ({
+      id: `surface-${route}`,
+      label: route === "sites" ? "Websites to check" : route,
+      url: `${base}/#/${route}`,
+      kind: "owner_surface",
+      openIn: "owner_shell",
+    }));
+    const installItems = [
+      {
+        id: "install-public",
+        label: "AliaSpaces / MyPersonas website",
+        url: `${base}/`,
+        kind: "install",
+        openIn: "browser",
+        note: "On Android Chrome: menu → Install app or Add to Home screen. That saves this website as a standalone browser app. It does not post and does not request notification permission.",
+      },
+      {
+        id: "install-provider-setup",
+        label: "Provider setup checklist",
+        url: `${base}/provider-setup.html`,
+        kind: "docs",
+        openIn: "browser",
+        note: "Official MyPersonas setup pages. Open in the system browser.",
+      },
+    ];
+    const accounts = (Array.isArray(input.accounts) ? input.accounts : []).filter((account) => {
+      if (!account || account.suspended) return false;
+      if (account.owner && account.owner !== ownerId) return false;
+      if (personaId && asText(account.persona_id) !== personaId) return false;
+      return true;
+    });
+    const portalItems = accounts.map((account, index) => {
+      const own = httpsUrl(account.url);
+      const fallback = httpsUrl(official[lower(account.provider)]);
+      const url = own || fallback;
+      if (!url) return null;
+      return {
+        id: asText(account.id) || `portal-${index}`,
+        label: asText(account.username) || asText(account.login_email) || asText(account.provider) || "Account",
+        url,
+        kind: "portal",
+        openIn: "browser",
+        provider: asText(account.provider),
+        note: own ? "Ledger HTTPS URL" : "Official provider portal",
+      };
+    }).filter(Boolean);
+    return {
+      ok: true,
+      error: "",
+      publishing_enabled: false,
+      groups: [
+        { id: "install", title: "Save the website as a browser app", items: installItems },
+        { id: "owner", title: "Owner command-center surfaces", items: surfaceItems },
+        { id: "portals", title: "Websites to check", items: portalItems },
+      ],
+    };
+  }
+
   function shareIntake(input = {}) {
     if (input.publishingEnabled === true) {
       return { ok: false, publishing_enabled: false, destination: "", text: "", error: "publishing_enabled must remain false" };
@@ -510,6 +600,8 @@
     OWNER_SURFACES,
     OFFLINE_LIMITATIONS,
     allowedOwnerSurface,
+    httpsUrl,
+    sitesToCheck,
     shareIntake,
     ownedPersona,
     ownedAccounts,

@@ -32,7 +32,7 @@ public class OwnerActivity extends Activity {
     static final String EXPORT_VERSION = "mobile-owner-workflow-export-v1";
     static final String OFFLINE_URL = "file:///android_asset/offline-limitations.html";
     static final String[] OWNER_SURFACES = {
-        "owner", "feed", "push", "briefs", "schedule", "activity", "notifications"
+        "owner", "feed", "push", "sites", "briefs", "schedule", "activity", "notifications"
     };
 
     WebView web;
@@ -52,13 +52,17 @@ public class OwnerActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                return uri == null || !allowedOwnerUrl(uri.toString());
+                if (request == null || request.getUrl() == null) return true;
+                String url = request.getUrl().toString();
+                if (allowedOwnerUrl(url)) return false;
+                openExternalHttps(url);
+                return true;
             }
         });
         findViewById(R.id.exportPrefs).setOnClickListener(v -> exportPrefs());
         findViewById(R.id.importPrefs).setOnClickListener(v -> importPrefs());
         findViewById(R.id.reloadOwner).setOnClickListener(v -> loadOwnerSurface(null));
+        findViewById(R.id.openSites).setOnClickListener(v -> loadOwnerSurface(sitesOrigin()));
         applyIntent(getIntent());
     }
 
@@ -115,6 +119,30 @@ public class OwnerActivity extends Activity {
             if (surface.equals(route)) return true;
         }
         return false;
+    }
+
+    String sitesOrigin() {
+        String current = origin();
+        if (current.contains("#")) current = current.substring(0, current.indexOf('#'));
+        if (current.endsWith("/")) current = current.substring(0, current.length() - 1);
+        String target = current + "/#/sites";
+        return allowedOwnerUrl(target) ? target : "https://mypersonas.online/#/sites";
+    }
+
+    boolean openExternalHttps(String url) {
+        if (url == null || !url.startsWith("https://")) return false;
+        Uri uri = Uri.parse(url);
+        if (uri == null || uri.getHost() == null) return false;
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            Toast.makeText(this, "Opened in the system browser. publishing_enabled=false.", Toast.LENGTH_SHORT).show();
+            return true;
+        } catch (RuntimeException error) {
+            Toast.makeText(this, "Could not open that HTTPS site.", Toast.LENGTH_LONG).show();
+            return false;
+        }
     }
 
     boolean online() {
