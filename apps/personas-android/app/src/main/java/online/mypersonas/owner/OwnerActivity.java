@@ -41,6 +41,7 @@ public class OwnerActivity extends Activity {
         super.onCreate(savedInstanceState);
         com.portfolio.guide.AppGuide.install(this);
         setContentView(R.layout.activity_owner);
+        com.portfolio.guide.WindowSafety.apply(this);
         web = findViewById(R.id.ownerWeb);
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
