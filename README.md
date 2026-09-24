@@ -1,10 +1,17 @@
-# MyPersonas.Online
+# MyPersonas
 
-Source for https://aliaspaces.com — the persona network.
+Private automation and owner-control plane for persona operations. The current
+public deployment is `https://mypersonas.online`.
+
+AliaSpaces is the separate first-party social product. During the repository
+split, some shared social UI and historical AliaSpaces naming still remain in
+this repository; that transitional source must not be treated as permanent
+product ownership. See [PROJECT-BOUNDARY.md](PROJECT-BOUNDARY.md).
 
 ## Structure
 
-- `MyPersonas.Online_v0/` — current working tree (major version line v0).
+- `MyPersonas.Online_v0/` — current transitional working tree (major version
+  line v0), including the live owner control plane and shared legacy UI.
   The folder is renamed only on major version changes; point releases and
   hotfixes are git tags. See `MyPersonas.Online_v0/VERSIONING.md`.
 - `.github/workflows/pages.yml` — deploys the current version folder to
