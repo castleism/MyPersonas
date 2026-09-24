@@ -3,7 +3,7 @@
 **Prepared:** August 8, 2026  
 **Status:** Provisional owner-ready operating profile. Nothing is published or scheduled.  
 **Working identity decision:** Akiko uses **she/her** because every inspected Akiko source presents her as a woman and mother. The owner may change this.  
-**Working public model:** Akiko is a **fictional, AI-generated editorial host for a human-directed Being Tea Co.** Her Castleborn connection remains private working canon until separately approved for public use.
+**Working public model:** Akiko is a **fictional, AI-generated editorial host for a human-directed Being Tea Co.** **Owner ruling (Christian Cody, 2026-09-18):** Akiko may be publicly viewable as the Being Tea Co host. Castleborn *family* details (Song/Rhythm/Lyric, partner) remain private-by-default. The former Brother Kāruṇya social-persona concept is retired and stripped from Being Tea Co materials.
 
 **Owner visual revision — August 9, 2026:** Akiko should present in her early 30s. The proposed v2 likeness uses a refined oval face, almond-shaped dark eyes, a sculptural black updo with soft framing strands, natural adult skin texture, and restrained blossom-and-gold ornament. See `identity/AKIKO-VISUAL-IDENTITY-V2.md`. The master portrait and 30 platform-native v2 derivatives are complete for owner review; the original around-42 set remains superseded provenance.
 
@@ -69,7 +69,7 @@ Use Meta's AI disclosure control when it is presented. Do not depend on metadata
 - Being Tea Co. began with the real founder's tea reviews and videos in 2015.
 - The founder's personal Deer Park/Plum Village experience belongs to the founder, is independent and unaffiliated, and is never told as Akiko's experience.
 - Akiko hosts and interprets approved educational material; she does not replace the brand's real history.
-- The owner still needs to decide whether the older Brother Kāruṇya social-persona concept is retired, separated, or retained elsewhere.
+- **Owner ruling (2026-09-18):** the older Brother Kāruṇya social-persona concept is retired and stripped from Being Tea Co. Akiko is the public host. Do not restore Karunya as a current tea host.
 
 ### Visual operating system
 
@@ -165,8 +165,8 @@ Missing an early linear checkpoint does not automatically mean the project faile
 ### Required before any post is approved
 
 1. Confirm or change **she/her** and provide the preferred pronunciation.
-2. Approve the disclosed-fictional-host model and decide what happens to Brother Kāruṇya.
-3. Approve which public canon is allowed: Akiko, surname Sasaki, the owner-directed early-30s presentation, Japanese identity, motherhood/family, and any Castleborn reference. If approved, correct the current public profile's conflicting age-42 field.
+2. Approve remaining disclosure wording if needed. **Decided (2026-09-18):** disclosed fictional host Akiko replaces Brother Kāruṇya; Karunya is stripped from Being Tea Co.
+3. Approve remaining public-canon details if needed: surname Sasaki, the owner-directed early-30s presentation, Japanese identity. **Decided (2026-09-18):** Akiko may be publicly viewable as the Being Tea Co host. Castleborn *family* (Song/Rhythm/Lyric, partner) stays private-by-default. If the public host is used, correct any conflicting age-42 field on a live profile only after a separate live-site instruction.
 4. Approve the exact bio and caption disclosure language.
 5. Approve, revise, or deny `identity/akiko-canonical-portrait-v2.png` and all 30 versioned derivatives; confirm rights to retain the owner-supplied visual reference for private provenance.
 6. Choose whether the public Akiko AI chat is hidden/paused or separately approved with privacy, moderation, and knowledge boundaries.

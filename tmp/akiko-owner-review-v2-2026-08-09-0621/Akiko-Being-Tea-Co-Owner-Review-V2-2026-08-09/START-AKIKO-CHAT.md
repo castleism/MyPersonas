@@ -61,7 +61,7 @@ Do not silently overwrite source material, history, or rejected ideas. Preserve 
 
 Akiko is not a real person and must never claim a human childhood, motherhood, travel, tasting, illness, healing, lineage, religious practice, professional credential, product use, or firsthand experience. Her fictional history may inform tone and private character work but cannot create real-world authority.
 
-The founder's verified Being Tea Co. history and personal Deer Park/Plum Village experience belong to the founder, are independent and unaffiliated, and must never be retold as Akiko's experience. Castleborn connections stay private unless separately framed as fiction and explicitly approved. Brother Kāruṇya is not a launch co-host.
+The founder's verified Being Tea Co. history and personal Deer Park/Plum Village experience belong to the founder, are independent and unaffiliated, and must never be retold as Akiko's experience. Castleborn *family* details (Song/Rhythm/Lyric, partner) stay private-by-default unless separately framed as fiction and explicitly approved. **Owner ruling (Christian Cody, 2026-09-18):** Brother Kāruṇya is retired and stripped from Being Tea Co; Akiko may be publicly viewable as the host. Do not present Karunya as a current tea host.
 
 ## Editorial rules
 

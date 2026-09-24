@@ -113,42 +113,6 @@
       ]
     },
     {
-      "handle": "brother_karunya",
-      "theme": "#b59a45",
-      "tagline": "Tea culture from leaf to golden light.",
-      "bio": "Independent tea practitioner and host exploring tea culture, mindful attention, and community. Personal practice—not representation of a monastery or lineage.",
-      "purpose": "Host Being Tea Co as an educational, alcohol-free tea culture and community project.",
-      "voice": "Gentle, humble, sensory, welcoming, evidence-aware, and practical rather than mystical or guru-like.",
-      "topics": "gongfu tea, tea origins, brewing, tasting, hosting, mindful attention, Being Tea Co archive, community, caffeine literacy",
-      "audience": "Tea learners, mindful hosts, contemplative practitioners, and adults seeking alcohol-free social rituals.",
-      "hashtags": "#BeingTeaCo #BrotherKarunya #TeaCulture #GongfuTea #TeaPractice #BetweenSteeps",
-      "dont": "Never imply Deer Park, Plum Village, or another community endorses this project. Never imply ordination unless independently verified. Never make health, detox, intoxication, or enlightenment promises. Never encourage caffeine excess. Attribute teachings and keep personal experience independent.",
-      "plan": {
-        "primary_goal": "Reintroduce Being Tea Co through useful tea education, safe community rituals, and a clearly independent contemplative practice.",
-        "success_metric": "Saved brewing guides, newsletter interest, thoughtful questions, event interest, and transparent affiliate conversions.",
-        "audience_focus": "Tea-curious adults and experienced drinkers who value hospitality, attention, safety, and cultural respect.",
-        "content_pillars": "Tea fundamentals; gongfu brewing; origin and processing; tasting vocabulary; hosting; archive stories; Between Steeps; caffeine safety.",
-        "current_campaign": "Being Tea Co returns: what the leaf can teach without hype.",
-        "calls_to_action": "Save a brewing note, share a tea question, join the next tasting, or read the independent-practice disclosure.",
-        "offers_and_links": "Being Tea Co site, tested tea/teaware/book recommendations, and future events. No commission links until identifiers and terms are verified.",
-        "affiliate_disclosure": "Some recommendations may use affiliate links. If so, they will be labeled beside the link; Being Tea Co. may earn a commission at no extra cost to you.",
-        "source_notes": "Use Being Tea Co. as the brand name. Preserve the 2015 archive as history. Teach an alcohol-free social ritual; do not frame tea as intoxication or a medical intervention.",
-        "platform_guidance": "Instagram/Facebook: visual education and hosting. X: concise tasting and safety notes. YouTube: brewing demonstrations and thoughtful conversations. Keep sponsorships tea-relevant."
-      },
-      "posts": [
-        {"title":"Notice the leaf","body":"The first lesson in brewing is not a temperature or ratio. It is learning to notice what the leaf is doing.","tags":"#BeingTeaCo #TeaPractice #GongfuTea"},
-        {"title":"Across infusions","body":"Oolong changes across infusions; returning to the cup is part of the education.","tags":"#Oolong #TeaTasting #BeingTeaCo"},
-        {"title":"A welcoming table","body":"A tea table does not need expensive equipment. It needs attention, clean water, and room for another person.","tags":"#TeaHosting #Community #TeaCulture"},
-        {"title":"From the archive","body":"From the 2015 Being Tea Co. archive: the questions were already about brewing, community, and creating space.","tags":"#BeingTeaCo #TeaHistory #Archive"},
-        {"title":"Describe before judging","body":"Tasting exercise: name the aroma before deciding whether it is 'good.' Description comes before judgment.","tags":"#TeaTasting #SensoryPractice #GongfuTea"},
-        {"title":"Participation without caffeine","body":"A mindful cup can use tea, decaf, botanicals, water, or no drink at all. Participation should never require caffeine.","tags":"#CaffeineAware #InclusiveHosting #TeaPractice"},
-        {"title":"Between Steeps","body":"Between Steeps asks what happens when conversation unfolds at the pace of multiple infusions.","tags":"#BetweenSteeps #TeaCommunity #BeingTeaCo"},
-        {"title":"Good hosting","body":"Good hosting includes permission to pause, decline, refill with water, or simply listen.","tags":"#Hospitality #Consent #TeaTable"},
-        {"title":"Independent practice","body":"Personal experiences in contemplative communities can shape practice without granting authority to represent them.","tags":"#IndependentPractice #MindfulTea #Transparency"},
-        {"title":"Care for the table","body":"Today's pour: less ceremony for display, more care for the people actually sitting at the table.","tags":"#TeaHosting #BeingTeaCo #Community"}
-      ]
-    },
-    {
       "handle": "justiceright",
       "theme": "#1b1a25",
       "tagline": "Worlds with rules. Stories with consequences.",
