@@ -26,6 +26,8 @@ const pairs=[
   ["MyPersonas.Online_v0/sql-updates/072-immediate-provider-preview-receipts.sql","supabase/migrations/20260830150000_immediate_provider_preview_receipts.sql"],
   ["MyPersonas.Online_v0/sql-updates/076-youtube-trigger-privilege-hardening.sql","supabase/migrations/20260830190000_youtube_trigger_privilege_hardening.sql"],
   ["MyPersonas.Online_v0/sql-updates/077-mobile-private-draft-workflow.sql","supabase/migrations/20260920120000_mobile_private_draft_workflow.sql"],
+  ["MyPersonas.Online_v0/sql-updates/078-owner-private-news-feed.sql","supabase/migrations/20260924120000_owner_private_news_feed.sql"],
+  ["MyPersonas.Online_v0/sql-updates/079-owner-push-subscription-foundation.sql","supabase/migrations/20260924130000_owner_push_subscription_foundation.sql"],
 ];
 
 test("reviewed canonical migrations and timestamped release mirrors are byte-identical",async()=>{

@@ -1,5 +1,22 @@
 # Changelog — AliaSpaces / MyPersonas
 
+## Owner-mobile next local slice (feed, push ledger, Expo) (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not submitted to a store.**
+
+- Additive 078 owner-private news-feed ledger and 079 default-off push
+  subscription ledger. `publishing_enabled` and `delivery_enabled` stay false.
+  `ai/research` is fail-closed and never fetches URLs.
+- Owner `#/feed` and `#/push` surfaces, two-account isolation helpers, and
+  authorization tests.
+- Expo WebView debug scaffold at `apps/personas-expo/`. Linux cannot produce a
+  store binary. Local 077 apply helper refuses hosted DATABASE_URL values.
+- Meta App Review, live AAL2, real-device sign-in, and production apply remain
+  owner/live work.
+
+
+
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 

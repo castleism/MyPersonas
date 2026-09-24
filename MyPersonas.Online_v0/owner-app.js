@@ -48,6 +48,7 @@ const ownerAppState = {
   schedulePersonaFilter: "",
   fanPersonaFilter: "",
   activityPersonaFilter: "",
+  feedPersonaFilter: "",
   readMode: "quick",
   busy: new Set(),
   capabilities: {},
@@ -63,6 +64,9 @@ const ownerAppState = {
   postDrafts: [],
   fanSessions: [],
   fanMessages: [],
+  feedItems: [],
+  feedRules: [],
+  pushSubscriptions: [],
   unreadCount: 0,
   handoff: null,
   companionAction: null,
@@ -78,7 +82,7 @@ function ownerAppReset() {
   ownerAppState.selectedPersonaId = "";
   ownerAppState.viewMode = "overview";
   ownerAppState.perspectiveGeneration += 1;
-  for (const key of ["briefs", "topics", "annotations", "packages", "variants", "notifications", "activities", "modelRoutes", "researchSettings", "postDrafts", "fanSessions", "fanMessages"]) ownerAppState[key] = [];
+  for (const key of ["briefs", "topics", "annotations", "packages", "variants", "notifications", "activities", "modelRoutes", "researchSettings", "postDrafts", "fanSessions", "fanMessages", "feedItems", "feedRules", "pushSubscriptions"]) ownerAppState[key] = [];
   ownerAppState.capabilities = {};
   ownerAppState.unreadCount = 0;
   ownerAppState.busy.clear();
@@ -252,12 +256,15 @@ function ownerAppSelectPersona(personaId, destination = "owner") {
   if (destination === "schedule") ownerAppState.schedulePersonaFilter = personaId;
   if (destination === "fan-inbox") ownerAppState.fanPersonaFilter = personaId;
   if (destination === "activity") ownerAppState.activityPersonaFilter = personaId;
+  if (destination === "feed") ownerAppState.feedPersonaFilter = personaId;
   const rerender = {
     owner: ownerAppRenderHome,
     briefs: ownerAppRenderBriefsLoaded,
     schedule: ownerAppRenderScheduleLoaded,
     "fan-inbox": ownerAppRenderFanInboxLoaded,
     activity: ownerAppRenderActivityLoaded,
+    feed: ownerAppRenderFeedLoaded,
+    push: ownerAppRenderPushLoaded,
   }[destination];
   if (rerender) rerender();
 }
@@ -279,6 +286,9 @@ async function ownerAppLoad(force = false) {
     sb.from("persona_research_settings").select("*").eq("owner", uid).limit(500),
     sb.from("post_drafts").select("*").eq("owner", uid).order("created_at", { ascending: false }).limit(500),
     loadOwnedPages("fan_chat_sessions", "id,owner,persona_id,escalated,escalation_reason,inbox_state,retention_mode,privacy_notice_version,privacy_acknowledged_at,ephemeral_expires_at,owner_live_until,owner_live_started_at,created_at,last_seen_at", "last_seen_at", false, uid),
+    sb.from("persona_feed_items").select("*").eq("owner", uid).order("created_at", { ascending: false }).limit(200),
+    sb.from("persona_feed_source_rules").select("*").eq("owner", uid).limit(200),
+    sb.from("owner_push_subscriptions").select("id,owner,platform,enabled,delivery_enabled,created_at,endpoint").eq("owner", uid).limit(50),
   ]);
   if (requestId !== ownerAppState.requestId || session?.user?.id !== uid) return false;
   ownerAppState.uid = uid;
@@ -294,6 +304,9 @@ async function ownerAppLoad(force = false) {
   ownerAppState.researchSettings = ownerAppUseResult("researchSettings", queries[8]);
   ownerAppState.postDrafts = ownerAppUseResult("postDrafts", queries[9]);
   ownerAppState.fanSessions = ownerAppUseResult("fanLive", queries[10]);
+  ownerAppState.feedItems = ownerAppUseResult("feedItems", queries[11]);
+  ownerAppState.feedRules = ownerAppUseResult("feedRules", queries[12]);
+  ownerAppState.pushSubscriptions = ownerAppUseResult("pushSubscriptions", queries[13]);
   if (!ownerAppState.capabilities.fanLive) ownerAppState.fanSessions = (myFanSessions || []).slice();
   ownerAppState.fanMessages = (myFanMessages || []).slice();
   if (!ownerAppState.selectedPersonaId || !myPersonas.some((p) => p.id === ownerAppState.selectedPersonaId)) {
@@ -548,7 +561,8 @@ function ownerAppPickerHtml(destination, allowAll = false) {
     : destination === "schedule" ? ownerAppState.schedulePersonaFilter
       : destination === "fan-inbox" ? ownerAppState.fanPersonaFilter
       : destination === "activity" ? ownerAppState.activityPersonaFilter
-        : ownerAppState.selectedPersonaId;
+        : destination === "feed" ? ownerAppState.feedPersonaFilter
+          : ownerAppState.selectedPersonaId;
   const persona = ownerAppPersona(selected || ownerAppState.selectedPersonaId);
   const groups = typeof ownerAppRosterGroups === "function"
     ? ownerAppRosterGroups()
@@ -588,7 +602,8 @@ function ownerAppPersonaSheetRows(destination, allowAll, query = "") {
     : destination === "schedule" ? ownerAppState.schedulePersonaFilter
       : destination === "fan-inbox" ? ownerAppState.fanPersonaFilter
       : destination === "activity" ? ownerAppState.activityPersonaFilter
-        : ownerAppState.selectedPersonaId;
+        : destination === "feed" ? ownerAppState.feedPersonaFilter
+          : ownerAppState.selectedPersonaId;
   const rows = [];
   if (allowAll) {
     rows.push(`<button type="button" class="oa-listitem ${selected ? "" : "on"}" onclick="ownerAppChoosePersonaFromSheet('','${destination}')"><span class="oa-listicon">◎</span><span class="oa-listcopy"><b>All personas</b><span>Account-wide review filter</span></span></button>`);
@@ -971,7 +986,7 @@ function ownerAppRenderHome() {
       <h2>${esc(persona.name)}</h2><p>${esc(persona.tagline || persona.purpose || "Give this persona a clear purpose, voice, and area of focus.")}</p></div>
       <span class="oa-hero-avatar" style="${safeBgStyle(persona.avatar_url)}"></span></div>
       <div class="oa-hero-actions"><button class="oa-action primary" onclick="openPersonaChat('${persona.id}')">Chat with ${esc(persona.name)}</button>
-      <button class="oa-action" onclick="ownerAppOpenPrivateDraft('${persona.id}')">New private draft</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
+      <button class="oa-action" onclick="ownerAppOpenPrivateDraft('${persona.id}')">New private draft</button><button class="oa-action" onclick="go('feed')">Private feed</button><button class="oa-action" onclick="go('fan-inbox')">Fan inbox</button><button class="oa-action" onclick="go('briefs')">Read briefings</button><button class="oa-action" onclick="go('schedule')">Review posts</button><button class="oa-action" onclick="ownerAppOpenHandoff('persona','${persona.id}')">Open AI workroom</button></div>
     </section>
     <div class="oa-stats"><div class="oa-stat"><b>${newBriefs}</b><span>new briefings</span></div><div class="oa-stat"><b>${review}</b><span>kits to review</span></div><div class="oa-stat ${fanUnread ? "attn" : ""}"><b>${fanUnread}</b><span>unread fan chats</span></div><div class="oa-stat ${attention ? "attn" : ""}"><b>${attention}</b><span>publishing attention</span></div></div>
     <div class="oa-grid">
@@ -2026,6 +2041,130 @@ function ownerAppRenderActivityLoaded() {
     ${ownerAppStickyCtaHtml("activity", personaFilter)}
   </div>`;
   ownerAppMobileNav();
+}
+
+function renderOwnerFeed(arg = "") {
+  if (arg) ownerAppState.feedPersonaFilter = arg;
+  return ownerAppRender("feed", ownerAppRenderFeedLoaded);
+}
+
+function ownerAppFeedCitationHtml(item) {
+  const citations = Array.isArray(item?.citations) ? item.citations : [];
+  const urls = Array.isArray(item?.source_urls) ? item.source_urls : [];
+  const links = citations.map((row) => safeHttpUrl(row?.url || "")).filter(Boolean)
+    .concat(urls.map((url) => safeHttpUrl(url)).filter(Boolean));
+  const unique = [...new Set(links)].slice(0, 8);
+  return unique.map((url, index) => `<a class="oa-source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Source ${index + 1} ↗</a>`).join("")
+    || '<span class="oa-chip warn">No HTTPS citation stored</span>';
+}
+
+function ownerAppRenderFeedLoaded() {
+  const personaFilter = ownerAppState.feedPersonaFilter || ownerAppState.selectedPersonaId;
+  const workflow = ownerAppWorkflow();
+  const uid = session?.user?.id || "";
+  const rows = (ownerAppState.feedItems || []).filter((item) => {
+    if (personaFilter && item.persona_id !== personaFilter) return false;
+    return workflow ? workflow.feedItemVisible(item, uid) : item.owner === uid;
+  });
+  const rules = (ownerAppState.feedRules || []).find((row) => row.persona_id === personaFilter);
+  const capability = ownerAppState.capabilities.feedItems
+    ? ""
+    : '<div class="oa-capability">Migration 078 is not applied. This is an owner-private research feed, not a social publisher. publishing_enabled stays false.</div>';
+  app.innerHTML = `<div class="oa-shell">${ownerAppTopbar("Private news feed", "Owner-only blurbs · never publishes")}${ownerAppPickerHtml("feed", true)}${capability}
+    <div class="oa-capability">Read-first research blurbs for the selected owned persona. Approval here does not post. Source/citation/freshness/feedback rules stay unapproved until a later owner review. ai/research is not deployed and never fetches URLs from this screen.</div>
+    <div class="oa-filterbar"><label><span>Allowed hosts (draft only)</span><input id="ownerFeedHosts" maxlength="800" value="${esc((rules?.allowed_hosts || []).join(", "))}" placeholder="example.org, reuters.com"></label>
+    <label><span>Freshness hours</span><input id="ownerFeedFreshness" type="number" min="1" max="720" value="${esc(String(rules?.freshness_hours || 72))}"></label>
+    <button class="oa-secondary" onclick="ownerAppSaveFeedRules('${esc(personaFilter || "")}')">Save unapproved rules</button></div>
+    <div class="oa-briefs">${rows.map((item) => `<article class="oa-brief ${item.status === "owner_review" ? "new" : ""}"><div class="oa-briefhead"><div><span class="oa-eyebrow">${esc(ownerAppPersonaName(item.persona_id))} · ${esc(item.status)}</span><h3>${esc(item.headline || "Untitled blurb")}</h3></div><span class="oa-chip ${item.status === "rejected" ? "bad" : "warn"}">confidence ${esc(String(item.confidence ?? 0))}</span></div>
+      <p class="oa-summary">${esc(item.blurb || "")}</p>
+      <div>${ownerAppFeedCitationHtml(item)}</div>
+      <div class="oa-actions" style="margin-top:10px">${item.status === "owner_review" ? `<button class="oa-secondary oa-small" onclick="ownerAppAcknowledgeFeedItem('${item.id}')">Mark visible to me</button>` : ""}<button class="oa-danger oa-small" onclick="ownerAppRejectFeedItem('${item.id}')">Reject blurb</button></div>
+    </article>`).join("") || '<div class="oa-empty"><strong>No private feed items</strong>Nothing is generated until source rules are owner-approved and ai/research is deployed. This screen never publishes.</div>'}</div>
+    ${ownerAppStickyCtaHtml("feed", personaFilter)}
+  </div>`;
+  ownerAppMobileNav();
+}
+
+async function ownerAppSaveFeedRules(personaId) {
+  if (!ownerAppNetworkOnline()) { toast("Feed rules cannot be saved while disconnected"); return; }
+  const hosts = String(document.getElementById("ownerFeedHosts")?.value || "").split(/[,;\s]+/).map((value) => value.trim()).filter(Boolean);
+  const result = await sb.rpc("save_owner_feed_source_rules", {
+    p_persona_id: personaId,
+    p_allowed_hosts: hosts,
+    p_freshness_hours: Number(document.getElementById("ownerFeedFreshness")?.value) || 72,
+    p_max_items_per_day: 8,
+  });
+  if (result.error) { toast(result.error.message); return; }
+  toast("Draft source rules saved. They remain unapproved and do not start research.");
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  ownerAppRenderFeedLoaded();
+}
+
+async function ownerAppAcknowledgeFeedItem(id) {
+  const result = await sb.rpc("acknowledge_owner_feed_item", { p_item_id: id });
+  if (result.error) { toast(result.error.message); return; }
+  toast("Blurb is visible to you only. Nothing was published.");
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  ownerAppRenderFeedLoaded();
+}
+
+async function ownerAppRejectFeedItem(id) {
+  const result = await sb.rpc("reject_owner_feed_item", { p_item_id: id });
+  if (result.error) { toast(result.error.message); return; }
+  toast("Blurb rejected. Nothing was published.");
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  ownerAppRenderFeedLoaded();
+}
+
+async function ownerAppRequestFeedResearch() {
+  const workflow = ownerAppWorkflow();
+  const personaId = ownerAppState.feedPersonaFilter || ownerAppState.selectedPersonaId;
+  const rules = (ownerAppState.feedRules || []).find((row) => row.persona_id === personaId);
+  if (workflow) {
+    const denied = workflow.feedResearchRequest({
+      ownerId: session?.user?.id || "",
+      personaId,
+      personas: myPersonas,
+      rulesApproved: rules?.rules_approved === true,
+      publishingEnabled: false,
+      online: ownerAppNetworkOnline(),
+    });
+    if (!denied.ok) { toast(denied.error); return; }
+  }
+  const result = await sb.rpc("request_owner_feed_research", { p_persona_id: personaId });
+  toast(result.error?.message || "ai/research is not deployed");
+}
+
+function renderOwnerPush() {
+  return ownerAppRender("push", ownerAppRenderPushLoaded);
+}
+
+function ownerAppRenderPushLoaded() {
+  const workflow = ownerAppWorkflow();
+  const status = workflow ? workflow.pushDeliveryStatus({
+    ownerId: session?.user?.id || "",
+    subscriptions: ownerAppState.pushSubscriptions,
+  }) : { deliveryEnabled: false, reason: "Push delivery is not installed." };
+  const rows = ownerAppState.pushSubscriptions || [];
+  app.innerHTML = `<div class="oa-shell">${ownerAppTopbar("Push delivery", "Default off · never sends")}
+    <div class="oa-capability"><b>delivery_enabled=false.</b> ${esc(status.reason || "This checkout never sends APNs, FCM, or Web Push.")} The public PWA shell does not request notification permission and does not cache this owner screen.</div>
+    <div class="oa-empty"><strong>${rows.length ? `${rows.length} stored endpoint${rows.length === 1 ? "" : "s"}` : "No endpoints stored"}</strong>Registering an endpoint here only stores an owner-private row. It does not enable delivery or request a browser permission prompt.</div>
+    <div class="oa-list">${rows.map((row) => `<div class="oa-listitem"><span class="oa-listicon">◎</span><span class="oa-listcopy"><b>${esc(row.platform || "web")}</b><span>enabled=${esc(String(row.enabled))} · delivery_enabled=${esc(String(row.delivery_enabled))}</span></span><button class="oa-danger oa-small" onclick="ownerAppRevokePush('${row.id}')">Revoke</button></div>`).join("")}</div>
+    ${ownerAppStickyCtaHtml("push", ownerAppState.selectedPersonaId)}
+  </div>`;
+  ownerAppMobileNav();
+}
+
+async function ownerAppRevokePush(id) {
+  const result = await sb.rpc("revoke_owner_push_subscription", { p_subscription_id: id });
+  if (result.error) { toast(result.error.message); return; }
+  toast("Push endpoint revoked. Nothing was sent.");
+  ownerAppState.loadedAt = 0;
+  await ownerAppLoad(true);
+  ownerAppRenderPushLoaded();
 }
 
 // ---------------------------------------------------------------------------

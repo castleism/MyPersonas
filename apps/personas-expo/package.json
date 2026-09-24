@@ -1,0 +1,15 @@
+{
+  "name": "mypersonas-owner-expo-debug",
+  "private": true,
+  "main": "App.js",
+  "scripts": {
+    "start": "echo 'This Linux checkout cannot produce a store build. Open apps/personas-expo on an owner machine with Expo Go.'"
+  },
+  "dependencies": {
+    "@react-native-community/netinfo": "*",
+    "expo": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-webview": "*"
+  }
+}

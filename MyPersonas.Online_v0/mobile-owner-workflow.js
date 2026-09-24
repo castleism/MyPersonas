@@ -341,6 +341,83 @@
     };
   }
 
+  function feedItemVisible(item, ownerId) {
+    const caller = asText(ownerId);
+    if (!caller || !item) return false;
+    if (item.owner && item.owner !== caller) return false;
+    if (item.publishing_enabled === true || item.social_published === true) return false;
+    return true;
+  }
+
+  function feedResearchRequest(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    const persona = ownedPersona(input.personas, ownerId, input.personaId);
+    if (!ownerId) return { ok: false, error: "Authentication required", payload: null };
+    if (!persona) return { ok: false, error: "Owned persona not found", payload: null };
+    if (input.publishingEnabled === true || input.socialPublished === true) {
+      return { ok: false, error: "publishing_enabled must remain false", payload: null };
+    }
+    if (input.online === false) return { ok: false, error: "Research requires a live owner session", payload: null };
+    if (input.rulesApproved !== true) {
+      return { ok: false, error: "Source, citation, freshness, and feedback rules are not owner-approved", payload: null };
+    }
+    return { ok: false, error: "ai/research is not deployed. This request never fetches URLs or writes social posts", payload: null };
+  }
+
+  function pushDeliveryStatus(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    if (!ownerId) return { ok: false, deliveryEnabled: false, error: "Authentication required" };
+    return {
+      ok: true,
+      deliveryEnabled: false,
+      permissionRequested: false,
+      subscriptionCount: Array.isArray(input.subscriptions)
+        ? input.subscriptions.filter((row) => row && (!row.owner || row.owner === ownerId)).length
+        : 0,
+      error: "",
+      reason: "APNs/FCM/Web Push delivery is not installed. This checkout never sends notifications.",
+    };
+  }
+
+  function registerPushSubscription(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    const endpoint = asText(input.endpoint);
+    if (!ownerId) return { ok: false, error: "Authentication required" };
+    if (!/^https:\/\//i.test(endpoint) || endpoint.length > 2048) {
+      return { ok: false, error: "Push subscription fields are invalid" };
+    }
+    if (input.deliveryEnabled === true) return { ok: false, error: "delivery_enabled must remain false" };
+    return {
+      ok: true,
+      error: "",
+      payload: {
+        rpc: "register_owner_push_subscription",
+        owner_id: ownerId,
+        endpoint,
+        platform: asText(input.platform) || "web",
+        enabled: false,
+        delivery_enabled: false,
+      },
+    };
+  }
+
+  function twoAccountIsolation(input = {}) {
+    const ownerA = asText(input.ownerA);
+    const ownerB = asText(input.ownerB);
+    const record = input.record || null;
+    if (!ownerA || !ownerB || ownerA === ownerB) return { ok: false, isolated: false, error: "Two distinct owners are required" };
+    if (!record) return { ok: false, isolated: false, error: "Record required" };
+    const visibleToA = asText(record.owner) === ownerA;
+    const visibleToB = asText(record.owner) === ownerB;
+    return {
+      ok: true,
+      isolated: visibleToA !== visibleToB,
+      visibleToA,
+      visibleToB,
+      error: visibleToA && visibleToB ? "Record must not be visible to both owners" : "",
+    };
+  }
+
   function importBundle(bundle, input = {}) {
     if (!bundle || bundle.version !== EXPORT_VERSION) return { ok: false, error: "Unrecognized export version" };
     if (bundle.publishing_enabled === true) return { ok: false, error: "publishing_enabled must remain false" };
@@ -379,6 +456,11 @@
     filterRoster,
     exportBundle,
     importBundle,
+    feedItemVisible,
+    feedResearchRequest,
+    pushDeliveryStatus,
+    registerPushSubscription,
+    twoAccountIsolation,
   });
 
   root.MobileOwnerWorkflow = api;

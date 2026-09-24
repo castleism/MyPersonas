@@ -405,10 +405,11 @@ larger product phase remains.
 - [x] Correct the rejected Song/Rhythm warrior-sibling brief — Song now uses the
       Lifegiving Compassion identity and permanent no-donations boundary; the file
       makes no new Rhythm claim. No live persona write was authorized or performed.
-- [ ] Personas = personalized AI news feed (owner vision): AI researches assigned
-      interests, fact-checks, cites sources, serves tailored blurbs (feed_items +
-      ai/research) instead of mindless scroll; later, projects = multi-persona
-      collaboration. See V2-BLUEPRINT.md §6.
+- [~] Personas = personalized AI news feed (owner vision): local 078 adds
+      owner-private `persona_feed_items` + unapproved source rules and a read-first
+      `#/feed` surface. `ai/research` is fail-closed and not deployed. Rules stay
+      unapproved until the owner reviews source/citation/freshness/feedback.
+      This is not a social publisher. See V2-BLUEPRINT.md §6.
 - [ ] "soulular" identity layer (parallel to cellular) — confirm intent
       (concepts/soulular.md); likely the persona follow/graph/discovery layer
 - [x] V2 rebuild blueprint written (V2-BLUEPRINT.md) — incremental migration path,
@@ -437,17 +438,17 @@ larger product phase remains.
       existing exact preview gate, context-aware sticky CTA, 320 px form overflow,
       owner-web export/import of local prefs, online/offline listeners, authorization
       tests, a debug Android WebView with network restore + deep links + Gradle
-      wrapper, and an iOS WKWebView scaffold. Migration 077 is local/unapplied.
-      `publishing_enabled` stays false. No provider send, OAuth scope change, store
-      submission, or production secret is included. Disconnected Android/iOS/PWA
+      wrapper, an iOS WKWebView scaffold, and an Expo WebView scaffold.
+      Migrations 077–079 are local/unapplied. `publishing_enabled` stays false.
+      Push delivery stays off. No provider send, OAuth scope change, store
+      submission, or production secret is included. Disconnected Android/iOS/Expo/PWA
       clients only show limitations. Existing owner-desktop phone-test prototypes
-      are not in this cloud checkout. Local Node suite is green. A labeled fixture
-      harness can be smoked at desktop and 390px; it is not the live signed-in app.
-      Remaining blockers Cursor cannot finish here: apply/read back migration 077,
-      owner AAL2 two-account privacy proof, real-device sign-in, store submission,
-      push-notification backend, Expo/React Native rewrite, news-feed schema
-      approval, and Meta App Review. See `MOBILE-BLUEPRINT.md`,
-      `apps/personas-android/README.md`, and `apps/personas-ios/README.md`.
+      are not in this cloud checkout. Two-account isolation is covered by local
+      authorization tests; live AAL2 proof is still required.
+      Remaining blockers this checkout cannot finish: apply/read back 077–079,
+      live AAL2 two-account proof, real-device sign-in, store submission,
+      APNs/FCM delivery, owner-approved feed research, and Meta App Review.
+      See `MOBILE-BLUEPRINT.md` and `apps/personas-*/README.md`.
 - [~] Chat workspaces: migration 031 APPLIED + verified; owner-scoped list/create/rename/
       pin/resume, workspace messages, inclusion in the full account export, owner-reviewed Save context, and max-three
       distilled Attach context are complete locally. Deploy ai-proxy first, then Pages,
@@ -470,8 +471,10 @@ larger product phase remains.
       flag for Concept LoRA sets (verify Adobe ToS on ML use of API-pulled assets)
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
-- [~] PWA: install/offline shell complete locally; real-device release verification and
-      a separate push-notification permission/subscription/delivery phase remain
+- [~] PWA: install/offline shell complete locally; real-device release verification
+      remains. Local 079 stores owner-private endpoints with `delivery_enabled=false`
+      and never requests notification permission from the public shell. APNs/FCM
+      delivery is not installed.
 - [ ] Custom auth domain (auth.aliaspaces.com) for branded OAuth consent
 - [ ] Profile analytics for owners (views, clicks on links/albums)
 
