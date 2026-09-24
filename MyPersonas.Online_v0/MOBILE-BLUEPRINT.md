@@ -13,6 +13,11 @@ authorization tests. Android debug WebView wraps `#/owner` and documents
 disconnected limits. Migration 077 is unapplied. This is not a store submission
 and not a local fake publisher. `publishing_enabled` remains false.
 
+Public phone-check slice (2026-09-24, source): Android Chrome **Install help**
+documents saving `https://mypersonas.online/` as a standalone browser app.
+`sites.html` lists the public websites and companion app sources to verify.
+A checkout cannot tap Install on a physical Android phone.
+
 ---
 
 ## 1. Responsive web (optimize phone + add tablet)

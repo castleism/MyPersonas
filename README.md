@@ -40,6 +40,9 @@ product ownership. See [PROJECT-BOUNDARY.md](PROJECT-BOUNDARY.md).
 - `MyPersonas.Online_v0/KEY-ROTATION.md` — migrating off deprecated Supabase keys.
 - `CI-CD-SETUP.md` — one-time CI/CD setup.
 - `MyPersonas.Online_v0/ROADMAP.md` / `CHANGELOG.md` — status of record.
+- `MyPersonas.Online_v0/PWA-INTEGRATION.md` — installable browser app contract.
+- `MyPersonas.Online_v0/sites.html` — public list of websites and companion apps to check.
+  On Android Chrome: open https://mypersonas.online/, menu → Install app / Add to Home screen.
 
 ## Deployment
 

@@ -79,13 +79,14 @@ test("manifest uses scoped relative routes and complete brand icons", async () =
 
   for (const shortcut of manifest.shortcuts) {
     assertRelativeSitePath(shortcut.url, `shortcut ${shortcut.name}`);
-    assert.match(shortcut.url, /^\.\/#\//);
+    assert.match(shortcut.url, /^\.\/(?:#\/|sites\.html$)/);
     assert.deepEqual(shortcut.icons, [{
       src: "./icon-192.png",
       sizes: "192x192",
       type: "image/png"
     }]);
   }
+  assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./sites.html"));
 });
 
 test("service worker precaches only existing public shell files", async () => {
@@ -95,6 +96,7 @@ test("service worker precaches only existing public shell files", async () => {
 
   const paths = [...list[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
   assert.ok(paths.includes("./offline.html"));
+  assert.ok(paths.includes("./sites.html"));
   assert.ok(paths.includes("./manifest.webmanifest"));
   assert.ok(!paths.includes("./index.html"), "signed-in application HTML must not be precached");
 
@@ -126,6 +128,8 @@ test("install helper registers a path-relative worker without synthetic push sta
   assert.match(source, /updateViaCache: "none"/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /aria-live/);
+  assert.match(source, /isAndroid/);
+  assert.match(source, /Install app or Add to Home screen/);
   assert.doesNotMatch(source, /PushManager|pushManager|Notification\.requestPermission|subscribe\s*\(/);
 });
 
@@ -155,6 +159,7 @@ test("the app head and Pages artifact include the complete PWA shell", async () 
     "/service-worker.js",
     "/pwa.js",
     "/offline.html",
+    "/sites.html",
     "/mobile-owner-workflow.js"
   ]) {
     assert.ok(workflow.includes(`--include '${releasePath}'`), `Pages artifact must include ${releasePath}`);
@@ -165,4 +170,19 @@ test("the app head and Pages artifact include the complete PWA shell", async () 
     /--include '\/brand(?:\/|')/,
     "Pages must publish only the curated root icon mirrors, not brand concepts or previews"
   );
+});
+
+test("public sites checklist is packaged, relative, and non-mutating", async () => {
+  const html = await readSiteFile("sites.html");
+  assert.match(html, /<meta name="robots" content="noindex">/);
+  assert.match(html, /href="\.\/manifest\.webmanifest"/);
+  assert.match(html, /<script src="\.\/pwa\.js" defer><\/script>/);
+  assert.match(html, /https:\/\/mypersonas\.online\//);
+  assert.match(html, /https:\/\/nooyouniverse\.com\//);
+  assert.match(html, /apps\/personas-android/);
+  assert.match(html, /Install app/);
+  assert.match(html, /Add to Home screen/);
+  assert.match(html, /cannot tap Install on a physical phone/i);
+  assert.match(html, /never posts/i);
+  assert.doesNotMatch(html, /Notification\.requestPermission|PushManager/i);
 });

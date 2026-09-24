@@ -22,8 +22,11 @@ The current head contains this block; keep it intact during future head edits:
 
 No body patch is needed. `pwa.js` registers `./service-worker.js` and progressively
 adds an accessible **Install app** button to the existing header navigation only when
-the browser supplies a real install prompt. On iPhone and iPad it instead exposes an
-**Install help** button with the standard Share → Add to Home Screen instruction.
+the browser supplies a real install prompt. On iPhone, iPad, and Android it also
+exposes **Install help**: Share → Add to Home Screen on Apple, or Chrome menu →
+Install app / Add to Home screen on Android. `sites.html` is the public checklist of
+sites and companion apps to verify after that install. A checkout cannot tap Install
+on a physical phone.
 
 All URLs are document-relative. Do not replace them with root-relative `/...` paths:
 the relative form works both at `https://mypersonas.online/` and a GitHub Pages project
@@ -36,7 +39,7 @@ the deployed artifact.
 
 ## Cache and update contract
 
-- The service worker caches only `offline.html`, the manifest/install helper, and the
+- The service worker caches only `offline.html`, `sites.html`, the manifest/install helper, and the
   public A-home icon files listed in `PUBLIC_SHELL_PATHS`.
 - It never stores pages, signed-in HTML, Supabase/API responses, uploaded media, or
   third-party requests. Every document stays network-first; a network failure shows the
