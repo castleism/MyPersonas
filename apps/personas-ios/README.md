@@ -11,7 +11,7 @@ Linux CI and this cloud checkout **cannot produce an IPA**. Open `Sources/` in X
 
 - Load `https://mypersonas.online/#/owner` when the device is online.
 - Show bundled offline limitations when `NWPathMonitor` reports no network, then restore the owner surface when connectivity returns.
-- Accept `https://mypersonas.online/...` universal-link style opens. Other hosts are ignored.
+- Accept `https://mypersonas.online/#/owner`, `#/feed`, `#/push`, `#/sites`, and the other owner hashes. Other hosts open in Safari as HTTPS check sites. Public hashes are ignored.
 - Export/import **local prefs only** (the owner origin URL) beside a differently signed install. That file is not a user-data backup of private draft bodies.
 
 ## What it cannot do

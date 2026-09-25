@@ -21,15 +21,20 @@ Do **not** replace the platform with a local fake social publisher.
 - Approval is a planning record. It is not a provider send.
 - No OAuth scope changes, production secrets, real social posts, or paid services.
 - Public offline/PWA shell must not cache owner workflow code or private data.
-- Android debug WebView wraps `#/owner`. Disconnected it only shows limitations.
+- Android debug WebView wraps `#/owner` and `#/sites`. Disconnected it only shows limitations. External HTTPS check sites open in the system browser, not as a publisher.
 
 ## Source of truth
 
 - Workflow helpers: `MyPersonas.Online_v0/mobile-owner-workflow.js`
 - Owner UI: `MyPersonas.Online_v0/owner-app.js`
 - RPC: `MyPersonas.Online_v0/sql-updates/077-mobile-private-draft-workflow.sql`
+- Private feed: `MyPersonas.Online_v0/sql-updates/078-owner-private-news-feed.sql`
+- Push ledger: `MyPersonas.Online_v0/sql-updates/079-owner-push-subscription-foundation.sql`
+- Websites to check: owner `#/sites` plus Android/iOS/Expo browser-app install help
+- Public PWAs: `MyPersonas.Online_v0/` and `nooyouniverse.com/` (install on a physical phone is an owner Chrome action)
 - Android path: `apps/personas-android/README.md`
 - iOS path: `apps/personas-ios/README.md`
+- Expo path: `apps/personas-expo/README.md`
 - Product roadmap: `MyPersonas.Online_v0/ROADMAP.md` and `MOBILE-BLUEPRINT.md`
 
 Existing architecture, approved content, and connector publishing gates stay in

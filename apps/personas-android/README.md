@@ -7,9 +7,11 @@ It is **not** a local social publisher, Play Store build, or replacement for the
 
 ## What it can do
 
-- Open the live owner surfaces (persona selection, private draft, review/approval) when the device is online and the owner can sign in.
+- Open the live owner surfaces (persona selection, private draft, review/approval, `#/feed`, `#/push`, `#/sites`) when the device is online and the owner can sign in.
+- Open **Websites to check** (`#/sites`) and launch non-owner HTTPS portals in the system browser. This is not a publisher.
 - Show a disconnected page that explains why private workflow is unavailable offline, then restore `#/owner` when the network returns.
-- Accept `https://mypersonas.online/...` deep links into the same owner WebView. Other hosts are ignored.
+- Accept `https://mypersonas.online/#/owner`, `#/feed`, `#/push`, and the other owner hashes into the same WebView. Other hosts and public hashes are ignored.
+- Accept `ACTION_SEND` text as planning-only share intake. It never posts.
 - Export/import **local prefs only** (the owner origin URL) so a debug-signed install can sit beside a differently signed install without pretending to migrate user drafts.
 
 ## What it cannot do
@@ -40,6 +42,22 @@ If the Android SDK is not installed:
 3. Re-run the script.
 
 Store accounts (Google personal / later submissions) are owner actions. This milestone does not submit, promote, or change Play permissions.
+
+## Save the website as an Android browser app
+
+This checkout cannot install anything on a physical phone. On the owner Android
+device, in Chrome:
+
+1. Open `https://mypersonas.online/`.
+2. Open the Chrome menu.
+3. Choose **Install app** or **Add to Home screen**.
+4. After install, open **More → Websites to check** (or `#/sites`) to see owner
+   surfaces and HTTPS portals. Other hosts open in Chrome, not inside a fake publisher.
+
+The debug APK is a second, unsigned companion over the same live site. Do not submit it to Play.
+
+See `PHONE-SIDELLOAD.md` for APK + Chrome browser-app steps. This checkout cannot
+`adb install` onto a physical phone unless that phone is connected here.
 
 ## Side-by-side testing when signing differs
 

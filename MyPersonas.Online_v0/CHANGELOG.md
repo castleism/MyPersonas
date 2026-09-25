@@ -1,5 +1,59 @@
 # Changelog — AliaSpaces / MyPersonas
 
+## Public PWAs, debug APK package, and phone sideload notes (2026-09-25)
+
+Status: **Implemented and packaged locally; not deployed, not store-submitted,
+and not installed on a physical phone from this checkout.**
+
+- Noo YouNiverse now has a public PWA shell (manifest, worker, icons, Android
+  Chrome install help). The worker never caches waitlist/Supabase writes and
+  never requests notification permission.
+- `#/sites` includes `https://nooyouniverse.com/` as a public check/install target.
+- Debug APK packaging uses the local Android SDK when present. `adb` install
+  still requires the owner's connected phone.
+
+## Owner websites-to-check and Android browser-app install help (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not installed on a physical phone from this checkout.**
+
+- Owner `#/sites` lists MyPersonas surfaces plus owned HTTPS ledger/official
+  portals. Foreign-owner rows stay out. Taps never post.
+- Android/iOS/Expo companions open non-owner HTTPS sites in the system browser
+  and add a Websites to check control. Chrome Install help tells Android how to
+  save `https://mypersonas.online/` as a standalone browser app. This checkout
+  cannot tap Install app on the owner's physical phone.
+
+## Owner-mobile companion allowlist and share intake (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not submitted to a store.**
+
+- Shared `allowedOwnerSurface` / `shareIntake` helpers keep companion WebViews on
+  `#/owner`, `#/feed`, `#/push`, and the other owner hashes. Share intake is
+  planning-only and never posts.
+- Feed/push sticky CTAs request fail-closed research or return to the review
+  queue. Expo reload now remounts the allowed owner URL.
+- Android `ACTION_SEND` and offline pages document feed/push limits. Public PWA
+  cache tests still exclude owner workflow files.
+
+## Owner-mobile next local slice (feed, push ledger, Expo) (2026-09-24)
+
+Status: **Implemented and tested locally; not applied to the linked database,
+not deployed, and not submitted to a store.**
+
+- Additive 078 owner-private news-feed ledger and 079 default-off push
+  subscription ledger. `publishing_enabled` and `delivery_enabled` stay false.
+  `ai/research` is fail-closed and never fetches URLs.
+- Owner `#/feed` and `#/push` surfaces, two-account isolation helpers, and
+  authorization tests.
+- Expo WebView debug scaffold at `apps/personas-expo/`. Linux cannot produce a
+  store binary. Local 077 apply helper refuses hosted DATABASE_URL values.
+- Meta App Review, live AAL2, real-device sign-in, and production apply remain
+  owner/live work.
+
+
+
 Versioning per VERSIONING.md: majors are milestones, `.x` are roadmap items,
 trailing letters are hotfixes. Releases are git tags.
 

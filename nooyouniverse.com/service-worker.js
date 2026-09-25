@@ -1,20 +1,16 @@
 "use strict";
 
-// Bump this version whenever any file in PUBLIC_SHELL_PATHS changes. An existing
-// worker is allowed to finish its session; the new worker activates after all
-// AliaSpaces tabs using the old version are closed.
-const CACHE_PREFIX = "aliaspaces-public-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}2026-09-24-2`;
+const CACHE_PREFIX = "nooyouniverse-public-shell-";
+const CACHE_NAME = `${CACHE_PREFIX}2026-09-25-1`;
 const PUBLIC_SHELL_PATHS = Object.freeze([
   "./offline.html",
   "./manifest.webmanifest",
   "./pwa.js",
-  "./favicon.ico",
-  "./icon.svg",
-  "./icon-180.png",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-maskable-512.png"
+  "./assets/favicon.svg",
+  "./assets/icon-180.png",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png",
+  "./assets/icon-maskable-512.png"
 ]);
 
 const SCOPE_URL = new URL(self.registration.scope);
@@ -47,8 +43,6 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(request.url);
   if (requestUrl.origin !== SCOPE_URL.origin) return;
 
-  // Documents are always network-first and are never written to Cache Storage.
-  // Offline navigation receives the public fallback, never a stored signed-in page.
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
@@ -61,9 +55,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Ignore every request outside the explicit public shell allowlist. In
-  // particular, API, authentication, Supabase, uploaded-media, and third-party
-  // responses pass through without service-worker storage.
   if (!PUBLIC_SHELL_URL_SET.has(requestUrl.href)) return;
 
   event.respondWith((async () => {

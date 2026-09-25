@@ -25,10 +25,22 @@
   const PUBLISHING_ENABLED = false;
   const CREATION_SOURCE = "mobile_private";
 
+  const OWNER_SURFACES = Object.freeze([
+    "owner",
+    "feed",
+    "push",
+    "sites",
+    "briefs",
+    "schedule",
+    "activity",
+    "notifications",
+  ]);
+
   const OFFLINE_LIMITATIONS = Object.freeze([
     "Private persona selection, drafts, review, and approval require a signed-in owner session against the live MyPersonas backend.",
     "The public offline shell never caches owner-app.js, owner drafts, or Supabase responses.",
     "Disconnected Android/WebView builds may only show this limitation page. They cannot create, approve, or send drafts.",
+    "Private feed (#/feed), the push ledger (#/push), and websites-to-check (#/sites) also need a live signed-in session. Disconnected clients cannot research, store endpoints, send notifications, or open provider portals.",
     "Approval is a private planning record. It never posts to X, Instagram, Facebook, a website, or any other provider.",
     "OAuth scopes, production secrets, and provider send paths are unchanged by this milestone.",
   ]);
@@ -296,6 +308,30 @@
           : { action: "new_private_draft", label: "New private draft", disabled: !online },
       };
     }
+    if (kind === "feed") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "request_research", label: "Request research (fail-closed)", disabled: !online },
+        secondary: { action: "review_queue", label: "Review queue", disabled: false },
+      };
+    }
+    if (kind === "push") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "review_queue", label: "Review queue", disabled: false },
+        secondary: { action: "open_feed", label: "Private feed", disabled: false },
+      };
+    }
+    if (kind === "sites") {
+      return {
+        show: true,
+        reason: "",
+        primary: { action: "open_sites", label: "Websites to check", disabled: false },
+        secondary: { action: "review_queue", label: "Review queue", disabled: false },
+      };
+    }
     return {
       show: true,
       reason: "",
@@ -341,6 +377,214 @@
     };
   }
 
+  function feedItemVisible(item, ownerId) {
+    const caller = asText(ownerId);
+    if (!caller || !item) return false;
+    if (item.owner && item.owner !== caller) return false;
+    if (item.publishing_enabled === true || item.social_published === true) return false;
+    return true;
+  }
+
+  function feedResearchRequest(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    const persona = ownedPersona(input.personas, ownerId, input.personaId);
+    if (!ownerId) return { ok: false, error: "Authentication required", payload: null };
+    if (!persona) return { ok: false, error: "Owned persona not found", payload: null };
+    if (input.publishingEnabled === true || input.socialPublished === true) {
+      return { ok: false, error: "publishing_enabled must remain false", payload: null };
+    }
+    if (input.online === false) return { ok: false, error: "Research requires a live owner session", payload: null };
+    if (input.rulesApproved !== true) {
+      return { ok: false, error: "Source, citation, freshness, and feedback rules are not owner-approved", payload: null };
+    }
+    return { ok: false, error: "ai/research is not deployed. This request never fetches URLs or writes social posts", payload: null };
+  }
+
+  function pushDeliveryStatus(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    if (!ownerId) return { ok: false, deliveryEnabled: false, error: "Authentication required" };
+    return {
+      ok: true,
+      deliveryEnabled: false,
+      permissionRequested: false,
+      subscriptionCount: Array.isArray(input.subscriptions)
+        ? input.subscriptions.filter((row) => row && (!row.owner || row.owner === ownerId)).length
+        : 0,
+      error: "",
+      reason: "APNs/FCM/Web Push delivery is not installed. This checkout never sends notifications.",
+    };
+  }
+
+  function registerPushSubscription(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    const endpoint = asText(input.endpoint);
+    if (!ownerId) return { ok: false, error: "Authentication required" };
+    if (!/^https:\/\//i.test(endpoint) || endpoint.length > 2048) {
+      return { ok: false, error: "Push subscription fields are invalid" };
+    }
+    if (input.deliveryEnabled === true) return { ok: false, error: "delivery_enabled must remain false" };
+    return {
+      ok: true,
+      error: "",
+      payload: {
+        rpc: "register_owner_push_subscription",
+        owner_id: ownerId,
+        endpoint,
+        platform: asText(input.platform) || "web",
+        enabled: false,
+        delivery_enabled: false,
+      },
+    };
+  }
+
+  function allowedOwnerSurface(url) {
+    const value = asText(url);
+    if (!value) return false;
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      return false;
+    }
+    const host = lower(parsed.hostname);
+    const local = host === "localhost" || host === "127.0.0.1" || host === "10.0.2.2";
+    const live = host === "mypersonas.online";
+    if (!local && !live) return false;
+    if (parsed.protocol === "https:") {
+      // live or local TLS
+    } else if (parsed.protocol === "http:" && local) {
+      // emulator / laptop Pages only
+    } else {
+      return false;
+    }
+    const path = parsed.pathname || "/";
+    if (path !== "/" && path !== "") return false;
+    const route = decodeURIComponent(parsed.hash || "").replace(/^#\/?/, "").split(/[/?#]/)[0];
+    return !route || OWNER_SURFACES.includes(route);
+  }
+
+  function httpsUrl(value) {
+    const url = asText(value);
+    if (!/^https:\/\//i.test(url) || url.length > 2048) return "";
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:") return "";
+      if (!parsed.hostname) return "";
+      return parsed.href;
+    } catch {
+      return "";
+    }
+  }
+
+  function sitesToCheck(input = {}) {
+    const ownerId = asText(input.ownerId || input.callerId);
+    if (!ownerId) return { ok: false, groups: [], error: "Authentication required" };
+    if (input.publishingEnabled === true) {
+      return { ok: false, groups: [], error: "publishing_enabled must remain false" };
+    }
+    const origin = httpsUrl(input.origin) || "https://mypersonas.online/";
+    const base = origin.replace(/\/#.*$/, "").replace(/\/$/, "");
+    const personaId = asText(input.personaId);
+    const official = input.officialPortals && typeof input.officialPortals === "object" ? input.officialPortals : {};
+    const surfaceItems = OWNER_SURFACES.map((route) => ({
+      id: `surface-${route}`,
+      label: route === "sites" ? "Websites to check" : route,
+      url: `${base}/#/${route}`,
+      kind: "owner_surface",
+      openIn: "owner_shell",
+    }));
+    const installItems = [
+      {
+        id: "install-public",
+        label: "AliaSpaces / MyPersonas website",
+        url: `${base}/`,
+        kind: "install",
+        openIn: "browser",
+        note: "On Android Chrome: menu → Install app or Add to Home screen. That saves this website as a standalone browser app. It does not post and does not request notification permission.",
+      },
+      {
+        id: "install-provider-setup",
+        label: "Provider setup checklist",
+        url: `${base}/provider-setup.html`,
+        kind: "docs",
+        openIn: "browser",
+        note: "Official MyPersonas setup pages. Open in the system browser.",
+      },
+      {
+        id: "install-noo",
+        label: "Noo YouNiverse website",
+        url: "https://nooyouniverse.com/",
+        kind: "public_site",
+        openIn: "browser",
+        note: "On Android Chrome: menu → Install app or Add to Home screen. Public evidence site only. It does not post.",
+      },
+    ];
+    const accounts = (Array.isArray(input.accounts) ? input.accounts : []).filter((account) => {
+      if (!account || account.suspended) return false;
+      if (account.owner && account.owner !== ownerId) return false;
+      if (personaId && asText(account.persona_id) !== personaId) return false;
+      return true;
+    });
+    const portalItems = accounts.map((account, index) => {
+      const own = httpsUrl(account.url);
+      const fallback = httpsUrl(official[lower(account.provider)]);
+      const url = own || fallback;
+      if (!url) return null;
+      return {
+        id: asText(account.id) || `portal-${index}`,
+        label: asText(account.username) || asText(account.login_email) || asText(account.provider) || "Account",
+        url,
+        kind: "portal",
+        openIn: "browser",
+        provider: asText(account.provider),
+        note: own ? "Ledger HTTPS URL" : "Official provider portal",
+      };
+    }).filter(Boolean);
+    return {
+      ok: true,
+      error: "",
+      publishing_enabled: false,
+      groups: [
+        { id: "install", title: "Save the website as a browser app", items: installItems },
+        { id: "owner", title: "Owner command-center surfaces", items: surfaceItems },
+        { id: "portals", title: "Websites to check", items: portalItems },
+      ],
+    };
+  }
+
+  function shareIntake(input = {}) {
+    if (input.publishingEnabled === true) {
+      return { ok: false, publishing_enabled: false, destination: "", text: "", error: "publishing_enabled must remain false" };
+    }
+    const shared = asText(input.text || input.url);
+    const destination = allowedOwnerSurface(shared) ? shared : "https://mypersonas.online/#/owner";
+    return {
+      ok: true,
+      publishing_enabled: false,
+      destination,
+      text: shared.slice(0, 2000),
+      error: "",
+      note: "Share intake is planning-only. It opens an owner surface and never posts.",
+    };
+  }
+
+  function twoAccountIsolation(input = {}) {
+    const ownerA = asText(input.ownerA);
+    const ownerB = asText(input.ownerB);
+    const record = input.record || null;
+    if (!ownerA || !ownerB || ownerA === ownerB) return { ok: false, isolated: false, error: "Two distinct owners are required" };
+    if (!record) return { ok: false, isolated: false, error: "Record required" };
+    const visibleToA = asText(record.owner) === ownerA;
+    const visibleToB = asText(record.owner) === ownerB;
+    return {
+      ok: true,
+      isolated: visibleToA !== visibleToB,
+      visibleToA,
+      visibleToB,
+      error: visibleToA && visibleToB ? "Record must not be visible to both owners" : "",
+    };
+  }
+
   function importBundle(bundle, input = {}) {
     if (!bundle || bundle.version !== EXPORT_VERSION) return { ok: false, error: "Unrecognized export version" };
     if (bundle.publishing_enabled === true) return { ok: false, error: "publishing_enabled must remain false" };
@@ -361,7 +605,12 @@
     EXPORT_VERSION,
     PUBLISHING_ENABLED,
     CREATION_SOURCE,
+    OWNER_SURFACES,
     OFFLINE_LIMITATIONS,
+    allowedOwnerSurface,
+    httpsUrl,
+    sitesToCheck,
+    shareIntake,
     ownedPersona,
     ownedAccounts,
     accountsForChannel,
@@ -379,6 +628,11 @@
     filterRoster,
     exportBundle,
     importBundle,
+    feedItemVisible,
+    feedResearchRequest,
+    pushDeliveryStatus,
+    registerPushSubscription,
+    twoAccountIsolation,
   });
 
   root.MobileOwnerWorkflow = api;

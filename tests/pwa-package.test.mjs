@@ -97,6 +97,8 @@ test("service worker precaches only existing public shell files", async () => {
   assert.ok(paths.includes("./offline.html"));
   assert.ok(paths.includes("./manifest.webmanifest"));
   assert.ok(!paths.includes("./index.html"), "signed-in application HTML must not be precached");
+  assert.ok(!paths.includes("./owner-app.js"), "owner workflow must not be in the public offline cache");
+  assert.ok(!paths.includes("./mobile-owner-workflow.js"), "owner workflow helpers must not be in the public offline cache");
 
   for (const relativePath of paths) {
     assertRelativeSitePath(relativePath, `cached file ${relativePath}`);
@@ -127,6 +129,8 @@ test("install helper registers a path-relative worker without synthetic push sta
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /aria-live/);
   assert.doesNotMatch(source, /PushManager|pushManager|Notification\.requestPermission|subscribe\s*\(/);
+  assert.match(source, /Android Chrome/);
+  assert.match(source, /Add to Home screen/);
 });
 
 test("the app head and Pages artifact include the complete PWA shell", async () => {

@@ -1,5 +1,10 @@
 # Meta App Review — enabling IG/FB posting
 
+_This cloud checkout cannot submit Meta App Review, change live OAuth scopes,
+flip publishing, or use production secrets. The steps below remain owner /
+dashboard work after a coordinated 035 maintenance window._
+
+
 _The permissions that let the app publish to Instagram and Facebook Pages are
 "advanced access" and must be approved by Meta App Review. This is the long pole
 (days–weeks), so **start it first** — the code can be built in parallel but can't go

@@ -1,0 +1,64 @@
+{
+  "id": "./",
+  "name": "Noo YouNiverse",
+  "short_name": "Noo YouNiverse",
+  "description": "Evidence-labeled flight notes for your brain. Public site only. No posting, no notification permission.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "browser"],
+  "background_color": "#0b0e24",
+  "theme_color": "#0b0e24",
+  "categories": ["education", "health"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mission Log",
+      "short_name": "Log",
+      "description": "Open the public mission log.",
+      "url": "./log.html",
+      "icons": [
+        {
+          "src": "./assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Sources",
+      "short_name": "Sources",
+      "description": "Open the public sources and standards page.",
+      "url": "./sources.html",
+      "icons": [
+        {
+          "src": "./assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

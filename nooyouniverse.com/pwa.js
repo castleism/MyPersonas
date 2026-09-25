@@ -17,33 +17,24 @@
 
   function ensureInstallUi() {
     if (installButton && statusMessage) return;
-
-    const nav = document.querySelector("header nav");
-    const mount = nav || document.body;
-    const authButton = document.getElementById("authBtn");
-
+    const nav = document.querySelector("nav .nav-inner") || document.querySelector("nav") || document.body;
     statusMessage = document.getElementById("pwaInstallStatus") || document.createElement("span");
     statusMessage.id = "pwaInstallStatus";
     statusMessage.setAttribute("role", "status");
     statusMessage.setAttribute("aria-live", "polite");
     statusMessage.hidden = true;
-    statusMessage.style.cssText = "max-width:260px;padding:6px 10px;border-radius:8px;background:#e7f3ff;color:#315273;font-size:12px;font-weight:600;line-height:1.35";
+    statusMessage.style.cssText = "max-width:240px;padding:6px 10px;border-radius:8px;background:#1a2047;color:#e9ebf7;font-size:12px;font-weight:600;line-height:1.35";
 
     installButton = document.getElementById("pwaInstallButton") || document.createElement("button");
     installButton.id = "pwaInstallButton";
     installButton.type = "button";
-    installButton.className = "btn sec sm";
+    installButton.className = "btn btn-ghost nav-cta";
     installButton.textContent = "Install app";
-    installButton.setAttribute("aria-describedby", statusMessage.id);
     installButton.hidden = true;
-    installButton.style.whiteSpace = "nowrap";
     installButton.addEventListener("click", handleInstallClick);
 
-    if (!statusMessage.isConnected) mount.insertBefore(statusMessage, authButton || null);
-    if (!installButton.isConnected) {
-      const buttonAnchor = statusMessage.parentNode === mount ? statusMessage : authButton;
-      mount.insertBefore(installButton, buttonAnchor || null);
-    }
+    if (!statusMessage.isConnected) nav.appendChild(statusMessage);
+    if (!installButton.isConnected) nav.appendChild(installButton);
   }
 
   function showStatus(message, persistent = false) {
@@ -63,44 +54,23 @@
       if (isAppleMobile && !isStandalone()) {
         showStatus("On iPhone or iPad, open Share, then choose Add to Home Screen.", true);
       } else if (isAndroid && !isStandalone()) {
-        showStatus("On Android Chrome, open the browser menu, then choose Install app or Add to Home screen. That saves AliaSpaces as a standalone browser app. It does not post and does not request notification permission.", true);
+        showStatus("On Android Chrome, open the browser menu, then choose Install app or Add to Home screen. That saves Noo YouNiverse as a standalone browser app. It does not post and does not request notification permission.", true);
       }
       return;
     }
-
     const promptEvent = deferredInstallPrompt;
     deferredInstallPrompt = null;
     installButton.disabled = true;
-
     try {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
       installButton.hidden = true;
-      showStatus(
-        choice?.outcome === "accepted" ? "AliaSpaces installation started." : "Installation canceled."
-      );
+      showStatus(choice?.outcome === "accepted" ? "Noo YouNiverse installation started." : "Installation canceled.");
     } catch {
-      showStatus("The browser could not open its install prompt. Use the browser menu to install AliaSpaces.", true);
+      showStatus("Use the browser menu to install Noo YouNiverse.", true);
     } finally {
       installButton.disabled = false;
     }
-  }
-
-  function reportWaitingUpdate(registration) {
-    if (registration.waiting && navigator.serviceWorker.controller) {
-      showStatus("An AliaSpaces update is ready. Close every AliaSpaces tab and reopen the app to apply it.", true);
-    }
-  }
-
-  function watchForUpdates(registration) {
-    reportWaitingUpdate(registration);
-    registration.addEventListener("updatefound", () => {
-      const worker = registration.installing;
-      if (!worker) return;
-      worker.addEventListener("statechange", () => {
-        if (worker.state === "installed") reportWaitingUpdate(registration);
-      });
-    });
   }
 
   window.addEventListener("beforeinstallprompt", (event) => {
@@ -108,8 +78,6 @@
     event.preventDefault();
     deferredInstallPrompt = event;
     ensureInstallUi();
-    installButton.textContent = "Install app";
-    installButton.setAttribute("aria-label", "Install AliaSpaces on this device");
     installButton.hidden = false;
   });
 
@@ -117,13 +85,12 @@
     deferredInstallPrompt = null;
     ensureInstallUi();
     installButton.hidden = true;
-    showStatus("AliaSpaces was installed.");
+    showStatus("Noo YouNiverse was installed.");
   });
 
   if ((isAppleMobile || isAndroid) && !isStandalone()) {
     ensureInstallUi();
     installButton.textContent = "Install help";
-    installButton.setAttribute("aria-label", "Show AliaSpaces installation instructions");
     installButton.hidden = false;
   }
 
@@ -133,13 +100,12 @@
     try {
       const workerUrl = new URL("./service-worker.js", document.baseURI);
       if (workerUrl.origin !== location.origin) return;
-      const registration = await navigator.serviceWorker.register(workerUrl.href, {
+      await navigator.serviceWorker.register(workerUrl.href, {
         scope: new URL("./", workerUrl).href,
         updateViaCache: "none"
       });
-      watchForUpdates(registration);
     } catch (error) {
-      console.warn("AliaSpaces offline shell registration failed.", error);
+      console.warn("Noo YouNiverse offline shell registration failed.", error);
     }
   });
 })();

@@ -77,19 +77,18 @@ The **app is a companion** for the two things you do daily: **talk to your perso
   The client calls owner-authenticated approval/publisher Edge Functions (including
   `approve-post-draft` for immutable-media scheduling), never service-role-only internal RPCs.
   Notification delivery is a later phase, not part of the initial screen.
-- **Feed** — the personalized AI news feed (V2-BLUEPRINT §6): each persona researches
-  its interests, fact-checks, cites sources, serves short blurbs. Read-first, tappable
-  to expand + sources.
+- **Feed** — local 078 + `#/feed` is a read-first owner-private blurb queue with
+  HTTPS citations. `ai/research` is fail-closed until the owner approves source,
+  citation, freshness, and feedback rules. This is not a social publisher.
 - **Not in the app (stays web):** connectors/OAuth, ledger, album management, App-Review
   publishing setup.
 
 ### Reuse and new backend boundaries
 
 Chat and review can reuse Supabase Auth, Postgres/RLS, `ai-proxy`, and the guarded owner
-approval/publisher functions. The sourced feed still needs its approved schema/research
-function/evidence model, and push needs subscription storage, revocation, delivery, and
-quiet-hours handling. The app is a new client over shared foundations, not a promise that
-every proposed surface already has a backend.
+approval/publisher functions. Local 078/079 add the feed item ledger and a default-off
+push subscription table. Research, APNs/FCM delivery, and quiet hours remain uninstalled.
+The app is a new client over shared foundations, not a live publisher.
 
 ---
 
@@ -146,22 +145,26 @@ to future ones later as you continue to build the context for the persona."_ Thi
    context-aware sticky CTA are local; logged-in real-device checks remain.
 3. **Context + chat workspaces** — schema is recorded live and code is complete locally;
    deploy `ai-proxy` before Pages, then verify conflict/RLS/distillation/export behavior.
-4. **Sourced news-feed research pipeline** (`feed_items` + `ai/research`) after the owner
-   approves source, citation, freshness, and feedback rules.
-5. **Push-notification pilot** — separate permission/subscription/delivery design after the
-   installed PWA is stable.
+4. **Sourced news-feed research pipeline** — local 078 + `#/feed` exist; owner rule
+   approval, `ai/research` deploy, and live evidence remain.
+5. **Push-notification pilot** — local 079 stores owner-private endpoints with
+   delivery off. Permission UX, APNs/FCM, and quiet hours remain.
 6. **Android debug WebView (first native path, local).** Source-complete: wraps the
    real `#/owner` command center, restores it when the network returns, accepts
-   `https://mypersonas.online/` deep links, shows offline limitations, and
+   `https://mypersonas.online/#/owner`, `#/feed`, `#/push`, and `#/sites` deep
+   links, shows offline limitations, accepts planning-only share text, opens
+   HTTPS check sites in the system browser, and
    exports/imports local prefs when signing keys differ. Gradle wrapper 8.7 is
    committed. A debug APK can assemble with SDK 34; still blocked on owner-device
    sign-in. Do not submit to Play.
 7. **iOS WKWebView scaffold (local source only).** Same owner URL, offline page,
    network restore, and local-prefs helper. Linux cannot produce an IPA. Do not
    submit to the App Store.
-8. **Expo native shell** — chat + approvals + feed, reusing the backend, only when native
-   camera/share/biometric/notification value justifies another client. This checkout
-   does not start that rewrite.
+8. **Expo native shell** — local WebView scaffold at `apps/personas-expo/` wraps the
+   real `#/owner` command center and accepts `#/feed` / `#/push` owner deep links.
+   Reload remounts the allowed URL. Share intake is planning-only and never posts.
+   It is not a fake publisher and cannot produce a store binary here.
+   Camera/biometric remain later.
 9. **Meta hardening release** — owner-asset publishing is proven; ship migration 035 and the
    guarded code first. App Review is needed only when posting for other users becomes a goal.
 

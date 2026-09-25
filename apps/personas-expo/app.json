@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "MyPersonas Owner (debug)",
+    "slug": "mypersonas-owner-debug",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "online.mypersonas.owner.debug",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "online.mypersonas.owner.debug",
+      "usesCleartextTraffic": false
+    },
+    "extra": {
+      "defaultOwnerOrigin": "https://mypersonas.online/#/owner",
+      "publishingEnabled": false
+    }
+  }
+}
