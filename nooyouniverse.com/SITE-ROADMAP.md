@@ -16,6 +16,7 @@ Stack: static site → **Cloudflare Worker with static assets** + Supabase free-
 | Deploy repo `castleism/nooyouniverse` | ✅ Phase 3 commit `e8971ad` pushed to `main` |
 | Cloudflare Worker + apex domain | ✅ HTTPS live; Phase 3 Worker version 4 serves 20 public files |
 | `www.nooyouniverse.com` | ✅ Resolves; pages declare apex canonicals; a host-level redirect is not configured |
+| Public PWA shell (manifest, worker, icons, install help) | ✅ Local source 2026-09-25; not proven live until the owner Cloudflare deploy |
 | **Phase 3** — source badges, `/sources`, `/corrections` | ✅ **Verified live — 2026-08-26** |
 | **Package A** — Missions 11–14 | 📝 Four internal copy drafts + four visual candidates — **zero approved; not in site source; not deployed** |
 

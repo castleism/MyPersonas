@@ -31,6 +31,7 @@ Do **not** replace the platform with a local fake social publisher.
 - Private feed: `MyPersonas.Online_v0/sql-updates/078-owner-private-news-feed.sql`
 - Push ledger: `MyPersonas.Online_v0/sql-updates/079-owner-push-subscription-foundation.sql`
 - Websites to check: owner `#/sites` plus Android/iOS/Expo browser-app install help
+- Public PWAs: `MyPersonas.Online_v0/` and `nooyouniverse.com/` (install on a physical phone is an owner Chrome action)
 - Android path: `apps/personas-android/README.md`
 - iOS path: `apps/personas-ios/README.md`
 - Expo path: `apps/personas-expo/README.md`

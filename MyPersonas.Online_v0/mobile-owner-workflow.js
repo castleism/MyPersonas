@@ -510,6 +510,14 @@
         openIn: "browser",
         note: "Official MyPersonas setup pages. Open in the system browser.",
       },
+      {
+        id: "install-noo",
+        label: "Noo YouNiverse website",
+        url: "https://nooyouniverse.com/",
+        kind: "public_site",
+        openIn: "browser",
+        note: "On Android Chrome: menu → Install app or Add to Home screen. Public evidence site only. It does not post.",
+      },
     ];
     const accounts = (Array.isArray(input.accounts) ? input.accounts : []).filter((account) => {
       if (!account || account.suspended) return false;

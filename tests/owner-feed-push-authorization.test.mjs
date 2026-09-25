@@ -106,6 +106,8 @@ test("sites-to-check lists owned HTTPS portals and keeps foreign accounts out", 
   const portals = list.groups.find((group) => group.id === "portals").items;
   assert.equal(portals.some((item) => item.url === "https://x.com/alpha"), true);
   assert.equal(portals.some((item) => /foreign/.test(item.url)), false);
+  const install = list.groups.find((group) => group.id === "install").items;
+  assert.equal(install.some((item) => item.url === "https://nooyouniverse.com/"), true);
   assert.equal(workflow.sitesToCheck({ ownerId: owner, publishingEnabled: true }).ok, false);
   assert.equal(workflow.allowedOwnerSurface("https://mypersonas.online/#/sites"), true);
 });

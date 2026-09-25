@@ -475,10 +475,12 @@ larger product phase remains.
       flag for Concept LoRA sets (verify Adobe ToS on ML use of API-pulled assets)
 - [ ] Discovery: trending personas/tags, better ranking than recency
 - [ ] Moderation pipeline: user reports on content/personas, review queue
-- [~] PWA: install/offline shell complete locally; real-device release verification
-      remains. Local 079 stores owner-private endpoints with `delivery_enabled=false`
-      and never requests notification permission from the public shell. APNs/FCM
-      delivery is not installed.
+- [~] PWA: AliaSpaces/MyPersonas install/offline shell is complete locally, and
+      Noo YouNiverse now has a matching public-only PWA shell in this checkout.
+      Real-device Chrome install and the Noo YouNiverse Cloudflare deploy remain
+      owner actions. Local 079 stores owner-private endpoints with
+      `delivery_enabled=false` and never requests notification permission from
+      either public shell. APNs/FCM delivery is not installed.
 - [ ] Custom auth domain (auth.aliaspaces.com) for branded OAuth consent
 - [ ] Profile analytics for owners (views, clicks on links/albums)
 

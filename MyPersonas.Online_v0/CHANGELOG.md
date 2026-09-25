@@ -1,5 +1,17 @@
 # Changelog — AliaSpaces / MyPersonas
 
+## Public PWAs, debug APK package, and phone sideload notes (2026-09-25)
+
+Status: **Implemented and packaged locally; not deployed, not store-submitted,
+and not installed on a physical phone from this checkout.**
+
+- Noo YouNiverse now has a public PWA shell (manifest, worker, icons, Android
+  Chrome install help). The worker never caches waitlist/Supabase writes and
+  never requests notification permission.
+- `#/sites` includes `https://nooyouniverse.com/` as a public check/install target.
+- Debug APK packaging uses the local Android SDK when present. `adb` install
+  still requires the owner's connected phone.
+
 ## Owner websites-to-check and Android browser-app install help (2026-09-24)
 
 Status: **Implemented and tested locally; not applied to the linked database,

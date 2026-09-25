@@ -56,6 +56,9 @@ device, in Chrome:
 
 The debug APK is a second, unsigned companion over the same live site. Do not submit it to Play.
 
+See `PHONE-SIDELLOAD.md` for APK + Chrome browser-app steps. This checkout cannot
+`adb install` onto a physical phone unless that phone is connected here.
+
 ## Side-by-side testing when signing differs
 
 Debug and Play signing keys do not share app storage. Keep both installs, or use the in-app **Export local prefs** / **Import local prefs** buttons. That file is not a user-data backup of private draft bodies.
